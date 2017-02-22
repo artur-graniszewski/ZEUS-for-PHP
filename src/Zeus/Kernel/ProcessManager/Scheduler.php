@@ -341,7 +341,9 @@ final class Scheduler
     {
         $enabled = gc_enabled();
         gc_enable();
-        gc_mem_caches();
+        if (function_exists('gc_mem_caches')) {
+            gc_mem_caches();
+        }
         gc_collect_cycles();
 
         if (!$enabled) {

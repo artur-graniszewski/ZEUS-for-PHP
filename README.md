@@ -358,6 +358,11 @@ The above configuration parameters have been described in the __Process Schedule
 
 # Changelog
 
+## Version 1.1.4
+- [Unit tests fix] Fix for division by zero error in PHP 5.6 unit tests in `ProcessTitle` class
+- [Tests improvements] Added test class for Scheduler, increased tests code coverage
+- [Fix] Fixed PHP 5.6 compatibility in `Scheduler` garbage collection mechanism 
+
 ## Version 1.1.3
 - [Feature] Enabled travis build and improved phpunit configuration
 - [Unit tests fix] Fix for failing phpunit tests due to the recent changes in ZEUS Web Server classes and interfaces
@@ -369,17 +374,14 @@ The above configuration parameters have been described in the __Process Schedule
 - [Documentation] Updated road-map
 
 ## Version 1.1.1
-
 - [Composer fix] Specified ZEUS license type in `composer.json`
 - [Documentation fix] Fixed command syntax that installs ZEUS via Composer
 
 ## Version 1.1.0
-
 - [Performance fix] ZEUS Web Server uses a custom React PHP `Buffer` implementation to overcome severe `fwrite` performance penalty when serving large files through a keep-alive connection
 - [Security fix] ZEUS Web Server counts the number of keep-alive requests and closes connection when the requests limit is reached.
 - [Feature] Implemented `IpcLoggerInterface` and `IpcLoggerWriter` to send logs through IPC to a Scheduler which will act as as a logger sink.
 - [Feature] Service name is now reported by a built-in logger processor 
 
 ## Version 1.0.0
-
 - Initial revision

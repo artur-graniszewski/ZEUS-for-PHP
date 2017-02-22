@@ -94,6 +94,11 @@ class ProcessTitle
     {
         $unit = ["", "K", "M", "G"];
         $exp = floor(log($value, 1000)) | 0;
-        return round($value / (pow(1000, $exp)), $precision) . $unit[$exp];
+        $division = pow(1000, $exp);
+
+        if (!$division) {
+            return 0;
+        }
+        return round($value / $division, $precision) . $unit[$exp];
     }
 }
