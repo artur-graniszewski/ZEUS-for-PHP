@@ -103,7 +103,7 @@ class ZeusController extends AbstractActionController
             $status = $schedulerStatus->getStatus();
 
             if (!$status) {
-                $this->logger->err("Service $serviceName is offline or too busy to respond");
+                $this->logger->err("Service \"$serviceName\" is offline or too busy to respond");
             } else {
                 $this->logger->info($status);
             }

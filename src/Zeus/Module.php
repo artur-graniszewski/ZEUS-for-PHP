@@ -22,7 +22,7 @@ class Module implements
     ConsoleUsageProviderInterface,
     ConsoleBannerProviderInterface
 {
-    const MODULE_VERSION = "1.2.1";
+    const MODULE_VERSION = "1.2.2";
 
     protected static $overrideConfig = '';
 
@@ -112,30 +112,8 @@ class Module implements
      */
     public function onMergeConfig(ModuleEvent $event)
     {
-        $prefix = 'zeus server';
-
         $configListener = $event->getConfigListener();
         $config = $configListener->getMergedConfig(false);
-
-        $routes = $config['console']['router']['routes'];
-
-        // this is needed for BasePath plugin
-        $config['view_manager']['console_base_path'] = '/';
-
-        $newRoutes = $routes;
-
-        foreach ($routes as $routeName => $routeOptions) {
-            if (isset($routeOptions['options'])) {
-                $routeOptions['options']['route'] = $prefix . ' ' . $routeOptions['options']['route'];
-
-                $newRoutes['rerouted-' . $routeName] = $routeOptions;
-            }
-        }
-
-        $config['console']['router']['routes'] = $newRoutes;
-
-        // @todo: check routing first!
-        $config['surpress_dispatch_event'] = Console::isConsole();
 
         if (static::getOverrideConfig()) {
             $config = ArrayUtils::merge($config, static::getOverrideConfig());
@@ -151,7 +129,7 @@ class Module implements
      */
     public function getConsoleBanner(ConsoleAdapter $console)
     {
-        $banner = "\r\n";
+        $banner = PHP_EOL;
         $banner .= ' __________            _________
  \____    /____  __ __/   _____/ PHP
    /     // __ \|  |  \_____  \
@@ -159,10 +137,10 @@ class Module implements
  /_______ \___  >____/_______  /
          \/   \/             \/ ';
 
-        $banner .= "\r\n";
+        $banner .= PHP_EOL;
         $banner .= $console->colorize(' ZEUS for PHP - ZF3 Edition', ColorInterface::GREEN);
         $banner .= $console->colorize('   (' . self::MODULE_VERSION . ')', ColorInterface::CYAN);
-        $banner .= "\r\n";
+        $banner .= PHP_EOL;
 
         return $banner;
     }

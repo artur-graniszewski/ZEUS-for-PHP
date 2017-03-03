@@ -72,7 +72,11 @@ class LoggerFactory implements FactoryInterface
         $loggerWrapper->addProcessor($logProcessor);
 
         if (!$isCustomLogger) {
-            $formatter = new ConsoleLogFormatter(Console::getInstance());
+            if ($output === 'php://stdout') {
+                $formatter = new ConsoleLogFormatter(Console::getInstance());
+            } else {
+                $formatter = new StreamLogFormatter();
+            }
             $writer = new Writer\Stream($output);
             $writer->addFilter(new Priority($severity));
             $loggerWrapper->addWriter($writer);

@@ -4,16 +4,24 @@ namespace ZeusTest\Helpers;
 
 use Zend\EventManager\EventInterface;
 use Zend\Log\Logger;
+use Zend\ModuleManager\ModuleManager;
+use Zend\Mvc\Service\EventManagerFactory;
+use Zend\Mvc\Service\ModuleManagerFactory;
+use Zend\Mvc\Service\ServiceListenerFactory;
 use Zend\ServiceManager\ServiceManager;
 use Zend\Stdlib\ArrayUtils;
+use Zeus\Controller\Factory\ZeusControllerFactory;
+use Zeus\Controller\ZeusController;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
+use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\EventsInterface;
+use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\IpcLogWriter;
 
@@ -31,11 +39,28 @@ trait ZeusFactories
         $sm->setFactory(Process::class, ProcessFactory::class);
         $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
+        $sm->setFactory(ZeusController::class, ZeusControllerFactory::class);
+        $sm->setFactory(Manager::class, ManagerFactory::class);
+        $sm->setFactory('ServiceListener', ServiceListenerFactory::class);
+        $sm->setFactory('EventManager', EventManagerFactory::class);
+        $sm->setFactory('ModuleManager', ModuleManagerFactory::class);
+        $sm->setService('ApplicationConfig', [
+            'modules' => [
+            ],
+            'module_listener_options' => [
+                'config_glob_paths' => [realpath(__DIR__) . '/autoload/{,*.}{global,local}-development.php'],
+                'config_cache_enabled' => false,
+                'module_map_cache_enabled' => false,
+            ]
+        ]);
         $config = require realpath(__DIR__ . "/../../config/module.config.php");
 
         $config = ArrayUtils::merge($config,
             [
                 'zeus_process_manager' => [
+                    'logger' => [
+                        'output' => __DIR__ . '/../tmp/test.log'
+                    ],
                     'schedulers' => [
                         'test_scheduler_1' => [
                             'scheduler_name' => 'test-scheduler',
