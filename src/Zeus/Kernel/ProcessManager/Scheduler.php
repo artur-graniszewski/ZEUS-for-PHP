@@ -9,6 +9,8 @@ use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\Helper\Logger;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
 use Zeus\Kernel\IpcServer\Message;
@@ -27,13 +29,13 @@ final class Scheduler
     protected $config;
 
     /** @var float */
-    protected $time;
+    protected $currentTime;
 
     /** @var bool */
     protected $continueMainLoop = true;
 
     /** @var int */
-    protected $id;
+    protected $schedulerId;
 
     /** @var ProcessState */
     protected $schedulerStatus;
@@ -50,11 +52,13 @@ final class Scheduler
     /** @var ProcessTitle */
     protected $processTitle;
 
-    /** @var SchedulerEvent */
-    private $event;
+    /** @var float */
+    protected $startTime;
+
+    protected $discipline;
 
     /** @var SchedulerEvent */
-    private $processEvent;
+    private $event;
 
     /**
      * @return Config
@@ -69,16 +73,16 @@ final class Scheduler
      */
     public function getId()
     {
-        return $this->id;
+        return $this->schedulerId;
     }
 
     /**
-     * @param int $id
+     * @param int $schedulerId
      * @return $this
      */
-    public function setId($id)
+    public function setId($schedulerId)
     {
-        $this->id = $id;
+        $this->schedulerId = $schedulerId;
 
         return $this;
     }
@@ -86,18 +90,18 @@ final class Scheduler
     /**
      * @return float
      */
-    public function getTime()
+    public function getCurrentTime()
     {
-        return $this->time;
+        return $this->currentTime;
     }
 
     /**
-     * @param float $time
+     * @param float $currentTime
      * @return $this
      */
-    public function setTime($time)
+    public function setCurrentTime($currentTime)
     {
-        $this->time = $time;
+        $this->currentTime = $currentTime;
 
         return $this;
     }
@@ -132,6 +136,7 @@ final class Scheduler
      */
     public function __construct($config, Process $processService, LoggerInterface $logger, IpcAdapterInterface $ipcAdapter, $schedulerEvent)
     {
+        $this->discipline = new LruDiscipline();
         $this->config = new Config($config);
         $this->ipcAdapter = $ipcAdapter;
         $this->processService = $processService;
@@ -183,7 +188,7 @@ final class Scheduler
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(EventInterface $e) {
             $this->collectCycles();
             $this->handleMessages();
-            $this->manageProcesses();
+            $this->manageProcesses($this->discipline);
         });
 
         return $this;
@@ -309,11 +314,12 @@ final class Scheduler
      */
     public function start($launchAsDaemon = false)
     {
+        $this->startTime = microtime(true);
         $this->log(\Zend\Log\Logger::INFO, "Starting server");
         $this->collectCycles();
 
         $events = $this->getEventManager();
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'startScheduler'], 0);
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], 0);
         $schedulerEvent = $this->event;
         $processEvent = $this->event;
 
@@ -359,10 +365,12 @@ final class Scheduler
         } catch (\Throwable $e) {
             $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $schedulerEvent->setParams($this->getEventExtraData());
+            $schedulerEvent->setParam('exception', $e);
             $this->getEventManager()->triggerEvent($schedulerEvent);
         } catch (\Exception $e) {
             $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $schedulerEvent->setParams($this->getEventExtraData());
+            $schedulerEvent->setParam('exception', $e);
             $this->getEventManager()->triggerEvent($schedulerEvent);
         }
 
@@ -370,10 +378,9 @@ final class Scheduler
     }
 
     /**
-     * @param EventInterface $event
      * @return $this
      */
-    public function startScheduler(EventInterface $event)
+    public function onSchedulerStart()
     {
         $this->log(\Zend\Log\Logger::DEBUG, "Scheduler starting...");
 
@@ -381,13 +388,8 @@ final class Scheduler
 
         $this->attach($this->getEventManager());
 
-        $config = $this->getConfig();
-
-        if ($config->isProcessCacheEnabled()) {
-            $this->createProcesses($config->getStartProcesses());
-        }
-
         $this->log(\Zend\Log\Logger::INFO, "Scheduler started");
+        $this->createProcesses($this->getConfig()->getStartProcesses());
 
         return $this->mainLoop();
     }
@@ -430,13 +432,7 @@ final class Scheduler
 
         $this->log(\Zend\Log\Logger::INFO, "Terminating scheduler");
 
-        $processes = count($this->processes);
-
-        foreach ($this->processes as $pid => $value) {
-            if (!$pid) {
-                continue;
-            }
-
+        foreach (array_keys($this->processes->toArray()) as $pid) {
             $this->log(\Zend\Log\Logger::DEBUG, "Terminating process $pid");
             $this->events->trigger(SchedulerEvent::EVENT_PROCESS_TERMINATE, $this, $this->getEventExtraData(['uid' => $pid]));
         }
@@ -448,7 +444,7 @@ final class Scheduler
             $this->log(\Zend\Log\Logger::ERR, sprintf("Exception (%d): %s in %s:%d", $status, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
         }
 
-        $this->log(\Zend\Log\Logger::INFO, "Terminated scheduler with $processes processes");
+        $this->log(\Zend\Log\Logger::INFO, "Scheduler terminated");
 
         $this->ipcAdapter->disconnect();
     }
@@ -465,7 +461,7 @@ final class Scheduler
             return $this;
         }
 
-        $this->setTime(microtime(true));
+        $this->setCurrentTime(microtime(true));
 
         for ($i = 0; $i < $count; ++$i) {
             $event = $this->event;
@@ -488,7 +484,6 @@ final class Scheduler
         $this->collectCycles();
         $this->setContinueMainLoop(false);
         $this->ipcAdapter->useChannelNumber(1);
-
 
         $event->setProcess($this->processService);
         $this->processService->setId($pid);
@@ -519,78 +514,42 @@ final class Scheduler
     /**
      * Manages server processes.
      *
+     * @param DisciplineInterface $discipline
      * @return $this
      */
-    protected function manageProcesses()
+    protected function manageProcesses(DisciplineInterface $discipline)
     {
-        $config = $this->getConfig();
-        $this->setTime(microtime(true));
+        $operations = $discipline->manage($this->config, $this->processes);
 
-        /**
-         * Time after which idle process should be ultimately terminated.
-         *
-         * @var float
-         */
-        $expireTime = $this->getTime() - $config->getProcessIdleTimeout();
+        $toTerminate = $operations['terminate'];
+        $toSoftTerminate = $operations['soft_terminate'];
+        $toCreate = $operations['create'];
 
-        $statusSummary = $this->processes->getStatusSummary();
-        $idleProcesses = $statusSummary[ProcessState::WAITING];
-        $busyProcesses = $statusSummary[ProcessState::RUNNING];
-        //$terminatedProcesses = $statusSummary[ProcessStatus::STATUS_EXITING] + $statusSummary[ProcessStatus::STATUS_KILL];
-        $allProcesses = $this->processes->count();
+        $this->createProcesses($toCreate);
+        $this->terminateProcesses($toTerminate, false);
+        $this->terminateProcesses($toSoftTerminate, true);
+    }
 
-        if (!$this->isContinueMainLoop() || !$config->isProcessCacheEnabled()) {
-            return $this;
-        }
+    /**
+     * @param int[] $processIds
+     * @param $isSoftTermination
+     * @return $this
+     */
+    protected function terminateProcesses(array $processIds, $isSoftTermination)
+    {
+        $now = microtime(true);
 
-        // terminate idle processes, if number of them is too high.
-        if ($idleProcesses > $config->getMaxSpareProcesses()) {
-            $toTerminate = $idleProcesses - $config->getMaxSpareProcesses();
-            $terminated = 0;
+        foreach ($processIds as $processId) {
+            $processStatus = $this->processes[$processId];
+            $processStatus['code'] = ProcessState::TERMINATED;
+            $processStatus['time'] = $now;
+            $this->processes[$processId] = $processStatus;
 
-            foreach ($this->processes as $pid => $processStatus) {
-                if (!$processStatus || !ProcessState::isIdle($processStatus)) {
-                    continue;
-                }
-
-                if ($processStatus['time'] < $expireTime) {
-                    $processStatus['code'] = ProcessState::TERMINATED;
-                    $processStatus['time'] = $this->getTime();
-                    unset ($this->processes[$pid]);
-                    $this->processes[$pid] = $processStatus;
-
-                    $this->log(\Zend\Log\Logger::DEBUG, sprintf('Terminating idle process %d', $pid));
-                    $event = $this->event;
-                    $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
-                    $event->setParams($this->getEventExtraData(['uid' => $pid, 'soft' => true]));
-                    $this->events->triggerEvent($event);
-
-                    ++$terminated;
-
-                    if ($terminated === $toTerminate || $terminated === $config->getMaxSpareProcesses()) {
-                        break;
-                    }
-                }
-            }
-        }
-
-        // start additional processes, if number of them is too small.
-        if ($idleProcesses < $config->getMinSpareProcesses()) {
-            $idleProcessSlots = $this->processes->getSize() - $this->processes->count();
-
-            $processAmountToCreate = min($idleProcessSlots, $config->getMinSpareProcesses());
-
-            if ($processAmountToCreate > 0) {
-                $this->createProcesses($processAmountToCreate);
-            }
-
-            return $this;
-        }
-
-        if ($allProcesses === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
-            $this->createProcesses($config->getMaxSpareProcesses());
-
-            return $this;
+            $this->log(\Zend\Log\Logger::DEBUG, sprintf('Terminating process %d', $processId));
+            $event = $this->event;
+            $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
+            $event->setParams($this->getEventExtraData(['uid' => $processId, 'soft' => $isSoftTermination]));
+            $this->events->triggerEvent($event);
         }
 
         return $this;
@@ -626,7 +585,7 @@ final class Scheduler
         $this->ipcAdapter->useChannelNumber(0);
 
         $messages = $this->ipcAdapter->receiveAll();
-        $this->setTime(microtime(true));
+        $this->setCurrentTime(microtime(true));
 
         foreach ($messages as $message) {
             switch ($message['type']) {
@@ -636,7 +595,7 @@ final class Scheduler
 
                     /** @var ProcessState $processStatus */
                     $processStatus = $message['extra']['status'];
-                    $processStatus['time'] = $this->getTime();
+                    $processStatus['time'] = $this->getCurrentTime();
 
                     if ($processStatus['code'] === ProcessState::RUNNING) {
                         $this->schedulerStatus->incrementNumberOfFinishedTasks();
@@ -679,7 +638,7 @@ final class Scheduler
         ];
 
         $payload['extra']['scheduler_status']['total_traffic'] = 0;
-        $payload['extra']['scheduler_status']['start_timestamp'] = $_SERVER['REQUEST_TIME_FLOAT'];
+        $payload['extra']['scheduler_status']['start_timestamp'] = $this->startTime;
 
         $ipcAdapter->send($payload);
     }

@@ -6,6 +6,7 @@ use PHPUnit_Framework_TestCase;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
+use Zeus\ServerService\Shared\React\ConnectionInterface;
 use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\React\MessageComponentInterface;
 use ZeusTest\Helpers\TestConnection;
@@ -47,11 +48,12 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
     public function testIfMessageHasBeenDispatched()
     {
+        $testConnection = new TestConnection();
         $message = $this->getHttpGetRequestString("/");
         $dispatcherLaunched = false;
         /** @var Message $httpAdapter */
-        $httpAdapter = $this->getHttpMessageParser(function() use (& $dispatcherLaunched) {$dispatcherLaunched = true;});
-        $httpAdapter->onMessage(new TestConnection(), $message);
+        $httpAdapter = $this->getHttpMessageParser(function() use (& $dispatcherLaunched) {$dispatcherLaunched = true;}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertTrue($dispatcherLaunched, "Dispatcher should be called");
 
@@ -62,7 +64,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/");
         $testConnection = new TestConnection();
-        $httpAdapter = $this->getHttpMessageParser(function() {});
+        $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
         $httpAdapter->onOpen($testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
@@ -73,7 +75,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "keep-alive"]);
         $testConnection = new TestConnection();
-        $this->getHttpMessageParser(function() {})->onMessage($testConnection, $message);
+        $this->getHttpMessageParser(function() {}, null, $testConnection)->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.0 keep-alive connection should be left open after request");
     }
@@ -82,7 +84,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
         $testConnection = new TestConnection();
-        $this->getHttpMessageParser(function() {})->onMessage($testConnection, $message);
+        $this->getHttpMessageParser(function() {}, null, $testConnection)->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
     }
@@ -92,7 +94,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
         $testConnection = new TestConnection();
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
-        $httpAdapter = $this->getHttpMessageParser(function() {});
+        $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
@@ -109,7 +111,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "close", 'Host' => '127.0.0.1:80'], "1.1");
         $testConnection = new TestConnection();
-        $this->getHttpMessageParser(function() {})->onMessage($testConnection, $message);
+        $this->getHttpMessageParser(function() {}, null, $testConnection)->onMessage($testConnection, $message);
 
         $this->assertTrue($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be closed when Connection: close header is present");
     }
@@ -126,7 +128,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         /** @var Response $response */
         $response = null;
         $requestHandler = function($_request, $_response) use (&$response) {$response = $_response; };
-        $httpAdapter = $this->getHttpMessageParser($requestHandler);
+        $httpAdapter = $this->getHttpMessageParser($requestHandler, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
         $rawResponse = Response::fromString($testConnection->getSentData());
 
@@ -390,7 +392,7 @@ World
                 return new Response();
             };
 
-            $httpAdapter = $this->getHttpMessageParser($requestHandler, $errorHandler);
+            $httpAdapter = $this->getHttpMessageParser($requestHandler, $errorHandler, $testConnection);
 
             $chunks = str_split($message, $chunkSize);
             foreach ($chunks as $index => $chunk) {
@@ -452,9 +454,10 @@ World
     public function testIfMessageWithInvalidHeadersIsHandled($message)
     {
         $dispatcherLaunched = false;
+        $testConnection = new TestConnection();
         /** @var Message $httpAdapter */
-        $httpAdapter = $this->getHttpMessageParser(function() use (& $dispatcherLaunched) {$dispatcherLaunched = true;});
-        $httpAdapter->onMessage(new TestConnection(), $message);
+        $httpAdapter = $this->getHttpMessageParser(function() use (& $dispatcherLaunched) {$dispatcherLaunched = true;}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertTrue($dispatcherLaunched, "Dispatcher should be called");
 
@@ -472,9 +475,10 @@ World
     /**
      * @param callback $dispatcher
      * @param callback $errorHandler
+     * @param ConnectionInterface $connection
      * @return MessageComponentInterface
      */
-    protected function getHttpMessageParser($dispatcher, $errorHandler = null)
+    protected function getHttpMessageParser($dispatcher, $errorHandler = null, ConnectionInterface $connection = null)
     {
         $dispatcherWrapper = function(& $request) use ($dispatcher) {
             $response = $dispatcher($request);
@@ -487,6 +491,9 @@ World
         };
 
         $adapter = new Message($dispatcherWrapper, $errorHandler);
+        if ($connection) {
+            $adapter->onOpen($connection);
+        }
 
         return $adapter;
     }

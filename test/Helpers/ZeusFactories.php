@@ -149,7 +149,6 @@ trait ZeusFactories
         if ($mainLoopIterations > 0) {
             $events = $scheduler->getEventManager();
             $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
-
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {

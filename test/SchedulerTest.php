@@ -11,6 +11,7 @@ use Zend\Log\Writer\Mock;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
+use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
@@ -53,7 +54,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler();
         $this->assertInstanceOf(Scheduler::class, $scheduler);
         $scheduler->setContinueMainLoop(false);
-        $scheduler->startScheduler(new Event());
+        $scheduler->onSchedulerStart(new Event());
         $this->assertEquals(getmypid(), $scheduler->getId());
     }
 
@@ -69,7 +70,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             $counter++;
         });
 
-        $scheduler->startScheduler(new Event());
+        $scheduler->onSchedulerStart(new Event());
         $this->assertEquals(1, $counter, 'Loop should have been executed only once');
     }
 
@@ -95,7 +96,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $this->assertInstanceOf(Scheduler::class, $scheduler);
 
-        $scheduler->startScheduler(new Event());
+        $scheduler->onSchedulerStart(new Event());
         $ipc->useChannelNumber(1);
         $this->assertEquals(0, count($ipc->receiveAll()), "No messages should be left on IPC");
         $ipc->useChannelNumber(0);
@@ -151,7 +152,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $e->getProcess()->getStatus()->incrementNumberOfFinishedTasks(100);
             }
         );
-        $scheduler->startScheduler(new Event());
+        $scheduler->onSchedulerStart(new Event());
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
         $this->assertEquals($processesCreated, $processesInitialized, "Scheduler should have initialized all requested processes");
@@ -159,46 +160,43 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
     public function testProcessCreationWhenTooLittleOfThemIsWaiting()
     {
-        $scheduler = $this->getScheduler(2);
+        $scheduler = $this->getScheduler(1);
 
         $amountOfScheduledProcesses = 0;
         $processesCreated = [];
-        $processesInitialized = [];
 
         $em = $scheduler->getEventManager();
         $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
-        $em->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(EventInterface $e) {$e->stopPropagation(true);});
+        $em->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
-            function(EventInterface $e) use ($em) {
+            function(SchedulerEvent $e) use ($em, &$amountOfScheduledProcesses, $scheduler) {
+                $e->getProcess()->setConfig($scheduler->getConfig());
+                $e->getProcess()->setEventManager($em);
+                $amountOfScheduledProcesses++;
+                $uid = 100000000 + $amountOfScheduledProcesses;
                 $e->stopPropagation(true);
-                $em->trigger(SchedulerEvent::EVENT_PROCESS_CREATED, null, []);
+                $e->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+                $e->setParam('uid', $uid);
+                $em->triggerEvent($e);
             }
         );
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
-            function(EventInterface $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
-                $amountOfScheduledProcesses++;
-
-                $uid = 100000000 + $amountOfScheduledProcesses;
+            function(SchedulerEvent $e) use (&$processesCreated, $em) {
                 $event = new SchedulerEvent();
                 $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
-                $event->setParams(['uid' => $uid]);
+
                 $em->triggerEvent($event);
-                $processesCreated[] = $uid;
-            }
-        );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_LOOP,
-            function(SchedulerEvent $e) use (&$processesInitialized) {
-                $uid = $e->getProcess()->getId();
+                $processesCreated[] = $event->getParam('uid');
+
+                $uid = $event->getParam('uid');
                 $processesInitialized[] = $uid;
 
-                // kill the processs
-                $e->getProcess()->getStatus()->incrementNumberOfFinishedTasks(100);
-                if ($uid < 10000001) {
-                    $e->getProcess()->setRunning();
-                }
+                // mark all processes as busy
+                $e->getProcess()->setRunning();
             }
         );
-        $scheduler->startScheduler(new Event());
+
+        $scheduler->onSchedulerStart();
 
         $this->assertEquals(11, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on startup and 3 additional one if all the previous were busy");
     }
@@ -249,9 +247,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $e->getProcess()->getStatus()->incrementNumberOfFinishedTasks(100);
             }
         );
-        $scheduler->startScheduler(new Event());
+        $scheduler->onSchedulerStart(new Event());
 
-        $this->assertEquals(15, $amountOfTerminateCommands, "Scheduler should try to reduce number of processes to 5 if too many of them is waiting");
+        $this->assertEquals(4, $amountOfTerminateCommands, "Scheduler should try to reduce number of processes to 4 if too many of them is waiting");
     }
 
     public function getSchedulerLaunchTypes()
@@ -334,7 +332,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler->setLogger($logger);
         $scheduler->getLogger()->addWriter($mockWriter);
         $mockWriter->setFormatter(new ConsoleLogFormatter(Console::getInstance()));
-        $scheduler->startScheduler(new SchedulerEvent());
+        $scheduler->onSchedulerStart(new SchedulerEvent());
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
         $this->assertEquals($processesCreated, $processesInitialized, "Scheduler should have initialized all requested processes");
@@ -400,7 +398,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }
         );
 
-        $scheduler->startScheduler(new Event());
+        $scheduler->onSchedulerStart(new Event());
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
 
