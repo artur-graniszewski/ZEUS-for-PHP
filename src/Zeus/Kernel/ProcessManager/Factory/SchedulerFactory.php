@@ -9,6 +9,7 @@ use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 
@@ -35,10 +36,12 @@ class SchedulerFactory implements FactoryInterface
 
         $serviceLoggerAdapter = $options['service_logger_adapter'];
         $mainLoggerAdapter = $options['main_logger_adapter'];
+        $schedulerDiscipline =
+            isset($schedulerConfig['scheduler_discipline']) ? $container->get($schedulerConfig['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
         $processService = $container->build(Process::class, ['logger_adapter' => $serviceLoggerAdapter, 'process_event' => $schedulerEvent]);
 
-        $scheduler = new Scheduler($schedulerConfig, $processService, $mainLoggerAdapter, $options['ipc_adapter'], $schedulerEvent);
+        $scheduler = new Scheduler($schedulerConfig, $processService, $mainLoggerAdapter, $options['ipc_adapter'], $schedulerEvent, $schedulerDiscipline);
         $container->build($schedulerConfig['multiprocessing_module'], ['scheduler' => $scheduler, 'scheduler_event' => $schedulerEvent]);
 
         return $scheduler;

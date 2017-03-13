@@ -12,6 +12,8 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
@@ -44,6 +46,7 @@ return $config = [
             Process::class => ProcessFactory::class,
             Manager::class => ManagerFactory::class,
             PosixProcess::class => PosixProcessFactory::class,
+            LruDiscipline::class => LruDisciplineFactory::class,
             //Service::class => ServiceFactory::class,
         ],
         'abstract_factories' => [
@@ -56,6 +59,7 @@ return $config = [
             'zeus_web_scheduler_1' => [
                 'scheduler_name' => 'zeus_web_scheduler',
                 'multiprocessing_module' => PosixProcess::class,
+                'scheduler_discipline' => LruDiscipline::class,
                 'max_processes' => 32,
                 'max_process_tasks' => 100,
                 'min_spare_processes' => 3,

@@ -22,6 +22,8 @@ use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
@@ -48,6 +50,7 @@ trait ZeusFactories
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
         $sm->setFactory(ZeusController::class, ZeusControllerFactory::class);
         $sm->setFactory(Manager::class, ManagerFactory::class);
+        $sm->setFactory(LruDiscipline::class, LruDisciplineFactory::class);
         $sm->setFactory('ServiceListener', ServiceListenerFactory::class);
         $sm->setFactory('EventManager', EventManagerFactory::class);
         $sm->setFactory('ModuleManager', ModuleManagerFactory::class);

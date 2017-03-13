@@ -38,7 +38,7 @@ class LruDiscipline implements DisciplineInterface
 
         $statusSummary = $processes->getStatusSummary();
         $idleProcesses = $statusSummary[ProcessState::WAITING];
-        //$busyProcesses = $statusSummary[ProcessState::RUNNING];
+        $busyProcesses = $statusSummary[ProcessState::RUNNING];
         //$terminatedProcesses = $statusSummary[ProcessStatus::STATUS_EXITING] + $statusSummary[ProcessStatus::STATUS_KILL];
         $allProcesses = $processes->count();
 
@@ -70,7 +70,7 @@ class LruDiscipline implements DisciplineInterface
         if ($idleProcesses < $config->getMinSpareProcesses()) {
             $idleProcessSlots = $processes->getSize() - $processes->count();
 
-            $processesToCreate = min($idleProcessSlots, $config->getMinSpareProcesses());
+            $processesToCreate = min($idleProcessSlots, $config->getMinSpareProcesses() - $idleProcesses);
         }
 
         if ($allProcesses === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {

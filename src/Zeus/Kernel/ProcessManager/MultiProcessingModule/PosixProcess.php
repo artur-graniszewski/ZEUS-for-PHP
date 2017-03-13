@@ -24,9 +24,6 @@ final class PosixProcess implements MultiProcessingModuleInterface
     /** @var SchedulerEvent */
     protected $processEvent;
 
-    /** @var bool|null */
-    private static $isPcntlExtensionLoaded = null;
-
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
 

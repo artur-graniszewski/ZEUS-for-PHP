@@ -17,6 +17,11 @@ use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\ProcessManager\Status\ProcessTitle;
 use Zeus\Kernel\ProcessManager\Helper\EventManager;
 
+/**
+ * Class Scheduler
+ * @package Zeus\Kernel\ProcessManager
+ * @internal
+ */
 final class Scheduler
 {
     use Logger;
@@ -126,25 +131,24 @@ final class Scheduler
     }
 
     /**
-     * Handles input arguments.
-     *
+     * Scheduler constructor.
      * @param mixed[] $config
      * @param Process $processService
      * @param LoggerInterface $logger
      * @param IpcAdapterInterface $ipcAdapter
-     * @param $schedulerEvent
+     * @param SchedulerEvent $schedulerEvent
+     * @param DisciplineInterface $discipline
      */
-    public function __construct($config, Process $processService, LoggerInterface $logger, IpcAdapterInterface $ipcAdapter, $schedulerEvent)
+    public function __construct($config, Process $processService, LoggerInterface $logger, IpcAdapterInterface $ipcAdapter, SchedulerEvent $schedulerEvent, DisciplineInterface $discipline)
     {
         $this->discipline = new LruDiscipline();
         $this->config = new Config($config);
         $this->ipcAdapter = $ipcAdapter;
         $this->processService = $processService;
         $this->schedulerStatus = new ProcessState($this->config->getServiceName());
-        $this->processStatusTemplate = new ProcessState($this->config->getServiceName());
-
-        $this->processes = new ProcessCollection($this->config->getMaxProcesses() + 1);
         $this->setLogger($logger);
+
+        $this->processes = new ProcessCollection($this->config->getMaxProcesses());
         $this->setLoggerExtraDetails(['service' => $this->config->getServiceName()]);
 
         if (!Console::isConsole()) {
@@ -203,9 +207,9 @@ final class Scheduler
     }
 
     /**
-     * @param EventInterface $event
+     * @param SchedulerEvent $event
      */
-    protected function onProcessExit(EventInterface $event)
+    protected function onProcessExit(SchedulerEvent $event)
     {
         $pid = $event->getParam('uid');
         if ($pid === $this->getId()) {
@@ -214,7 +218,7 @@ final class Scheduler
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $event->setParams($this->getEventExtraData());
             $this->getEventManager()->triggerEvent($event);
-            return $this;
+            return;
         }
 
         $this->log(\Zend\Log\Logger::DEBUG, "Process $pid exited");
@@ -228,8 +232,6 @@ final class Scheduler
 
             unset($this->processes[$pid]);
         }
-
-        return $this;
     }
 
     /**
@@ -245,11 +247,10 @@ final class Scheduler
             $pid = (int)$pid;
 
             if ($pid) {
-                $this->events->trigger(SchedulerEvent::EVENT_PROCESS_TERMINATE, $this,
-                    $this->getEventExtraData([
-                        'uid' => $pid, 'soft' => true,
-                    ]
-                    ));
+                $event = $this->event;
+                $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
+                $event->setParams($this->getEventExtraData(['uid' => $pid, 'soft' => true]));
+                $this->events->triggerEvent($event);
                 $this->log(\Zend\Log\Logger::INFO, "Server stopped");
                 unlink($fileName);
 
@@ -434,7 +435,10 @@ final class Scheduler
 
         foreach (array_keys($this->processes->toArray()) as $pid) {
             $this->log(\Zend\Log\Logger::DEBUG, "Terminating process $pid");
-            $this->events->trigger(SchedulerEvent::EVENT_PROCESS_TERMINATE, $this, $this->getEventExtraData(['uid' => $pid]));
+            $event = $this->event;
+            $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
+            $event->setParams($this->getEventExtraData(['uid' => $pid]));
+            $this->events->triggerEvent($event);
         }
 
         $this->handleMessages();

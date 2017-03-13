@@ -199,11 +199,10 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         for($chunkSize = 1, $messageSize = strlen($message); $chunkSize < $messageSize; $chunkSize++) {
             /** @var Request $request */
             $request = null;
+            $errorOccurred = false;
 
-            $errorOccured = false;
-
-            $errorHandler = function($request, $exception) use (& $errorOccured) {
-                $errorOccured = $exception;
+            $errorHandler = function($request, $exception) use (& $errorOccurred) {
+                $errorOccurred = $exception;
             };
 
             $requestHandler = function ($_request) use (&$request) {
@@ -215,8 +214,8 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             foreach ($chunks as $index => $chunk) {
                 $httpAdapter->onMessage($testConnection, $chunk);
 
-                if ($errorOccured) {
-                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccured->getMessage());
+                if ($errorOccurred) {
+                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccurred->getMessage());
                 }
             }
 
@@ -283,10 +282,10 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             $fileList = [];
             $tmpDir = $this->getTmpDir();
 
-            $errorOccured = false;
+            $errorOccurred = false;
 
-            $errorHandler = function($request, $exception) use (& $errorOccured) {
-                $errorOccured = $exception;
+            $errorHandler = function($request, $exception) use (& $errorOccurred) {
+                $errorOccurred = $exception;
             };
             $requestHandler = function (Request $_request) use (&$request, & $fileList, $tmpDir) {
                 $request = $_request;
@@ -304,8 +303,8 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             foreach ($chunks as $index => $chunk) {
                 $httpAdapter->onMessage($testConnection, $chunk);
 
-                if ($errorOccured) {
-                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccured->getMessage());
+                if ($errorOccurred) {
+                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccurred->getMessage());
                 }
             }
 
@@ -333,10 +332,10 @@ Hello_World";
             $fileList = [];
             $tmpDir = $this->getTmpDir();
 
-            $errorOccured = false;
+            $errorOccurred = false;
 
-            $errorHandler = function ($request, $exception) use (& $errorOccured) {
-                $errorOccured = $exception;
+            $errorHandler = function ($request, $exception) use (& $errorOccurred) {
+                $errorOccurred = $exception;
             };
 
 
@@ -351,8 +350,8 @@ Hello_World";
             foreach ($chunks as $index => $chunk) {
                 $httpAdapter->onMessage($testConnection, $chunk);
 
-                if ($errorOccured) {
-                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccured->getMessage());
+                if ($errorOccurred) {
+                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccurred->getMessage());
                 }
             }
 
@@ -381,10 +380,10 @@ World
             $fileList = [];
             $tmpDir = $this->getTmpDir();
 
-            $errorOccured = false;
+            $errorOccurred = false;
 
-            $errorHandler = function ($request, $exception) use (& $errorOccured) {
-                $errorOccured = $exception;
+            $errorHandler = function ($request, $exception) use (& $errorOccurred) {
+                $errorOccurred = $exception;
             };
 
             $requestHandler = function (Request $_request) use (&$request, & $fileList, $tmpDir) {
@@ -398,8 +397,8 @@ World
             foreach ($chunks as $index => $chunk) {
                 $httpAdapter->onMessage($testConnection, $chunk);
 
-                if ($errorOccured) {
-                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccured->getMessage());
+                if ($errorOccurred) {
+                    $this->fail("Error handler caught an error when parsing chunk #$index: " . $errorOccurred->getMessage());
                 }
             }
 

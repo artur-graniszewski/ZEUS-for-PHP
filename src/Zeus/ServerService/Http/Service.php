@@ -61,7 +61,6 @@ class Service extends AbstractServerService
         $loop = LoopFactory::create();
         $reactServer = new ReactServer($loop);
         $reactServer->listen($httpConfig->getListenPort(), $httpConfig->getListenAddress());
-        //$socket->listenByUri('unix:///tmp/test.sock');
         $loop->removeStream($reactServer->master);
 
         $dispatcherConfig = $this->getConfig();

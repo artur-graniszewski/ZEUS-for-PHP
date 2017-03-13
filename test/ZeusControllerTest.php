@@ -32,6 +32,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
     {
         unlink(__DIR__ . '/tmp/test.log');
         rmdir(__DIR__ . '/tmp');
+        parent::tearDown();
     }
 
     /**

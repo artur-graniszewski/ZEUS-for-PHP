@@ -3,7 +3,6 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
-use Zend\EventManager\EventInterface;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\Kernel\ProcessManager\Scheduler;
