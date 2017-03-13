@@ -114,7 +114,7 @@ class SchedulerStatusView
         );
 
         $output .= sprintf("%s requests/sec" . PHP_EOL,
-            ProcessState::addUnitsToNumber($schedulerStatus['requests_finished'] / $uptime)
+            ProcessState::addUnitsToNumber($schedulerStatus['requests_finished'] / max($uptime, 0.01))
         );
 
         $output .= sprintf("%d tasks currently being processed, %d idle processes" . PHP_EOL . PHP_EOL, $busyChildren, $idleChildren);

@@ -18,7 +18,7 @@ final class Process
     protected $status;
 
     /** @var string */
-    protected $id;
+    protected $processId;
 
     /** @var EventManagerInterface */
     protected $events;
@@ -30,12 +30,12 @@ final class Process
     protected $event;
 
     /**
-     * @param string $uid
+     * @param string $processId
      * @return $this
      */
-    public function setId($uid)
+    public function setId($processId)
     {
-        $this->id = $uid;
+        $this->processId = $processId;
 
         return $this;
     }
@@ -241,7 +241,7 @@ final class Process
      */
     public function getId()
     {
-        return $this->id;
+        return $this->processId;
     }
 
     /**

@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP.svg?branch=master)](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) [![Coverage Status](https://coveralls.io/repos/github/artur-graniszewski/ZEUS-for-PHP/badge.svg?branch=master)](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP?branch=master)
+[![Build Status](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP.svg?branch=master)](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) [![Coverage Status](https://coveralls.io/repos/github/artur-graniszewski/ZEUS-for-PHP/badge.svg?branch=master)](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP?branch=master) [![Code Climate](https://codeclimate.com/github/artur-graniszewski/ZEUS-for-PHP/badges/gpa.svg)](https://codeclimate.com/github/artur-graniszewski/ZEUS-for-PHP)
 
 # Introduction
 
@@ -144,9 +144,19 @@ Scheduler is responsible for:
 
 - running _Server Services_ in parallel using __preemptive multitasking__
 - supporting custom _Multi-Processing Modules_
-- managing the number of processes based on a Task-Pool strategy
+- managing the number of processes based on a Task-Pool strategy and Scheduler Disciplines
 - handling Process lifecycle
 - keeping track of and reporting Process state
+
+#### Scheduler Disciplines
+
+In ZEUS, scheduling disciplines are algorithms used for distributing hardware resources (such as CPU time or memory) among Scheduler processes. 
+
+The main purpose of scheduling algorithms is to minimize resource starvation by creating or termination of processes to keep number of active processes within the boundaries specified by Scheduler configuration. 
+Some algorithms may focus on termination of processes that were idle for too long, while other may terminate processes based on their actual memory footprint or a number of requests that they already processed.
+
+> Since version 1.3.4, Schedulers can be configured to use custom `\Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface` implementations. 
+> **If no such implementation is specified, ZEUS defaults to a built-in _LRU (Least Recently Used) Discipline_.**
 
 #### Multi-Processing Modules
 
@@ -243,11 +253,15 @@ Multiple _Process Schedulers_ can be configured in a regular Zend Framework 3 co
 ```php
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
+
 return [
     'zeus_process_manager' => [
         'schedulers' => [
             'scheduler_1' => [
                 'scheduler_name' => 'sample_scheduler',
+                'scheduler_discipline' => LruDiscipline::class, // choice available since version 1.3.4
                 'multiprocessing_module' => PosixProcess::class,
                 'max_processes' => 32,
                 'max_process_tasks' => 100,
@@ -266,6 +280,7 @@ The table below describes the configuration parameters:
 | Parameter              | Required | Description                                                                           |
 |------------------------|:--------:|---------------------------------------------------------------------------------------|
 | scheduler_name         | yes      | Unique name of the scheduler configuration                                            |
+| scheduler_discipline   | no       | Zend Framework service providing Scheduler's process management strategy              |
 | multiprocessing_module | yes      | Specifies a `MultiProcessingModuleInterface` implementation to be used in a Scheduler |
 | start_processes        | yes      | Specifies the number of processes that will initially launch with each Server Service |
 | max_processes          | yes      | Maximum number of running/waiting processes of each Server Service                    |
@@ -282,6 +297,8 @@ Multiple _Server Services_ can be configured in a regular Zend Framework 3 confi
 
 ```php
 // contents of "zf3-application-directory/config/some-config.config.php" file:
+
+use Zeus\ServerService\Shared\Logger\LoggerInterface;
 
 return [
     'zeus_process_manager' => [
@@ -357,6 +374,9 @@ Each service must be listed in the `services` section of `zeus_process_manager` 
  
 ```php
 // contents of "zf3-application-directory/config/some-config.config.php" file:
+
+use Zeus\ServerService\Shared\Logger\LoggerInterface;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 
 return [
     'zeus_process_manager' => [
@@ -440,6 +460,13 @@ The above configuration parameters have been described in the __Process Schedule
 - More features introduced to ZEUS Web Server
 
 # Changelog
+
+## Version 1.3.4
+- [Feature] Implemented Scheduler Disciplines functionality
+- [Feature] Extracted LRU Discipline from Scheduler core
+- [Fix] Scheduler was too aggressive in its calculations of number of spare processes to create
+- [Fix] Documentation fixes (added missing namespaces in configuration examples)
+- [Tests improvements] Improved code coverage
 
 ## Version 1.3.3
 - [Tests improvements] Improved code coverage

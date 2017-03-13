@@ -24,9 +24,6 @@ final class PosixProcess implements MultiProcessingModuleInterface
     /** @var SchedulerEvent */
     protected $processEvent;
 
-    /** @var bool|null */
-    private static $isPcntlExtensionLoaded = null;
-
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
 
@@ -108,7 +105,7 @@ final class PosixProcess implements MultiProcessingModuleInterface
      */
     public function onProcessTerminate(EventInterface $event)
     {
-        $this->terminateTask($event->getParam('uid'), $event->getParam('soft'));
+        $this->terminateProcess($event->getParam('uid'), $event->getParam('soft'));
     }
 
     /**
@@ -225,7 +222,7 @@ final class PosixProcess implements MultiProcessingModuleInterface
      * @param bool|false $useSoftTermination
      * @return $this
      */
-    protected function terminateTask($pid, $useSoftTermination = false)
+    protected function terminateProcess($pid, $useSoftTermination = false)
     {
         $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
 
@@ -236,9 +233,9 @@ final class PosixProcess implements MultiProcessingModuleInterface
      * @param bool|false $useSoftTermination
      * @return $this
      */
-    public function terminateAllTasks($useSoftTermination = false)
+    public function terminateAllProcesses($useSoftTermination = false)
     {
-        return $this->terminateTask(0, $useSoftTermination);
+        return $this->terminateProcess(0, $useSoftTermination);
     }
 
     /**

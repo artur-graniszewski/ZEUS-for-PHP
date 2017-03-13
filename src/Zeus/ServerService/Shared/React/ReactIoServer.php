@@ -3,9 +3,7 @@
 namespace Zeus\ServerService\Shared\React;
 
 use React\EventLoop\LoopInterface;
-use React\EventLoop\Factory as LoopFactory;
 use React\Socket\ServerInterface;
-use React\Socket\Server as Reactor;
 
 class ReactIoServer implements IoServerInterface
 {
@@ -43,22 +41,6 @@ class ReactIoServer implements IoServerInterface
     public function getServer()
     {
         return $this->socket;
-    }
-
-    /**
-     * @param MessageComponentInterface $component
-     * @param int $port
-     * @param string $address
-     * @return static
-     * @throws \React\Socket\ConnectionException
-     */
-    public static function factory(MessageComponentInterface $component, $port = 80, $address = '0.0.0.0')
-    {
-        $loop   = LoopFactory::create();
-        $socket = new Reactor($loop);
-        $socket->listen($port, $address);
-
-        return new static($component, $socket, $loop);
     }
 
     /**
