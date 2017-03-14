@@ -21,6 +21,9 @@ final class FifoAdapter implements IpcAdapterInterface
     /** @var mixed[] */
     protected $config;
 
+    /** @var bool[] */
+    protected $activeChannels = [0 => true, 1 => true];
+
     /**
      * Creates IPC object.
      *
@@ -43,6 +46,16 @@ final class FifoAdapter implements IpcAdapterInterface
         stream_set_blocking($this->ipc[1], false); // prevent fread / fwrite blocking
     }
 
+    /**
+     * @param int $channelNumber
+     */
+    protected function checkChannelAvailability($channelNumber)
+    {
+        if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
+            throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
+        }
+    }
+
     protected function getFilename($channelNumber)
     {
         return sprintf("%s/%s.%d", getcwd(), $this->namespace, $channelNumber);
@@ -54,6 +67,8 @@ final class FifoAdapter implements IpcAdapterInterface
      */
     public function useChannelNumber($channelNumber)
     {
+        $this->checkChannelAvailability($channelNumber);
+
         $this->channelNumber = $channelNumber;
 
         return $this;
@@ -68,6 +83,7 @@ final class FifoAdapter implements IpcAdapterInterface
     public function send($message)
     {
         $channelNumber = $this->channelNumber;
+        $this->checkChannelAvailability($channelNumber);
         $message = base64_encode(serialize($message));
 
         fwrite($this->ipc[$channelNumber], $message . "\n", strlen($message) + 1);
@@ -84,11 +100,12 @@ final class FifoAdapter implements IpcAdapterInterface
     {
         $channelNumber = $this->channelNumber;
 
-        if ($channelNumber == 0) {
-            $channelNumber = 1;
-        } else {
+        $channelNumber == 0 ?
+            $channelNumber = 1
+            :
             $channelNumber = 0;
-        }
+
+        $this->checkChannelAvailability($channelNumber);
 
         $readSocket = [$this->ipc[$channelNumber]];
         $writeSocket = $except = [];
@@ -112,11 +129,12 @@ final class FifoAdapter implements IpcAdapterInterface
     {
         $channelNumber = $this->channelNumber;
 
-        if ($channelNumber == 0) {
-            $channelNumber = 1;
-        } else {
+        $channelNumber == 0 ?
+            $channelNumber = 1
+            :
             $channelNumber = 0;
-        }
+
+        $this->checkChannelAvailability($channelNumber);
 
         if (!isset($this->ipc[$channelNumber])) {
             throw new \RuntimeException('Channel number ' . $channelNumber . ' is already closed');
@@ -155,6 +173,8 @@ final class FifoAdapter implements IpcAdapterInterface
             unlink($this->getFilename($channelNumber));
             unset($this->ipc[$channelNumber]);
         }
+
+        $this->activeChannels = [0 => false, 1 => false];
 
         return $this;
     }

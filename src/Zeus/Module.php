@@ -39,10 +39,10 @@ class Module implements
     /**
      * Listen to the bootstrap event
      *
-     * @param EventInterface $e
+     * @param EventInterface $event
      * @return array
      */
-    public function onBootstrap(EventInterface $e)
+    public function onBootstrap(EventInterface $event)
     {
 
     }

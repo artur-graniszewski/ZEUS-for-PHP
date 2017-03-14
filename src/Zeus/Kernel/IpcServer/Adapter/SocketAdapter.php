@@ -21,6 +21,9 @@ final class SocketAdapter implements IpcAdapterInterface
     /** @var mixed[] */
     protected $config;
 
+    /** @var bool[] */
+    protected $activeChannels = [0 => true, 1 => true];
+
     /**
      * Creates IPC object.
      *
@@ -49,13 +52,11 @@ final class SocketAdapter implements IpcAdapterInterface
      */
     public function useChannelNumber($channelNumber)
     {
-        if ($channelNumber === 0 || $channelNumber === 1) {
-            $this->channelNumber = $channelNumber;
+        $this->checkChannelAvailability($channelNumber);
 
-            return $this;
-        }
+        $this->channelNumber = $channelNumber;
 
-        throw new \LogicException("Invalid channel number");
+        return $this;
     }
 
     /**
@@ -66,6 +67,7 @@ final class SocketAdapter implements IpcAdapterInterface
      */
     public function send($message)
     {
+        $this->checkChannelAvailability($this->channelNumber);
         $message = base64_encode(serialize($message));
 
         socket_set_block($this->ipc[$this->channelNumber]);
@@ -82,23 +84,32 @@ final class SocketAdapter implements IpcAdapterInterface
      */
     public function receive()
     {
+        $this->checkChannelAvailability($this->channelNumber);
         $message = '';
 
         $readSocket = [$this->ipc[$this->channelNumber]];
         $writeSocket = $except = [];
 
-        if ($value = @socket_select($readSocket, $writeSocket, $except, 0, 100)) {
-            if ('stream' === get_resource_type($readSocket[0])) {
-                // HHVM...
-                $message = stream_get_line($readSocket[0], 165536);
-            } else {
-                socket_recv($readSocket[0], $message, 165536, MSG_DONTWAIT);
-            }
+        $value = @socket_select($readSocket, $writeSocket, $except, 0, 100);
 
-            if (is_string($message) && $message !== "") {
-                $message = unserialize(base64_decode($message));
-                return $message;
-            }
+        if ($value === false) {
+            throw new \RuntimeException(sprintf('Error %d occurred when receiving data from channel number %d', socket_last_error($this->ipc[$this->channelNumber]), $this->channelNumber));
+        }
+
+        if ($value === 0) {
+            return;
+        }
+
+        if ('stream' === get_resource_type($readSocket[0])) {
+            // HHVM...
+            $message = stream_get_line($readSocket[0], 165536);
+        } else {
+            socket_recv($readSocket[0], $message, 165536, MSG_DONTWAIT);
+        }
+
+        if (is_string($message) && $message !== "") {
+            $message = unserialize(base64_decode($message));
+            return $message;
         }
     }
 
@@ -109,6 +120,8 @@ final class SocketAdapter implements IpcAdapterInterface
      */
     public function receiveAll()
     {
+        $this->checkChannelAvailability($this->channelNumber);
+
         $readSocket = [$this->ipc[$this->channelNumber]];
         $writeSocket = $except = [];
         $messages = [];
@@ -134,12 +147,13 @@ final class SocketAdapter implements IpcAdapterInterface
      */
     public function disconnect($channelNumber = -1)
     {
-        if ($channelNumber >= 0 && isset($this->ipc[$channelNumber])) {
+        if ($channelNumber !== -1) {
+            $this->checkChannelAvailability($channelNumber);
             $socket = $this->ipc[$channelNumber];
             socket_shutdown($socket, 2);
             socket_close($socket);
             unset($this->ipc[$channelNumber]);
-
+            $this->activeChannels[$channelNumber] = false;
             return $this;
         }
 
@@ -150,6 +164,16 @@ final class SocketAdapter implements IpcAdapterInterface
         }
 
         return $this;
+    }
+
+    /**
+     * @param int $channelNumber
+     */
+    protected function checkChannelAvailability($channelNumber)
+    {
+        if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
+            throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
+        }
     }
 
     /**

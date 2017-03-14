@@ -89,14 +89,24 @@ class ZeusController extends AbstractActionController
 
     /**
      * @param string $serviceName
+     * @param bool $autoStartOnly
+     * @return ServerServiceInterface[]
+     */
+    protected function getServices($serviceName = null, $autoStartOnly = false)
+    {
+        return $serviceName
+            ?
+            [$serviceName => $this->manager->getService($serviceName)]
+            :
+            $this->manager->getServices($autoStartOnly);
+    }
+
+    /**
+     * @param string $serviceName
      */
     protected function getStatus($serviceName)
     {
-        if ($serviceName) {
-            $services = [$serviceName => $this->manager->getService($serviceName)];
-        } else {
-            $services = $this->manager->getServices(false);
-        }
+        $services = $this->getServices($serviceName, false);
 
         foreach ($services as $serviceName => $service) {
             $schedulerStatus = new SchedulerStatusView($service->getScheduler());
@@ -115,11 +125,7 @@ class ZeusController extends AbstractActionController
      */
     protected function listServices($serviceName)
     {
-        if ($serviceName) {
-            $services = [$serviceName => $this->manager->getService($serviceName)];
-        } else {
-            $services = $this->manager->getServices(false);
-        }
+        $services = $this->getServices($serviceName, false);
 
         $output = null;
         foreach ($services as $serviceName => $service) {
@@ -132,9 +138,11 @@ class ZeusController extends AbstractActionController
 
         if ($output) {
             $this->logger->info('Configuration details:' . $output);
-        } else {
-            $this->logger->err('No Server Service found');
+
+            return;
         }
+
+        $this->logger->err('No Server Service found');
     }
 
     /**
@@ -144,11 +152,7 @@ class ZeusController extends AbstractActionController
     {
         $startTime = microtime(true);
 
-        if ($serviceName) {
-            $services = [$this->manager->getService($serviceName)];
-        } else {
-            $services = $this->manager->getServices(true);
-        }
+        $services = $this->getServices($serviceName, true);
 
         $this->services = $services;
 
@@ -161,13 +165,15 @@ class ZeusController extends AbstractActionController
         $managerTime = $now - $startTime;
 
         $this->logger->info(sprintf("Started %d services in %.2f seconds (PHP running for %.2f)", count($services), $managerTime, $phpTime));
-        if (count($services) > 0) {
-            while (true) {
-                pcntl_signal_dispatch();
-                sleep(1);
-            }
-        } else {
+        if (count($services) === 0) {
             $this->logger->err('No Server Service found');
+
+            return;
+        }
+
+        while (true) {
+            pcntl_signal_dispatch();
+            sleep(1);
         }
     }
 
@@ -185,21 +191,17 @@ class ZeusController extends AbstractActionController
 
         $signalInfo = [];
 
-        while ($servicesLeft > 0) {
-            if (pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
-                $servicesLeft--;
-            } else {
-                break;
-            }
+        while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
+            $servicesLeft--;
         }
 
         if ($servicesLeft === 0) {
             $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount));
             exit(0);
-        } else {
-            $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
-            exit(1);
         }
+
+        $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
+        exit(1);
     }
 
     /**

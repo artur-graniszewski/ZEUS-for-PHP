@@ -17,6 +17,9 @@ final class ApcAdapter implements IpcAdapterInterface
     /** @var int */
     protected $channelNumber = 0;
 
+    /** @var bool[] */
+    protected $activeChannels = [0 => true, 1 => true];
+
     /**
      * Creates IPC object.
      *
@@ -46,11 +49,12 @@ final class ApcAdapter implements IpcAdapterInterface
     {
         $channelNumber = $this->channelNumber;
 
-        if ($channelNumber == 0) {
-            $channelNumber = 1;
-        } else {
+        $channelNumber == 0 ?
+            $channelNumber = 1
+            :
             $channelNumber = 0;
-        }
+
+        $this->checkChannelAvailability($channelNumber);
 
         $index = apcu_fetch($this->namespace . '_writeindex_' . $channelNumber);
         apcu_store($this->namespace . '_data_' . $channelNumber . '_' . $index, $message, 0);
@@ -70,6 +74,8 @@ final class ApcAdapter implements IpcAdapterInterface
     public function receive()
     {
         $channelNumber = $this->channelNumber;
+
+        $this->checkChannelAvailability($channelNumber);
 
         $readIndex = apcu_fetch($this->namespace . '_readindex_' . $channelNumber);
         $result = apcu_fetch($this->namespace . '_data_' . $channelNumber . '_' . $readIndex);
@@ -105,7 +111,22 @@ final class ApcAdapter implements IpcAdapterInterface
      */
     public function disconnect($channelNumber = 0)
     {
+        $this->checkChannelAvailability($channelNumber);
+
+        apcu_delete($this->namespace . '_writeindex_' . $channelNumber);
+
+        $this->activeChannels[$channelNumber] = false;
         return $this;
+    }
+
+    /**
+     * @param int $channelNumber
+     */
+    protected function checkChannelAvailability($channelNumber)
+    {
+        if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
+            throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
+        }
     }
 
     /**
@@ -130,6 +151,7 @@ final class ApcAdapter implements IpcAdapterInterface
      */
     public function useChannelNumber($channelNumber)
     {
+        $this->checkChannelAvailability($channelNumber);
         $this->channelNumber = $channelNumber;
 
         return $this;
