@@ -15,6 +15,7 @@ use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\DummyServiceFactory;
+use ZeusTest\Helpers\ZeusControllerMock;
 use ZeusTest\Helpers\ZeusFactories;
 
 class ZeusControllerTest extends PHPUnit_Framework_TestCase
@@ -36,21 +37,22 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @param bool $useOriginalClass
      * @return ZeusController
      */
-    public function getController()
+    public function getController($useOriginalClass = false)
     {
         $sm = $this->getServiceManager();
         $sm->setFactory(LoggerInterface::class, LoggerFactory::class);
         $sm->setFactory(PosixProcess::class, DummyServiceFactory::class);
-        $controller = $sm->get(ZeusController::class);
+        $controller = $sm->get($useOriginalClass ? ZeusController::class : ZeusControllerMock::class);
 
         return $controller;
     }
 
     public function testControllerFactory()
     {
-        $controller = $this->getController();
+        $controller = $this->getController(true);
 
         $this->assertInstanceOf(ZeusController::class, $controller);
     }
@@ -61,7 +63,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
      */
     public function testControllerRequestValidation()
     {
-        $controller = $this->getController();
+        $controller = $this->getController(true);
         $controller->dispatch(new Request(), new Response());
     }
 
@@ -126,5 +128,38 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
         $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
         $this->assertGreaterThan(0, strpos($logEntries, 'Service "zeus_httpd" is offline or too busy to respond'));
+    }
+
+    public function testControllerApplicationAutoStartWithoutServices()
+    {
+        $request = new \Zend\Console\Request([
+            __FILE__,
+            'zeus',
+            'start',
+        ]);
+
+        $response = new \Zend\Console\Response();
+        $controller = $this->getController();
+        $controller->dispatch($request, $response);
+
+        $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
+        $this->assertGreaterThan(0, strpos($logEntries, 'Started 0 services in '));
+        $this->assertGreaterThan(0, strpos($logEntries, 'No Server Service found'));
+    }
+
+    public function testControllerApplicationAutoStopWithoutServices()
+    {
+        $request = new \Zend\Console\Request([
+            __FILE__,
+            'zeus',
+            'stop',
+        ]);
+
+        $response = new \Zend\Console\Response();
+        $controller = $this->getController();
+        $controller->dispatch($request, $response);
+
+        $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
+        $this->assertGreaterThan(0, strpos($logEntries, 'Stopped 0 service(s)'));
     }
 }

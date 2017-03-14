@@ -92,6 +92,9 @@ class Module implements
         $usage['zeus status'] = 'Returns current status of all Server Services';
         $usage['zeus status [<service-name>]'] = 'Returns current status of the selected Server Service';
 
+        $usage['zeus stop'] = 'Stops all ZEUS Server Services';
+        $usage['zeus stop [<service-name>]'] = 'Stops selected Server Service';
+
         return $usage;
     }
 

@@ -461,6 +461,10 @@ The above configuration parameters have been described in the __Process Schedule
 
 # Changelog
 
+## Version 1.3.5
+- [Feature] Added `stop` and `stop <service>` CLI commands to ZEUS
+- [Feature] Added various sanity checks to IPC adapters
+
 ## Version 1.3.4
 - [Feature] Implemented Scheduler Disciplines functionality
 - [Feature] Extracted LRU Discipline from Scheduler core

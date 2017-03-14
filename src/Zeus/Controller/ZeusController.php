@@ -26,6 +26,9 @@ class ZeusController extends AbstractActionController
     /** @var LoggerInterface */
     protected $logger;
 
+    /** @var int */
+    protected $servicesRunning = 0;
+
     /**
      * ZeusController constructor.
      * @param mixed[] $config
@@ -55,6 +58,7 @@ class ZeusController extends AbstractActionController
         pcntl_signal(SIGTERM, [$this, 'stopApplication']);
         pcntl_signal(SIGINT, [$this, 'stopApplication']);
         pcntl_signal(SIGTSTP, [$this, 'stopApplication']);
+        pcntl_signal(SIGCHLD, [$this, 'serviceStopped']);
 
         /** @var \Zend\Stdlib\Parameters $params */
         $params = $request->getParams();
@@ -65,15 +69,19 @@ class ZeusController extends AbstractActionController
         try {
             switch ($action) {
                 case 'start':
-                    $this->startApplication($serviceName);
+                    $this->startServicesCommand($serviceName);
                     break;
 
                 case 'list':
-                    $this->listServices($serviceName);
+                    $this->listServicesCommand($serviceName);
                     break;
 
                 case 'status':
-                    $this->getStatus($serviceName);
+                    $this->getStatusCommand($serviceName);
+                    break;
+
+                case 'stop':
+                    $this->stopServicesCommand($serviceName);
                     break;
             }
         } catch (\Exception $exception) {
@@ -84,7 +92,26 @@ class ZeusController extends AbstractActionController
                 $exception->getLine()
             ));
             $this->logger->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+            $this->doExit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
+    }
+
+    public function serviceStopped()
+    {
+        $this->servicesRunning--;
+
+        if ($this->servicesRunning === 0) {
+            $this->logger->err("All services exited");
+            $this->doExit(404);
+        }
+    }
+
+    /**
+     * @param int $code
+     */
+    protected function doExit($code)
+    {
+        exit($code);
     }
 
     /**
@@ -104,7 +131,7 @@ class ZeusController extends AbstractActionController
     /**
      * @param string $serviceName
      */
-    protected function getStatus($serviceName)
+    protected function getStatusCommand($serviceName)
     {
         $services = $this->getServices($serviceName, false);
 
@@ -126,7 +153,7 @@ class ZeusController extends AbstractActionController
     /**
      * @param string $serviceName
      */
-    protected function listServices($serviceName)
+    protected function listServicesCommand($serviceName)
     {
         $services = $this->getServices($serviceName, false);
 
@@ -151,7 +178,7 @@ class ZeusController extends AbstractActionController
     /**
      * @param string $serviceName
      */
-    protected function startApplication($serviceName)
+    protected function startServicesCommand($serviceName)
     {
         $startTime = microtime(true);
 
@@ -167,7 +194,9 @@ class ZeusController extends AbstractActionController
         $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
         $managerTime = $now - $startTime;
 
-        $this->logger->info(sprintf("Started %d services in %.2f seconds (PHP running for %.2f)", count($services), $managerTime, $phpTime));
+        $this->servicesRunning = count($services);
+
+        $this->logger->info(sprintf("Started %d services in %.2f seconds (PHP running for %.2f)", $this->servicesRunning, $managerTime, $phpTime));
         if (count($services) === 0) {
             $this->logger->err('No Server Service found');
 
@@ -181,12 +210,23 @@ class ZeusController extends AbstractActionController
     }
 
     /**
-     *
+     * @param ServerServiceInterface[] $services
+     * @param bool $mustBeRunning
+     * @return int
+     * @throws \Exception
      */
-    protected function stopApplication()
+    protected function stopServices($services, $mustBeRunning)
     {
-        foreach ($this->services as $service) {
-            $service->stop();
+        $servicesAmount = 0;
+        foreach ($services as $service) {
+            try {
+                $service->stop();
+                $servicesAmount++;
+            } catch (\Exception $exception) {
+                if ($mustBeRunning) {
+                    throw $exception;
+                }
+            }
         }
 
         $servicesAmount = count($this->services);
@@ -198,13 +238,37 @@ class ZeusController extends AbstractActionController
             $servicesLeft--;
         }
 
+        return $servicesLeft;
+    }
+
+    protected function stopApplication()
+    {
+        $servicesLeft = $this->stopServices($this->services, false);
+
+        if ($servicesLeft === 0) {
+            $this->logger->info(sprintf("Stopped %d service(s)", count($this->services)));
+            $this->doExit(0);
+        }
+
+        $servicesAmount = count($this->services);
+        $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
+        $this->doExit(417);
+    }
+
+    protected function stopServicesCommand($serviceName)
+    {
+        $services = $this->getServices($serviceName, false);
+
+        $servicesLeft = $this->stopServices($services, false);
+        $servicesAmount = count($services);
+
         if ($servicesLeft === 0) {
             $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount));
-            exit(0);
+            $this->doExit(0);
         }
 
         $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
-        exit(1);
+        $this->doExit(417);
     }
 
     /**

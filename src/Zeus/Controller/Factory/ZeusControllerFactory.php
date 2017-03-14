@@ -37,7 +37,7 @@ class ZeusControllerFactory implements FactoryInterface
                 ]
             ];
 
-        $controller = new ZeusController(
+        $controller = new $requestedName(
             isset($config['zeus_process_manager']['services']) ? $config['zeus_process_manager'] : $dummyConfig,
             $manager,
             $logger
