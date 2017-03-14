@@ -5,68 +5,8 @@ namespace Zeus\Kernel\ProcessManager;
 /**
  * Server configuration class.
  */
-class Config implements ConfigInterface
+class Config extends \Zend\Config\Config implements ConfigInterface
 {
-    /**
-     * Number of workers to create at the start of a server.
-     *
-     * @var int
-     */
-    protected $startProcesses = 3;
-
-    /**
-     * Maximal number of workers for this server.
-     *
-     * @var int
-     */
-    protected $maxProcesses = 255;
-
-    /**
-     * Minimal number of idle tasks.
-     *
-     * @var int
-     */
-    protected $minSpareProcesses = 3;
-
-    /**
-     * Maximal number of idle workers.
-     *
-     * @var int
-     */
-    protected $maxSpareProcesses = 5;
-
-    /**
-     * Minimum idle time (in seconds), before idle process can be terminated.
-     *
-     * @var int
-     */
-    protected $processIdleTimeout = 10;
-
-    /**
-     * Maximal number of tasks handled by a single process, before it will be killed to avoid potential memory leaks.
-     *
-     * @var int
-     */
-    protected $maxProcessTasks = 20000;
-
-    /** @var string */
-    protected $dataDirectory;
-
-    /** @var string */
-    protected $ipcDirectory;
-
-    /** @var bool */
-    protected $isProcessCacheEnabled = false;
-
-    /** @var string */
-    protected $serviceName;
-
-    /** @var mixed[] */
-    protected $arrayValues;
-
-    /** @var bool */
-    protected $isAutoStartEnabled = true;
-
     /**
      * Config constructor.
      * @param mixed[]|ConfigInterface $fromArray
@@ -77,58 +17,7 @@ class Config implements ConfigInterface
             $fromArray = $fromArray->toArray();
         }
 
-        if (isset($fromArray['max_processes'])) {
-            $this->setMaxProcesses($fromArray['max_processes']);
-        }
-
-        if (isset($fromArray['max_process_tasks'])) {
-            $this->setMaxProcessTasks($fromArray['max_process_tasks']);
-        }
-
-        if (isset($fromArray['min_spare_processes'])) {
-            $this->setMinSpareProcesses($fromArray['min_spare_processes']);
-        }
-
-        if (isset($fromArray['max_spare_processes'])) {
-            $this->setMaxSpareProcesses($fromArray['max_spare_processes']);
-        }
-
-        if (isset($fromArray['start_processes'])) {
-            $this->setStartProcesses($fromArray['start_processes']);
-        }
-
-        if (isset($fromArray['enable_process_cache'])) {
-            $this->setIsProcessCacheEnabled($fromArray['enable_process_cache']);
-        }
-
-        if (isset($fromArray['auto_start'])) {
-            $this->setIsAutoStartEnabled($fromArray['auto_start']);
-        }
-
-        if (isset($fromArray['service_name'])) {
-            $this->setServiceName($fromArray['service_name']);
-        }
-
-        $this->arrayValues = $fromArray;
-    }
-
-    /**
-     * Magic function so that $obj->value will work.
-     *
-     * @param string $name
-     * @return mixed
-     */
-    public function __get($name)
-    {
-        return isset($this->arrayValues[$name]) ? $this->arrayValues[$name] : null;
-    }
-
-    /**
-     * @return mixed[]
-     */
-    public function toArray()
-    {
-        return $this->arrayValues;
+        parent::__construct($fromArray, true);
     }
 
     /**
@@ -136,7 +25,7 @@ class Config implements ConfigInterface
      */
     public function getServiceName()
     {
-        return $this->serviceName;
+        return $this->get('service_name');
     }
 
     /**
@@ -145,7 +34,7 @@ class Config implements ConfigInterface
      */
     public function setServiceName($serviceName)
     {
-        $this->serviceName = $serviceName;
+        $this->offsetSet('service_name', $serviceName);
 
         return $this;
     }
@@ -155,7 +44,7 @@ class Config implements ConfigInterface
      */
     public function isAutoStartEnabled()
     {
-        return $this->isAutoStartEnabled;
+        return $this->get('auto_start');
     }
 
     /**
@@ -164,7 +53,7 @@ class Config implements ConfigInterface
      */
     public function setIsAutoStartEnabled($isAutoStartEnabled)
     {
-        $this->isAutoStartEnabled = $isAutoStartEnabled;
+        $this->offsetSet('auto_start', $isAutoStartEnabled);
 
         return $this;
     }
@@ -174,7 +63,7 @@ class Config implements ConfigInterface
      */
     public function isProcessCacheEnabled()
     {
-        return $this->isProcessCacheEnabled;
+        return $this->get('enable_process_cache', false);
     }
 
     /**
@@ -183,7 +72,7 @@ class Config implements ConfigInterface
      */
     public function setIsProcessCacheEnabled($isEnabled)
     {
-        $this->isProcessCacheEnabled = $isEnabled;
+        $this->offsetSet('enable_process_cache', $isEnabled);
 
         return $this;
     }
@@ -193,7 +82,7 @@ class Config implements ConfigInterface
      */
     public function getStartProcesses()
     {
-        return $this->startProcesses;
+        return $this->get('start_processes');
     }
 
     /**
@@ -202,7 +91,7 @@ class Config implements ConfigInterface
      */
     public function setStartProcesses($minStartingProcesses)
     {
-        $this->startProcesses = $minStartingProcesses;
+        $this->offsetSet('start_processes', $minStartingProcesses);
 
         return $this;
     }
@@ -212,7 +101,7 @@ class Config implements ConfigInterface
      */
     public function getMaxProcesses()
     {
-        return $this->maxProcesses;
+        return $this->get('max_processes');
     }
 
     /**
@@ -221,7 +110,7 @@ class Config implements ConfigInterface
      */
     public function setMaxProcesses($maxProcesses)
     {
-        $this->maxProcesses = $maxProcesses;
+        $this->offsetSet('max_processes', $maxProcesses);
 
         return $this;
     }
@@ -231,7 +120,7 @@ class Config implements ConfigInterface
      */
     public function getMinSpareProcesses()
     {
-        return $this->minSpareProcesses;
+        return $this->get('min_spare_processes');
     }
 
     /**
@@ -240,7 +129,7 @@ class Config implements ConfigInterface
      */
     public function setMinSpareProcesses($minSpareProcessesLimit)
     {
-        $this->minSpareProcesses = $minSpareProcessesLimit;
+        $this->offsetSet('min_spare_processes', $minSpareProcessesLimit);
 
         return $this;
     }
@@ -250,7 +139,7 @@ class Config implements ConfigInterface
      */
     public function getMaxSpareProcesses()
     {
-        return $this->maxSpareProcesses;
+        return $this->get('max_spare_processes');
     }
 
     /**
@@ -259,7 +148,7 @@ class Config implements ConfigInterface
      */
     public function setMaxSpareProcesses($maxSpareProcessesLimit)
     {
-        $this->maxSpareProcesses = $maxSpareProcessesLimit;
+        $this->offsetSet('min_spare_processes', $maxSpareProcessesLimit);
 
         return $this;
     }
@@ -269,7 +158,7 @@ class Config implements ConfigInterface
      */
     public function getProcessIdleTimeout()
     {
-        return $this->processIdleTimeout;
+        return $this->get('processes_idle_timeout', 10);
     }
 
     /**
@@ -278,30 +167,7 @@ class Config implements ConfigInterface
      */
     public function setProcessIdleTimeout($timeInSeconds)
     {
-        $this->processIdleTimeout = $timeInSeconds;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getDataDirectory()
-    {
-        if (!$this->dataDirectory) {
-            $this->setDataDirectory(getcwd() . DIRECTORY_SEPARATOR);
-        }
-
-        return $this->dataDirectory;
-    }
-
-    /**
-     * @param string $directory
-     * @return $this
-     */
-    public function setDataDirectory($directory)
-    {
-        $this->dataDirectory = $directory;
+        $this->offsetSet('processes_idle_timeout', $timeInSeconds);
 
         return $this;
     }
@@ -311,20 +177,18 @@ class Config implements ConfigInterface
      */
     public function getIpcDirectory()
     {
-        if (!$this->ipcDirectory) {
-            $this->setIpcDirectory($this->getDataDirectory() . DIRECTORY_SEPARATOR);
-        }
+        $directory = $this->get('ipc_directory', getcwd() . '/');
 
-        return $this->ipcDirectory;
+        return preg_match('~\/$~', $directory) ? $directory : $directory . '/';
     }
 
     /**
-     * @param string $fileName
+     * @param string $directory
      * @return $this
      */
-    public function setIpcDirectory($fileName)
+    public function setIpcDirectory($directory)
     {
-        $this->ipcDirectory = $fileName;
+        $this->offsetSet('ipc_directory', $directory);
 
         return $this;
     }
@@ -335,7 +199,7 @@ class Config implements ConfigInterface
      */
     public function setMaxProcessTasks($limit)
     {
-        $this->maxProcessTasks = $limit;
+        $this->offsetSet('max_process_tasks', $limit);
 
         return $this;
     }
@@ -345,41 +209,6 @@ class Config implements ConfigInterface
      */
     public function getMaxProcessTasks()
     {
-        return $this->maxProcessTasks;
-    }
-
-    /**
-     * @param mixed $name
-     * @return bool
-     */
-    public function offsetExists($name)
-    {
-        return isset($this->arrayValues[$name]);
-    }
-
-    /**
-     * @param mixed $name
-     * @return mixed|null
-     */
-    public function offsetGet($name)
-    {
-        return isset($this->arrayValues[$name]) ? $this->arrayValues[$name] : null;
-    }
-
-    /**
-     * @param mixed $offset
-     * @param mixed $value
-     */
-    public function offsetSet($offset, $value)
-    {
-        throw new \LogicException("Config object is read only");
-    }
-
-    /**
-     * @param mixed $offset
-     */
-    public function offsetUnset($offset)
-    {
-        throw new \LogicException("Config object is read only");
+        return $this->get('max_process_tasks');
     }
 }

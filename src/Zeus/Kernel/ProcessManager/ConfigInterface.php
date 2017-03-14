@@ -34,11 +34,6 @@ interface ConfigInterface extends \ArrayAccess
     /**
      * @return string
      */
-    public function getDataDirectory();
-
-    /**
-     * @return string
-     */
     public function getIpcDirectory();
 
     /**

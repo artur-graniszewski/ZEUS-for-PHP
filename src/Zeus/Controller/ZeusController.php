@@ -112,11 +112,14 @@ class ZeusController extends AbstractActionController
             $schedulerStatus = new SchedulerStatusView($service->getScheduler());
             $status = $schedulerStatus->getStatus();
 
-            if (!$status) {
-                $this->logger->err("Service \"$serviceName\" is offline or too busy to respond");
-            } else {
+            if ($status) {
                 $this->logger->info($status);
+
+                return;
+
             }
+
+            $this->logger->err("Service \"$serviceName\" is offline or too busy to respond");
         }
     }
 
@@ -161,7 +164,7 @@ class ZeusController extends AbstractActionController
         }
 
         $now = microtime(true);
-        $phpTime = $now - $_SERVER['REQUEST_TIME_FLOAT'];
+        $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
         $managerTime = $now - $startTime;
 
         $this->logger->info(sprintf("Started %d services in %.2f seconds (PHP running for %.2f)", count($services), $managerTime, $phpTime));
@@ -214,7 +217,7 @@ class ZeusController extends AbstractActionController
 
     /**
      * @param LoggerInterface $logger
-     * @return ZeusController
+     * @return $this
      */
     public function setLogger($logger)
     {

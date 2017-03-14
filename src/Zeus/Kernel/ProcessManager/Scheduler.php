@@ -363,17 +363,26 @@ final class Scheduler
             $schedulerEvent->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
             $schedulerEvent->setParams($this->getEventExtraData());
             $this->getEventManager()->triggerEvent($schedulerEvent);
-        } catch (\Throwable $e) {
-            $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $schedulerEvent->setParams($this->getEventExtraData());
-            $schedulerEvent->setParam('exception', $e);
-            $this->getEventManager()->triggerEvent($schedulerEvent);
-        } catch (\Exception $e) {
-            $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $schedulerEvent->setParams($this->getEventExtraData());
-            $schedulerEvent->setParam('exception', $e);
-            $this->getEventManager()->triggerEvent($schedulerEvent);
+        } catch (\Throwable $exception) {
+            $this->handleException($exception);
+        } catch (\Exception $exception) {
+            $this->handleException($exception);
         }
+
+        return $this;
+    }
+
+    /**
+     * @param \Throwable|\Exception $exception
+     * @return $this
+     */
+    private function handleException($exception)
+    {
+        $schedulerEvent = $this->event;
+        $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
+        $schedulerEvent->setParams($this->getEventExtraData());
+        $schedulerEvent->setParam('exception', $exception);
+        $this->getEventManager()->triggerEvent($schedulerEvent);
 
         return $this;
     }

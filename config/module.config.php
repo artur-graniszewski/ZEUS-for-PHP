@@ -55,6 +55,12 @@ return $config = [
         ],
     ],
     'zeus_process_manager' => [
+        'ipc_channels' => [
+            'zeus_default_1' => [
+                'ipc_channel_name' => 'zeus_default',
+                'ipc_directory' => getcwd() . '/',
+            ]
+        ],
         'schedulers' => [
             'zeus_web_scheduler_1' => [
                 'scheduler_name' => 'zeus_web_scheduler',
@@ -65,7 +71,8 @@ return $config = [
                 'min_spare_processes' => 3,
                 'max_spare_processes' => 5,
                 'start_processes' => 8,
-                'enable_process_cache' => true
+                'enable_process_cache' => true,
+                'ipc_channel_name' => 'zeus_default'
             ]
         ],
         'services' => [
