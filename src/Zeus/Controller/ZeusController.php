@@ -212,7 +212,6 @@ class ZeusController extends AbstractActionController
     /**
      * @param ServerServiceInterface[] $services
      * @param bool $mustBeRunning
-     * @return int
      * @throws \Exception
      */
     protected function stopServices($services, $mustBeRunning)
@@ -229,7 +228,6 @@ class ZeusController extends AbstractActionController
             }
         }
 
-        $servicesAmount = count($this->services);
         $servicesLeft = $servicesAmount;
 
         $signalInfo = [];
@@ -238,37 +236,25 @@ class ZeusController extends AbstractActionController
             $servicesLeft--;
         }
 
-        return $servicesLeft;
+        $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount - $servicesLeft));
+
+        if ($servicesLeft === 0) {
+            $this->doExit(0);
+        }
+
+        $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
+        $this->doExit(417);
     }
 
     protected function stopApplication()
     {
-        $servicesLeft = $this->stopServices($this->services, false);
-
-        if ($servicesLeft === 0) {
-            $this->logger->info(sprintf("Stopped %d service(s)", count($this->services)));
-            $this->doExit(0);
-        }
-
-        $servicesAmount = count($this->services);
-        $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
-        $this->doExit(417);
+        $this->stopServices($this->services, false);
     }
 
     protected function stopServicesCommand($serviceName)
     {
         $services = $this->getServices($serviceName, false);
-
-        $servicesLeft = $this->stopServices($services, false);
-        $servicesAmount = count($services);
-
-        if ($servicesLeft === 0) {
-            $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount));
-            $this->doExit(0);
-        }
-
-        $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount -  $servicesLeft, $servicesAmount));
-        $this->doExit(417);
+        $this->stopServices($services, false);
     }
 
     /**

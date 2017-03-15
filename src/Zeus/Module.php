@@ -86,8 +86,8 @@ class Module implements
         $usage['zeus start'] = 'Starts all ZEUS Server Services';
         $usage['zeus start [<service-name>]'] = 'Starts selected Server Service';
 
-        $usage['zeus list'] = 'Lists all Server Services and its configurations';
-        $usage['zeus list [<service-name>]'] = 'Shows configuration of the selected Server Service';
+        $usage['zeus list'] = 'Lists all Server Services and their configuration';
+        $usage['zeus list [<service-name>]'] = 'Shows configuration of a selected Server Service';
 
         $usage['zeus status'] = 'Returns current status of all Server Services';
         $usage['zeus status [<service-name>]'] = 'Returns current status of the selected Server Service';

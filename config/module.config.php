@@ -72,7 +72,6 @@ return $config = [
                 'max_spare_processes' => 5,
                 'start_processes' => 8,
                 'enable_process_cache' => true,
-                'ipc_channel_name' => 'zeus_default'
             ]
         ],
         'services' => [

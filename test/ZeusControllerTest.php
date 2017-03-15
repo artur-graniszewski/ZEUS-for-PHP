@@ -147,7 +147,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
         $this->assertGreaterThan(0, strpos($logEntries, 'No Server Service found'));
     }
 
-    public function testControllerApplicationAutoStopWithoutServices()
+    public function testControllerApplicationStopWithoutServices()
     {
         $request = new \Zend\Console\Request([
             __FILE__,
@@ -161,5 +161,6 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
         $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
         $this->assertGreaterThan(0, strpos($logEntries, 'Stopped 0 service(s)'));
+        $this->assertGreaterThan(0, strpos($logEntries, 'Only 0 out of '));
     }
 }
