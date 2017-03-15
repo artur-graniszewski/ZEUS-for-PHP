@@ -16,10 +16,10 @@ trait Header
 
     /**
      * @param Request $request
-     * @param $connectionServerAddress
+     * @param string $serverAddress
      * @return $this
      */
-    protected function setHost(Request $request, $connectionServerAddress)
+    protected function setHost(Request $request, $serverAddress)
     {
         $fullHost = $request->getHeaderOverview('Host');
 
@@ -39,11 +39,11 @@ trait Header
         }
 
         // URI host & port
-        if (preg_match('|\:(\d+)$|', $connectionServerAddress, $matches)) {
-            $host = substr($connectionServerAddress, 0, -1 * (strlen($matches[1]) + 1));
+        if (preg_match('|\:(\d+)$|', $serverAddress, $matches)) {
+            $host = substr($serverAddress, 0, -1 * (strlen($matches[1]) + 1));
             $port = (int)$matches[1];
         } else {
-            $host = $connectionServerAddress;
+            $host = $serverAddress;
             $port = null;
         }
 

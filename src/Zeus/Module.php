@@ -39,10 +39,10 @@ class Module implements
     /**
      * Listen to the bootstrap event
      *
-     * @param EventInterface $e
+     * @param EventInterface $event
      * @return array
      */
-    public function onBootstrap(EventInterface $e)
+    public function onBootstrap(EventInterface $event)
     {
 
     }
@@ -86,11 +86,14 @@ class Module implements
         $usage['zeus start'] = 'Starts all ZEUS Server Services';
         $usage['zeus start [<service-name>]'] = 'Starts selected Server Service';
 
-        $usage['zeus list'] = 'Lists all Server Services and its configurations';
-        $usage['zeus list [<service-name>]'] = 'Shows configuration of the selected Server Service';
+        $usage['zeus list'] = 'Lists all Server Services and their configuration';
+        $usage['zeus list [<service-name>]'] = 'Shows configuration of a selected Server Service';
 
         $usage['zeus status'] = 'Returns current status of all Server Services';
         $usage['zeus status [<service-name>]'] = 'Returns current status of the selected Server Service';
+
+        $usage['zeus stop'] = 'Stops all ZEUS Server Services';
+        $usage['zeus stop [<service-name>]'] = 'Stops selected Server Service';
 
         return $usage;
     }

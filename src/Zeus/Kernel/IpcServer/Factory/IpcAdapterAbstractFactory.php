@@ -48,11 +48,7 @@ final class IpcAdapterAbstractFactory implements AbstractFactoryInterface
     {
         $channelName = $options['service_name'];
 
-        if (!isset($options['config'])) {
-            $config = [];
-        } else {
-            $config = $options['config'];
-        }
+        $config = isset($options['config']) ? $options['config'] : [];
 
         $adapter = new $requestedName($channelName, $config);
 

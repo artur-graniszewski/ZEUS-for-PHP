@@ -12,9 +12,9 @@ final class MsgAdapter implements IpcAdapterInterface
     const MAX_MESSAGE_SIZE = 16384;
 
     /**
-     * Queue link.
+     * Queue links.
      *
-     * @var resource
+     * @var resource[]
      */
     protected $ipc;
 
@@ -27,6 +27,9 @@ final class MsgAdapter implements IpcAdapterInterface
     /** @var int */
     protected $channelNumber = 0;
 
+    /** @var bool[] */
+    protected $activeChannels = [0 => true, 1 => true];
+
     /**
      * Creates IPC object.
      *
@@ -38,9 +41,9 @@ final class MsgAdapter implements IpcAdapterInterface
         $this->namespace = $namespace;
         $this->config = $config;
 
-        $id1 = $this->getQueueId($namespace);
+        $id1 = $this->getQueueId();
         $this->ipc[0] = msg_get_queue($id1, 0600);
-        $id2 = $this->getQueueId($namespace);
+        $id2 = $this->getQueueId();
         $this->ipc[1] = msg_get_queue($id2, 0600);
 
         if (!$id1 || !$id2) {
@@ -50,27 +53,28 @@ final class MsgAdapter implements IpcAdapterInterface
     }
 
     /**
-     * @todo: handle situation where all queues are reserved already
-     * @param string $channelName
-     * @return int|bool
+     * @param int $channelNumber
      */
-    protected function getQueueId($channelName)
+    protected function checkChannelAvailability($channelNumber)
     {
-        $id = 0;
-
-        while (msg_queue_exists($id)) {
-            $id++;
+        if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
+            throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
-
-        return $id;
     }
 
     /**
-     * @return resource
+     * @todo: handle situation where all queues are reserved already
+     * @return int|bool
      */
-    protected function getQueue()
+    protected function getQueueId()
     {
-        return $this->ipc;
+        $queueId = 0;
+
+        while (msg_queue_exists($queueId)) {
+            $queueId++;
+        }
+
+        return $queueId;
     }
 
     /**
@@ -83,18 +87,19 @@ final class MsgAdapter implements IpcAdapterInterface
     {
         $channelNumber = $this->channelNumber;
 
-        if ($channelNumber == 0) {
-            $channelNumber = 1;
-        } else {
+        $channelNumber == 0 ?
+            $channelNumber = 1
+            :
             $channelNumber = 0;
-        }
+
+        $this->checkChannelAvailability($channelNumber);
 
         if (strlen($message) > static::MAX_MESSAGE_SIZE) {
             throw new \RuntimeException("Message lengths exceeds max packet size of " . static::MAX_MESSAGE_SIZE);
         }
 
-        if (!@msg_send($this->ipc[$channelNumber], 1, $message, true, true, $errno)) {
-            // @todo: handle this case
+        if (!@msg_send($this->ipc[$channelNumber], 1, $message, true, true, $errorNumber)) {
+            throw new \RuntimeException(sprintf('Error %d occurred when sending message to channel %d', $errorNumber, $channelNumber));
         }
 
         return $this;
@@ -108,7 +113,7 @@ final class MsgAdapter implements IpcAdapterInterface
     public function receive()
     {
         $channelNumber = $this->channelNumber;
-
+        $this->checkChannelAvailability($channelNumber);
 
         $messageType = 1;
         msg_receive($this->ipc[$channelNumber], $messageType, $messageType, self::MAX_MESSAGE_SIZE, $message, true, MSG_IPC_NOWAIT);
@@ -124,6 +129,7 @@ final class MsgAdapter implements IpcAdapterInterface
     public function receiveAll()
     {
         $channelNumber = $this->channelNumber;
+        $this->checkChannelAvailability($channelNumber);
 
         $messages = [];
 
@@ -160,10 +166,12 @@ final class MsgAdapter implements IpcAdapterInterface
             return $this;
         }
 
-        foreach ($this->ipc as $channelNumber => $stream) {
+        foreach (array_keys($this->ipc) as $channelNumber) {
             msg_remove_queue($this->ipc[$channelNumber]);
             unset($this->ipc[$channelNumber]);
         }
+
+        $this->activeChannels = [0 => false, 1 => false];
 
         return $this;
     }
@@ -182,6 +190,8 @@ final class MsgAdapter implements IpcAdapterInterface
      */
     public function useChannelNumber($channelNumber)
     {
+        $this->checkChannelAvailability($channelNumber);
+
         $this->channelNumber = $channelNumber;
 
         return $this;

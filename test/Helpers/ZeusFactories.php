@@ -48,6 +48,7 @@ trait ZeusFactories
         $sm->setFactory(Process::class, ProcessFactory::class);
         $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
+        $sm->setFactory(ZeusControllerMock::class, ZeusControllerFactory::class);
         $sm->setFactory(ZeusController::class, ZeusControllerFactory::class);
         $sm->setFactory(Manager::class, ManagerFactory::class);
         $sm->setFactory(LruDiscipline::class, LruDisciplineFactory::class);

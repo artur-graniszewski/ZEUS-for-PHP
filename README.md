@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP.svg?branch=master)](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) [![Coverage Status](https://coveralls.io/repos/github/artur-graniszewski/ZEUS-for-PHP/badge.svg?branch=master)](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP?branch=master) [![Code Climate](https://codeclimate.com/github/artur-graniszewski/ZEUS-for-PHP/badges/gpa.svg)](https://codeclimate.com/github/artur-graniszewski/ZEUS-for-PHP)
+[![Build Status](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP.svg?branch=master)](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) [![Coverage Status](https://coveralls.io/repos/github/artur-graniszewski/ZEUS-for-PHP/badge.svg?branch=master)](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP?branch=master) [![Code Climate](https://codeclimate.com/github/artur-graniszewski/ZEUS-for-PHP/badges/gpa.svg)](https://codeclimate.com/github/artur-graniszewski/ZEUS-for-PHP) [![Percentage of issues still open](http://isitmaintained.com/badge/open/artur-graniszewski/zeus-for-php.svg)](http://isitmaintained.com/project/artur-graniszewski/zeus-for-php "Percentage of issues still open")
 
 # Introduction
 
@@ -67,17 +67,33 @@ If ZEUS for PHP is installed correctly, the following terminal command will list
 
 # Basic usage
 
-## Starting ZEUS Web Server
+## Supported command line options
+
+As of version 1.3.5, the following commands are supported (assuming that Zend Framework's `index.php` application bootstrap file is in the project's `public` directory):
+
+* `public/index.php zeus start` - Starts all ZEUS Server Services
+* `public/index.php zeus start <service-name>` - Starts selected Server Service
+* `public/index.php zeus list` - Lists all Server Services and their configuration
+* `public/index.php zeus list <service-name>` - Shows the configuration of a selected Server Service
+* `public/index.php zeus status` - Returns current status of all Server Services
+* `public/index.php zeus status <service-name>` - Returns current status of the selected Server Service
+* `public/index.php zeus stop` - Stops all ZEUS Server Services
+* `public/index.php zeus stop <service-name>` - Stops selected Server Service
+
+
+## Command line use cases
+
+### Starting ZEUS Web Server
 
 ZEUS Web Service is a built-in HTTP server that demonstrates ZEUS capabilities by hosting Zend Framework applications in pure PHP. 
 
-By default, it's configured to not to start automatically with ZEUS.  To start the service manually, following command must be executed (index.php file must be provided by Zend Framework application):
+By default, it's configured to not to start automatically with ZEUS.  To start the service manually, following command must be executed (`index.php` file must be provided by Zend Framework application):
 
 `php public/index.php zeus start zeus_httpd`
 
 In its default configuration, Zend Framework 3 web application can be accessed under http://localhost:7070/ URL (hostname may differ if ZEUS is accessed remotely).
 
-## Tracking Sever Service status
+### Tracking Sever Service status
 
 ZEUS for PHP is able to report current status of its Server Services to the user. It achieves this by modifying names of the active processes, which in turn, can be watched real-time in tools like `top`, `htop` or `ps`:
 
@@ -432,6 +448,7 @@ The above configuration parameters have been described in the __Process Schedule
 - Additional `EventManager` events covering full application lifecycle
 - More advanced Service reporting and control tools for terminal and remote use
 - Add a plugin that drops user privileges on start of the _Server Service_
+- Advanced, `systemd`-like handling of Server Service failures or remote shutdowns
 
 ### Process Manager
 - Configurable, more robust scheduling strategies (like terminating processes that handled the largest amount of request, etc)*[]: 
@@ -460,6 +477,11 @@ The above configuration parameters have been described in the __Process Schedule
 - More features introduced to ZEUS Web Server
 
 # Changelog
+
+## Version 1.3.5
+- [Feature] Added `stop` and `stop <service>` CLI commands to ZEUS
+- [Feature] Added various sanity checks to IPC adapters
+- [Feature] Application exists with appropriate error code when it detects that all of its Server Services have been shut-down externally
 
 ## Version 1.3.4
 - [Feature] Implemented Scheduler Disciplines functionality
