@@ -61,9 +61,14 @@ return [
 ];
 ```
 
-If ZEUS for PHP is installed correctly, the following terminal command will list its  _Server Services_:
+This can be achieved either by modifying configuration file in any text editor, or by issuing `sed` command in Application's root directory:
+```
+sed -i "s/'Zend\\\Log',/'Zend\\\Log','Zeus',/g" config/modules.config.php
+```
 
-`php public/index.php zeus list`
+If ZEUS for PHP is installed correctly, the following terminal command will show ZEUS version and its services in console:
+
+`php public/index.php zeus status`
 
 # Basic usage
 
