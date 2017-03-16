@@ -2,11 +2,11 @@
 
 namespace Zeus\Controller;
 
+use Zend\Console\Console;
 use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zend\Log\Writer;
 use Zeus\Kernel\ProcessManager\Status\SchedulerStatusView;
 use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
@@ -40,7 +40,6 @@ class ZeusController extends AbstractActionController
         $this->config = $config;
         $this->manager = $manager;
         $this->logger = $logger;
-        date_default_timezone_set("UTC");
     }
 
     /**
@@ -136,7 +135,7 @@ class ZeusController extends AbstractActionController
         $services = $this->getServices($serviceName, false);
 
         foreach ($services as $serviceName => $service) {
-            $schedulerStatus = new SchedulerStatusView($service->getScheduler());
+            $schedulerStatus = new SchedulerStatusView($service->getScheduler(), Console::getInstance());
             $status = $schedulerStatus->getStatus();
 
             if ($status) {
@@ -232,8 +231,10 @@ class ZeusController extends AbstractActionController
 
         $signalInfo = [];
 
-        while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
-            $servicesLeft--;
+        if (function_exists('pcntl_sigtimedwait')) {
+            while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
+                $servicesLeft--;
+            }
         }
 
         $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount - $servicesLeft));

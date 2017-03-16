@@ -5,6 +5,7 @@ namespace Zeus\Kernel\ProcessManager\Status;
 use Zend\Console\ColorInterface;
 use Zend\Console\Console;
 use Zeus\Kernel\ProcessManager\Scheduler;
+use Zend\Console\Adapter\AdapterInterface;
 
 /**
  * Class SchedulerStatusView
@@ -18,9 +19,18 @@ class SchedulerStatusView
      */
     protected $scheduler;
 
-    public function __construct(Scheduler $scheduler)
+    /** @var AdapterInterface */
+    protected $console;
+
+    /**
+     * SchedulerStatusView constructor.
+     * @param Scheduler $scheduler
+     * @param AdapterInterface $console
+     */
+    public function __construct(Scheduler $scheduler, AdapterInterface $console)
     {
         $this->scheduler = $scheduler;
+        $this->console = $console;
     }
 
     /**
@@ -46,7 +56,7 @@ class SchedulerStatusView
      */
     public function getStatus()
     {
-        $console = Console::getInstance();
+        $console = $this->console;
         $output = $console->colorize("Service Status: " . PHP_EOL . PHP_EOL, ColorInterface::GREEN);
 
         $payload = $this->scheduler->getStatus();
@@ -128,8 +138,25 @@ class SchedulerStatusView
         $output .= "Scoreboard Key:" . PHP_EOL . '"_" Waiting for task, "R" Currently running, "T" Terminating,' . PHP_EOL;
         $output .= '"." Open slot with no current process' . PHP_EOL . PHP_EOL;
 
+        $output .= $this->listProcessDetails($processList, $processStatusChars, $schedulerStatus);
+
+        return $output;
+    }
+
+    /**
+     * @param mixed[] $processList
+     * @param string[] $processStatusChars
+     * @param mixed[] $schedulerStatus
+     * @return string
+     */
+    protected function listProcessDetails($processList, $processStatusChars, $schedulerStatus)
+    {
+        $output = '';
+        $console = $this->console;
+
         $lastElement = end($processList);
         $lastElementKey = key($processList);
+
         $output .= $console->colorize(sprintf('Service %s' . PHP_EOL, $lastElement['service_name']), ColorInterface::LIGHT_YELLOW);
         $output .= sprintf(' └─┬ Scheduler %s, CPU: %d%%' . PHP_EOL, $schedulerStatus['uid'], $schedulerStatus['cpu_usage']);
 
@@ -148,7 +175,7 @@ class SchedulerStatusView
                     ProcessState::addUnitsToNumber($processStatus->getNumberOfTasksPerSecond()),
                     ProcessState::addUnitsToNumber($processStatus->getNumberOfFinishedTasks()),
                     $processStatus->getStatusDescription() ? ': ' . $processStatus->getStatusDescription() : ''
-                    ),
+                ),
                 $color
             );
         }

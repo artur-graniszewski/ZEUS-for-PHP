@@ -32,6 +32,9 @@ class HttpServiceTest extends PHPUnit_Framework_TestCase
                     'service_settings' => [
                     'listen_port' => 7070,
                     'listen_address' => '0.0.0.0',
+                    'keep_alive_enabled' => true,
+                    'keep_alive_timeout' => 5,
+                    'max_keep_alive_requests_limit' => 100,
                     'blocked_file_types' => [
                         'php',
                         'phtml'

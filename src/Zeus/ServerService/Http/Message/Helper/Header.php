@@ -21,6 +21,8 @@ trait Header
      */
     protected function setHost(Request $request, $serverAddress)
     {
+        $host = $serverAddress;
+        $port = null;
         $fullHost = $request->getHeaderOverview('Host');
 
         if ($request->getVersion() === Request::VERSION_11) {
@@ -42,20 +44,17 @@ trait Header
         if (preg_match('|\:(\d+)$|', $serverAddress, $matches)) {
             $host = substr($serverAddress, 0, -1 * (strlen($matches[1]) + 1));
             $port = (int)$matches[1];
-        } else {
-            $host = $serverAddress;
-            $port = null;
         }
 
         // Set the host
         if ($fullHost) {
+            $host2 = $fullHost;
+            $port2 = $port;
+
             // works for regname, IPv4 & IPv6
             if (preg_match('~\:(\d+)$~', $fullHost, $matches)) {
                 $host2 = substr($fullHost, 0, -1 * (strlen($matches[1]) + 1));
                 $port2 = (int) $matches[1];
-            } else {
-                $host2 = $fullHost;
-                $port2 = $port;
             }
 
             // set up a validator that check if the hostname is legal (not spoofed)
@@ -98,10 +97,10 @@ trait Header
             }
 
             return false;
-        } else {
-            $message = substr($this->headers, $pos + 4);
-            $this->headers = substr($this->headers, 0, $pos + 4);
         }
+
+        $message = substr($this->headers, $pos + 4);
+        $this->headers = substr($this->headers, 0, $pos + 4);
 
         try {
             $request = Request::fromStringOfHeaders($this->headers, false);

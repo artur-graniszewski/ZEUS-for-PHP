@@ -5,6 +5,7 @@ namespace ZeusTest;
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManager;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -44,6 +45,29 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         }
 
         return $found;
+    }
+
+    public function testPosixProcessFactory()
+    {
+        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock->setPpid(123456789);
+        PosixProcess::setPcntlBridge($pcntlMock);
+
+        $sm = $this->getServiceManager();
+        $scheduler = $this->getScheduler(0);
+        $sm->setFactory(PosixProcess::class, PosixProcessFactory::class);
+        /** @var PosixProcess $service */
+        $service = $sm->build(PosixProcess::class, ['scheduler' => $scheduler, 'scheduler_event' => new SchedulerEvent()]);
+        $this->assertInstanceOf(PosixProcess::class, $service);
+
+        $eventLaunched = false;
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function() use (&$eventLaunched) {
+            $eventLaunched = true;
+        });
+
+        $service->onSchedulerLoop();
+
+        $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixProcess');
     }
 
     public function eventProvider()

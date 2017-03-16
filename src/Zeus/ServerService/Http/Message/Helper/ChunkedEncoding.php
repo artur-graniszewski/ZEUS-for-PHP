@@ -39,6 +39,7 @@ trait ChunkedEncoding
 
                 return;
             }
+
             if ($this->expectedChunkSize === 0) {
                 // read the chunk header
                 if (false === strpos($this->buffer, "\r\n")) {
@@ -77,14 +78,13 @@ trait ChunkedEncoding
             $this->buffer = substr($this->buffer, $this->expectedChunkSize + 2);
             // $this->requestBodySize += $this->expectedChunkSize;
 
-            if ($messageLeft < strlen($message)) {
+            $message = $messageLeft < strlen($message) ?
                 // chunk is part of the current message, so trim it
-                $message = substr($message, -$messageLeft);
-            } else {
+                substr($message, -$messageLeft)
+                :
                 // body is already large enough that current chunk is not a part of current message, consume it
                 // and continue
-                $message = '';
-            }
+                '';
 
             $this->expectedChunkSize = 0;
         }

@@ -9,7 +9,12 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-class ReactEventSubscriber
+/**
+ * Class ReactEventSubscriber
+ * @package Zeus\ServerService\Shared\React
+ * @internal
+ */
+final class ReactEventSubscriber
 {
     /** @var LoopInterface */
     protected $loop;
@@ -45,10 +50,9 @@ class ReactEventSubscriber
     }
 
     /**
-     * @param EventInterface $event
      * @return $this
      */
-    public function onSchedulerStart(EventInterface $event)
+    public function onSchedulerStart()
     {
         $this->loop->removeStream($this->socket->master);
 
@@ -56,10 +60,9 @@ class ReactEventSubscriber
     }
 
     /**
-     * @param EventInterface $event
      * @return $this
      */
-    public function onTaskStart(EventInterface $event)
+    public function onTaskStart()
     {
         return $this;
     }
@@ -70,9 +73,6 @@ class ReactEventSubscriber
      */
     public function onTaskLoop(SchedulerEvent $event)
     {
-        /** @var Process $task */
-        $task = $event->getProcess();
-
         if (($connectionSocket = @stream_socket_accept($this->socket->master, 1))) {
             $event->getProcess()->setRunning();
             $timer = $this->loop->addPeriodicTimer(1, [$this, 'heartBeat']);

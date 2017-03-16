@@ -2,7 +2,13 @@
 
 namespace Zeus\Kernel\ProcessManager\System;
 
-class CpuDetector
+/**
+ * Class CpuDetector
+ * @package Zeus\Kernel\ProcessManager\System
+ * @internal
+ * @codeCoverageIgnore
+ */
+final class CpuDetector
 {
     /** @var int */
     protected static $numberOfCores = 0;

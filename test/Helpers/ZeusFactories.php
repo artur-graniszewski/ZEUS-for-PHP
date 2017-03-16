@@ -27,6 +27,8 @@ use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
+use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
+use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
 use Zeus\ServerService\Shared\Logger\IpcLogWriter;
 use Zend\Router;
 
@@ -47,6 +49,7 @@ trait ZeusFactories
         $sm->setFactory(Scheduler::class, SchedulerFactory::class);
         $sm->setFactory(Process::class, ProcessFactory::class);
         $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
+        $sm->setFactory(IpcLoggerInterface::class, IpcLoggerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
         $sm->setFactory(ZeusControllerMock::class, ZeusControllerFactory::class);
         $sm->setFactory(ZeusController::class, ZeusControllerFactory::class);

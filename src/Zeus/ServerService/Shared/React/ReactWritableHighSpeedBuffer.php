@@ -18,7 +18,6 @@ class ReactWritableHighSpeedBuffer extends Buffer
         $this->softLimit = static::MAX_SOFT_LIMIT;
         parent::__construct($stream, $loop);
 
-        $this->stream = $stream;
         $this->loop = $loop;
     }
 
@@ -59,7 +58,12 @@ class ReactWritableHighSpeedBuffer extends Buffer
             );
         });
 
-        $sent = stream_socket_sendto($this->stream, $this->data);
+        $sent = defined('HHVM_VERSION') ?
+            // HHVM
+            fwrite($this->stream, $this->data)
+            :
+            // PHP
+            stream_socket_sendto($this->stream, $this->data);
 
         restore_error_handler();
 
@@ -71,17 +75,17 @@ class ReactWritableHighSpeedBuffer extends Buffer
         // Should this turn out to be a permanent error later, it will eventually
         // send *nothing* and we can detect this.
         if ($sent === 0 || $sent === false) {
-            if ($error === null) {
-                $error = new \RuntimeException('Send failed');
-            } else {
-                $error = new \ErrorException(
+            $error =
+                $error === null ?
+                new \RuntimeException('Send failed')
+                :
+                new \ErrorException(
                     $error['message'],
                     0,
                     $error['number'],
                     $error['file'],
                     $error['line']
                 );
-            }
 
             $this->emit('error', array(new \RuntimeException('Unable to write to stream: ' . $error->getMessage(), 0, $error), $this));
             $this->close();

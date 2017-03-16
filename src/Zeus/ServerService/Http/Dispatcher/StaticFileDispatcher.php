@@ -16,6 +16,9 @@ class StaticFileDispatcher implements DispatcherInterface
     /** @var mixed[] */
     protected $config;
 
+    /** @var string */
+    protected $publicDirectory;
+
     /**
      * StaticFileDispatcher constructor.
      * @param mixed[] $config
@@ -25,6 +28,17 @@ class StaticFileDispatcher implements DispatcherInterface
     {
         $this->config = $config;
         $this->anotherDispatcher = $anotherDispatcher;
+
+        $publicDirectory = isset($this->config['public_directory']) ?
+            rtrim($this->config['public_directory'], '\/')
+            :
+            getcwd() . '/public';
+
+        if ($publicDirectory[0] !== '/') {
+            $publicDirectory = getcwd() . '/' . $publicDirectory;
+        }
+
+        $this->publicDirectory = realpath($publicDirectory . '/');
     }
 
     /**
@@ -37,32 +51,33 @@ class StaticFileDispatcher implements DispatcherInterface
 
         $code = Response::STATUS_CODE_200;
 
-        $publicDirectory = isset($this->config['public_directory']) ? $this->config['public_directory'] : getcwd() . '/public';
-        $fileName = $publicDirectory . $path;
-        $realPath = substr(realpath($fileName), 0, strlen($publicDirectory));
-        if ($realPath && $realPath !== $publicDirectory) {
-            $code = Response::STATUS_CODE_400;
+        $fileName = $this->publicDirectory . DIRECTORY_SEPARATOR . $path;
+        $realPath = substr(realpath($fileName), 0, strlen($this->publicDirectory));
+        if ($realPath && $realPath !== $this->publicDirectory) {
+            return $this->getHttpResponse(Response::STATUS_CODE_400, $httpRequest->getVersion());
         }
 
         $blockedFileTypes = isset($this->config['blocked_file_types']) ? implode('|', $this->config['blocked_file_types']) : null;
 
         if (file_exists($fileName) && !is_dir($fileName)) {
             if ($blockedFileTypes && preg_match('~\.(' . $blockedFileTypes . ')$~', $fileName)) {
-                $code = Response::STATUS_CODE_403;
-            } else {
-                $httpResponse = $this->getHttpResponse($code, $httpRequest->getVersion());
-                $httpResponse->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
-                $httpResponse->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
-                readfile($fileName);
 
-                return $httpResponse;
+                return $this->getHttpResponse(Response::STATUS_CODE_403, $httpRequest->getVersion());
             }
-        } else {
-            $code = is_dir($fileName) ? Response::STATUS_CODE_403 : Response::STATUS_CODE_404;
 
-            if ($this->anotherDispatcher) {
-                return $this->anotherDispatcher->dispatch($httpRequest);
-            }
+            $httpResponse = $this->getHttpResponse($code, $httpRequest->getVersion());
+            $httpResponse->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
+            $httpResponse->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
+            readfile($fileName);
+
+            return $httpResponse;
+        }
+
+        $code = is_dir($fileName) ? Response::STATUS_CODE_403 : Response::STATUS_CODE_404;
+
+        if ($this->anotherDispatcher) {
+
+            return $this->anotherDispatcher->dispatch($httpRequest);
         }
 
         return $this->getHttpResponse($code, $httpRequest->getVersion());

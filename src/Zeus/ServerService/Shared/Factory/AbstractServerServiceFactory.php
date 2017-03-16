@@ -44,11 +44,7 @@ class AbstractServerServiceFactory implements AbstractFactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        if (!isset($options['config'])) {
-            $config = [];
-        } else {
-            $config = $options['config'];
-        }
+        $config = isset($options['config']) ? $options['config'] : [];
         
         $adapter = new $requestedName($config['service_settings'], $options['scheduler_adapter'], $options['logger_adapter']);
 

@@ -22,7 +22,7 @@ class Module implements
     ConsoleUsageProviderInterface,
     ConsoleBannerProviderInterface
 {
-    const MODULE_VERSION = "1.3.4";
+    const MODULE_VERSION = "1.3.6";
 
     protected static $overrideConfig = [];
 
@@ -44,7 +44,9 @@ class Module implements
      */
     public function onBootstrap(EventInterface $event)
     {
-
+        if (!ini_get('date.timezone')) {
+            date_default_timezone_set("UTC");
+        }
     }
 
     /**

@@ -27,13 +27,12 @@ class ProcessState
      */
     const EXITING = 8;
 
-
     /**
      * PID of the process.
      *
      * @var int
      */
-    protected $id;
+    protected $processId;
 
     /**
      * Process status code.
@@ -56,7 +55,7 @@ class ProcessState
     protected $currentUserCpuTime = 0;
 
     /** @var float */
-    protected $currentSystemCpuTime = 0;
+    protected $currentSysCpuTime = 0;
 
     /** @var int */
     protected $tasksFinished = 0;
@@ -122,7 +121,7 @@ class ProcessState
         $status->tasksFinished = $array['requests_finished'];
         $status->tasksPerSecond = $array['requests_per_second'];
         $status->cpuUsage = $array['cpu_usage'];
-        $status->id = $array['uid'];
+        $status->processId = $array['uid'];
         $status->statusDescription = $array['status_description'];
 
         return $status;
@@ -171,7 +170,7 @@ class ProcessState
      */
     public function getId()
     {
-        return $this->id ? $this->id : getmypid();
+        return $this->processId ? $this->processId : getmypid();
     }
 
     /**
@@ -254,18 +253,18 @@ class ProcessState
      */
     protected function updateCurrentCpuTime()
     {
-        if (!function_exists('getrusage')) {
-            $usage = [
-                "ru_stime.tv_sec" => 0,
-                "ru_utime.tv_sec" => 0,
-                "ru_stime.tv_usec" => 0,
-                "ru_utime.tv_usec" => 0,
-            ];
-        } else {
+        $usage = [
+            "ru_stime.tv_sec" => 0,
+            "ru_utime.tv_sec" => 0,
+            "ru_stime.tv_usec" => 0,
+            "ru_utime.tv_usec" => 0,
+        ];
+
+        if (function_exists('getrusage')) {
             $usage = getrusage();
         }
 
-        $this->currentSystemCpuTime = $usage["ru_stime.tv_sec"] * 1e6 + $usage["ru_stime.tv_usec"];
+        $this->currentSysCpuTime = $usage["ru_stime.tv_sec"] * 1e6 + $usage["ru_stime.tv_usec"];
         $this->currentUserCpuTime = $usage["ru_utime.tv_sec"] * 1e6 + $usage["ru_utime.tv_usec"];
 
         return $this;
@@ -276,7 +275,7 @@ class ProcessState
      */
     public function getCurrentSystemCpuTime()
     {
-        return $this->currentSystemCpuTime;
+        return $this->currentSysCpuTime;
     }
 
     /**

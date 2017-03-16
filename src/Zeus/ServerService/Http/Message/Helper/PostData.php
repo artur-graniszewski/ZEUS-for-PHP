@@ -16,9 +16,9 @@ trait PostData
 
         $body = $request->getContent();
 
-        while (false !== ($pos = strpos($body, "&", $this->cursorPositionInRequestPostBody)) || $this->bodyReceived) {
+        while (false !== ($pos = strpos($body, "&", $this->posInRequestBody)) || $this->bodyReceived) {
             $paramsLength = $pos === false ? strlen($body) : $pos;
-            $postParameter = substr($body, $this->cursorPositionInRequestPostBody, $paramsLength - $this->cursorPositionInRequestPostBody);
+            $postParameter = substr($body, $this->posInRequestBody, $paramsLength - $this->posInRequestBody);
             $postArray = [];
             parse_str($postParameter, $postArray);
             $paramName = key($postArray);
@@ -28,7 +28,7 @@ trait PostData
 
             $requestPost->set($paramName, $postArray[$paramName]);
 
-            $this->cursorPositionInRequestPostBody = $pos + 1;
+            $this->posInRequestBody = $pos + 1;
 
             if ($pos === false) {
                 break;

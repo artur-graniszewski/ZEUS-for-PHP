@@ -93,6 +93,7 @@ final class MsgAdapter implements IpcAdapterInterface
             $channelNumber = 0;
 
         $this->checkChannelAvailability($channelNumber);
+        $message = serialize($message);
 
         if (strlen($message) > static::MAX_MESSAGE_SIZE) {
             throw new \RuntimeException("Message lengths exceeds max packet size of " . static::MAX_MESSAGE_SIZE);
@@ -118,7 +119,7 @@ final class MsgAdapter implements IpcAdapterInterface
         $messageType = 1;
         msg_receive($this->ipc[$channelNumber], $messageType, $messageType, self::MAX_MESSAGE_SIZE, $message, true, MSG_IPC_NOWAIT);
 
-        return $message;
+        return unserialize($message);
     }
 
     /**

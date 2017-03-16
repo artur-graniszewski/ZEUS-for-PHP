@@ -86,12 +86,12 @@ class Config extends \Zend\Config\Config implements ConfigInterface
     }
 
     /**
-     * @param int $minStartingProcesses
+     * @param int $startAmount
      * @return $this
      */
-    public function setStartProcesses($minStartingProcesses)
+    public function setStartProcesses($startAmount)
     {
-        $this->offsetSet('start_processes', $minStartingProcesses);
+        $this->offsetSet('start_processes', $startAmount);
 
         return $this;
     }
@@ -105,12 +105,12 @@ class Config extends \Zend\Config\Config implements ConfigInterface
     }
 
     /**
-     * @param int $maxProcesses
+     * @param int $limit
      * @return $this
      */
-    public function setMaxProcesses($maxProcesses)
+    public function setMaxProcesses($limit)
     {
-        $this->offsetSet('max_processes', $maxProcesses);
+        $this->offsetSet('max_processes', $limit);
 
         return $this;
     }
@@ -124,12 +124,12 @@ class Config extends \Zend\Config\Config implements ConfigInterface
     }
 
     /**
-     * @param int $minSpareProcessesLimit
+     * @param int $limit
      * @return $this
      */
-    public function setMinSpareProcesses($minSpareProcessesLimit)
+    public function setMinSpareProcesses($limit)
     {
-        $this->offsetSet('min_spare_processes', $minSpareProcessesLimit);
+        $this->offsetSet('min_spare_processes', $limit);
 
         return $this;
     }
@@ -143,12 +143,12 @@ class Config extends \Zend\Config\Config implements ConfigInterface
     }
 
     /**
-     * @param int $maxSpareProcessesLimit
+     * @param int $limit
      * @return $this
      */
-    public function setMaxSpareProcesses($maxSpareProcessesLimit)
+    public function setMaxSpareProcesses($limit)
     {
-        $this->offsetSet('min_spare_processes', $maxSpareProcessesLimit);
+        $this->offsetSet('min_spare_processes', $limit);
 
         return $this;
     }

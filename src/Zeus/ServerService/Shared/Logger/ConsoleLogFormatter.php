@@ -11,6 +11,9 @@ class ConsoleLogFormatter implements FormatterInterface
     /** @var AdapterInterface */
     protected $console;
 
+    /** @var string */
+    protected $dateTimeFormat = 'Y-m-d H:i:s';
+
     public function __construct(AdapterInterface $console)
     {
         $this->console = $console;
@@ -29,11 +32,13 @@ class ConsoleLogFormatter implements FormatterInterface
     /**
      * This method is implemented for FormatterInterface but not used.
      *
-     * @param  string             $dateTimeFormat
+     * @param  string $dateTimeFormat
      * @return FormatterInterface
      */
     public function setDateTimeFormat($dateTimeFormat)
     {
+        $this->dateTimeFormat = $dateTimeFormat;
+
         return $this;
     }
 
@@ -42,7 +47,7 @@ class ConsoleLogFormatter implements FormatterInterface
         $console = $this->console;
 
         $serviceName = $event['extra']['service_name'];
-        $dateTime = $console->colorize($event['timestamp']->format('Y-m-d H:i:s.') . sprintf("%'.03d", $event['extra']['microtime']), ColorInterface::GRAY);
+        $dateTime = $console->colorize($event['timestamp']->format($this->dateTimeFormat . '.') . sprintf("%'.03d", $event['extra']['microtime']), ColorInterface::GRAY);
         $severity = $console->colorize(str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT), $this->getSeverityColor($event['priorityName']));
         $pid = $console->colorize($event['extra']['uid'], ColorInterface::CYAN);
         $serviceName = $console->colorize(sprintf("--- [%s]", str_pad(substr($serviceName,0, 15), 15, " ", STR_PAD_LEFT)), ColorInterface::GRAY);
