@@ -129,13 +129,18 @@ class ReactIoServer implements IoServerInterface
      * An error has occurred, let the listening application know
      * @param ConnectionInterface $connection
      * @param \Exception $exception
-     * @return $this
      */
     public function handleError(ConnectionInterface $connection, $exception)
     {
-        $this->app->onError($connection, $exception);
-
-        return $this;
+        try {
+            $this->app->onError($connection, $exception);
+        } catch (\Exception $e) {
+            $this->cleanUp();
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->cleanUp();
+            throw $e;
+        }
     }
 
     /**
