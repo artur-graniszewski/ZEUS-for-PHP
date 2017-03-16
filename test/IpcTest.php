@@ -8,6 +8,8 @@ use Zeus\Kernel\IpcServer\Adapter\FifoAdapter;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Adapter\MsgAdapter;
 use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
+use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
+use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\ZeusFactories;
 
 class IpcTest extends PHPUnit_Framework_TestCase
@@ -67,5 +69,22 @@ class IpcTest extends PHPUnit_Framework_TestCase
         }
 
         $ipcAdapter->disconnect();
+    }
+
+    public function testIpcLogger()
+    {
+        $serviceName = 'zeus-test-' . md5(__CLASS__);
+        $sm = $this->getServiceManager();
+        /** @var IpcAdapterInterface $ipcAdapter */
+        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => SocketAdapter::class, 'service_name' => $serviceName]);
+
+        /** @var LoggerInterface $logger */
+        $logger = $sm->build(IpcLoggerInterface::class, ['ipc_adapter' => $ipcAdapter, 'service_name' => $serviceName]);
+        $logger->info('TEST MESSAGE');
+
+        $results = $ipcAdapter->useChannelNumber(0)->receiveAll();
+        $this->assertEquals(1, count($results));
+        $this->assertEquals('INFO', $results[0]['priorityName']);
+        $this->assertEquals('TEST MESSAGE', $results[0]['message']);
     }
 }
