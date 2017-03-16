@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Http\Message;
 
+use Zend\Http\Headers;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
@@ -35,6 +36,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
 
+    /** @var ConnectionInterface */
+    protected $connection;
+
     /** @var int */
     protected $requestPhase = self::REQUEST_PHASE_IDLE;
 
@@ -60,10 +64,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $chunkedHeader;
 
     /** @var Connection */
-    protected $closeConnectionHeader;
+    protected $closeHeader;
 
     /** @var Connection */
-    protected $keepAliveConnectionHeader;
+    protected $keepAliveHeader;
 
     /** @var bool */
     protected $requestComplete = false;
@@ -84,7 +88,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $response;
 
     /** @var int */
-    protected $cursorPositionInRequestPostBody = 0;
+    protected $posInRequestBody = 0;
+
+    /** @var bool */
+    protected $isKeepAliveRequest;
 
     /**
      * @var callable
@@ -100,8 +107,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     {
         $this->errorHandler = $errorHandler;
         $this->chunkedHeader = new TransferEncoding(static::ENCODING_CHUNKED);
-        $this->closeConnectionHeader = (new Connection())->setValue("close");
-        $this->keepAliveConnectionHeader = (new Connection())->setValue("keep-alive; timeout=" . $this->keepAliveTimer);
+        $this->closeHeader = (new Connection())->setValue("close");
+        $this->keepAliveHeader = (new Connection())->setValue("keep-alive; timeout=" . $this->keepAliveTimer);
         $this->dispatcher = $dispatcher;
         $this->initNewRequest();
         $this->restartKeepAliveCounter();
@@ -129,6 +136,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     public function onOpen(ConnectionInterface $connection)
     {
+        $this->connection = $connection;
         $this->restartKeepAliveCounter();
         $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
     }
@@ -178,6 +186,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $connection->end();
         $this->initNewRequest();
         $this->restartKeepAliveCounter();
+        $this->connection = null;
     }
 
     /**
@@ -213,11 +222,14 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
                 $this->request = $request;
                 $this->headersReceived = true;
                 $this->validateRequestHeaders($connection);
+                $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
+                $isKeepAliveRequest = $this->keepAliveCount > 0 && $request->getConnectionType() === 'keep-alive';
+                $request->setMetadata('isKeepAliveConnection', $isKeepAliveRequest);
             }
         }
 
         if ($this->headersReceived) {
-            $this->decodeRequestBody($connection, $message);
+            $this->decodeRequestBody($message);
 
             if ($this->isBodyAllowedInRequest($this->request)) {
                 $this->parseRequestPostData($this->request);
@@ -265,7 +277,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->headersReceived = false;
         $this->bodyReceived = false;
         $this->requestComplete = false;
-        $this->cursorPositionInRequestPostBody = 0;
+        $this->posInRequestBody = 0;
         $this->deleteTemporaryFiles();
 
         return $this;
@@ -293,11 +305,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $from
      * @param string $message
      * @return $this
      */
-    protected function decodeRequestBody(ConnectionInterface $from, & $message)
+    protected function decodeRequestBody(& $message)
     {
         if ($this->bodyReceived || false === $this->headersReceived) {
             return $this;
@@ -307,6 +318,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             if (!isset($message[0])) {
                 $this->requestComplete = true;
                 $this->bodyReceived = true;
+
                 return $this;
             }
             // method is not allowing to send a body
@@ -315,9 +327,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         if ($this->getEncodingType($this->request) === $this::ENCODING_CHUNKED) {
             $this->decodeChunkedRequestBody($this->request, $message);
-        } else {
-            $this->decodeRegularRequestBody($this->request, $message);
+
+            return $this;
         }
+
+        $this->decodeRegularRequestBody($this->request, $message);
 
         return $this;
     }
@@ -329,6 +343,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function sendHeaders(ConnectionInterface $connection, & $buffer)
     {
+        $this->headersSent = true;
         $response = $this->response;
         $request = $this->request;
         $responseHeaders = $response->getHeaders();
@@ -339,8 +354,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         $isChunkedResponse = ($transferEncoding && $transferEncoding->getFieldValue() === $this::ENCODING_CHUNKED);
         $requestPhase = $this->requestPhase;
-
-        $isKeepAliveConnection = $this->keepAliveCount > 0 && $request->getConnectionType() === 'keep-alive';
+        $responseHeaders->addHeader($this->isKeepAliveRequest ? $this->keepAliveHeader : $this->closeHeader);
 
         // keep-alive should be disabled for HTTP/1.0 and chunked output (btw. Transfer Encoding should not be set for 1.0)
         // we can also disable chunked response if buffer contained entire response body
@@ -350,14 +364,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
                 $responseHeaders->removeHeader(new TransferEncoding());
             }
 
-            $acceptEncoding = $request->getHeaderOverview('Accept-Encoding', true);
-            $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
-            if ($requestPhase === static::REQUEST_PHASE_SENDING && isset($buffer[8192]) && in_array('gzip', $encodingsArray)) {
-                $buffer = substr(gzcompress($buffer, 1, ZLIB_ENCODING_GZIP), 0, -4);
-                $responseHeaders->addHeader(new ContentEncoding('gzip'));
-                $responseHeaders->addHeader(new Vary('Accept'));
-            }
-            $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
+            $this->enableCompressionIfSupported($request, $responseHeaders, $requestPhase, $buffer);
         } else {
             if (!$isChunkedResponse && $this->isBodyAllowedInResponse($request) && !$responseHeaders->has('Content-Length')) {
                 // is this a chunked encoding? valid only for HTTP 1.1+
@@ -367,7 +374,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
         }
 
-        $responseHeaders->addHeader($isKeepAliveConnection? $this->keepAliveConnectionHeader : $this->closeConnectionHeader);
+        $response->setMetadata('isChunkedResponse', $isChunkedResponse);
 
         $connection->write(
             $response->renderStatusLine() . "\r\n" .
@@ -375,12 +382,28 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             "Date: " . gmdate('D, d M Y H:i:s') . " GMT\r\n" .
             "\r\n");
 
-        $this->headersSent = true;
 
-        $response->setMetadata('isChunkedResponse', $isChunkedResponse);
-        $request->setMetadata('isKeepAliveConnection', $isKeepAliveConnection);
 
         return $this;
+    }
+
+    /**
+     * @param Request $request
+     * @param Headers $responseHeaders
+     * @param int $requestPhase
+     * @param string $buffer
+     */
+    protected function enableCompressionIfSupported(Request $request, Headers $responseHeaders, $requestPhase, & $buffer)
+    {
+        $acceptEncoding = $request->getHeaderOverview('Accept-Encoding', true);
+        $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
+
+        if ($requestPhase === static::REQUEST_PHASE_SENDING && isset($buffer[8192]) && in_array('gzip', $encodingsArray)) {
+            $buffer = substr(gzcompress($buffer, 1, ZLIB_ENCODING_GZIP), 0, -4);
+            $responseHeaders->addHeader(new ContentEncoding('gzip'));
+            $responseHeaders->addHeader(new Vary('Accept'));
+        }
+        $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
     }
 
     /**
@@ -414,7 +437,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
         }
 
-        $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         if ($this->requestPhase !== static::REQUEST_PHASE_SENDING) {
             return '';
         }
@@ -425,7 +447,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         $this->requestsFinished++;
-        if ($this->request->getMetadata('isKeepAliveConnection') && $this->keepAliveCount > 0) {
+        if ($this->request->getMetadata('isKeepAliveConnection')) {
             $this->keepAliveCount--;
             $this->initNewRequest();
             $this->restartKeepAliveTimer();

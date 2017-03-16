@@ -30,11 +30,12 @@ final class ApplicationProxy
         // Load modules
         $serviceManager->get('ModuleManager')->loadModules();
 
-        $listenersFromAppConfig     = isset($configuration['listeners']) ? $configuration['listeners'] : [];
-        $config                     = $serviceManager->get('config');
-        $listenersFromConfigService = isset($config['listeners']) ? $config['listeners'] : [];
+        $listeners = [];
+        $listeners['app_config']     = isset($configuration['listeners']) ? $configuration['listeners'] : [];
+        $config                      = $serviceManager->get('config');
+        $listeners['config_service'] = isset($config['listeners']) ? $config['listeners'] : [];
 
-        $listeners = array_unique(array_merge($listenersFromConfigService, $listenersFromAppConfig));
+        $listeners = array_unique(array_merge($listeners['config_service'], $listeners['app_config']));
 
         $application = $serviceManager->get('Application')->bootstrap($listeners);
 

@@ -2,18 +2,16 @@
 
 namespace Zeus\ServerService\Http;
 
-use Zeus\Kernel\ProcessManager\Config as TaskManagerConfig;
-
 class Config implements HttpConfigInterface
 {
     /** @var int */
     private $keepAliveTimeout = 5;
 
     /** @var int */
-    private $maxKeepAliveRequestsLimit = 100;
+    private $maxKeepAliveRequests = 100;
 
     /** @var bool */
-    private $keepAliveEnabled = true;
+    private $isKeepAliveEnabled = true;
 
     /** @var int */
     private $listenPort = 0;
@@ -57,12 +55,12 @@ class Config implements HttpConfigInterface
     }
 
     /**
-     * @param int $listenPort
+     * @param int $port
      * @return Config
      */
-    public function setListenPort($listenPort)
+    public function setListenPort($port)
     {
-        $this->listenPort = $listenPort;
+        $this->listenPort = $port;
 
         return $this;
     }
@@ -76,12 +74,12 @@ class Config implements HttpConfigInterface
     }
 
     /**
-     * @param string $listenAddress
+     * @param string $address
      * @return Config
      */
-    public function setListenAddress($listenAddress)
+    public function setListenAddress($address)
     {
-        $this->listenAddress = $listenAddress;
+        $this->listenAddress = $address;
 
         return $this;
     }
@@ -95,12 +93,12 @@ class Config implements HttpConfigInterface
     }
 
     /**
-     * @param int $keepAliveTimeout
+     * @param int $timeout
      * @return Config
      */
-    public function setKeepAliveTimeout($keepAliveTimeout)
+    public function setKeepAliveTimeout($timeout)
     {
-        $this->keepAliveTimeout = $keepAliveTimeout;
+        $this->keepAliveTimeout = $timeout;
 
         return $this;
     }
@@ -110,16 +108,16 @@ class Config implements HttpConfigInterface
      */
     public function getMaxKeepAliveRequestsLimit()
     {
-        return $this->maxKeepAliveRequestsLimit;
+        return $this->maxKeepAliveRequests;
     }
 
     /**
-     * @param int $maxKeepAliveRequestsLimit
+     * @param int $limit
      * @return Config
      */
-    public function setMaxKeepAliveRequestsLimit($maxKeepAliveRequestsLimit)
+    public function setMaxKeepAliveRequestsLimit($limit)
     {
-        $this->maxKeepAliveRequestsLimit = $maxKeepAliveRequestsLimit;
+        $this->maxKeepAliveRequests = $limit;
 
         return $this;
     }
@@ -129,16 +127,16 @@ class Config implements HttpConfigInterface
      */
     public function isKeepAliveEnabled()
     {
-        return $this->keepAliveEnabled;
+        return $this->isKeepAliveEnabled;
     }
 
     /**
-     * @param boolean $keepAliveEnabled
+     * @param boolean $isEnabled
      * @return Config
      */
-    public function setKeepAliveEnabled($keepAliveEnabled)
+    public function setKeepAliveEnabled($isEnabled)
     {
-        $this->keepAliveEnabled = $keepAliveEnabled;
+        $this->isKeepAliveEnabled = $isEnabled;
 
         return $this;
     }

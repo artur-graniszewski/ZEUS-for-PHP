@@ -25,27 +25,62 @@ class LruDiscipline implements DisciplineInterface
             return $result;
         }
 
-        $now = microtime(true);
-        $processesToTerminate = [];
-        $processesToCreate = 0;
-
-        /**
-         * Time after which idle process should be ultimately terminated.
-         *
-         * @var float
-         */
-        $expireTime = $now - $config->getProcessIdleTimeout();
-
         $statusSummary = $processes->getStatusSummary();
+        $processesToTerminate = $this->getProcessesToTerminate($processes, $config, $statusSummary);
+        $processesToCreate = $this->getAmountOfProcessesToCreate($processes, $config, $statusSummary);
+
+        return [
+            'create' => $processesToCreate,
+            'terminate' => [],
+            'soft_terminate' => $processesToTerminate,
+        ];
+    }
+
+    /**
+     * @param ProcessCollection $processes
+     * @param Config $config
+     * @param int[] $statusSummary
+     * @return int|mixed
+     */
+    protected function getAmountOfProcessesToCreate(ProcessCollection $processes, Config $config, array $statusSummary)
+    {
         $idleProcesses = $statusSummary[ProcessState::WAITING];
-        $busyProcesses = $statusSummary[ProcessState::RUNNING];
-        //$terminatedProcesses = $statusSummary[ProcessStatus::STATUS_EXITING] + $statusSummary[ProcessStatus::STATUS_KILL];
         $allProcesses = $processes->count();
+
+        // start additional processes, if number of them is too small.
+        if ($idleProcesses < $config->getMinSpareProcesses()) {
+            $idleProcessSlots = $processes->getSize() - $processes->count();
+
+            return min($idleProcessSlots, $config->getMinSpareProcesses() - $idleProcesses);
+        }
+
+        if ($allProcesses === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
+
+            return $processesToCreate = $config->getMaxSpareProcesses();
+        }
+
+        return 0;
+    }
+
+    /**
+     * @param ProcessCollection $processes
+     * @param Config $config
+     * @param int[] $statusSummary
+     * @return int[]
+     */
+    protected function getProcessesToTerminate(ProcessCollection $processes, Config $config, array $statusSummary)
+    {
+        $expireTime = microtime(true) - $config->getProcessIdleTimeout();
+
+        $processesToTerminate = [];
+        $idleProcesses = $statusSummary[ProcessState::WAITING];
+        //$busyProcesses = $statusSummary[ProcessState::RUNNING];
+        //$terminatedProcesses = $statusSummary[ProcessStatus::STATUS_EXITING] + $statusSummary[ProcessStatus::STATUS_KILL];
 
         // terminate idle processes, if number of them is too high.
         if ($idleProcesses > $config->getMaxSpareProcesses()) {
             $toTerminate = $idleProcesses - $config->getMaxSpareProcesses();
-            $candidatesToTermination = 0;
+            $spareProcessesFound = 0;
 
             foreach ($processes as $pid => $processStatus) {
                 if (!ProcessState::isIdle($processStatus)) {
@@ -54,33 +89,18 @@ class LruDiscipline implements DisciplineInterface
 
                 if ($processStatus['time'] < $expireTime) {
                     $processesToTerminate[$processStatus['time']] = $pid;
-                    ++$candidatesToTermination;
+                    ++$spareProcessesFound;
 
-                    if ($candidatesToTermination === $toTerminate || $candidatesToTermination === $config->getMaxSpareProcesses()) {
+                    if ($spareProcessesFound === $toTerminate) {
                         break;
                     }
                 }
             }
-            
+
             ksort($processesToTerminate, SORT_ASC);
             $processesToTerminate = array_slice($processesToTerminate, 0, $toTerminate);
         }
 
-        // start additional processes, if number of them is too small.
-        if ($idleProcesses < $config->getMinSpareProcesses()) {
-            $idleProcessSlots = $processes->getSize() - $processes->count();
-
-            $processesToCreate = min($idleProcessSlots, $config->getMinSpareProcesses() - $idleProcesses);
-        }
-
-        if ($allProcesses === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
-            $processesToCreate = $config->getMaxSpareProcesses();
-        }
-
-        return [
-            'create' => $processesToCreate,
-            'terminate' => [],
-            'soft_terminate' => $processesToTerminate,
-        ];
+        return $processesToTerminate;
     }
 }

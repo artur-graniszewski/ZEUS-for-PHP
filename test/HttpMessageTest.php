@@ -107,6 +107,59 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $this->assertTrue($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be closed after keep-alive timeout");
     }
 
+    public function responseBodyProvider()
+    {
+        return [
+            ['TEST MESSAGE!'],
+            ["TEST\nMessage\n!"],
+            [str_pad('TEST STRING', 10000, '-', STR_PAD_RIGHT)],
+        ];
+    }
+
+    /**
+     * @param string $responseBody
+     * @dataProvider responseBodyProvider
+     */
+    public function testIfResponseBodyIsCorrect($responseBody)
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new TestConnection();
+        /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
+        $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
+            echo $responseBody;
+        }, null, $testConnection);
+
+        $httpAdapter->onMessage($testConnection, $message);
+
+        $rawResponse = Response::fromString($testConnection->getSentData());
+        $this->assertEquals($responseBody, $rawResponse->getBody());
+    }
+
+    /**
+     * @param string $responseBody
+     * @dataProvider responseBodyProvider
+     */
+    public function testIfGzippedResponseBodyIsCorrect($responseBody)
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost', 'Accept-Encoding' => 'gzip, deflate'], "1.1");
+        $testConnection = new TestConnection();
+        /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
+        $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
+            echo $responseBody;
+        }, null, $testConnection);
+
+        $httpAdapter->onMessage($testConnection, $message);
+
+        $rawResponse = Response::fromString($testConnection->getSentData());
+
+        if (strlen($responseBody) > 8192) {
+            $this->assertEquals('gzip', $rawResponse->getHeaders()->get('Content-Encoding')->getFieldValue());
+            $this->assertLessThan(strlen($responseBody), $rawResponse->getHeaders()->get('Content-Length')->getFieldValue());
+        }
+        $this->assertEquals($responseBody, $rawResponse->getBody());
+
+    }
+
     public function testIfHttp11ConnectionIsClosedWithConnectionHeaderAfterSingleRequest()
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "close", 'Host' => '127.0.0.1:80'], "1.1");

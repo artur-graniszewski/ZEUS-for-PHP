@@ -4,8 +4,7 @@ namespace Zeus\ServerService\Http;
 
 class MimeType
 {
-    protected static
-        $mimeTypes = [
+    protected static $mimeTypes = [
         '123' => 'application/vnd.lotus-1-2-3',
         '3dml' => 'text/vnd.in3d.3dml',
         '3ds' => 'image/x-3ds',
@@ -998,10 +997,6 @@ class MimeType
     {
         $extension = pathinfo($fileName, PATHINFO_EXTENSION);
 
-        if (isset(static::$mimeTypes[$extension])) {
-            return static::$mimeTypes[$extension];
-        }
-
-        return mime_content_type($fileName);
+        return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : mime_content_type($fileName);
     }
 }

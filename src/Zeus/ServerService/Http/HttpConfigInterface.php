@@ -10,10 +10,10 @@ interface HttpConfigInterface
     public function getKeepAliveTimeout();
 
     /**
-     * @param int $keepAliveTimeout
+     * @param int $timeout
      * @return HttpConfigInterface
      */
-    public function setKeepAliveTimeout($keepAliveTimeout);
+    public function setKeepAliveTimeout($timeout);
 
     /**
      * @return int
@@ -21,10 +21,10 @@ interface HttpConfigInterface
     public function getMaxKeepAliveRequestsLimit();
 
     /**
-     * @param int $keepAliveRequests
+     * @param int $limit
      * @return HttpConfigInterface
      */
-    public function setMaxKeepAliveRequestsLimit($keepAliveRequests);
+    public function setMaxKeepAliveRequestsLimit($limit);
 
     /**
      * @return boolean
@@ -32,9 +32,9 @@ interface HttpConfigInterface
     public function isKeepAliveEnabled();
 
     /**
-     * @param boolean $keepAliveEnabled
+     * @param boolean $isEnabled
      * @return HttpConfigInterface
      */
-    public function setKeepAliveEnabled($keepAliveEnabled);
+    public function setKeepAliveEnabled($isEnabled);
 
 }

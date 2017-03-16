@@ -45,9 +45,6 @@ final class Scheduler
     /** @var ProcessState */
     protected $schedulerStatus;
 
-    /** @var ProcessState */
-    protected $processStatusTemplate;
-
     /** @var Process */
     protected $processService;
 
@@ -141,7 +138,7 @@ final class Scheduler
      */
     public function __construct($config, Process $processService, LoggerInterface $logger, IpcAdapterInterface $ipcAdapter, SchedulerEvent $schedulerEvent, DisciplineInterface $discipline)
     {
-        $this->discipline = new LruDiscipline();
+        $this->discipline = $discipline;
         $this->config = new Config($config);
         $this->ipcAdapter = $ipcAdapter;
         $this->processService = $processService;
@@ -175,21 +172,15 @@ final class Scheduler
      */
     protected function attach(EventManagerInterface $events)
     {
-        $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(EventInterface $e) { $this->addNewProcess($e);}, -10000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(EventInterface $e) { $this->onProcessInit($e);});
-        $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(EventInterface $e) { $this->onProcessExit($e);}, -10000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) { exit();}, -10000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(EventInterface $e) { $this->onProcessMessage($e);});
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(EventInterface $e) { $this->onShutdown($e);});
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(EventInterface $e) {
-            /** @var \Exception $exception */
-            $exception = $e->getParam('exception');
+        $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(SchedulerEvent $e) { $this->addNewProcess($e);}, -10000);
+        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) { $this->onProcessInit($e);});
+        $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, -10000);
+        $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) { $this->onProcessExit($e); }, -10000);
+        $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(SchedulerEvent $e) { $this->onProcessMessage($e);});
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);});
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, -10000);
 
-            $status = $exception ? $exception->getCode(): 0;
-            exit($status);
-        }, -10000);
-
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(EventInterface $e) {
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
             $this->handleMessages();
             $this->manageProcesses($this->discipline);
@@ -210,6 +201,18 @@ final class Scheduler
      * @param SchedulerEvent $event
      */
     protected function onProcessExit(SchedulerEvent $event)
+    {
+        /** @var \Exception $exception */
+        $exception = $event->getParam('exception');
+
+        $status = $exception ? $exception->getCode(): 0;
+        exit($status);
+    }
+
+    /**
+     * @param SchedulerEvent $event
+     */
+    protected function onProcessTerminated(SchedulerEvent $event)
     {
         $pid = $event->getParam('uid');
         if ($pid === $this->getId()) {
@@ -508,7 +511,7 @@ final class Scheduler
     /**
      * @param EventInterface $event
      */
-    protected function addNewProcess(EventInterface $event)
+    protected function addNewProcess(SchedulerEvent $event)
     {
         $pid = $event->getParam('uid');
 

@@ -127,9 +127,10 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $em = $scheduler->getEventManager();
         $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
-            function(EventInterface $e) use ($em) {
+            function(SchedulerEvent $e) use ($em) {
                 $e->stopPropagation(true);
-                $em->trigger(SchedulerEvent::EVENT_PROCESS_CREATED, null, []);
+                $e->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+                $em->triggerEvent($e);
             }
         );
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,

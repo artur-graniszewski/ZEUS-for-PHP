@@ -113,17 +113,15 @@ class ZendFrameworkDispatcher implements DispatcherInterface
         Module::setOverrideConfig($config);
         if (!$app) {
             $app = ApplicationProxy::init($this->getApplicationConfig());
-            $event = $app->getMvcEvent();
-        } else {
-            $event = $app->getMvcEvent();
-            $event->setName(MvcEvent::EVENT_BOOTSTRAP);
-            $event->setTarget($app);
-            $event->setApplication($app);
-            $event->setRequest($httpRequest);
-            $event->setResponse($app->getServiceManager()->get('Response'));
-            $event->setRouter($app->getServiceManager()->get('Router'));
         }
 
+        $event = $app->getMvcEvent();
+        $event->setName(MvcEvent::EVENT_BOOTSTRAP);
+        $event->setTarget($app);
+        $event->setApplication($app);
+        $event->setRequest($httpRequest);
+        $event->setResponse($app->getServiceManager()->get('Response'));
+        $event->setRouter($app->getServiceManager()->get('Router'));
         $event->setRequest($httpRequest);
 
         $app->run();

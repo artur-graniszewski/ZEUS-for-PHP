@@ -3,6 +3,7 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
+use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -24,7 +25,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler(2, function(Scheduler $scheduler) use (&$statuses, &$statusOutputs) {
             $schedulerStatus = $scheduler->getStatus();
             $statuses[] = $schedulerStatus;
-            $schedulerStatusView = new SchedulerStatusView($scheduler);
+            $schedulerStatusView = new SchedulerStatusView($scheduler, Console::getInstance());
             $statusOutputs[] = $schedulerStatusView->getStatus();
         });
 
@@ -55,7 +56,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
     public function testSchedulerStatusInOfflineSituation()
     {
         $scheduler = $this->getScheduler(1);
-        $schedulerStatusView = new SchedulerStatusView($scheduler);
+        $schedulerStatusView = new SchedulerStatusView($scheduler, Console::getInstance());
         $statusOutput = $schedulerStatusView->getStatus();
         $this->assertFalse($statusOutput, 'No output should be present when service is offline');
     }

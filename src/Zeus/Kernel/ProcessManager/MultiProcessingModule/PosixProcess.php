@@ -172,37 +172,31 @@ final class PosixProcess implements MultiProcessingModuleInterface
         $pcntl = $this->getPcntlBridge();
         $pid = $pcntl->pcntlFork();
 
-        if ($pid === -1) {
-            throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
-        } else if ($pid) {
-            // we are the parent
-            $event->setParam('uid', $pid);
-            $processEvent = $this->event;
-            $processEvent->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-            $params = $event->getParams();
-            $params['uid'] = $pid;
-            $params['server'] = $event->getParam('server');
-            $processEvent->setParams($params);
-            $this->events->triggerEvent($processEvent);
+        switch ($pid) {
+            case -1:
+                throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
+            case 0:
+                // we are the new process
+                $pcntl->pcntlSignal(SIGTERM, SIG_DFL);
+                $pcntl->pcntlSignal(SIGINT, SIG_DFL);
+                $pcntl->pcntlSignal(SIGHUP, SIG_DFL);
+                $pcntl->pcntlSignal(SIGQUIT, SIG_DFL);
+                $pcntl->pcntlSignal(SIGTSTP, SIG_DFL);
+                $pid = getmypid();
 
-            return;
-        } else {
-            $pid = getmypid();
+                $eventName = SchedulerEvent::EVENT_PROCESS_INIT;
+
+                break;
+            default:
+                // we are the parent
+                $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
+
+                break;
         }
 
-        // we are the new process
-        $pcntl->pcntlSignal(SIGTERM, SIG_DFL);
-        $pcntl->pcntlSignal(SIGINT, SIG_DFL);
-        $pcntl->pcntlSignal(SIGHUP, SIG_DFL);
-        $pcntl->pcntlSignal(SIGQUIT, SIG_DFL);
-        $pcntl->pcntlSignal(SIGTSTP, SIG_DFL);
-
         $event->setParam('uid', $pid);
-        $processEvent = $this->event;
-
-        $processEvent->setName(SchedulerEvent::EVENT_PROCESS_INIT);
-        $processEvent->setParams($event->getParams());
-        $this->events->triggerEvent($processEvent);
+        $event->setName($eventName);
+        $this->events->triggerEvent($event);
     }
 
     public function onSchedulerInit()

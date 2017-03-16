@@ -6,9 +6,13 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
 
+/**
+ * Class Process
+ * @package Zeus\Kernel\ProcessManager
+ * @internal
+ */
 final class Process
 {
     /** @var int Time to live before terminating (# of requests left till the auto-shutdown) */

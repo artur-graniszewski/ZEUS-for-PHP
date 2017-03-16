@@ -2,11 +2,11 @@
 
 namespace Zeus\Controller;
 
+use Zend\Console\Console;
 use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zend\Log\Writer;
 use Zeus\Kernel\ProcessManager\Status\SchedulerStatusView;
 use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
@@ -136,7 +136,7 @@ class ZeusController extends AbstractActionController
         $services = $this->getServices($serviceName, false);
 
         foreach ($services as $serviceName => $service) {
-            $schedulerStatus = new SchedulerStatusView($service->getScheduler());
+            $schedulerStatus = new SchedulerStatusView($service->getScheduler(), Console::getInstance());
             $status = $schedulerStatus->getStatus();
 
             if ($status) {

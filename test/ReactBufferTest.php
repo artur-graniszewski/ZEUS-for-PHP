@@ -46,6 +46,24 @@ class ReactBufferTest extends PHPUnit_Framework_TestCase
         $this->assertFalse($buffer->isWritable());
     }
 
+    public function testWrite()
+    {
+        $mockNeverCalled = $this->createCallableMock();
+        $mockNeverCalled
+            ->expects($this->never())
+            ->method('__invoke');
+
+        $sockets = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+
+        $loop = $this->createWriteableLoopMock();
+
+        $buffer = new ReactWritableHighSpeedBuffer($sockets[0], $loop);
+        $buffer->on('error', $mockNeverCalled);
+
+        $buffer->write("test1234\n");
+        $this->assertSame("test1234\n", fread($sockets[1], 1024));
+    }
+
     public function testWritingToClosedBufferShouldNotWriteToStream()
     {
         $stream = fopen('php://temp', 'r+');

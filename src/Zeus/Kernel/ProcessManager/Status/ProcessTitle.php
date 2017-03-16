@@ -4,24 +4,12 @@ namespace Zeus\Kernel\ProcessManager\Status;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\ProcessManager\EventsInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class ProcessTitle
 {
-    /** @var string */
-    protected $serviceName;
-
     /** @var EventManagerInterface */
     protected $events;
-
-    /**
-     * @param string $serviceName
-     */
-    public function _construct($serviceName)
-    {
-        $this->serviceName = $serviceName;
-    }
 
     /**
      * @param string $title
@@ -66,7 +54,12 @@ class ProcessTitle
 
         $function = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $function));
 
-        list($junk, $taskType, $status) = explode('_', $function, 3);
+        list($eventType, $taskType, $status) = explode('_', $function, 3);
+
+        if ($eventType === 'INTERNAL') {
+
+            return;
+        }
 
         if ($event->getParam('cpu_usage') !== null || $event->getParam('requests_finished') !== null) {
             $this->setTitle(sprintf("%s %s [%s] %s req done, %s rps, %d%% CPU usage",
@@ -77,12 +70,14 @@ class ProcessTitle
                 ProcessState::addUnitsToNumber($event->getParam('requests_per_second')),
                 $event->getParam('cpu_usage')
             ));
-        } else {
-            $this->setTitle(sprintf("%s %s [%s]",
-                $taskType,
-                $event->getParam('service_name'),
-                $status
-            ));
+
+            return;
         }
+
+        $this->setTitle(sprintf("%s %s [%s]",
+            $taskType,
+            $event->getParam('service_name'),
+            $status
+        ));
     }
 }

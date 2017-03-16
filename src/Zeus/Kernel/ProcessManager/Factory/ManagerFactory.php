@@ -15,7 +15,12 @@ use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\ServerService\ServerServiceInterface;
 
-class ManagerFactory implements FactoryInterface
+/**
+ * Class ManagerFactory
+ * @package Zeus\Kernel\ProcessManager\Factory
+ * @internal
+ */
+final class ManagerFactory implements FactoryInterface
 {
     /**
      * Create an object
@@ -49,11 +54,8 @@ class ManagerFactory implements FactoryInterface
                 throw new \RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
             }
 
-            if (isset($serviceConfig['logger_adapter'])) {
-                $serviceLogger = $container->build($serviceConfig['logger_adapter'], ['service_name' => $serviceName]);
-            } else {
-                $serviceLogger = $container->build(LoggerInterface::class, ['service_name' => $serviceName]);
-            }
+            $loggerAdapter = isset($serviceConfig['logger_adapter']) ? $serviceConfig['logger_adapter'] : LoggerInterface::class;
+            $serviceLogger = $container->build($loggerAdapter, ['service_name' => $serviceName]);
 
             /** @var Scheduler $scheduler */
             $scheduler = $container->build(Scheduler::class, [
@@ -65,18 +67,20 @@ class ManagerFactory implements FactoryInterface
                 ]
             );
 
-            if ($container->has($serviceAdapter)) {
-                $services[$serviceName] = $container->build($serviceAdapter,
-                    [
-                        'scheduler_adapter' => $scheduler,
-                        'config' => $serviceConfig,
-                        'logger_adapter' => $serviceLogger,
-                        'ipc_adapter' => $scheduler->getIpcAdapter(),
-                        'service_name' => $serviceName
-                    ]);
-            } else {
+            if (!$container->has($serviceAdapter)) {
                 throw new \LogicException("No such service $serviceName");
             }
+
+            $services[$serviceName] = $container->build($serviceAdapter,
+                [
+                    'scheduler_adapter' => $scheduler,
+                    'config' => $serviceConfig,
+                    'logger_adapter' => $serviceLogger,
+                    'ipc_adapter' => $scheduler->getIpcAdapter(),
+                    'service_name' => $serviceName
+                ]
+            );
+
 
             $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
             $manager->registerService($serviceName, $services[$serviceName], $autoStart);

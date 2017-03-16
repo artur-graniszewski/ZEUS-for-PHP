@@ -110,13 +110,16 @@ final class FifoAdapter implements IpcAdapterInterface
         $readSocket = [$this->ipc[$channelNumber]];
         $writeSocket = $except = [];
 
-        if ($value = @stream_select($readSocket, $writeSocket, $except, 0, 100)) {
-            $message = fgets($readSocket[0], 165536);
+        if (!@stream_select($readSocket, $writeSocket, $except, 0, 100)) {
 
-            if (is_string($message) && $message !== "") {
-                $message = unserialize(base64_decode($message));
-                return $message;
-            }
+            return null;
+        }
+
+        $message = fgets($readSocket[0], 165536);
+
+        if (is_string($message) && $message !== "") {
+            $message = unserialize(base64_decode($message));
+            return $message;
         }
     }
 

@@ -36,7 +36,7 @@ class DispatcherWrapper implements DispatcherInterface
     public function dispatch(Request $httpRequest)
     {
         /** @var Process $process */
-        $process = $this->config['service']->getProcess();
+        //$process = $this->config['service']->getProcess();
         //$process->setRunning($httpRequest->getUriString());
         $result = $this->anotherDispatcher->dispatch($httpRequest);
         //$process->setWaiting($httpRequest->getUriString());

@@ -56,11 +56,13 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $request = Request::fromString("GET test.xml HTTP/1.0\r\n\r\n");
         $response = $dispatcher->dispatch($request);
 
+        $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
         $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
 
         $request = Request::fromString("GET test_xml HTTP/1.0\r\n\r\n");
         $response = $dispatcher->dispatch($request);
 
+        $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
         $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
     }
 
