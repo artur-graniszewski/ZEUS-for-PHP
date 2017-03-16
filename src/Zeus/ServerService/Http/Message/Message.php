@@ -398,9 +398,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $acceptEncoding = $request->getHeaderOverview('Accept-Encoding', true);
         $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
 
-        if ($requestPhase === static::REQUEST_PHASE_SENDING && isset($buffer[8192]) && in_array('gzip', $encodingsArray)) {
-            $buffer = substr(gzcompress($buffer, 1, ZLIB_ENCODING_GZIP), 0, -4);
-            $responseHeaders->addHeader(new ContentEncoding('gzip'));
+        if ($requestPhase === static::REQUEST_PHASE_SENDING && isset($buffer[8192]) && in_array('deflate', $encodingsArray)) {
+            $buffer = gzcompress($buffer, 1);
+            $responseHeaders->addHeader(new ContentEncoding('deflate'));
             $responseHeaders->addHeader(new Vary('Accept'));
         }
         $responseHeaders->addHeader(new ContentLength(strlen($buffer)));

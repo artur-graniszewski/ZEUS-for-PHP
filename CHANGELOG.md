@@ -3,6 +3,7 @@
 ## Version 1.3.6
 - [Fix] Scheduler ignored custom configuration and used default `LruDiscipline` exclusively
 - [Fix] Typo in constructor's name of ProcessTitle class, method removed as it was never executed.
+- [Fix] Due to broken gzcompress() function in Facebook HHVM, ZEUS Web Server will now use `deflate` rather than `gzip` to compress HTTP responses 
 - [Improvement] Lots of code improvements based on static code analysis, minor performance tweaks
 - [Improvement] Changelog extracted from the main README file
 
