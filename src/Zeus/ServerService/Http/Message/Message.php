@@ -143,7 +143,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /**
      * @param ConnectionInterface $connection
-     * @param \Exception $exception
+     * @param \Exception|\Throwable $exception
      */
     public function onError(ConnectionInterface $connection, $exception)
     {
@@ -256,12 +256,22 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     {
         $this->requestPhase = static::REQUEST_PHASE_PROCESSING;
 
-        ob_start(function($buffer) use ($connection) { $this->sendResponse($connection, $buffer); }, $this->bufferSize);
-        $this->mapUploadedFiles($this->request);
-        $this->response = $callback($this->request);
+        try {
+            ob_start(function ($buffer) use ($connection) {
+                $this->sendResponse($connection, $buffer);
+            }, $this->bufferSize);
+            $this->mapUploadedFiles($this->request);
+            $this->response = $callback($this->request);
 
-        $this->requestPhase = static::REQUEST_PHASE_SENDING;
-        ob_end_flush();
+            $this->requestPhase = static::REQUEST_PHASE_SENDING;
+            ob_end_flush();
+        } catch (\Exception $exception) {
+            ob_end_clean();
+            throw $exception;
+        } catch (\Throwable $exception) {
+            ob_end_clean();
+            throw $exception;
+        }
 
         return $this;
     }
