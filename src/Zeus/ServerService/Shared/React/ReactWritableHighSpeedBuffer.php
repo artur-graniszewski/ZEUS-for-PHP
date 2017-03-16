@@ -58,7 +58,12 @@ class ReactWritableHighSpeedBuffer extends Buffer
             );
         });
 
-        $sent = stream_socket_sendto($this->stream, $this->data);
+        $sent = defined('HHVM_VERSION') ?
+            // HHVM
+            fwrite($this->stream, $this->data)
+            :
+            // PHP
+            stream_socket_sendto($this->stream, $this->data);
 
         restore_error_handler();
 

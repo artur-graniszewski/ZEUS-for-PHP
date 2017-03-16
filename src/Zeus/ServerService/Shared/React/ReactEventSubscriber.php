@@ -9,7 +9,12 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-class ReactEventSubscriber
+/**
+ * Class ReactEventSubscriber
+ * @package Zeus\ServerService\Shared\React
+ * @internal
+ */
+final class ReactEventSubscriber
 {
     /** @var LoopInterface */
     protected $loop;

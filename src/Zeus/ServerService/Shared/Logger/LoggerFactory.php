@@ -73,6 +73,7 @@ class LoggerFactory implements FactoryInterface
         $writer->setFormatter($formatter);
         if ($showBanner && $banner) {
             $loggerWrapper->info($banner);
+            static::$showBanner = false;
         }
 
         return $loggerWrapper;

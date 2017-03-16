@@ -44,7 +44,9 @@ class Module implements
      */
     public function onBootstrap(EventInterface $event)
     {
-
+        if (!ini_get('date.timezone')) {
+            date_default_timezone_set("UTC");
+        }
     }
 
     /**

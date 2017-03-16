@@ -40,7 +40,6 @@ class ZeusController extends AbstractActionController
         $this->config = $config;
         $this->manager = $manager;
         $this->logger = $logger;
-        date_default_timezone_set("UTC");
     }
 
     /**
@@ -232,8 +231,10 @@ class ZeusController extends AbstractActionController
 
         $signalInfo = [];
 
-        while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
-            $servicesLeft--;
+        if (function_exists('pcntl_sigtimedwait')) {
+            while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
+                $servicesLeft--;
+            }
         }
 
         $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount - $servicesLeft));
