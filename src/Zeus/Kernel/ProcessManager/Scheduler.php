@@ -215,15 +215,6 @@ final class Scheduler
     protected function onProcessTerminated(SchedulerEvent $event)
     {
         $pid = $event->getParam('uid');
-        if ($pid === $this->getId()) {
-            $this->log(\Zend\Log\Logger::DEBUG, "Scheduler is exiting...");
-            $event = $this->event;
-            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParams($this->getEventExtraData());
-            $this->getEventManager()->triggerEvent($event);
-            return;
-        }
-
         $this->log(\Zend\Log\Logger::DEBUG, "Process $pid exited");
 
         if (isset($this->processes[$pid])) {

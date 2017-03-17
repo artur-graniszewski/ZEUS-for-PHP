@@ -2,48 +2,15 @@
 
 namespace Zeus\ServerService\Http;
 
-class Config implements HttpConfigInterface
+class Config extends \Zend\Config\Config implements HttpConfigInterface
 {
-    /** @var int */
-    private $keepAliveTimeout = 5;
-
-    /** @var int */
-    private $maxKeepAliveRequests = 100;
-
-    /** @var bool */
-    private $isKeepAliveEnabled = true;
-
-    /** @var int */
-    private $listenPort = 0;
-
-    /** @var string */
-    private $listenAddress = '';
-
     /**
      * Config constructor.
      * @param mixed[] $settings
      */
-    public function __construct($settings = null)
+    public function __construct($settings = [])
     {
-        if (isset($settings['listen_port'])) {
-            $this->setListenPort($settings['listen_port']);
-        }
-
-        if (isset($settings['listen_address'])) {
-            $this->setListenAddress($settings['listen_address']);
-        }
-
-        if (isset($settings['keep_alive_enabled'])) {
-            $this->setKeepAliveEnabled($settings['keep_alive_enabled']);
-        }
-
-        if (isset($settings['keep_alive_timeout'])) {
-            $this->setKeepAliveTimeout($settings['keep_alive_timeout']);
-        }
-
-        if (isset($settings['max_keep_alive_requests_limit'])) {
-            $this->setKeepAliveTimeout($settings['max_keep_alive_requests_limit']);
-        }
+        parent::__construct($settings, true);
     }
 
     /**
@@ -51,16 +18,16 @@ class Config implements HttpConfigInterface
      */
     public function getListenPort()
     {
-        return $this->listenPort;
+        return $this->get('listen_port');
     }
 
     /**
      * @param int $port
-     * @return Config
+     * @return $this
      */
     public function setListenPort($port)
     {
-        $this->listenPort = $port;
+        $this->offsetSet('listen_port', $port);
 
         return $this;
     }
@@ -70,16 +37,16 @@ class Config implements HttpConfigInterface
      */
     public function getListenAddress()
     {
-        return $this->listenAddress;
+        return $this->get('listen_address');
     }
 
     /**
      * @param string $address
-     * @return Config
+     * @return $this
      */
     public function setListenAddress($address)
     {
-        $this->listenAddress = $address;
+        $this->offsetSet('listen_address', $address);
 
         return $this;
     }
@@ -89,16 +56,16 @@ class Config implements HttpConfigInterface
      */
     public function getKeepAliveTimeout()
     {
-        return $this->keepAliveTimeout;
+        return $this->get('keep_alive_timeout');
     }
 
     /**
      * @param int $timeout
-     * @return Config
+     * @return $this
      */
     public function setKeepAliveTimeout($timeout)
     {
-        $this->keepAliveTimeout = $timeout;
+        $this->offsetSet('keep_alive_timeout', $timeout);
 
         return $this;
     }
@@ -108,35 +75,35 @@ class Config implements HttpConfigInterface
      */
     public function getMaxKeepAliveRequestsLimit()
     {
-        return $this->maxKeepAliveRequests;
+        return $this->get('max_keep_alive_requests_limit');
     }
 
     /**
      * @param int $limit
-     * @return Config
+     * @return $this
      */
     public function setMaxKeepAliveRequestsLimit($limit)
     {
-        $this->maxKeepAliveRequests = $limit;
+        $this->offsetSet('max_keep_alive_requests_limit', $limit);
 
         return $this;
     }
 
     /**
-     * @return boolean
+     * @return bool
      */
     public function isKeepAliveEnabled()
     {
-        return $this->isKeepAliveEnabled;
+        return $this->get('enable_keep_alive');
     }
 
     /**
-     * @param boolean $isEnabled
-     * @return Config
+     * @param bool $isEnabled
+     * @return $this
      */
-    public function setKeepAliveEnabled($isEnabled)
+    public function setIsKeepAliveEnabled($isEnabled)
     {
-        $this->isKeepAliveEnabled = $isEnabled;
+        $this->offsetSet('enable_keep_alive', $isEnabled);
 
         return $this;
     }

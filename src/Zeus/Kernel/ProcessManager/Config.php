@@ -30,7 +30,7 @@ class Config extends \Zend\Config\Config implements ConfigInterface
 
     /**
      * @param string $serviceName
-     * @return Config
+     * @return $this
      */
     public function setServiceName($serviceName)
     {
@@ -148,7 +148,7 @@ class Config extends \Zend\Config\Config implements ConfigInterface
      */
     public function setMaxSpareProcesses($limit)
     {
-        $this->offsetSet('min_spare_processes', $limit);
+        $this->offsetSet('max_spare_processes', $limit);
 
         return $this;
     }

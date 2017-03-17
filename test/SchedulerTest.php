@@ -407,4 +407,30 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, count($processesCreated), 'All processes should have been planned to be terminated on scheduler shutdown');
         $this->assertEquals(0, count($unknownProcesses), 'No unknown processes should have been terminated');
     }
+
+    public function testSchedulerIsTerminatingIfPidFileIsInvalid()
+    {
+        $scheduler = $this->getScheduler(1);
+        $scheduler->getConfig()->setIpcDirectory('invalidSchema://invalidUrl');
+        $em = $scheduler->getEventManager();
+
+        $exitDetected = false;
+        $exception = null;
+
+        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
+        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
+            function(SchedulerEvent $e) use (&$exitDetected, &$exception) {
+                $exitDetected = true;
+                $e->stopPropagation(true);
+                $exception = $e->getParam('exception');
+            },
+            -5000
+        );
+
+        $scheduler->start(true);
+
+        $this->assertTrue($exitDetected, "Scheduler should shutdown when it can't create PID file");
+        $this->assertInstanceOf(ProcessManagerException::class, $exception, "Exception should be returned in SchedulerEvent");
+
+    }
 }
