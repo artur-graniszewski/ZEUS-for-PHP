@@ -11,7 +11,7 @@ trait RegularEncoding
 
     public function decodeRegularRequestBody(Request $request, & $message)
     {
-        $expectedBodyLength = $request->getHeaderOverview('Content-Length');
+        $expectedBodyLength = $request->getHeaderOverview('Content-Length', false);
 
         if (is_null($expectedBodyLength) || !ctype_digit($expectedBodyLength) || $expectedBodyLength < 0) {
             throw new \InvalidArgumentException("Invalid or missing Content-Length header: $expectedBodyLength", Response::STATUS_CODE_400);

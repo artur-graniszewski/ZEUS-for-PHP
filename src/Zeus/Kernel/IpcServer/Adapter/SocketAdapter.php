@@ -97,15 +97,14 @@ final class SocketAdapter implements IpcAdapterInterface
         }
 
         if ($value === 0) {
-            return;
+            return null;
         }
 
-        if (defined('HHVM_VERSION')) {
+        defined('HHVM_VERSION') ?
             // HHVM...
-            $message = stream_get_line($readSocket[0], 165536);
-        } else {
+            $message = stream_get_line($readSocket[0], 165536)
+            :
             socket_recv($readSocket[0], $message, 165536, MSG_DONTWAIT);
-        }
 
         if (is_string($message) && $message !== "") {
             $message = unserialize(base64_decode($message));

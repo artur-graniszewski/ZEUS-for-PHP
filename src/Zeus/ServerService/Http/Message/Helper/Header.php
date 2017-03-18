@@ -23,7 +23,7 @@ trait Header
     {
         $host = $serverAddress;
         $port = null;
-        $fullHost = $request->getHeaderOverview('Host');
+        $fullHost = $request->getHeaderOverview('Host', false);
 
         if ($request->getVersion() === Request::VERSION_11) {
             if (!$fullHost) {

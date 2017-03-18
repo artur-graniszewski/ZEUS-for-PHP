@@ -307,7 +307,7 @@ final class Scheduler
      * @param bool $launchAsDaemon Run this server as a daemon?
      * @return $this
      */
-    public function start($launchAsDaemon = false)
+    public function start($launchAsDaemon)
     {
         $this->startTime = microtime(true);
         $this->log(\Zend\Log\Logger::INFO, "Starting server");

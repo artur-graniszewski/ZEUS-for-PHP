@@ -305,7 +305,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         // todo: validate hostname?
         if ($this->request->getVersion() === Request::VERSION_11) {
             // everything's ok, should we send "100 Continue" first?
-            $expectHeader = $this->request->getHeaderOverview('Expect');
+            $expectHeader = $this->request->getHeaderOverview('Expect', false);
             if ($expectHeader === '100-continue') {
                 $connection->write(sprintf("HTTP/%s 100 Continue\r\n\r\n", $this->request->getVersion()));
             }
