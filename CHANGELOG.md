@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.3.7
+- [Fix] Various fixes to ZEUS Web Server and Scheduler configuration classes based on static code analysis
+
 ## Version 1.3.6
 - [Fix] Scheduler ignored custom configuration and used default `LruDiscipline` exclusively
 - [Fix] Typo in constructor's name of ProcessTitle class, method removed as it was never executed.
