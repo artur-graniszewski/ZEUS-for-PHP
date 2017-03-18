@@ -22,6 +22,13 @@ class SchedulerStatusView
     /** @var AdapterInterface */
     protected $console;
 
+    protected $statusToCharMapping = [
+        ProcessState::WAITING => '_',
+        ProcessState::RUNNING => 'R',
+        ProcessState::EXITING => 'E',
+        ProcessState::TERMINATED => 'T',
+    ];
+
     /**
      * SchedulerStatusView constructor.
      * @param Scheduler $scheduler
@@ -70,45 +77,28 @@ class SchedulerStatusView
         $schedulerStatus = $payload['scheduler_status'];
 
         $idleChildren = 0;
-        $exitingChildren = 0;
         $busyChildren = 0;
         $allChildren = 0;
         $currentCpuUsage = 0;
         $currentUserCpuUsage = 0;
-        $currentSystemCpuUsage = 0;
+        $currentSysCpuUsage = 0;
 
         $processStatusChars = [];
 
         foreach ($processList as $processStatus) {
+            ++$allChildren;
             $processStatus = ProcessState::fromArray($processStatus);
+            $processStatusCode = $processStatus->getCode();
 
             $currentCpuUsage += $processStatus->getCpuUsage();
             $currentUserCpuUsage += $processStatus->getCurrentUserCpuTime();
-            $currentSystemCpuUsage += $processStatus->getCurrentSystemCpuTime();
+            $currentSysCpuUsage += $processStatus->getCurrentSystemCpuTime();
 
-            switch ($processStatus->getCode()) {
-                case ProcessState::WAITING:
-                    ++$idleChildren;
-                    ++$allChildren;
-                    $processStatusChars[$processStatus->getId()] = "_";
-                    break;
+            $processStatusChars[$processStatus->getId()] =
+                isset($this->statusToCharMapping[$processStatusCode]) ?
+                    $this->statusToCharMapping[$processStatusCode] : '?';
 
-                case ProcessState::RUNNING:
-                    ++$busyChildren;
-                    ++$allChildren;
-                    $processStatusChars[$processStatus->getId()] = "R";
-                    break;
-
-                case ProcessState::EXITING:
-                case ProcessState::TERMINATED:
-                    ++$exitingChildren;
-                    ++$allChildren;
-                    $processStatusChars[$processStatus->getId()] = "T";
-                    break;
-
-                default:
-                    break;
-            }
+            $processStatusCode === ProcessState::WAITING ? ++$idleChildren : ++$busyChildren;
         }
 
         $statusTab = str_pad(implode($processStatusChars), $this->getScheduler()->getConfig()->getMaxProcesses(), '.', STR_PAD_RIGHT);

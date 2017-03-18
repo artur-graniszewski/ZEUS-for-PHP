@@ -7,7 +7,6 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
-use Zeus\ServerService\Http\Message\RequestWrapper;
 
 class RequestFactory implements FactoryInterface
 {
@@ -27,6 +26,6 @@ class RequestFactory implements FactoryInterface
     {
         $config = $container->get('configuration');
 
-        return new RequestWrapper($config['zeus_process_manager']['services']['Request']);
+        return $config['zeus_process_manager']['services']['Request'];
     }
 }

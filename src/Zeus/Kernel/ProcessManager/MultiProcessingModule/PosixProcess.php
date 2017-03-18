@@ -91,9 +91,9 @@ final class PosixProcess implements MultiProcessingModuleInterface
         } catch (\Exception $e) {
             if ($throwException) {
                 throw $e;
-            } else {
-                return false;
             }
+
+            return false;
         }
 
         return true;
@@ -105,7 +105,7 @@ final class PosixProcess implements MultiProcessingModuleInterface
      */
     public function onProcessTerminate(EventInterface $event)
     {
-        $this->terminateProcess($event->getParam('uid'), $event->getParam('soft'));
+        $this->terminateProcess($event->getParam('uid'), $event->getParam('soft', false));
     }
 
     /**
@@ -213,23 +213,14 @@ final class PosixProcess implements MultiProcessingModuleInterface
 
     /**
      * @param int $pid
-     * @param bool|false $useSoftTermination
+     * @param bool $useSoftTermination
      * @return $this
      */
-    protected function terminateProcess($pid, $useSoftTermination = false)
+    protected function terminateProcess($pid, $useSoftTermination)
     {
         $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
 
         return $this;
-    }
-
-    /**
-     * @param bool|false $useSoftTermination
-     * @return $this
-     */
-    public function terminateAllProcesses($useSoftTermination = false)
-    {
-        return $this->terminateProcess(0, $useSoftTermination);
     }
 
     /**

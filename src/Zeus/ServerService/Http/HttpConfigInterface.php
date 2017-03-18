@@ -35,6 +35,6 @@ interface HttpConfigInterface
      * @param boolean $isEnabled
      * @return HttpConfigInterface
      */
-    public function setKeepAliveEnabled($isEnabled);
+    public function setIsKeepAliveEnabled($isEnabled);
 
 }

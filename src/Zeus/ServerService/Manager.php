@@ -34,7 +34,7 @@ final class Manager
      * @param bool $isAutoStart
      * @return ServerServiceInterface[]
      */
-    public function getServices($isAutoStart = false)
+    public function getServices($isAutoStart)
     {
         $services = [];
 

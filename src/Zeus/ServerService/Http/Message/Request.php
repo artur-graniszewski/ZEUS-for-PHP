@@ -41,9 +41,9 @@ class Request extends ZendRequest
      * @param  string $buffer
      * @param  bool $allowCustomMethods
      * @throws \InvalidArgumentException
-     * @return Request
+     * @return $this
      */
-    public static function fromStringOfHeaders($buffer, $allowCustomMethods = true)
+    public static function fromStringOfHeaders($buffer, $allowCustomMethods)
     {
         if ("\r\n\r\n" !== substr($buffer, -4)) {
             throw new \InvalidArgumentException(
@@ -112,7 +112,12 @@ class Request extends ZendRequest
         return $request;
     }
 
-    public function getHeaderOverview($name, $toLower = false)
+    /**
+     * @param string $name
+     * @param bool $toLower
+     * @return null|string
+     */
+    public function getHeaderOverview($name, $toLower)
     {
         $name = strtolower($name);
         if (!isset($this->headersOverview[$name])) {
