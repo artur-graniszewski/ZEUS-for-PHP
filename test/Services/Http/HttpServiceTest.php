@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Services\Http;
 
 use PHPUnit_Framework_TestCase;
 use Zend\Http\Request;

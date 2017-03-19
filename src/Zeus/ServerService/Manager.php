@@ -12,6 +12,9 @@ final class Manager
     /** @var ServerServiceInterface[] */
     protected $services;
 
+    /** @var \Exception[] */
+    protected $brokenServices = [];
+
     public function __construct(array $services)
     {
         $this->services = $services;
@@ -60,5 +63,22 @@ final class Manager
         ];
 
         return $this;
+    }
+
+    /**
+     * @param string $serviceName
+     * @param \Exception $ex
+     */
+    public function registerBrokenService($serviceName, $ex)
+    {
+        $this->brokenServices[$serviceName] = $ex;
+    }
+
+    /**
+     * @return \Exception[]
+     */
+    public function getBrokenServices()
+    {
+        return $this->brokenServices;
     }
 }

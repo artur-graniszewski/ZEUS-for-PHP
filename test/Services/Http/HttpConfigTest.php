@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Services\Http;
 
 use Zeus\ServerService\Http\Config;
 use ZeusTest\Helpers\AbstractConfigTestHelper;
