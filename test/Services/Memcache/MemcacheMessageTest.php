@@ -19,8 +19,13 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
+        try {
+            $apcu = new Apcu();
+        } catch (\Exception $ex) {
+            $this->markTestSkipped('Could not use APCu adapter: ' . $ex->getMessage());
+        }
         $this->connection = new TestConnection();
-        $this->memcache = new Message(new Apcu([]), new Apcu([]));
+        $this->memcache = new Message($apcu, $apcu);
         $this->memcache->onOpen($this->connection);
     }
 
