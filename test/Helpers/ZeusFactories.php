@@ -3,7 +3,6 @@
 namespace ZeusTest\Helpers;
 
 use ReflectionProperty;
-use Zend\EventManager\EventInterface;
 use Zend\Log\Logger;
 use Zend\Mvc\Service\EventManagerFactory;
 use Zend\Mvc\Service\ModuleManagerFactory;

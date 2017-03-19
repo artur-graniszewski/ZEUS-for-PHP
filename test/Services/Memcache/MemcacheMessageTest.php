@@ -5,6 +5,7 @@ namespace ZeusTest\Services\Memcache;
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\StorageInterface;
+use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
 use Zeus\ServerService\Shared\React\ConnectionInterface;
 use ZeusTest\Helpers\TestConnection;
@@ -121,6 +122,51 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
         $response = $this->send("delete testkey6\r\n");
         $this->assertEquals("NOT_FOUND\r\n", $response);
+    }
+
+    public function testFlushCommand()
+    {
+        $ttl = time() + 5;
+        $value = str_pad('!', rand(3, 5), 'C', STR_PAD_RIGHT) . '#';
+        $length = strlen($value);
+        $response = $this->send("set testkey6 22222 $ttl $length\r\n$value\r\n");
+        $this->assertEquals("STORED\r\n", $response);
+
+        $response = $this->send("get testkey6\r\n");
+        $this->assertStringStartsWith("VALUE testkey6 22222 $length\r\n", $response);
+        $this->assertStringEndsWith("\r\nEND\r\n", $response);
+
+        $response = $this->send("flush_all\r\n");
+        $this->assertEquals("OK\r\n", $response);
+
+        $response = $this->send("get testkey6\r\n");
+        $this->assertEquals("END\r\n", $response);
+    }
+
+    public function testVersionCommand()
+    {
+        $version = Module::MODULE_VERSION;
+        $response = $this->send("version\r\n");
+        $this->assertEquals("VERSION $version\r\n", $response);
+    }
+
+    public function testFlushBeforeCommand()
+    {
+        $ttl = time() + 5;
+        $value = str_pad('!', rand(3, 5), 'C', STR_PAD_RIGHT) . '#';
+        $length = strlen($value);
+        $response = $this->send("set testkey6 22222 $ttl $length\r\n$value\r\n");
+        $this->assertEquals("STORED\r\n", $response);
+
+        $response = $this->send("get testkey6\r\n");
+        $this->assertStringStartsWith("VALUE testkey6 22222 $length\r\n", $response);
+        $this->assertStringEndsWith("\r\nEND\r\n", $response);
+
+        $response = $this->send("flush_all 1111\r\n");
+        $this->assertEquals("OK\r\n", $response);
+
+        $response = $this->send("get testkey6\r\n");
+        $this->assertEquals("END\r\n", $response);
     }
 
     public function testMathCommands()

@@ -160,6 +160,18 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
                 'regexp' => '~^(stats)' . "\r\n~",
                 'immediate' => true,
             ],
+            'flush' => [
+                'regexp' => '~^(flush_all)(?<noreply> noreply)?' . "\r\n~",
+                'immediate' => true,
+            ],
+            'flushBefore' => [
+                'regexp' => '~^(flush_all) ([0-9]+)(?<noreply> noreply)?' . "\r\n~",
+                'immediate' => true,
+            ],
+            'version' => [
+                'regexp' => '~^(version)' . "\r\n~",
+                'immediate' => true,
+            ],
         ];
     }
 
@@ -231,6 +243,25 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         }
 
         $this->sendStatus($success ? "DELETED" : "NOT_FOUND");
+    }
+
+    protected function version($command)
+    {
+        $this->connection->write("VERSION " . Module::MODULE_VERSION . "\r\n");
+    }
+
+    protected function flush($command)
+    {
+        $success = $this->cache->flush();
+
+        $this->sendStatus($success ? "OK" : "ERROR");
+    }
+
+    protected function flushBefore($command, $ttl)
+    {
+        $success = $this->cache->flush();
+
+        $this->sendStatus($success ? "OK" : "ERROR");
     }
 
     protected function fetch($command, $key)
