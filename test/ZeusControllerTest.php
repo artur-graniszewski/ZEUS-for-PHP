@@ -25,7 +25,11 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         parent::setUp();
-        mkdir(__DIR__ . '/tmp');
+        $tmpDir = __DIR__ . '/tmp';
+
+        if (!file_exists($tmpDir)) {
+            mkdir($tmpDir);
+        }
         file_put_contents(__DIR__ . '/tmp/test.log', '');
     }
 

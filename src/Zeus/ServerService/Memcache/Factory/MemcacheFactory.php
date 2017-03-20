@@ -29,16 +29,16 @@ class MemcacheFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         if (!class_exists('\Zend\Cache\StorageFactory')) {
-            throw new PrerequisitesNotMetException("Zend-cache component must be installed first");
+            throw new PrerequisitesNotMetException("zendframework/zend-cache component must be installed first");
         }
         $config = isset($options['config']) ? $options['config'] : [];
 
         /** @var StorageInterface $internalCache */
         $internalCache = $container->build($config['service_settings']['internal_cache']);
-        $internalCache->getOptions()->setNamespace($options['service_name']);
+        $internalCache->getOptions()->setNamespace($options['service_name'] . '_internal');
         /** @var StorageInterface $userCache */
         $userCache = $container->build($config['service_settings']['user_cache']);
-        $userCache->getOptions()->setNamespace($options['service_name']);
+        $userCache->getOptions()->setNamespace($options['service_name'] . '_user');
 
         $message = new Message($internalCache, $userCache);
 

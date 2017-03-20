@@ -4,6 +4,7 @@ namespace ZeusTest\Services\Memcache;
 
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Storage\Adapter\Apcu;
+use Zend\Cache\Storage\Adapter\Filesystem;
 use Zend\Cache\Storage\StorageInterface;
 use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
@@ -18,15 +19,37 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     /** @var StorageInterface */
     protected $memcache;
 
+    protected function getTmpDir()
+    {
+        $tmpDir = __DIR__ . '/../../tmp/';
+
+        if (!file_exists($tmpDir)) {
+            mkdir($tmpDir);
+        }
+        return $tmpDir;
+    }
+
+    public function tearDown()
+    {
+        $cache = new Filesystem(['cache_dir' => $this->getTmpDir()]);
+        $cache->flush();
+
+        rmdir(__DIR__ . '/../../tmp/');
+        parent::tearDown();
+    }
+
     public function setUp()
     {
         try {
-            $apcu = new Apcu();
+            $filesystem1 = new Filesystem(['cache_dir' => $this->getTmpDir()]);
+            $filesystem2 = new Filesystem(['cache_dir' => $this->getTmpDir()]);
         } catch (\Exception $ex) {
-            $this->markTestSkipped('Could not use APCu adapter: ' . $ex->getMessage());
+            $this->markTestSkipped('Could not use Filesystem adapter: ' . $ex->getMessage());
+
+            return;
         }
         $this->connection = new TestConnection();
-        $this->memcache = new Message($apcu, $apcu);
+        $this->memcache = new Message($filesystem1, $filesystem2);
         $this->memcache->onOpen($this->connection);
     }
 
@@ -86,7 +109,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
         $response = $this->send("gets testkey4 testkey3\r\n");
 
-        $found = preg_match("~^VALUE testkey4 12121212 $length ([0-9]+)~", $response, $matches);
+        $found = preg_match("~^VALUE testkey4 12121212 $length ([0-9]+)\r\n([^\r\n]+)\r\nEND\r\n~", $response, $matches);
         $this->assertTrue((bool) $found, 'Returned value should contain CAS token: ' . $response);
         $cas = $matches[1];
 
@@ -95,7 +118,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
         $value = str_pad('!', rand(3, 5), 'B', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
-        $response = $this->send("set testkey2 12121212 $ttl $length\r\n$value\r\n");
+        $response = $this->send("set testkey4 12121212 $ttl $length\r\n$value\r\n");
         $this->assertEquals("STORED\r\n", $response);
 
         $response = $this->send("cas testkey4 12121212 $ttl $length $cas\r\n$value\r\n");
@@ -195,12 +218,12 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     {
         $ttl = time() + 5;
 
-        $response = $this->send("set testkey7 1 $ttl 1\r\na\r\n");
+        $response = $this->send("set testkey8 1 $ttl 1\r\na\r\n");
         $this->assertEquals("STORED\r\n", $response);
-        $response = $this->send("get testkey7\r\n");
-        $this->assertEquals("VALUE testkey7 1 1\r\na\r\nEND\r\n", $response);
+        $response = $this->send("get testkey8\r\n");
+        $this->assertEquals("VALUE testkey8 1 1\r\na\r\nEND\r\n", $response);
 
-        $response = $this->send("incr testkey7 2\r\n");
+        $response = $this->send("incr testkey8 2\r\n");
         $this->assertEquals("ERROR\r\n", $response);
     }
 

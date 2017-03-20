@@ -60,14 +60,18 @@ return $config = [
     'caches' => [
         'zeus_internal_cache' => [
             'adapter' => [
-                'name'    => 'apcu',
-                //'options' => ['ttl' => 3600],
+                'name'    => 'filesystem',
+                'options' => [
+                    'cache_dir' => '/tmp/',
+                ]
             ],
         ],
         'zeus_user_cache' => [
             'adapter' => [
-                'name'    => 'apcu',
-                //'options' => ['ttl' => 3600],
+                'name'    => 'filesystem',
+                'options' => [
+                    'cache_dir' => '/tmp/',
+                ]
             ],
         ]
     ],
