@@ -18,11 +18,13 @@ use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\ServerService\Http\Factory\RequestFactory;
+use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
+use Zeus\ServerService\Memcache\Service as MemcacheService;
 
 return $config = [
     'console' => [
@@ -47,6 +49,7 @@ return $config = [
             Manager::class => ManagerFactory::class,
             PosixProcess::class => PosixProcessFactory::class,
             LruDiscipline::class => LruDisciplineFactory::class,
+            MemcacheService::class => MemcacheFactory::class,
             //Service::class => ServiceFactory::class,
         ],
         'abstract_factories' => [
@@ -54,6 +57,23 @@ return $config = [
             AbstractServerServiceFactory::class,
         ],
     ],
+    'caches' => [
+        'zeus_server_cache' => [
+            'adapter' => [
+                'name'    => 'apcu',
+                'options' => [
+                ]
+            ],
+        ],
+        'zeus_client_cache' => [
+            'adapter' => [
+                'name'    => 'apcu',
+                'options' => [
+                ]
+            ],
+        ]
+    ],
+
     'zeus_process_manager' => [
         'ipc_channels' => [
             'zeus_default_1' => [
@@ -89,6 +109,18 @@ return $config = [
                     ]
                 ],
                 //'logger_adapter' => LoggerInterface::class // optional
+            ],
+            'zeus_memcache' => [
+                'auto_start' => false,
+                'service_name' => 'zeus_memcache',
+                'scheduler_name' => 'zeus_web_scheduler',
+                'service_adapter' => \Zeus\ServerService\Memcache\Service::class,
+                'service_settings' => [
+                    'listen_port' => 11211,
+                    'listen_address' => '0.0.0.0',
+                    'server_cache' => 'zeus_server_cache',
+                    'client_cache' => 'zeus_client_cache',
+                ],
             ]
         ]
     ],

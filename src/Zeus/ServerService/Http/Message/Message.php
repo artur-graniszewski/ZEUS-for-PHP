@@ -90,9 +90,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     /** @var int */
     protected $posInRequestBody = 0;
 
-    /** @var bool */
-    protected $isKeepAliveRequest;
-
     /**
      * @var callable
      */
@@ -364,7 +361,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         $isChunkedResponse = ($transferEncoding && $transferEncoding->getFieldValue() === $this::ENCODING_CHUNKED);
         $requestPhase = $this->requestPhase;
-        $responseHeaders->addHeader($this->isKeepAliveRequest ? $this->keepAliveHeader : $this->closeHeader);
+        $responseHeaders->addHeader($request->getMetadata('isKeepAliveConnection') ? $this->keepAliveHeader : $this->closeHeader);
 
         // keep-alive should be disabled for HTTP/1.0 and chunked output (btw. Transfer Encoding should not be set for 1.0)
         // we can also disable chunked response if buffer contained entire response body
@@ -391,8 +388,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $responseHeaders->toString() .
             "Date: " . gmdate('D, d M Y H:i:s') . " GMT\r\n" .
             "\r\n");
-
-
 
         return $this;
     }
@@ -447,6 +442,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
         }
 
+        $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         if ($this->requestPhase !== static::REQUEST_PHASE_SENDING) {
             return '';
         }

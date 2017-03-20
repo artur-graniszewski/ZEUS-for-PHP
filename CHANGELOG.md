@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 1.4.0
+- [Feature] Added new Memcache Server Service with `zend-cache` storage adapters support.
+- [Fix] Major performance regression fix for ZEUS Web Server (bug introduced in version 1.3.6)
+- [Improvement] Documentation improvements and enhancements
+
 ## Version 1.3.7
 - [Fix] Various fixes to ZEUS Web Server and Scheduler configuration classes based on static code analysis
 

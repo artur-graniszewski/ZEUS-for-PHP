@@ -120,11 +120,38 @@ class ZeusController extends AbstractActionController
      */
     protected function getServices($serviceName = null, $autoStartOnly = false)
     {
+        if ($this->reportBrokenServices($serviceName)) {
+            return [];
+        }
+
         return $serviceName
             ?
             [$serviceName => $this->manager->getService($serviceName)]
             :
             $this->manager->getServices($autoStartOnly);
+    }
+
+    /**
+     * @param string $serviceName
+     * @return bool
+     */
+    protected function reportBrokenServices($serviceName)
+    {
+        $result = false;
+        $brokenServices = $this->manager->getBrokenServices();
+
+        $services = $serviceName !== null ? [$serviceName] : array_keys($brokenServices);
+
+        foreach ($services as $serviceName) {
+            if ($serviceName && isset($brokenServices[$serviceName])) {
+                /** @var \Exception $exception */
+                $exception = $brokenServices[$serviceName];
+                $this->logger->err("Service \"$serviceName\" is broken: " . $exception->getPrevious()->getMessage());
+                $result = true;
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -195,9 +222,10 @@ class ZeusController extends AbstractActionController
 
         $this->servicesRunning = count($services);
 
-        $this->logger->info(sprintf("Started %d services in %.2f seconds (PHP running for %.2f)", $this->servicesRunning, $managerTime, $phpTime));
+        $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
+        $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2f)", $this->servicesRunning, $managerTime, $phpTime));
         if (count($services) === 0) {
-            $this->logger->err('No Server Service found');
+            $this->logger->err('No server service started');
 
             return;
         }

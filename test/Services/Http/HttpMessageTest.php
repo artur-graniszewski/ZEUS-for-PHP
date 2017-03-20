@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Services\Http;
 
 use PHPUnit_Framework_TestCase;
 use Zend\Http\Request;
@@ -15,12 +15,12 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 {
     protected function getTmpDir()
     {
-        $tmpDir = __DIR__ . '/tmp/';
+        $tmpDir = __DIR__ . '/../../tmp/';
 
         if (!file_exists($tmpDir)) {
             mkdir($tmpDir);
         }
-        return __DIR__ . '/tmp/';
+        return $tmpDir;
     }
 
     public function setUp()
@@ -42,7 +42,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             }
         }
 
-        rmdir(__DIR__ . '/tmp');
+        rmdir($this->getTmpDir());
         parent::tearDown();
     }
 

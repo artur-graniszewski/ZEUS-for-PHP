@@ -33,7 +33,7 @@ class LoggerFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $config = $container->get('configuration');
-        $loggerConfig = $config['zeus_process_manager']['logger'];
+        $loggerConfig = isset($config['zeus_process_manager']['logger']) ? $config['zeus_process_manager']['logger'] : [];
 
         $severity = isset($loggerConfig['reporting_level']) ?
             $loggerConfig['reporting_level'] : Logger::DEBUG;

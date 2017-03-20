@@ -240,7 +240,7 @@ _When serving Zend Framework 3 PHP applications - it's able to outperform other,
 In case of acting as as server for static content such as images or binary files, ZEUS Web Server can be up to 50% slower than the Apache counterpart (but still able to handle more than **16000** static file requests per second on a 3.2Ghz _Intel Core i7_ processor).
 
 > **Please note:** 
->ZEUS Web Service is not a full-featured web server. In it's current state, it's meant to be used as a development aid or a simple, yet efficient intranet web service without a direct access to a public network.
+> ZEUS Web Service is not a full-featured web server. In it's current state, it's meant to be used as a development aid or a simple, yet efficient intranet web service without a direct access to a public network.
 >
 > If required, for increased security and performance, this server can be launched behind a forward proxy such as Varnish, NGINX Proxy or Squid.
 
@@ -249,6 +249,34 @@ This service is not enabled by default, but can be configured to auto-start with
 To start the service manually, following command must be executed:
 
 `php public/index.php zeus start zeus_httpd`
+
+#### Memcache Server Service
+
+ZEUS Memcache Server is a native PHP implementation of the Memcached distributed memory object caching system.
+
+This service is highly integrated with Zend Framework caching mechanism, and allows to use any zend-cache compatible adapter (be it `APC`, `Filesystem`, `Memory` or custom ones) as distributed cache through the memcached protocol.
+
+> **Please note:** 
+> Clients of memcached must communicate with ZEUS Memcache Server Service through TCP connections using the memcached text protocol. 
+>
+> As of version 1.4.0, neither UDP interface nor memcached binary protocol are available. 
+
+To run this service, the following requirements must be met:
+
+- a `zendframework/zend-cache` component must be installed and enabled in Zend Application
+- when using APC or APCu cache adapters, appropriate PHP extension must be installed and configured: `apc.enabled` and `apc.cli_enable` parameters in `php.ini` file must be set to `1`, and depending on the usage characteristics, `apc.shm_size` parameter should be set to a higher number such as `256M`.
+- when using Filesystem based cache adapters, SSD or RAMDISK storage is highly recommended for performance reasons.
+
+**Service will refuse to start if the cache preconditions are not met.**
+
+This service is not enabled by default, but can be configured to auto-start with ZEUS if needed.
+
+To start the service manually, following command must be executed:
+
+`php public/index.php zeus start zeus_memcache`
+
+*In its default configuration, ZEUS Memcache Server uses APCu adapter that is shipped with `zend-cache` component*. This adapter can be replaced anytime by modifying certain service configuration (see "ZEUS Configuration" section for details).
+
 
 ## ZEUS is Event Driven
 
@@ -379,6 +407,124 @@ The table below describes the configuration parameters:
 | output           | no       | Specifies where to write the logs, used only by default ZEUS logger, default: `STDOUT`      |
 | show_banner      | no       | Controls whether default ZEUS logger should render its banner on startup or not             |
 | logger_adapter   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
+
+### Web Server
+
+Different listening port or address can be provided through a Zend Framework `ServiceManager` and its configuration files, like so:
+
+```php
+// contents of "zf3-application-directory/config/some-config.config.php" file:
+
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
+
+return [
+    'zeus_process_manager' => [
+        'schedulers' => [
+            'custom_web_scheduler_1' => [
+                'scheduler_name' => 'custom_web_scheduler',
+                'multiprocessing_module' => PosixProcess::class,
+                'scheduler_discipline' => LruDiscipline::class,
+                'max_processes' => 32,
+                'max_process_tasks' => 100,
+                'min_spare_processes' => 3,
+                'max_spare_processes' => 5,
+                'start_processes' => 8,
+                'enable_process_cache' => true,
+            ]
+        ],
+        'services' => [
+            'custom_httpd_1' => [
+                'auto_start' => true,
+                'service_name' => 'custom_httpd',
+                'scheduler_name' => 'custom_web_scheduler',
+                'service_adapter' => \Zeus\ServerService\Http\Service::class,
+                'service_settings' => [
+                    'listen_port' => 80,
+                    'listen_address' => '0.0.0.0',
+                    'blocked_file_types' => [
+                        'php',
+                        'phtml'
+                    ]
+                ],
+                //'logger_adapter' => LoggerInterface::class // optional
+            ]
+        ],
+    ]
+];
+```
+
+The table below describes the `service_settings` configuration parameters:
+
+| Parameter          | Required | Description                                                                                 |
+|--------------------|:--------:|---------------------------------------------------------------------------------------------|
+| listen_port        | yes      | The service listen port, 80 is a default HTTP port                                          |
+| listen_address     | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
+| blocked_file_types | yes      | A blacklist of file extensions that should not be served as plain text by ZEUS Web Server   |
+| logger_adapter     | yes      | Custom logger service used for HTTP request logging (instantiated by ZF `ServiceManager` )  |
+
+To start such a service, the following command must be issued in a terminal:
+
+`php public/index.php zeus start custom_httpd`
+
+### Memcache Server
+
+Different cache adapters may be provided through a Zend Framework `Zend\Cache\Service\StorageCacheAbstractServiceFactory` and its configuration files, like so:
+
+```php
+// contents of "zf3-application-directory/config/some-config.config.php" file:
+
+return [
+    'caches' => [
+        'custom_internal_cache' => [
+            'adapter' => [
+                'name'    => 'filesystem',
+                'options' => [
+                    'cache_dir' => '/tmp/'
+                ]
+            ],
+        ],
+        'custom_user_cache' => [
+            'adapter' => [
+                'name'    => 'apcu',
+                'options' => [
+                ]
+            ],
+        ]
+    ],
+    'zeus_process_manager' => [
+        'services' => [
+            'custom_memcache' => [
+                'auto_start' => false,
+                'service_name' => 'custom_memcache',
+                'scheduler_name' => 'zeus_web_scheduler',
+                'service_adapter' => \Zeus\ServerService\Memcache\Service::class,
+                'service_settings' => [
+                    'listen_port' => 11211,
+                    'listen_address' => '0.0.0.0',
+                    'server_cache' => 'custom_internal_cache',
+                    'client_cache' => 'custom_user_cache',
+                ],
+            ]
+        ]
+    ]
+];
+```
+
+The table below describes the `service_settings` configuration parameters:
+
+| Parameter        | Required | Description                                                                                 |
+|------------------|:--------:|---------------------------------------------------------------------------------------------|
+| listen_port      | yes      | The service listen port, 11211 is a default memcached port                                  |
+| listen_address   | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
+| server_cache     | yes      | Name of the `zend-cache` instance. This cache is used for server needs, such as statistics  |
+| client_cache     | yes      | Name of the `zend-cache` instance. This cache is used to store client cache entries         |
+
+Please check Zend Framework `zend-cache` [documentation](https://framework.zend.com/manual/2.3/en/modules/zend.cache.storage.adapter.html) to read how to configure or implement your own cache instances.
+
+To start such a service, the following command must be issued in a terminal:
+
+`php public/index.php zeus start custom_memcache`
 
 # ZEUS Customization
 

@@ -4,12 +4,10 @@ namespace Zeus\Kernel\ProcessManager\Factory;
 
 use Interop\Container\ContainerInterface;
 use Interop\Container\Exception\ContainerException;
-use Zend\Log\Logger;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -71,22 +69,28 @@ final class ManagerFactory implements FactoryInterface
                 throw new \LogicException("No such service $serviceName");
             }
 
-            $services[$serviceName] = $container->build($serviceAdapter,
-                [
-                    'scheduler_adapter' => $scheduler,
-                    'config' => $serviceConfig,
-                    'logger_adapter' => $serviceLogger,
-                    'ipc_adapter' => $scheduler->getIpcAdapter(),
-                    'service_name' => $serviceName
-                ]
-            );
+            try {
+                $services[$serviceName] = $container->build($serviceAdapter,
+                    [
+                        'scheduler_adapter' => $scheduler,
+                        'config' => $serviceConfig,
+                        'logger_adapter' => $serviceLogger,
+                        'ipc_adapter' => $scheduler->getIpcAdapter(),
+                        'service_name' => $serviceName
+                    ]
+                );
 
 
-            $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
-            $manager->registerService($serviceName, $services[$serviceName], $autoStart);
+                $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
+                $manager->registerService($serviceName, $services[$serviceName], $autoStart);
+            } catch (\Exception $ex) {
+                $manager->registerBrokenService($serviceName, $ex);
+            }
         }
 
-        $mainLogger->info(sprintf("Found %d service(s): %s", count($services), implode(", ", array_keys($services))));
+        $mainLogger->info(sprintf("Found %d service(s): %s",
+            count($services) + count($manager->getBrokenServices()),
+            implode(", ", array_merge(array_keys($services), array_keys($manager->getBrokenServices())))));
 
         return $manager;
     }
