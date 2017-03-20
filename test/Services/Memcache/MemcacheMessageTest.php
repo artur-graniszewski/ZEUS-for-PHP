@@ -5,6 +5,7 @@ namespace ZeusTest\Services\Memcache;
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\Adapter\Filesystem;
+use Zend\Cache\Storage\Adapter\Memory;
 use Zend\Cache\Storage\StorageInterface;
 use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
@@ -41,15 +42,15 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         try {
-            $filesystem1 = new Filesystem(['cache_dir' => $this->getTmpDir()]);
-            $filesystem2 = new Filesystem(['cache_dir' => $this->getTmpDir()]);
+            $cache1 = new Memory();
+            $cache2 = new Memory();
         } catch (\Exception $ex) {
             $this->markTestSkipped('Could not use Filesystem adapter: ' . $ex->getMessage());
 
             return;
         }
         $this->connection = new TestConnection();
-        $this->memcache = new Message($filesystem1, $filesystem2);
+        $this->memcache = new Message($cache1, $cache2);
         $this->memcache->onOpen($this->connection);
     }
 
@@ -103,7 +104,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     public function testCasCommand()
     {
         $ttl = time() + 5;
-        $value = str_pad('!', rand(3, 5), 'B', STR_PAD_RIGHT) . '#';
+        $value = str_pad('!', rand(3, 10), 'B', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
         $this->send("set testkey4 12121212 $ttl $length\r\n$value\r\n");
 
@@ -116,11 +117,13 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         $response = $this->send("cas testkey4 12121212 $ttl $length $cas\r\n$value\r\n");
         $this->assertEquals("STORED\r\n", $response);
 
-        $value = str_pad('!', rand(3, 5), 'B', STR_PAD_RIGHT) . '#';
+        $value = str_pad('!', rand(3, 10), 'C', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
         $response = $this->send("set testkey4 12121212 $ttl $length\r\n$value\r\n");
         $this->assertEquals("STORED\r\n", $response);
 
+        $value = str_pad('!', rand(3, 10), 'B', STR_PAD_RIGHT) . '#';
+        $length = strlen($value);
         $response = $this->send("cas testkey4 12121212 $ttl $length $cas\r\n$value\r\n");
         $this->assertEquals("EXISTS\r\n", $response);
     }

@@ -484,7 +484,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
             if ($success) {
                 $flags = $this->storeFlags ? $this->cache->getItem('zeus_flags_' . $key, $success, $cas) : 0;
-                $cas = $command === 'gets' ? ' ' . ($this->useNativeCas ? $cass : crc32(serialize($value))) : '';
+                $cas = $command === 'gets' ? ' ' . ($this->useNativeCas ? $cass : crc32(sha1(serialize($value)))) : '';
 
                 $bytes = strlen($value);
                 $this->connection->write("VALUE $originalKey $flags $bytes$cas\r\n$value\r\n");
@@ -605,7 +605,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $result = false;
         $this->cache->getOptions()->setTtl($expTime < 2592000 ? $expTime : $expTime - time());
         $value = $this->getValue();
-        $cas = crc32(serialize($value));
+        $cas = crc32(sha1(serialize($value)));
 
         switch ($command) {
             case 'set':
@@ -619,8 +619,9 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
                 break;
         }
 
+        $this->cache->setItem('zeus_cas_' . $key, $cas);
         if ($result) {
-            $this->cache->setItem('zeus_cas_' . $key, $cas);
+
             if ($this->storeFlags) {
                 $this->cache->setItem('zeus_flags_' . $key, $flags);
             }
@@ -695,7 +696,9 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
                 return;
             }
 
+            $cas2 = crc32(sha1(serialize($value)));
             $this->cache->setItem($key, $value);
+            $this->cache->setItem('zeus_cas_' . $key, $cas2);
         }
 
         if ($this->storeFlags) {
