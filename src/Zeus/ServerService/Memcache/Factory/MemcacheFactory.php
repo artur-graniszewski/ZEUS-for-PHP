@@ -34,10 +34,10 @@ class MemcacheFactory implements FactoryInterface
         $config = isset($options['config']) ? $options['config'] : [];
 
         /** @var StorageInterface $internalCache */
-        $internalCache = $container->build($config['service_settings']['internal_cache']);
+        $internalCache = $container->build($config['service_settings']['server_cache']);
         $internalCache->getOptions()->setNamespace($options['service_name'] . '_internal');
         /** @var StorageInterface $userCache */
-        $userCache = $container->build($config['service_settings']['user_cache']);
+        $userCache = $container->build($config['service_settings']['client_cache']);
         $userCache->getOptions()->setNamespace($options['service_name'] . '_user');
 
         $message = new Message($internalCache, $userCache);

@@ -58,19 +58,17 @@ return $config = [
         ],
     ],
     'caches' => [
-        'zeus_internal_cache' => [
+        'zeus_server_cache' => [
             'adapter' => [
-                'name'    => 'filesystem',
+                'name'    => 'apcu',
                 'options' => [
-                    'cache_dir' => '/tmp/',
                 ]
             ],
         ],
-        'zeus_user_cache' => [
+        'zeus_client_cache' => [
             'adapter' => [
-                'name'    => 'filesystem',
+                'name'    => 'apcu',
                 'options' => [
-                    'cache_dir' => '/tmp/',
                 ]
             ],
         ]
@@ -120,8 +118,8 @@ return $config = [
                 'service_settings' => [
                     'listen_port' => 11211,
                     'listen_address' => '0.0.0.0',
-                    'internal_cache' => 'zeus_internal_cache',
-                    'user_cache' => 'zeus_user_cache',
+                    'server_cache' => 'zeus_server_cache',
+                    'client_cache' => 'zeus_client_cache',
                 ],
             ]
         ]

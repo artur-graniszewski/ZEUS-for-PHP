@@ -29,13 +29,13 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
         $sm->setAllowOverride(true);
         $sm->setService("config", [
             'caches' => [
-            'zeus_internal_cache' => [
+            'zeus_server_cache' => [
                 'adapter' => [
                     'name'    => 'apcu',
                     //'options' => ['ttl' => 3600],
                 ],
             ],
-            'zeus_user_cache' => [
+            'zeus_client_cache' => [
                 'adapter' => [
                     'name'    => 'apcu',
                     //'options' => ['ttl' => 3600],
@@ -60,8 +60,8 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
                     'service_settings' => [
                         'listen_port' => 7071,
                         'listen_address' => '0.0.0.0',
-                        'internal_cache' => 'zeus_internal_cache',
-                        'user_cache' => 'zeus_user_cache',
+                        'server_cache' => 'zeus_server_cache',
+                        'client_cache' => 'zeus_client_cache',
                 ]
             ]
         ]);
