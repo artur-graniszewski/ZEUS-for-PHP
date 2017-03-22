@@ -4,12 +4,16 @@ namespace Zeus\Kernel\ProcessManager\Status;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
+use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-class ProcessTitle
+class ProcessTitle implements ListenerAggregateInterface
 {
     /** @var EventManagerInterface */
     protected $events;
+
+    /** @var mixed[] */
+    protected $eventHandles = [];
 
     /**
      * @param string $title
@@ -26,18 +30,18 @@ class ProcessTitle
      * @param EventManagerInterface $events
      * @return $this
      */
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $events, $priority = 0)
     {
         if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
-            $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting']);
-            $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting']);
-            $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate']);
-            $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessWaiting']);
-            $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning']);
-            $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart']);
-            $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart']);
-            $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop']);
-            $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessWaiting']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
         }
 
         return $this;
@@ -79,5 +83,16 @@ class ProcessTitle
             $event->getParam('service_name'),
             $status
         ));
+    }
+
+    /**
+     * Detach all previously attached listeners
+     *
+     * @param EventManagerInterface $events
+     * @return void
+     */
+    public function detach(EventManagerInterface $events)
+    {
+        // TODO: Implement detach() method.
     }
 }
