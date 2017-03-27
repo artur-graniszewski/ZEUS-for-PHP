@@ -36,7 +36,6 @@ class DropPrivileges implements ListenerAggregateInterface
         if ($user === false) {
             throw new \RuntimeException("Invalid user name: " . $options['user']);
         }
-
         $this->uid = $user["uid"];
 
         $group = posix_getgrnam($options['group']);
@@ -45,6 +44,14 @@ class DropPrivileges implements ListenerAggregateInterface
             throw new \RuntimeException("Invalid group name: " . $options['user']);
         }
         $this->gid = $group["gid"];
+
+        $gid = posix_getegid();
+        $uid = posix_geteuid();
+
+        $this->setGroup($this->gid, true);
+        $this->setUser($this->uid, true);
+        $this->setUser($uid, true);
+        $this->setGroup($gid, true);
     }
 
     /**
@@ -82,16 +89,25 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     protected function onProcessInit(SchedulerEvent $event)
     {
-        $result = posix_setegid($this->gid);
+        $this->setGroup($this->gid, false);
+        $this->setUser($this->uid, false);
+    }
+
+    protected function setGroup($gid, $asEffectiveUser)
+    {
+        $result = $asEffectiveUser ? posix_setegid($gid) : posix_setgid($gid);
 
         if ($result === false) {
-            throw new \RuntimeException("Failed to switch to the group ID: " . $this->gid);
+            throw new \RuntimeException("Failed to switch to the group ID: " . $gid);
         }
+    }
 
-        $result = posix_seteuid($this->uid);
+    protected function setUser($uid, $asEffectiveUser)
+    {
+        $result = $asEffectiveUser ? posix_seteuid($uid) : posix_setuid($uid);
 
         if ($result === false) {
-            throw new \RuntimeException("Failed to switch to the user ID: " . $this->uid);
+            throw new \RuntimeException("Failed to switch to the user ID: " . $uid);
         }
     }
 }
