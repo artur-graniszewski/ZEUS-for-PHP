@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\ProcessManager\Status;
+namespace Zeus\Kernel\ProcessManager\Plugin;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
@@ -28,6 +28,7 @@ class ProcessTitle implements ListenerAggregateInterface
 
     /**
      * @param EventManagerInterface $events
+     * @param int $priority
      * @return $this
      */
     public function attach(EventManagerInterface $events, $priority = 0)
@@ -70,8 +71,8 @@ class ProcessTitle implements ListenerAggregateInterface
                 $taskType,
                 $event->getParam('service_name'),
                 $status,
-                ProcessState::addUnitsToNumber($event->getParam('requests_finished')),
-                ProcessState::addUnitsToNumber($event->getParam('requests_per_second')),
+                $this->addUnitsToNumber($event->getParam('requests_finished')),
+                $this->addUnitsToNumber($event->getParam('requests_per_second')),
                 $event->getParam('cpu_usage')
             ));
 
@@ -94,5 +95,17 @@ class ProcessTitle implements ListenerAggregateInterface
     public function detach(EventManagerInterface $events)
     {
         // TODO: Implement detach() method.
+    }
+
+    private function addUnitsToNumber($value, $precision = 2)
+    {
+        $unit = ["", "K", "M", "G"];
+        $exp = floor(log($value, 1000)) | 0;
+        $division = pow(1000, $exp);
+
+        if (!$division) {
+            return 0;
+        }
+        return round($value / $division, $precision) . $unit[$exp];
     }
 }

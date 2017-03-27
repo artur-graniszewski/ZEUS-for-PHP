@@ -14,6 +14,7 @@ use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
+use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
@@ -106,6 +107,9 @@ return $config = [
                     'blocked_file_types' => [
                         'php',
                         'phtml'
+                    ],
+                    'plugins' => [
+                        ProcessTitle::class
                     ]
                 ],
                 //'logger_adapter' => LoggerInterface::class // optional

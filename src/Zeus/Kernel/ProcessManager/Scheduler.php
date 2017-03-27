@@ -16,7 +16,7 @@ use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\Status\ProcessTitle;
+use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\Kernel\ProcessManager\Helper\EventManager;
 
 /**
@@ -156,10 +156,6 @@ final class Scheduler implements EventsCapableInterface
 
         $this->processes = new ProcessCollection($this->config->getMaxProcesses());
         $this->setLoggerExtraDetails(['service' => $this->config->getServiceName()]);
-
-        if (!Console::isConsole()) {
-            throw new ProcessManagerException("This application must be launched from the Command Line Interpreter", ProcessManagerException::CLI_MODE_REQUIRED);
-        }
 
         $this->processTitle = new ProcessTitle();
         $this->processTitle->attach($this->getEventManager());
@@ -571,6 +567,8 @@ final class Scheduler implements EventsCapableInterface
         $this->createProcesses($toCreate);
         $this->terminateProcesses($toTerminate, false);
         $this->terminateProcesses($toSoftTerminate, true);
+
+        return $this;
     }
 
     /**
