@@ -8,6 +8,7 @@ use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -20,6 +21,8 @@ use Zeus\ServerService\ServerServiceInterface;
  */
 final class ManagerFactory implements FactoryInterface
 {
+    use PluginFactory;
+
     /**
      * Create an object
      *
@@ -83,6 +86,7 @@ final class ManagerFactory implements FactoryInterface
 
                 $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
                 $manager->registerService($serviceName, $services[$serviceName], $autoStart);
+                //$this->startPlugins($container, $services[$serviceName]->getEventManager(), isset($serviceConfig['plugins']) ? $serviceConfig['plugins'] : []);
             } catch (\Exception $ex) {
                 $manager->registerBrokenService($serviceName, $ex);
             }

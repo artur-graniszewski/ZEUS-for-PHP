@@ -29,7 +29,6 @@ class ProcessTitle implements ListenerAggregateInterface
     /**
      * @param EventManagerInterface $events
      * @param int $priority
-     * @return $this
      */
     public function attach(EventManagerInterface $events, $priority = 0)
     {
@@ -44,8 +43,6 @@ class ProcessTitle implements ListenerAggregateInterface
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop']);
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
         }
-
-        return $this;
     }
 
     /**
@@ -94,7 +91,9 @@ class ProcessTitle implements ListenerAggregateInterface
      */
     public function detach(EventManagerInterface $events)
     {
-        // TODO: Implement detach() method.
+        foreach ($this->eventHandles as $handle) {
+            $events->detach($handle);
+        }
     }
 
     private function addUnitsToNumber($value, $precision = 2)

@@ -93,6 +93,15 @@ return $config = [
                 'max_spare_processes' => 5,
                 'start_processes' => 8,
                 'enable_process_cache' => true,
+                'plugins' => [
+                    ProcessTitle::class,
+                    /*
+                    \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [
+                        'user' => 'www-data',
+                        'group' => 'www-data',
+                    ]
+                    */
+                ]
             ]
         ],
         'services' => [
@@ -108,9 +117,6 @@ return $config = [
                         'php',
                         'phtml'
                     ],
-                    'plugins' => [
-                        ProcessTitle::class
-                    ]
                 ],
                 //'logger_adapter' => LoggerInterface::class // optional
             ],

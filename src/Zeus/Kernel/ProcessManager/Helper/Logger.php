@@ -5,6 +5,11 @@ namespace Zeus\Kernel\ProcessManager\Helper;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Message;
 
+/**
+ * Class Logger
+ * @package Zeus\Kernel\ProcessManager\Helper
+ * @internal
+ */
 trait Logger
 {
     /** @var LoggerInterface */

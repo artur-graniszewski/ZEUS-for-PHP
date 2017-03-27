@@ -54,9 +54,6 @@ final class Scheduler implements EventsCapableInterface
     /** @var IpcAdapterInterface */
     protected $ipcAdapter;
 
-    /** @var ProcessTitle */
-    protected $processTitle;
-
     /** @var float */
     protected $startTime;
 
@@ -157,8 +154,6 @@ final class Scheduler implements EventsCapableInterface
         $this->processes = new ProcessCollection($this->config->getMaxProcesses());
         $this->setLoggerExtraDetails(['service' => $this->config->getServiceName()]);
 
-        $this->processTitle = new ProcessTitle();
-        $this->processTitle->attach($this->getEventManager());
         $this->event = $schedulerEvent;
         $this->event->setScheduler($this);
     }

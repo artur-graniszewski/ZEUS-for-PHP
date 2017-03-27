@@ -5,6 +5,11 @@ namespace Zeus\Kernel\ProcessManager\Helper;
 use SplObjectStorage;
 use Zend\EventManager\ListenerAggregateInterface;
 
+/**
+ * Class PluginRegistry
+ * @package Zeus\Kernel\ProcessManager\Helper
+ * @internal
+ */
 trait PluginRegistry
 {
     /** @var SplObjectStorage */
