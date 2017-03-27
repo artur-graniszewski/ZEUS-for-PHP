@@ -59,9 +59,6 @@ final class Scheduler implements EventsCapableInterface
 
     protected $discipline;
 
-    /** @var SplObjectStorage */
-    protected $pluginRegistry;
-
     /** @var SchedulerEvent */
     private $event;
 
