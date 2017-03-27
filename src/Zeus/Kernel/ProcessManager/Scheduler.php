@@ -381,19 +381,6 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * Return registry of plugins
-     *
-     * @return SplObjectStorage
-     */
-    public function getPluginRegistry()
-    {
-        if (! $this->pluginRegistry instanceof SplObjectStorage) {
-            $this->pluginRegistry = new SplObjectStorage();
-        }
-        return $this->pluginRegistry;
-    }
-
-    /**
      * @param \Throwable|\Exception $exception
      * @return $this
      */
