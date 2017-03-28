@@ -164,6 +164,12 @@ final class MsgAdapter implements IpcAdapterInterface
     public function disconnect($channelNumber = -1)
     {
         if ($channelNumber !== -1) {
+            $this->checkChannelAvailability($channelNumber);
+
+            msg_remove_queue($this->ipc[$channelNumber]);
+            unset($this->ipc[$channelNumber]);
+            $this->activeChannels[$channelNumber] = false;
+
             return $this;
         }
 

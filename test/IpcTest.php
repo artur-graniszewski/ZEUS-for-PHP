@@ -71,6 +71,51 @@ class IpcTest extends PHPUnit_Framework_TestCase
         $ipcAdapter->disconnect();
     }
 
+    /**
+     * @dataProvider getIpcAdapters
+     * @param string $adapter
+     */
+    public function testIpcDisconnects($adapter)
+    {
+        $messagesAmount = 100;
+
+        $sm = $this->getServiceManager();
+        /** @var IpcAdapterInterface $ipcAdapter */
+        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => $adapter, 'service_name' => 'zeus-test2-' . md5($adapter)]);
+
+        $this->assertInstanceOf($adapter, $ipcAdapter);
+
+        if (!$ipcAdapter::isSupported()) {
+            $this->markTestSkipped('The PHP configuration or OS system does not support ' . get_class($ipcAdapter));
+        }
+
+        $ipcAdapter->useChannelNumber(0);
+        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Input queue should be empty');
+
+        $ipcAdapter->useChannelNumber(1);
+        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Output queue should be empty');
+
+        $ipcAdapter->disconnect(1);
+
+        $ex1 = $ex2 = null;
+        try {
+            $ipcAdapter->useChannelNumber(1);
+        } catch (\LogicException $ex1) {
+
+        }
+        $ipcAdapter->disconnect(0);
+        try {
+            $ipcAdapter->useChannelNumber(0);
+        } catch (\LogicException $ex2) {
+
+        }
+
+        $this->assertInstanceOf(\LogicException::class, $ex1, "$adapter does not support channel disconnect");
+        $this->assertEquals('Channel number 1 is unavailable', $ex1->getMessage(), "$adapter does not support channel disconnect");
+        $this->assertInstanceOf(\LogicException::class, $ex2, "$adapter does not support channel disconnect");
+        $this->assertEquals('Channel number 0 is unavailable', $ex2->getMessage(), "$adapter does not support channel disconnect");
+    }
+
     public function testIpcLogger()
     {
         $serviceName = 'zeus-test-' . md5(__CLASS__);
