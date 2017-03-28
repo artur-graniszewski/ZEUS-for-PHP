@@ -19,6 +19,7 @@ use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
+use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
@@ -115,7 +116,10 @@ trait ZeusFactories
                             'min_spare_processes' => 3,
                             'max_spare_processes' => 5,
                             'start_processes' => 8,
-                            'enable_process_cache' => true
+                            'enable_process_cache' => true,
+                            'plugins' => [
+                                ProcessTitle::class,
+                            ]
                         ]
                     ]
                 ]
