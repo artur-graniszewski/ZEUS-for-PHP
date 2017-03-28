@@ -2,8 +2,6 @@
 
 namespace Zeus\Kernel\ProcessManager;
 
-use SplObjectStorage;
-use Zend\Console\Console;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
@@ -16,7 +14,6 @@ use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\Kernel\ProcessManager\Helper\EventManager;
 
 /**

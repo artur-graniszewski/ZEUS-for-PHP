@@ -1,4 +1,4 @@
-sudo: false
+sudo: true
 
 language: php
 
@@ -78,7 +78,7 @@ before_script:
 
 script:
   - if [[ $CS_CHECK == 'true' ]]; then composer cs-check ; fi
-  - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then ./vendor/bin/phpunit --coverage-clover clover.xml ; fi
+  - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then sudo ./vendor/bin/phpunit --coverage-clover clover.xml ; fi
   - if [[ $EXECUTE_TEST_COVERALLS != 'true' ]]; then ./vendor/bin/phpunit ; fi
 
 after_script:
