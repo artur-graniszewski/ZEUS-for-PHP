@@ -100,8 +100,8 @@ class ZeusController extends AbstractActionController
         $this->servicesRunning--;
 
         if ($this->servicesRunning === 0) {
-            $this->logger->err("All services exited");
-            $this->doExit(404);
+            $this->logger->info("All services exited");
+            $this->doExit(0);
         }
     }
 
@@ -275,7 +275,7 @@ class ZeusController extends AbstractActionController
         $this->doExit(417);
     }
 
-    protected function stopApplication()
+    public function stopApplication()
     {
         $this->stopServices($this->services, false);
     }

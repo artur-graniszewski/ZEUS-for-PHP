@@ -5,6 +5,11 @@ namespace Zeus\Kernel\ProcessManager\Helper;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventManager as ZendEventManager;
 
+/**
+ * Class EventManager
+ * @package Zeus\Kernel\ProcessManager\Helper
+ * @internal
+ */
 trait EventManager
 {
     /**

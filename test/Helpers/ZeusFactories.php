@@ -19,6 +19,7 @@ use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
+use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
@@ -37,10 +38,12 @@ trait ZeusFactories
     {
 
     }
+
     /**
+     * @param mixed[] $customConfig
      * @return ServiceManager
      */
-    public function getServiceManager()
+    public function getServiceManager(array $customConfig = [])
     {
         $sm = new ServiceManager();
         $sm->addAbstractFactory(IpcAdapterAbstractFactory::class);
@@ -115,12 +118,17 @@ trait ZeusFactories
                             'min_spare_processes' => 3,
                             'max_spare_processes' => 5,
                             'start_processes' => 8,
-                            'enable_process_cache' => true
+                            'enable_process_cache' => true,
+                            'plugins' => [
+                                ProcessTitle::class,
+                            ]
                         ]
                     ]
                 ]
             ]
         );
+
+        $serviceConfig = ArrayUtils::merge($serviceConfig, $customConfig);
 
         (new ServiceManagerConfig($serviceConfig))->configureServiceManager($sm);
 
@@ -132,11 +140,12 @@ trait ZeusFactories
     /**
      * @param int $mainLoopIterations
      * @param callback $loopCallback
+     * @param ServiceManager $serviceManager
      * @return Scheduler
      */
-    public function getScheduler($mainLoopIterations = 0, $loopCallback = null)
+    public function getScheduler($mainLoopIterations = 0, $loopCallback = null, ServiceManager $serviceManager = null)
     {
-        $sm = $this->getServiceManager();
+        $sm = $serviceManager ?  $serviceManager : $this->getServiceManager();
 
         $ipcAdapter = $sm->build(SocketAdapter::class, ['service_name' => 'test-service']);
         $logger = new Logger();
