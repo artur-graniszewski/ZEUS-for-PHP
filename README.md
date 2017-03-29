@@ -340,6 +340,7 @@ Out of the box, ZEUS comes equipped with two Scheduler plugins: `\Zeus\Kernel\Pr
 ProcessTitle plugin does not take any options, its main purpose is to alter process names in terminal to show current operations performed by ZEUS.
 
 DropPrivileges plugin requires two options to be set (user and group, see example above). Its main purpose is to switch real user of the process from root to an unprivileged account (for security purposes).
+This is especially handy when running ZEUS services with root privileges using `sudo` command so they can listen on the root-restricted ports (in range of 0-1024).
 
 # ZEUS configuration
 

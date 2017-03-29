@@ -47,32 +47,32 @@ final class ManagerFactory implements FactoryInterface
         $manager = new Manager([]);
 
         foreach ($configs as $serviceConfig) {
-            $serviceAdapter = $serviceConfig['service_adapter'];
-            $serviceName = $serviceConfig['service_name'];
-            $ipcAdapter = $container->build(IpcAdapterInterface::class, ['service_name' => $serviceName]);
-
-            if (!is_subclass_of($serviceAdapter, ServerServiceInterface::class)) {
-                throw new \RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
-            }
-
-            $loggerAdapter = isset($serviceConfig['logger_adapter']) ? $serviceConfig['logger_adapter'] : LoggerInterface::class;
-            $serviceLogger = $container->build($loggerAdapter, ['service_name' => $serviceName]);
-
-            /** @var Scheduler $scheduler */
-            $scheduler = $container->build(Scheduler::class, [
-                'scheduler_name' => $serviceConfig['scheduler_name'],
-                'service_name' => $serviceName,
-                'service_logger_adapter' => $serviceLogger,
-                'main_logger_adapter' => $mainLogger,
-                'ipc_adapter' => $ipcAdapter
-                ]
-            );
-
-            if (!$container->has($serviceAdapter)) {
-                throw new \LogicException("No such service $serviceName");
-            }
-
             try {
+                $serviceAdapter = $serviceConfig['service_adapter'];
+                $serviceName = $serviceConfig['service_name'];
+                $ipcAdapter = $container->build(IpcAdapterInterface::class, ['service_name' => $serviceName]);
+
+                if (!is_subclass_of($serviceAdapter, ServerServiceInterface::class)) {
+                    throw new \RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
+                }
+
+                $loggerAdapter = isset($serviceConfig['logger_adapter']) ? $serviceConfig['logger_adapter'] : LoggerInterface::class;
+                $serviceLogger = $container->build($loggerAdapter, ['service_name' => $serviceName]);
+
+                /** @var Scheduler $scheduler */
+                $scheduler = $container->build(Scheduler::class, [
+                    'scheduler_name' => $serviceConfig['scheduler_name'],
+                    'service_name' => $serviceName,
+                    'service_logger_adapter' => $serviceLogger,
+                    'main_logger_adapter' => $mainLogger,
+                    'ipc_adapter' => $ipcAdapter
+                    ]
+                );
+
+                if (!$container->has($serviceAdapter)) {
+                    throw new \LogicException("No such service $serviceName");
+                }
+
                 $services[$serviceName] = $container->build($serviceAdapter,
                     [
                         'scheduler_adapter' => $scheduler,

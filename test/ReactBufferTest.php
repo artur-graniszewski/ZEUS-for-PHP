@@ -3,6 +3,7 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
+use React\EventLoop\LoopInterface;
 use Zeus\ServerService\Shared\React\ReactWritableHighSpeedBuffer;
 use ZeusTest\Helpers\CallableStub;
 
@@ -98,12 +99,20 @@ class ReactBufferTest extends PHPUnit_Framework_TestCase
 
     private function createLoopMock()
     {
-        return $this->getMock(\React\EventLoop\LoopInterface::class);
+        $mockBuilder = $this->getMockBuilder(LoopInterface::class);
+        $mockBuilder->setMethods([]);
+
+        return $mockBuilder->getMock();
     }
 
     private function createCallableMock()
     {
-        return $this->getMock(CallableStub::class, ['__invoke']);
+        $mockBuilder = $this->getMockBuilder(CallableStub::class);
+        $mockBuilder->setMethods([
+            '__invoke',
+        ]);
+
+        return $mockBuilder->getMock();
     }
 
     private function createWriteableLoopMock()

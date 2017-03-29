@@ -275,7 +275,7 @@ class ZeusController extends AbstractActionController
         $this->doExit(417);
     }
 
-    protected function stopApplication()
+    public function stopApplication()
     {
         $this->stopServices($this->services, false);
     }

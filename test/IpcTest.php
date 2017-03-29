@@ -77,8 +77,6 @@ class IpcTest extends PHPUnit_Framework_TestCase
      */
     public function testIpcDisconnects($adapter)
     {
-        $messagesAmount = 100;
-
         $sm = $this->getServiceManager();
         /** @var IpcAdapterInterface $ipcAdapter */
         $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => $adapter, 'service_name' => 'zeus-test2-' . md5($adapter)]);

@@ -33,6 +33,25 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @return \PHPUnit_Framework_MockObject_MockObject|DropPrivileges
+     */
+    protected function getDropPrivilegesMock()
+    {
+        $pluginBuilder = $this->getMockBuilder(DropPrivileges::class);
+        $pluginBuilder->setMethods([
+            'posixSetEuid',
+            'posixSetUid',
+            'posixSetEgid',
+            'posixSetGid'
+        ]);
+
+        $pluginBuilder->disableOriginalConstructor();
+        $plugin = $pluginBuilder->getMock();
+
+        return $plugin;
+    }
+
+    /**
      * @expectedException \Zend\ServiceManager\Exception\ServiceNotCreatedException
      * @expectedExceptionMessageRegExp ~Failed to switch to the group ID~
      */
@@ -52,19 +71,14 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
 
-        // maybe set the function protected for this to work
-        $plugin = $this->getMock(DropPrivileges::class, [
-            'posixSetEuid',
-            'posixSetUid',
-            'posixSetEgid',
-            'posixSetGid'
-        ], [['user' => 'root', 'group' => 'root']]);
+        $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEuid")->will($this->returnValue(true));
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setScheduler($scheduler);
+        $plugin->__construct(['user' => 'root', 'group' => 'root']);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
@@ -77,19 +91,15 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
 
-        // maybe set the function protected for this to work
-        $plugin = $this->getMock(DropPrivileges::class, [
-            'posixSetEuid',
-            'posixSetUid',
-            'posixSetEgid',
-            'posixSetGid'
-        ], [['user' => 'root', 'group' => 'root']]);
+        $plugin = $this->getDropPrivilegesMock();
+
         $plugin->expects($this->never())->method("posixSetUid")->will($this->returnValue(false));
-        $plugin->expects($this->any())->method("posixSetEuid")->will($this->returnValue(true));
+        $plugin->expects($this->exactly(2))->method("posixSetEuid")->will($this->returnValue(true));
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(false));
-        $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
+        $plugin->expects($this->exactly(2))->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setScheduler($scheduler);
+        $plugin->__construct(['user' => 'root', 'group' => 'root']);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 }
