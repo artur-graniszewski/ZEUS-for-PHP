@@ -166,7 +166,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler->getConfig()->setStartProcesses(0);
 
         $amountOfScheduledProcesses = 0;
-        $processesCreated = [];
 
         $em = $scheduler->getEventManager();
         $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});

@@ -14,6 +14,7 @@ use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
+use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
@@ -92,6 +93,15 @@ return $config = [
                 'max_spare_processes' => 5,
                 'start_processes' => 8,
                 'enable_process_cache' => true,
+                'plugins' => [
+                    ProcessTitle::class,
+                    /*
+                    \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [
+                        'user' => 'www-data',
+                        'group' => 'www-data',
+                    ]
+                    */
+                ]
             ]
         ],
         'services' => [
@@ -106,7 +116,7 @@ return $config = [
                     'blocked_file_types' => [
                         'php',
                         'phtml'
-                    ]
+                    ],
                 ],
                 //'logger_adapter' => LoggerInterface::class // optional
             ],

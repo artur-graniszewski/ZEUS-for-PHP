@@ -168,6 +168,11 @@ final class FifoAdapter implements IpcAdapterInterface
     public function disconnect($channelNumber = -1)
     {
         if ($channelNumber !== -1) {
+            $this->checkChannelAvailability($channelNumber);
+
+            fclose($this->ipc[$channelNumber]);
+            $this->activeChannels[$channelNumber] = false;
+
             return $this;
         }
 

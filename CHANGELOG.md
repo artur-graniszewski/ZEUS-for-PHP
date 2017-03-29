@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 1.4.1
+- [Feature] Added plugin support to ZEUS Scheduler
+- [Feature] Implemented two plugins: ProcessTitle and DropPrivileges
+- [Improvement] Test improvements and fixes
+
 ## Version 1.4.0
 - [Feature] Added new Memcache Server Service with `zend-cache` storage adapters support.
 - [Fix] Major performance regression fix for ZEUS Web Server (bug introduced in version 1.3.6)
