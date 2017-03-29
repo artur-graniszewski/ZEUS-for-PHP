@@ -102,7 +102,7 @@ class DropPrivileges implements ListenerAggregateInterface
     {
         $result = $asEffectiveUser ? $this->posixSetEgid($gid) : $this->posixSetGid($gid);
 
-        if ($result === false) {
+        if ($result !== true) {
             throw new \RuntimeException("Failed to switch to the group ID: " . $gid);
         }
 
@@ -118,7 +118,7 @@ class DropPrivileges implements ListenerAggregateInterface
     {
         $result = $asEffectiveUser ? $this->posixSetEuid($uid) : $this->posixSetUid($uid);
 
-        if ($result === false) {
+        if ($result !== true) {
             throw new \RuntimeException("Failed to switch to the user ID: " . $uid);
         }
 
@@ -133,7 +133,8 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     protected function posixSetEuid($uid)
     {
-        return posix_seteuid($uid);
+        // HHVM seems to lie to us that it changed the effective group, lets do some double checks in all posix calls then
+        return posix_seteuid($uid) && posix_geteuid() === $uid;
     }
 
     /**
@@ -142,7 +143,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     protected function posixSetUid($uid)
     {
-        return posix_setuid($uid);
+        return posix_setuid($uid) && posix_getuid() === $uid;
     }
 
     /**
@@ -151,7 +152,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     protected function posixSetEgid($gid)
     {
-        return posix_setegid($gid);
+        return posix_setegid($gid) && posix_getegid() === $gid;
     }
 
     /**
@@ -160,7 +161,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     protected function posixSetGid($gid)
     {
-        return posix_setgid($gid);
+        return posix_setgid($gid) && posix_getgid() === $gid;
     }
 
     // @codeCoverageIgnoreEnd
