@@ -77,8 +77,8 @@ before_script:
 
 script:
   - if [[ $CS_CHECK == 'true' ]]; then composer cs-check ; fi
-  - if [[ $EXECUTE_TEST_COVERALLS !== 'true' ]]; then php --ini; fi
-  - if [[ $EXECUTE_TEST_COVERALLS !== 'true' ]]; then php -m ; fi
+  - if [[ $EXECUTE_TEST_COVERALLS != 'true' ]]; then php --ini; fi
+  - if [[ $EXECUTE_TEST_COVERALLS != 'true' ]]; then php -m ; fi
   - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then sudo -E php --ini ; fi
   - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then sudo -E php -m ; fi
   - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then sudo -E ./vendor/bin/phpunit -v --debug --coverage-clover clover.xml ; fi
