@@ -291,6 +291,56 @@ _By default, the following ZEUS event flow is in effect (events are colored yell
 Both Scheduler and Process instances are isolated from each other and can share their data only through the _Inter-Process Communication_ messages. 
 The same applies to ZEUS events: Scheduler events (yellow) can't be intercepted by the Process instances, as well as Process events (light-blue) by a Scheduler instance.
 
+
+## ZEUS is Pluggable
+
+As of version 1.4.1 of ZEUS for PHP, Schedulers behaviour can be extended through its configuration with custom plugins implementing the `\Zend\EventManager\ListenerAggregateInterface` interface.
+
+Custom plugins can be specified in Schedulers configuration like so (see `plugins` JSON node):
+
+```php
+// contents of "zf3-application-directory/config/some-config.config.php" file:
+
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
+
+return [
+    'zeus_process_manager' => [
+        'schedulers' => [
+            'scheduler_1' => [
+                'scheduler_name' => 'sample_scheduler',
+                'scheduler_discipline' => LruDiscipline::class,
+                'multiprocessing_module' => PosixProcess::class,
+                'max_processes' => 32,
+                'max_process_tasks' => 100,
+                'min_spare_processes' => 3,
+                'max_spare_processes' => 5,
+                'start_processes' => 8,
+                'enable_process_cache' => true,
+                'plugins => [
+                    \Zeus\Kernel\ProcessManager\Plugin\ProcessTitle::class, // by class name
+                    
+                    'SomeZFServiceManagerServiceName`, // by name of ZF Service instantiated by its ServiceManager,
+                    
+                    \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [ // by class name in array key and constructor params in array value
+                        'user' => 'www-data',
+                        'group' => 'www-data',
+                    ], 
+                    
+                    $someObject // directly as an object instance
+                ]
+            ]
+        ]
+    ]
+];
+```
+
+Out of the box, ZEUS comes equipped with two Scheduler plugins: `\Zeus\Kernel\ProcessManager\Plugin\ProcessTitle` and `\Zeus\Kernel\ProcessManager\Plugin\DropPrivileges`.
+
+ProcessTitle plugin does not take any options, its main purpose is to alter process names in terminal to show current operations performed by ZEUS.
+
+DropPrivileges plugin requires two options to be set (user and group, see example above). Its main purpose is to switch real user of the process from root to an unprivileged account (for security purposes).
+
 # ZEUS configuration
 
 ## Kernel mode
