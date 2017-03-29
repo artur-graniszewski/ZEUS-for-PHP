@@ -38,10 +38,12 @@ trait ZeusFactories
     {
 
     }
+
     /**
+     * @param mixed[] $customConfig
      * @return ServiceManager
      */
-    public function getServiceManager()
+    public function getServiceManager(array $customConfig = [])
     {
         $sm = new ServiceManager();
         $sm->addAbstractFactory(IpcAdapterAbstractFactory::class);
@@ -126,6 +128,8 @@ trait ZeusFactories
             ]
         );
 
+        $serviceConfig = ArrayUtils::merge($serviceConfig, $customConfig);
+
         (new ServiceManagerConfig($serviceConfig))->configureServiceManager($sm);
 
         $sm->setService('configuration', $serviceConfig);
@@ -136,11 +140,12 @@ trait ZeusFactories
     /**
      * @param int $mainLoopIterations
      * @param callback $loopCallback
+     * @param ServiceManager $serviceManager
      * @return Scheduler
      */
-    public function getScheduler($mainLoopIterations = 0, $loopCallback = null)
+    public function getScheduler($mainLoopIterations = 0, $loopCallback = null, ServiceManager $serviceManager = null)
     {
-        $sm = $this->getServiceManager();
+        $sm = $serviceManager ?  $serviceManager : $this->getServiceManager();
 
         $ipcAdapter = $sm->build(SocketAdapter::class, ['service_name' => 'test-service']);
         $logger = new Logger();

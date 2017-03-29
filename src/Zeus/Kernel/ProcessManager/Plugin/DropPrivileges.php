@@ -93,21 +93,75 @@ class DropPrivileges implements ListenerAggregateInterface
         $this->setUser($this->uid, false);
     }
 
+    /**
+     * @param int $gid
+     * @param bool $asEffectiveUser
+     * @return $this
+     */
     protected function setGroup($gid, $asEffectiveUser)
     {
-        $result = $asEffectiveUser ? posix_setegid($gid) : posix_setgid($gid);
+        $result = $asEffectiveUser ? $this->posixSetEgid($gid) : $this->posixSetGid($gid);
 
         if ($result === false) {
             throw new \RuntimeException("Failed to switch to the group ID: " . $gid);
         }
+
+        return $this;
     }
 
+    /**
+     * @param int $uid
+     * @param bool $asEffectiveUser
+     * @return $this
+     */
     protected function setUser($uid, $asEffectiveUser)
     {
-        $result = $asEffectiveUser ? posix_seteuid($uid) : posix_setuid($uid);
+        $result = $asEffectiveUser ? $this->posixSetEuid($uid) : $this->posixSetUid($uid);
 
         if ($result === false) {
             throw new \RuntimeException("Failed to switch to the user ID: " . $uid);
         }
+
+        return $this;
     }
+
+    // @codeCoverageIgnoreStart
+
+    /**
+     * @param int $uid
+     * @return bool
+     */
+    protected function posixSetEuid($uid)
+    {
+        return posix_seteuid($uid);
+    }
+
+    /**
+     * @param int $uid
+     * @return bool
+     */
+    protected function posixSetUid($uid)
+    {
+        return posix_setuid($uid);
+    }
+
+    /**
+     * @param int $gid
+     * @return bool
+     */
+    protected function posixSetEgid($gid)
+    {
+        return posix_setegid($gid);
+    }
+
+    /**
+     * @param int $gid
+     * @return bool
+     */
+    protected function posixSetGid($gid)
+    {
+        return posix_setgid($gid);
+    }
+
+    // @codeCoverageIgnoreEnd
 }
