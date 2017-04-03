@@ -177,23 +177,15 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     protected function getCommandRules()
     {
-        $eol = "[\\t\\s]*\r\n~";
+        $eol = "[\\t\\s]*\r\n~S";
         return [
-            'store' => [
-                'regexp' => '~^(?<command>set|add|replace) (?<key>\S{1,250}) (?<flags>[0-9]+) (?<exp>[0-9]+) (?<bytes>[0-9]+)(?<noreply> noreply)?' . $eol,
-                'immediate' => false,
-                ],
-            'concatenate' => [
-                'regexp' => '~^(?<command>append|prepend) (?<key>\S{1,250}) (?<bytes>[0-9]+)(?<noreply>noreply)?' . $eol,
-                'immediate' => false,
-                ],
-            'modify' => [
-                'regexp' => '~^(?<command>cas) (?<key>\S{1,250}) (?<flags>[0-9]+) (?<exp>[0-9]+) (?<bytes>[0-9]+) (?<cas>[0-9]+)(?<noreply> noreply)?' . $eol,
-                'immediate' => false,
-            ],
             'fetch' => [
                 'regexp' => '~^(?<command>get|gets) (?<key>[^\t\n\r]{1,250})' . $eol,
                 'immediate' => true,
+            ],
+            'store' => [
+                'regexp' => '~^(?<command>set|add|replace) (?<key>\S{1,250}) (?<flags>[0-9]+) (?<exp>[0-9]+) (?<bytes>[0-9]+)(?<noreply> noreply)?' . $eol,
+                'immediate' => false,
             ],
             'delete' => [
                 'regexp' => '~^(?<command>delete) (?<key>\S{1,250})(?<noreply> noreply)?' . $eol,
@@ -206,6 +198,14 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             'touch' => [
                 'regexp' => '~^(?<command>touch) (?<key>\S{1,250}) (?<exp>[0-9]+)(?<noreply> noreply)?' . $eol,
                 'immediate' => true,
+            ],
+            'concatenate' => [
+                'regexp' => '~^(?<command>append|prepend) (?<key>\S{1,250}) (?<bytes>[0-9]+)(?<noreply>noreply)?' . $eol,
+                'immediate' => false,
+            ],
+            'modify' => [
+                'regexp' => '~^(?<command>cas) (?<key>\S{1,250}) (?<flags>[0-9]+) (?<exp>[0-9]+) (?<bytes>[0-9]+) (?<cas>[0-9]+)(?<noreply> noreply)?' . $eol,
+                'immediate' => false,
             ],
             'stats' => [
                 'regexp' => '~^(?<command>stats)' . $eol,

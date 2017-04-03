@@ -369,5 +369,4 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
         return $response;
     }
-
 }
