@@ -2,14 +2,14 @@
 
 namespace Zeus;
 
-use Zeus\Controller\ZeusController;
-use Zeus\Controller\Factory\ZeusControllerFactory;
+use Zeus\Controller\ConsoleController;
+use Zeus\Controller\Factory\ConsoleControllerFactory;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
+use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
@@ -36,7 +36,7 @@ return $config = [
 
         ],
         'factories' => [
-            ZeusController::class => ZeusControllerFactory::class,
+            ConsoleController::class => ConsoleControllerFactory::class,
             RequestFactory::class => RequestFactory::class,
         ]
     ],

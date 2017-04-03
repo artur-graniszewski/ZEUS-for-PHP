@@ -6,6 +6,7 @@ use Zend\Console\ColorInterface;
 use Zend\Console\Console;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zend\Console\Adapter\AdapterInterface;
+use Zeus\ServerService\ServerServiceInterface;
 
 /**
  * Class SchedulerStatusView
@@ -31,12 +32,10 @@ class SchedulerStatusView
 
     /**
      * SchedulerStatusView constructor.
-     * @param Scheduler $scheduler
      * @param AdapterInterface $console
      */
-    public function __construct(Scheduler $scheduler, AdapterInterface $console)
+    public function __construct(AdapterInterface $console)
     {
-        $this->scheduler = $scheduler;
         $this->console = $console;
     }
 
@@ -61,8 +60,10 @@ class SchedulerStatusView
     /**
      * @return string|false
      */
-    public function getStatus()
+    public function getStatus(ServerServiceInterface $service)
     {
+        $this->scheduler = $service->getScheduler();
+
         $console = $this->console;
         $output = $console->colorize("Service Status: " . PHP_EOL . PHP_EOL, ColorInterface::GREEN);
 

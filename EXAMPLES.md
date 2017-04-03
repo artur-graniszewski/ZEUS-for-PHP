@@ -238,3 +238,43 @@ Percentage of the requests served within a certain time (ms)
 ```
 
 Similar tests may be performed for other files or Zend Framework actions.
+
+# Running Server Service benchmarks
+
+ZEUS comes equipped with scripts for benchmarking its services using the Athletic framework; these tests can be found in the `benchmarks/` directory.
+
+To execute the benchmarks the following command must be issued:
+
+```
+artur@osboxes:/var/www/zf-apigility-skeleton/vendor/zeus-server/zf3-server$ ../../bin/athletic -p benchmarks
+```
+
+Output (on _Intel Core i7_):
+```
+
+ZeusBench\HttpMessageBenchmark
+    Method Name                    Iterations    Average Time      Ops/second
+    ----------------------------  ------------  --------------    -------------
+    getLargeRequest             : [5,000     ] [0.0000861983299] [11,601.15284]
+    getMediumRequest            : [5,000     ] [0.0000538723469] [18,562.39904]
+    getSmallRequest             : [5,000     ] [0.0000384906769] [25,980.31734]
+    getDeflatedLargeRequest     : [5,000     ] [0.0017424072742] [573.91863]
+    getDeflatedMediumRequest    : [5,000     ] [0.0005528312206] [1,808.87034]
+    getDeflatedSmallRequest     : [5,000     ] [0.0000820228100] [12,191.73057]
+    optionsLargeRequest         : [5,000     ] [0.0001936281204] [5,164.53911]
+    optionsMediumRequest        : [5,000     ] [0.0000501904488] [19,924.10956]
+    optionsSmallRequest         : [5,000     ] [0.0000386358261] [25,882.71303]
+    optionsDeflatedLargeRequest : [5,000     ] [0.0015684711456] [637.56353]
+    optionsDeflatedMediumRequest: [5,000     ] [0.0004385448456] [2,280.26851]
+    optionsDeflatedSmallRequest : [5,000     ] [0.0000567888260] [17,609.09796]
+
+
+ZeusBench\MemcachedMessageBenchmark
+    Method Name   Iterations    Average Time      Ops/second
+    -----------  ------------  --------------    -------------
+    setCommand : [5,000     ] [0.0000413805485] [24,165.94358]
+    getCommand : [5,000     ] [0.0000325757980] [30,697.63629]
+    incrCommand: [5,000     ] [0.0000228866100] [43,693.67061]
+    decrCommand: [5,000     ] [0.0000221291542] [45,189.25535]
+
+```

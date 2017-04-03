@@ -175,11 +175,12 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @param EventManagerInterface $events
      * @return $this
      */
-    protected function attach(EventManagerInterface $events)
+    protected function attach()
     {
+        $events = $this->getEventManager();
+
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(SchedulerEvent $e) { $this->addNewProcess($e);}, -10000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) { $this->onProcessInit($e);});
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, -10000);
@@ -252,6 +253,7 @@ final class Scheduler implements EventsCapableInterface
                 $event = $this->event;
                 $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
                 $event->setParams($this->getEventExtraData(['uid' => $pid, 'soft' => true]));
+                $event->stopPropagation(false);
                 $this->events->triggerEvent($event);
                 $this->log(\Zend\Log\Logger::INFO, "Server stopped");
                 unlink($fileName);
@@ -318,7 +320,8 @@ final class Scheduler implements EventsCapableInterface
     public function start($launchAsDaemon)
     {
         $this->startTime = microtime(true);
-        $this->log(\Zend\Log\Logger::INFO, "Starting server");
+        $plugins = $this->getPluginRegistry()->count();
+        $this->log(\Zend\Log\Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
         $this->collectCycles();
 
         $events = $this->getEventManager();
@@ -334,7 +337,7 @@ final class Scheduler implements EventsCapableInterface
                 return $this;
             }
 
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(EventInterface $e) {
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {
                 if ($e->getParam('server')) {
                     $e->stopPropagation(true);
                     $this->getEventManager()->trigger(SchedulerEvent::EVENT_SCHEDULER_START, $this, $this->getEventExtraData());
@@ -342,8 +345,9 @@ final class Scheduler implements EventsCapableInterface
             }, 100000);
 
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
-                function (EventInterface $event) {
+                function (SchedulerEvent $event) {
                     $pid = $event->getParam('uid');
+                    $this->setId($pid);
 
                     if (!$event->getParam('server')) {
                         return;
@@ -360,10 +364,12 @@ final class Scheduler implements EventsCapableInterface
 
             $processEvent->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
             $processEvent->setParams($this->getEventExtraData(['server' => true]));
+            $processEvent->stopPropagation(false);
             $this->getEventManager()->triggerEvent($processEvent);
 
             $schedulerEvent->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
             $schedulerEvent->setParams($this->getEventExtraData());
+            $schedulerEvent->stopPropagation(false);
             $this->getEventManager()->triggerEvent($schedulerEvent);
         } catch (\Throwable $exception) {
             $this->handleException($exception);
@@ -384,6 +390,7 @@ final class Scheduler implements EventsCapableInterface
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $schedulerEvent->setParams($this->getEventExtraData());
         $schedulerEvent->setParam('exception', $exception);
+        $schedulerEvent->stopPropagation(false);
         $this->getEventManager()->triggerEvent($schedulerEvent);
 
         return $this;
@@ -394,11 +401,8 @@ final class Scheduler implements EventsCapableInterface
      */
     public function onSchedulerStart()
     {
-        $this->log(\Zend\Log\Logger::DEBUG, "Scheduler starting...");
-
         $this->setId(getmypid());
-
-        $this->attach($this->getEventManager());
+        $this->attach();
 
         $this->log(\Zend\Log\Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
@@ -449,6 +453,7 @@ final class Scheduler implements EventsCapableInterface
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
             $event->setParams($this->getEventExtraData(['uid' => $pid]));
+            $event->stopPropagation(false);
             $this->events->triggerEvent($event);
         }
 
@@ -482,6 +487,7 @@ final class Scheduler implements EventsCapableInterface
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
             $event->setParams($this->getEventExtraData());
+            $event->stopPropagation(false);
             $this->getEventManager()->triggerEvent($event);
         }
 
@@ -566,6 +572,7 @@ final class Scheduler implements EventsCapableInterface
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
             $event->setParams($this->getEventExtraData(['uid' => $processId, 'soft' => $isSoftTermination]));
+            $event->stopPropagation(false);
             $this->events->triggerEvent($event);
         }
 
@@ -583,6 +590,7 @@ final class Scheduler implements EventsCapableInterface
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
             $event->setParams($this->getEventExtraData());
+            $event->stopPropagation(false);
             $this->events->triggerEvent($event);
         }
 

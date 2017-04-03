@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\ProcessManager\Factory;
+namespace Zeus\ServerService\Factory;
 
 use Interop\Container\ContainerInterface;
 use Interop\Container\Exception\ContainerException;
@@ -9,6 +9,7 @@ use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
+use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -45,6 +46,8 @@ final class ManagerFactory implements FactoryInterface
 
         $mainLogger->info("Scanning configuration for services...");
         $manager = new Manager([]);
+        $manager->setLogger($mainLogger);
+        $this->startPlugins($container, $manager, isset($config['zeus_process_manager']['manager']['plugins']) ? $config['zeus_process_manager']['manager']['plugins'] : []);
 
         foreach ($configs as $serviceConfig) {
             try {
