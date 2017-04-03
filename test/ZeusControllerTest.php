@@ -8,14 +8,14 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
-use Zeus\Controller\ZeusController;
+use Zeus\Controller\ConsoleController;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\DummyServiceFactory;
-use ZeusTest\Helpers\ZeusControllerMock;
+use ZeusTest\Helpers\ConsoleControllerMock;
 use ZeusTest\Helpers\ZeusFactories;
 
 class ZeusControllerTest extends PHPUnit_Framework_TestCase
@@ -42,14 +42,14 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
     /**
      * @param bool $useOriginalClass
-     * @return ZeusController
+     * @return ConsoleController
      */
     public function getController($useOriginalClass = false)
     {
         $sm = $this->getServiceManager();
         $sm->setFactory(LoggerInterface::class, LoggerFactory::class);
         $sm->setFactory(PosixProcess::class, DummyServiceFactory::class);
-        $controller = $sm->get($useOriginalClass ? ZeusController::class : ZeusControllerMock::class);
+        $controller = $sm->get($useOriginalClass ? ConsoleController::class : ConsoleControllerMock::class);
 
         return $controller;
     }
@@ -58,11 +58,11 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
     {
         $controller = $this->getController(true);
 
-        $this->assertInstanceOf(ZeusController::class, $controller);
+        $this->assertInstanceOf(ConsoleController::class, $controller);
     }
 
     /**
-     * @expectedExceptionMessage Zeus\Controller\ZeusController can only dispatch requests in a console environment
+     * @expectedExceptionMessage Zeus\Controller\ConsoleController can only dispatch requests in a console environment
      * @expectedException \InvalidArgumentException
      */
     public function testControllerRequestValidation()
@@ -165,6 +165,5 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
         $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
         $this->assertGreaterThan(0, strpos($logEntries, 'Stopped 0 service(s)'));
-        $this->assertGreaterThan(0, strpos($logEntries, 'Only 0 out of '));
     }
 }

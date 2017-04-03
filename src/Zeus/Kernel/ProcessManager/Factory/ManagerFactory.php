@@ -9,6 +9,7 @@ use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
+use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -37,6 +38,9 @@ final class ManagerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
+        $event = new ManagerEvent();
+        $event->setName(ManagerEvent::EVENT_MANAGER_INIT);
+
         $config = $container->get('configuration');
         $mainLogger = $container->build(LoggerInterface::class, ['service_name' => 'main']);
 
@@ -45,6 +49,9 @@ final class ManagerFactory implements FactoryInterface
 
         $mainLogger->info("Scanning configuration for services...");
         $manager = new Manager([]);
+        $manager->setLogger($mainLogger);
+        $event->setManager($manager);
+        $manager->getEventManager()->triggerEvent($event);
 
         foreach ($configs as $serviceConfig) {
             try {

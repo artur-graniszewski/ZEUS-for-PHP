@@ -7,11 +7,11 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
-use Zeus\Controller\ZeusController;
+use Zeus\Controller\ConsoleController;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 
-class ZeusControllerFactory implements FactoryInterface
+class ConsoleControllerFactory implements FactoryInterface
 {
     /**
      * Create an object

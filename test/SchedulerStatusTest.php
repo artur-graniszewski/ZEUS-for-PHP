@@ -10,10 +10,43 @@ use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Kernel\ProcessManager\Status\SchedulerStatusView;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\ServerService\Http\Service;
 
 class SchedulerStatusTest extends PHPUnit_Framework_TestCase
 {
     use ZeusFactories;
+
+    /**
+     * @param $scheduler
+     * @return Service
+     */
+    protected function getService($scheduler)
+    {
+        $sm = $this->getServiceManager();
+        $logger = $scheduler->getLogger();
+
+        $service = $sm->build(Service::class,
+            [
+                'scheduler_adapter' => $scheduler,
+                'logger_adapter' => $logger,
+                'config' =>
+                    [
+                        'service_settings' => [
+                            'listen_port' => 7070,
+                            'listen_address' => '0.0.0.0',
+                            'keep_alive_enabled' => true,
+                            'keep_alive_timeout' => 5,
+                            'max_keep_alive_requests_limit' => 100,
+                            'blocked_file_types' => [
+                                'php',
+                                'phtml'
+                            ]
+                        ]
+                    ]
+            ]);
+
+        return $service;
+    }
 
     public function testSchedulerStatus()
     {
@@ -25,8 +58,9 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler(2, function(Scheduler $scheduler) use (&$statuses, &$statusOutputs) {
             $schedulerStatus = $scheduler->getStatus();
             $statuses[] = $schedulerStatus;
-            $schedulerStatusView = new SchedulerStatusView($scheduler, Console::getInstance());
-            $statusOutputs[] = $schedulerStatusView->getStatus();
+            $service = $this->getService($scheduler);
+            $schedulerStatusView = new SchedulerStatusView(Console::getInstance());
+            $statusOutputs[] = $schedulerStatusView->getStatus($service);
         });
 
         $em = $scheduler->getEventManager();
@@ -56,8 +90,9 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
     public function testSchedulerStatusInOfflineSituation()
     {
         $scheduler = $this->getScheduler(1);
-        $schedulerStatusView = new SchedulerStatusView($scheduler, Console::getInstance());
-        $statusOutput = $schedulerStatusView->getStatus();
+        $schedulerStatusView = new SchedulerStatusView(Console::getInstance());
+        $service = $this->getService($scheduler);
+        $statusOutput = $schedulerStatusView->getStatus($service);
         $this->assertFalse($statusOutput, 'No output should be present when service is offline');
     }
 }

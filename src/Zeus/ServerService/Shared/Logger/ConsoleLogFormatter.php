@@ -65,7 +65,7 @@ class ConsoleLogFormatter implements FormatterInterface
             'INFO'  => ColorInterface::LIGHT_GREEN,
             'ERR' => ColorInterface::RED,
             'NOTICE' => ColorInterface::YELLOW,
-            'WARNING' => ColorInterface::YELLOW
+            'WARN' => ColorInterface::YELLOW
         ];
 
         if (isset($colors[$severityText])) {
