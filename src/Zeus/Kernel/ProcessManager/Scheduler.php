@@ -346,6 +346,7 @@ final class Scheduler implements EventsCapableInterface
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
                 function (SchedulerEvent $event) {
                     $pid = $event->getParam('uid');
+                    $this->setId($pid);
 
                     if (!$event->getParam('server')) {
                         return;

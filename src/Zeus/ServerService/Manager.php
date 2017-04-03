@@ -28,11 +28,13 @@ final class Manager
     /** @var int */
     protected $servicesRunning = 0;
 
+    /** @var ServerServiceInterface[] */
+    protected $pidToServiceMap = [];
+
     public function __construct(array $services)
     {
         $this->services = $services;
         $this->attach();
-        pcntl_signal(SIGCHLD, function() { $this->serviceStopped();});
     }
 
     public function __destruct()
@@ -73,6 +75,11 @@ final class Manager
      */
     protected function getEvent()
     {
+        if (!$this->event) {
+            $this->event = new ManagerEvent();
+            $this->event->setManager($this);
+        }
+
         return $this->event;
     }
 
@@ -144,13 +151,35 @@ final class Manager
      */
     public function startService($serviceName)
     {
+        $event = $this->getEvent();
+
+        $event->setName(ManagerEvent::EVENT_MANAGER_INIT);
+        $this->getEventManager()->triggerEvent($event);
+
+        $this->doStartService($serviceName);
+
+        return $this;
+    }
+
+    /**
+     * @param string $serviceName
+     * @return $this
+     */
+    protected function doStartService($serviceName)
+    {
         $service = $this->getService($serviceName);
-        $service->start();
-        $this->servicesRunning++;
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function (SchedulerEvent $e) use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
+
+        $service->start();
+        $schedulerPid = $service->getScheduler()->getId();
+        $this->logger->debug('Scheduler running as process #' . $schedulerPid);
+        $this->pidToServiceMap[$schedulerPid] = $service;
+
+        $this->servicesRunning++;
+
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);
@@ -158,17 +187,19 @@ final class Manager
         $event->setService($service);
         $event->stopPropagation(false);
         $this->getEventManager()->triggerEvent($event);
-
-
-        return $this;
     }
 
     public function startServices($serviceNames)
     {
+        $event = $this->getEvent();
+
+        $event->setName(ManagerEvent::EVENT_MANAGER_INIT);
+        $this->getEventManager()->triggerEvent($event);
+
         $startTime = microtime(true);
 
         foreach ($serviceNames as $service) {
-            $this->startService($service);
+            $this->doStartService($service);
         }
 
         $now = microtime(true);
@@ -186,9 +217,17 @@ final class Manager
         }
 
         // @todo: get rid of this loop!!
-        while ($this->servicesRunning) {
-            pcntl_signal_dispatch();
-            sleep(1);
+        while ($this->servicesRunning > 0) {
+            $pid = pcntl_waitpid(-1, $status, WNOHANG);
+            if (!$pid) {
+                sleep(1);
+            }
+
+            $service = $this->findServiceByPid($pid);
+
+            if ($service) {
+                $this->onServiceStop($service);
+            }
         }
     }
 
@@ -251,12 +290,18 @@ final class Manager
      */
     protected function onServiceStop(ServerServiceInterface $service)
     {
+        $this->servicesRunning--;
+
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_STOP);
         $event->setError(null);
         $event->setService($service);
         $event->stopPropagation(false);
         $this->getEventManager()->triggerEvent($event);
+
+        if ($this->servicesRunning === 0) {
+            $this->logger->info("All services exited");
+        }
 
         return $this;
     }
@@ -286,13 +331,19 @@ final class Manager
         return $status;
     }
 
-    protected function serviceStopped()
+    /**
+     * @param int $pid
+     * @return null|ServerServiceInterface
+     */
+    protected function findServiceByPid($pid)
     {
-        $this->servicesRunning--;
-
-        if ($this->servicesRunning === 0) {
-            $this->logger->info("All services exited");
+        if (!isset($this->pidToServiceMap[$pid])) {
+            return null;
         }
+
+        $service = $this->pidToServiceMap[$pid];
+
+        return $service;
     }
 
     /**
