@@ -5,7 +5,6 @@ namespace Zeus\ServerService;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\ProcessManager\Helper\EventManager;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\ServerService\ServerServiceInterface;
 
 final class Manager
 {
@@ -34,7 +33,6 @@ final class Manager
     public function __construct(array $services)
     {
         $this->services = $services;
-        $this->attach();
     }
 
     public function __destruct()
@@ -48,14 +46,36 @@ final class Manager
     }
 
     /**
+     * @return mixed[]
+     */
+    protected function checkSignal()
+    {
+        $pid = pcntl_waitpid(-1, $status, WNOHANG);
+
+        if ($pid > 0) {
+            return ['pid' => $pid, 'status' => $status];
+        }
+    }
+
+    /**
      * @return $this
      */
     protected function attach()
     {
         $events = $this->getEventManager();
 
-        $this->eventHandles[] = $events->attach(ManagerEvent::EVENT_MANAGER_INIT, function (ManagerEvent $e) {
-            $this->setEvent($e);
+        $this->eventHandles[] = $events->attach(ManagerEvent::EVENT_MANAGER_LOOP, function (ManagerEvent $e) {
+            $signal = $this->checkSignal();
+
+            if (!$signal) {
+                sleep(1);
+            }
+
+            $service = $this->findServiceByPid($signal['pid']);
+
+            if ($service) {
+                $this->onServiceStop($service);
+            }
         }, -10000);
     }
 
@@ -151,12 +171,7 @@ final class Manager
      */
     public function startService($serviceName)
     {
-        $event = $this->getEvent();
-
-        $event->setName(ManagerEvent::EVENT_MANAGER_INIT);
-        $this->getEventManager()->triggerEvent($event);
-
-        $this->doStartService($serviceName);
+        $this->startServices([$serviceName]);
 
         return $this;
     }
@@ -169,7 +184,7 @@ final class Manager
     {
         $service = $this->getService($serviceName);
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
-            function (SchedulerEvent $e) use ($service) {
+            function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
 
@@ -192,6 +207,8 @@ final class Manager
     public function startServices($serviceNames)
     {
         $event = $this->getEvent();
+
+        $this->attach();
 
         $event->setName(ManagerEvent::EVENT_MANAGER_INIT);
         $this->getEventManager()->triggerEvent($event);
@@ -218,16 +235,10 @@ final class Manager
 
         // @todo: get rid of this loop!!
         while ($this->servicesRunning > 0) {
-            $pid = pcntl_waitpid(-1, $status, WNOHANG);
-            if (!$pid) {
-                sleep(1);
-            }
-
-            $service = $this->findServiceByPid($pid);
-
-            if ($service) {
-                $this->onServiceStop($service);
-            }
+            $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
+            $event->setError(null);
+            $event->stopPropagation(false);
+            $this->getEventManager()->triggerEvent($event);
         }
     }
 

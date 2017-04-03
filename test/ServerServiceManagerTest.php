@@ -3,6 +3,7 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
+use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\ServerService\Manager;
@@ -75,7 +76,48 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         $manager->startServices(['test-service']);
 
         $this->assertContains(ManagerEvent::EVENT_SERVICE_START, $eventsFlow);
-        $this->assertContains(ManagerEvent::EVENT_SERVICE_START, $eventsFlow);
+        $this->assertContains(ManagerEvent::EVENT_SERVICE_STOP, $eventsFlow);
         $this->assertContains(ManagerEvent::EVENT_MANAGER_INIT, $eventsFlow);
+    }
+
+    public function testManagerSignalHandling()
+    {
+        $eventsFlow = [];
+        $eventHandler = function(ManagerEvent $e) use (& $eventsFlow) {
+            $eventsFlow[] = $e->getName();
+            $this->assertInstanceOf(Manager::class, $e->getManager());
+        };
+
+        $manager = $this->getManager();
+        $manager->getEventManager()->attach('*', $eventHandler);
+
+        $service = new DummyServerService(['hang' => true], $this->getScheduler(1), $manager->getLogger());
+        $manager->registerService('test-service', $service, true);
+        $manager->startServices(['test-service']);
+
+        $this->assertContains(ManagerEvent::EVENT_SERVICE_START, $eventsFlow);
+        $this->assertContains(ManagerEvent::EVENT_SERVICE_STOP, $eventsFlow);
+    }
+
+    public function testThatDestructorDetachesEvents()
+    {
+        $mockBuilder = $this->getMockBuilder(EventManager::class);
+        $mockBuilder->setMethods([
+            'detach',
+        ]);
+
+        $events = $mockBuilder->getMock();
+        $events->expects($this->atLeastOnce())
+            ->method('detach');
+
+        $manager = new Manager([]);
+        $manager->setEventManager($events);
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
+        $manager->setLogger($logger);
+        $service = new DummyServerService([], $this->getScheduler(1), $logger);
+        $manager->registerService('test-service', $service, true);
+        $manager->startServices(['test-service']);
+        $manager->__destruct();
     }
 }
