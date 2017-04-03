@@ -3,7 +3,6 @@
 namespace ZeusTest\Services\Memcache;
 
 use PHPUnit_Framework_TestCase;
-use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\Adapter\Filesystem;
 use Zend\Cache\Storage\Adapter\Memory;
 use Zend\Cache\Storage\StorageInterface;
@@ -34,6 +33,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     {
         $cache = new Filesystem(['cache_dir' => $this->getTmpDir()]);
         $cache->flush();
+        $this->memcache->onClose($this->connection);
 
         rmdir(__DIR__ . '/../../tmp/');
         parent::tearDown();
@@ -70,10 +70,10 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @param string $noReplyParam
-     * @param string $expectedStatus
-     * @dataProvider noReplyProvider
-     */
+ * @param string $noReplyParam
+ * @param string $expectedStatus
+ * @dataProvider noReplyProvider
+ */
     public function testSetCommand($noReplyParam, $expectedStatus)
     {
         $testConnection = new TestConnection();
@@ -93,12 +93,84 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         $this->assertStringEndsWith("\r\nEND\r\n", $result);
     }
 
+    /**
+     * @param string $noReplyParam
+     * @param string $expectedStatus
+     * @dataProvider noReplyProvider
+     */
+    public function testAddCommand($noReplyParam, $expectedStatus)
+    {
+        $testConnection = new TestConnection();
+        $ttl = time() + 5;
+        $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
+        $length = strlen($value);
+        $result = $this->send("add testkey21 12121212 $ttl $length$noReplyParam\r\n$value\r\n");
+        $this->assertFalse($testConnection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEquals($expectedStatus, $result);
+
+        $result = $this->send("get testkey21 testkey3\r\n");
+        $this->assertStringStartsWith("VALUE testkey21 12121212 $length\r\n", $result);
+        $this->assertStringEndsWith("\r\nEND\r\n", $result);
+
+        $result = $this->send("add testkey21 12121212 $ttl $length$noReplyParam\r\n$value\r\n");
+        if (!$noReplyParam) {
+            $this->assertEquals("NOT_STORED\r\n", $result);
+        } else {
+            $this->assertEquals("", $result);
+        }
+    }
+
+    /**
+     * @param string $noReplyParam
+     * @param string $expectedStatus
+     * @dataProvider noReplyProvider
+     */
+    public function testReplaceCommand($noReplyParam, $expectedStatus)
+    {
+        $testConnection = new TestConnection();
+        $ttl = time() + 5;
+        $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
+        $length = strlen($value);
+        $result = $this->send("set testkey22 12121212 $ttl $length$noReplyParam\r\n$value\r\n");
+        $this->assertFalse($testConnection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEquals($expectedStatus, $result);
+
+        $result = $this->send("get testkey22 testkey3\r\n");
+        $this->assertStringStartsWith("VALUE testkey22 12121212 $length\r\n", $result);
+        $this->assertStringEndsWith("\r\nEND\r\n", $result);
+
+        $result = $this->send("replace testkey22 12121212 $ttl $length$noReplyParam\r\n$value\r\n");
+        $this->assertFalse($testConnection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEquals($expectedStatus, $result);
+
+        if (!$noReplyParam) {
+            $this->assertEquals("STORED\r\n", $result);
+        } else {
+            $this->assertEquals("", $result);
+        }
+
+        $result = $this->send("replace testkey222 12121212 $ttl $length$noReplyParam\r\n$value\r\n");
+        if (!$noReplyParam) {
+            $this->assertEquals("NOT_STORED\r\n", $result);
+        } else {
+            $this->assertEquals("", $result);
+        }
+    }
+
     public function testFetchCommand()
     {
         $result = $this->send("get testkey testkey3\r\n");
 
         $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be kept alive");
         $this->assertEquals("END\r\n", $result);
+    }
+
+    public function testInvalidCommand()
+    {
+        $result = $this->send("invalid command\r\n");
+
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEquals("ERROR\r\n", $result);
     }
 
     public function testCasCommand()
@@ -126,6 +198,9 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         $length = strlen($value);
         $response = $this->send("cas testkey4 12121212 $ttl $length $cas\r\n$value\r\n");
         $this->assertEquals("EXISTS\r\n", $response);
+
+        $response = $this->send("cas testkey4aa 12121212 $ttl $length $cas\r\n$value\r\n");
+        $this->assertEquals("NOT_FOUND\r\n", $response);
     }
 
     public function testDeleteCommand()
@@ -230,24 +305,44 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("ERROR\r\n", $response);
     }
 
+    public function testMathCommandsOnNonExistingKey()
+    {
+        $response = $this->send("incr testkey9 2\r\n");
+        $this->assertEquals("NOT_FOUND\r\n", $response);
+    }
+
+    public function testMathCommandsWhenUnderflow()
+    {
+        $ttl = time() + 5;
+
+        $response = $this->send("set testkey9 1 $ttl 1\r\n1\r\n");
+        $this->assertEquals("STORED\r\n", $response);
+
+        $response = $this->send("decr testkey9 1\r\n");
+        $this->assertEquals("0\r\n", $response);
+
+        $response = $this->send("decr testkey9 1\r\n");
+        $this->assertEquals("0\r\n", $response);
+    }
+
     public function testConcatenationCommands()
     {
         $ttl = time() + 5;
 
-        $response = $this->send("set testkey8 2 $ttl 3\r\n456\r\n");
+        $response = $this->send("set testkey10 2 $ttl 3\r\n456\r\n");
         $this->assertEquals("STORED\r\n", $response);
-        $response = $this->send("get testkey8\r\n");
-        $this->assertEquals("VALUE testkey8 2 3\r\n456\r\nEND\r\n", $response);
+        $response = $this->send("get testkey10\r\n");
+        $this->assertEquals("VALUE testkey10 2 3\r\n456\r\nEND\r\n", $response);
 
-        $response = $this->send("append testkey8 3\r\n789\r\n");
+        $response = $this->send("append testkey10 3\r\n789\r\n");
         $this->assertEquals("STORED\r\n", $response);
-        $response = $this->send("get testkey8\r\n");
-        $this->assertEquals("VALUE testkey8 2 6\r\n456789\r\nEND\r\n", $response);
+        $response = $this->send("get testkey10\r\n");
+        $this->assertEquals("VALUE testkey10 2 6\r\n456789\r\nEND\r\n", $response);
 
-        $response = $this->send("prepend testkey8 3\r\n123\r\n");
+        $response = $this->send("prepend testkey10 3\r\n123\r\n");
         $this->assertEquals("STORED\r\n", $response);
-        $response = $this->send("get testkey8\r\n");
-        $this->assertEquals("VALUE testkey8 2 9\r\n123456789\r\nEND\r\n", $response);
+        $response = $this->send("get testkey10\r\n");
+        $this->assertEquals("VALUE testkey10 2 9\r\n123456789\r\nEND\r\n", $response);
     }
 
     public function testTouchCommand()

@@ -675,6 +675,8 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         if (!$exists) {
             $this->markMiss($command);
             $this->sendStatus("NOT_FOUND");
+
+            return;
         }
 
         $this->cache->getOptions()->setTtl($expTime - time());
