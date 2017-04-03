@@ -47,20 +47,12 @@ class LoggerFactory implements FactoryInterface
         $loggerInstance = isset($loggerConfig['logger_adapter']) ?
             $container->get($loggerConfig['logger_adapter']) : new Logger();
 
-        $loggerWrapper = new LoggerWrapper($loggerInstance);
-
-        // its a custom Logger
-        if (!$loggerInstance instanceof Logger) {
-
-            return $loggerWrapper;
-        }
-
         // its a built-in logger
         $banner = $this->getBannerFromModule($container, $options['service_name']);
 
         $logProcessor = new ExtraLogProcessor();
         $logProcessor->setConfig(['service_name' => $options['service_name']]);
-        $loggerWrapper->addProcessor($logProcessor);
+        $loggerInstance->addProcessor($logProcessor);
 
         $formatter = $output === 'php://stdout' ?
             new ConsoleLogFormatter(Console::getInstance())
@@ -69,14 +61,14 @@ class LoggerFactory implements FactoryInterface
 
         $writer = new Writer\Stream($output);
         $writer->addFilter(new Priority($severity));
-        $loggerWrapper->addWriter($writer);
+        $loggerInstance->addWriter($writer);
         $writer->setFormatter($formatter);
         if ($showBanner && $banner) {
-            $loggerWrapper->info($banner);
+            $loggerInstance->info($banner);
             static::$showBanner = false;
         }
 
-        return $loggerWrapper;
+        return $loggerInstance;
     }
 
     /**

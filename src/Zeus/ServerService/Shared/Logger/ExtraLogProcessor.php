@@ -12,6 +12,9 @@ class ExtraLogProcessor implements ProcessorInterface
     /** @var mixed[] */
     protected $config;
 
+    /** @var null|int */
+    protected $backTraceLevel = null;
+
     public function __construct()
     {
         $this->config['service_name'] = '<unknown>';
@@ -40,12 +43,31 @@ class ExtraLogProcessor implements ProcessorInterface
 
         $event['extra']['service_name'] = isset($event['extra']['service_name']) ? $event['extra']['service_name'] : $this->config['service_name'];
         $event['extra']['uid'] = isset($event['extra']['uid']) ? $event['extra']['uid'] : getmypid();
-        $event['extra']['logger'] = isset($event['extra']['logger']) ? $event['extra']['logger'] : '<unknown>';
+        $event['extra']['logger'] = isset($event['extra']['logger']) ? $event['extra']['logger'] : $this->detectLogger();
         $microtime = microtime(true);
 
         $microtime = $microtime > 1 ? $microtime - floor($microtime) : $microtime;
         $event['extra']['microtime'] = isset($event['extra']['microtime']) ? $event['extra']['microtime'] : (int) ($microtime * 1000);
 
         return $event;
+    }
+
+    protected function detectLogger()
+    {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $this->backTraceLevel ? $this->backTraceLevel + 1: 100);
+        if (!$this->backTraceLevel) {
+            foreach ($trace as $level => $step) {
+                if (preg_match('~^(Zend\\\Log\\\Logger|Zeus\\\ServerService\\\Shared\\\Logger\\\ExtraLogProcessor)~', $step['class'])) {
+                    continue;
+                }
+
+                $this->backTraceLevel = $level;
+                break;
+            }
+        }
+
+        $traceStep = $trace[$this->backTraceLevel];
+
+        return isset($traceStep['class']) ? $traceStep['class'] : $traceStep['function'];
     }
 }
