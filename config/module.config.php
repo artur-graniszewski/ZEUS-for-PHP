@@ -9,7 +9,7 @@ use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
+use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;

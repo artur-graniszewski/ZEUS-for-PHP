@@ -1,8 +1,19 @@
 # Changelog
 
+## Version 1.5.0
+- [Feature] Added plugin support to ZEUS Server Service Manager
+- [Feature] Added EventManager to ZEUS Server Service Manager
+- [Feature] Introduced `Zeus\ServerService\ManagerEvent` to ZEUS Server Service Manager
+- [Fix] Fixed Memcached `cas` command not returning `NOT_FOUND` error when key was invalid
+- [Improvement] Minor performance tweaks introduced to Memcached Server Service
+- [Improvement] Major refactoring of Zeus Controller and Server Service Manager code
+- [Improvement] Documentation improvements and enhancements
+- [Improvement] Test improvements and fixes
+- [Improvement] Added first set of Athletic benchmarks for Memcached and HTTP Server Services.
+
 ## Version 1.4.1
 - [Feature] Added plugin support to ZEUS Scheduler
-- [Feature] Implemented two plugins: ProcessTitle and DropPrivileges
+- [Feature] Implemented two plugins: `ProcessTitle` and `DropPrivileges`
 - [Improvement] Test improvements and fixes
 
 ## Version 1.4.0

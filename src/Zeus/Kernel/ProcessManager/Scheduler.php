@@ -320,7 +320,8 @@ final class Scheduler implements EventsCapableInterface
     public function start($launchAsDaemon)
     {
         $this->startTime = microtime(true);
-        $this->log(\Zend\Log\Logger::INFO, "Starting server");
+        $plugins = $this->getPluginRegistry()->count();
+        $this->log(\Zend\Log\Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
         $this->collectCycles();
 
         $events = $this->getEventManager();
@@ -400,10 +401,7 @@ final class Scheduler implements EventsCapableInterface
      */
     public function onSchedulerStart()
     {
-        $this->log(\Zend\Log\Logger::DEBUG, "Scheduler starting...");
-
         $this->setId(getmypid());
-
         $this->attach();
 
         $this->log(\Zend\Log\Logger::INFO, "Scheduler started");

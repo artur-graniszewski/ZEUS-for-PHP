@@ -4,11 +4,13 @@ namespace Zeus\ServerService;
 
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\ProcessManager\Helper\EventManager;
+use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class Manager
 {
     use EventManager;
+    use PluginRegistry;
 
     /** @var ServerServiceInterface[] */
     protected $services;
@@ -182,6 +184,9 @@ final class Manager
      */
     protected function doStartService($serviceName)
     {
+        $plugins = $this->getPluginRegistry()->count();
+        $this->logger->info(sprintf("Starting Server Service Manager with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+
         $service = $this->getService($serviceName);
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
@@ -192,9 +197,7 @@ final class Manager
         $schedulerPid = $service->getScheduler()->getId();
         $this->logger->debug('Scheduler running as process #' . $schedulerPid);
         $this->pidToServiceMap[$schedulerPid] = $service;
-
         $this->servicesRunning++;
-
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);

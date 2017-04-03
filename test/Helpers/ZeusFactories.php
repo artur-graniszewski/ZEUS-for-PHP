@@ -16,7 +16,7 @@ use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
-use Zeus\Kernel\ProcessManager\Factory\ManagerFactory;
+use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;

@@ -147,13 +147,13 @@ Process can use hardware resources in only two states: waiting and running.
 
 The following table describes each state in details:
 
-| State      | Description                                                                                                                                 |
-|------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| STARTED    | An initial state when a process is first created                                                                                            |
-| WAITING    | Process is in a waiting state if it needs to wait for a resource, such as waiting for network connection, or some data to become available  |
-| RUNNING    | Process sets the state to running just before it starts processing its data                                                                 |
-| TERMINATED | When process is terminated by the Process Scheduler, it is moved to the terminated state where it waits to be removed from the Task Pool    |
-| EXITED     | This state is set when process finishes its execution, and it waits to be removed from the Task Pool                                        |
+| State        | Description                                                                                                                                 |
+|--------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `STARTED`    | An initial state when a process is first created                                                                                            |
+| `WAITING`    | Process is in a waiting state if it needs to wait for a resource, such as waiting for network connection, or some data to become available  |
+| `RUNNING`    | Process sets the state to running just before it starts processing its data                                                                 |
+| `TERMINATED` | When process is terminated by the Process Scheduler, it is moved to the terminated state where it waits to be removed from the Task Pool    |
+| `EXITED`     | This state is set when process finishes its execution, and it waits to be removed from the Task Pool                                        |
 
 #### Process Scheduler
 
@@ -368,7 +368,10 @@ return [
                 'min_spare_processes' => 3,
                 'max_spare_processes' => 5,
                 'start_processes' => 8,
-                'enable_process_cache' => true
+                'enable_process_cache' => true,
+                'plugins' => [ // optional
+                    'pluginClassName', // see "ZEUS is Pluggable" documentation section for other examples of plugin definitions
+                ]
             ]
         ]
     ]
@@ -377,21 +380,50 @@ return [
 
 The table below describes the configuration parameters:
 
-| Parameter              | Required | Description                                                                           |
-|------------------------|:--------:|---------------------------------------------------------------------------------------|
-| scheduler_name         | yes      | Unique name of the scheduler configuration                                            |
-| scheduler_discipline   | no       | Zend Framework service providing Scheduler's process management strategy              |
-| multiprocessing_module | yes      | Specifies a `MultiProcessingModuleInterface` implementation to be used in a Scheduler |
-| start_processes        | yes      | Specifies the number of processes that will initially launch with each Server Service |
-| max_processes          | yes      | Maximum number of running/waiting processes of each Server Service                    |
-| max_process_tasks      | yes      | Maximum number of tasks performed by each process before its exit                     |
-| enable_process_cache   | yes      | Controls whether pre-forking mechanism should be used for increased performance       |
-| min_spare_processes    | yes      | Minimal number of processes in a waiting state when process cache is enabled          |
-| max_spare_processes    | yes      | Maximum number of waiting processes when the process cache is enabled                 |
+| Parameter                | Required | Description                                                                           |
+|--------------------------|:--------:|---------------------------------------------------------------------------------------|
+| `scheduler_name`         | yes      | Unique name of the scheduler configuration                                            |
+| `scheduler_discipline`   | no       | Zend Framework service providing Scheduler's process management strategy              |
+| `multiprocessing_module` | yes      | Specifies a `MultiProcessingModuleInterface` implementation to be used in a Scheduler |
+| `start_processes`        | yes      | Specifies the number of processes that will initially launch with each Server Service |
+| `max_processes`          | yes      | Maximum number of running/waiting processes of each Server Service                    |
+| `max_process_tasks`      | yes      | Maximum number of tasks performed by each process before its exit                     |
+| `enable_process_cache`   | yes      | Controls whether pre-forking mechanism should be used for increased performance       |
+| `min_spare_processes`    | yes      | Minimal number of processes in a waiting state when process cache is enabled          |
+| `max_spare_processes`    | yes      | Maximum number of waiting processes when the process cache is enabled                 |
+| `plugins`                | no       | List of plugins that should be enabled for a particular scheduler                     |
 
 ## User mode
 
 ### Server Service Manager
+
+Its a ZEUS component responsible for listing, starting, stopping and getting statuses of _Server Services_.
+
+The Server Service Manager utilizes a `Zeus\ServerService\ManagerEvent` to handle the life-cycle of all services it handles. As of version 1.5.0, the following events are triggered:
+
+| Constant                            | Description                                                                           |
+|-------------------------------------|---------------------------------------------------------------------------------------|
+| `ManagerEvent::EVENT_MANAGER_INIT`  | Triggers when Server Service Manager starts                                           |
+| `ManagerEvent::EVENT_SERVICE_START` | Triggers each time the Server Service is started by a Server Service Manager          |
+| `ManagerEvent::EVENT_SERVICE_STOP`  | Triggers each time the Server Service is stopped by a Server Service Manager          |
+
+Server Service Manager can be customized by using custom plugins, which can be enabled in ZEUS configuration, like so:
+
+```
+// contents of "zf3-application-directory/config/some-config.config.php" file:
+
+return [
+    'zeus_process_manager' => [
+        'manager' => [
+            'plugins' => [ // optional
+                'pluginClassName', // see "ZEUS is Pluggable" documentation section for other examples of plugin definitions
+            ]
+        ]
+    ]
+];
+```
+
+### Server Services
 
 Multiple _Server Services_ can be configured in a regular Zend Framework 3 configuration file, like so:
 
@@ -420,14 +452,14 @@ return [
 
 The table below describes the configuration parameters:
 
-| Parameter        | Required | Description                                                                                 |
-|------------------|:--------:|---------------------------------------------------------------------------------------------|
-| service_name     | yes      | Unique name of this _Server Service_                                                        |
-| scheduler_name   | yes      | Specifies which Scheduler configuration should be used to run this service                  |
-| service_adapter  | yes      | Specifies which `Zeus\ServerService\ServiceInterface` implementation should be launched     |
-| logger_adapter   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
-| auto_start       | yes      | Instructs _Server Service Manager_ to run this service automatically on ZEUS startup        |
-| service_settings | no       | Allows to pass a set of custom parameters to the _Server Service_ factory                   |
+| Parameter          | Required | Description                                                                                 |
+|--------------------|:--------:|---------------------------------------------------------------------------------------------|
+| `service_name`     | yes      | Unique name of this _Server Service_                                                        |
+| `scheduler_name`   | yes      | Specifies which Scheduler configuration should be used to run this service                  |
+| `service_adapter`  | yes      | Specifies which `Zeus\ServerService\ServiceInterface` implementation should be launched     |
+| `logger_adapter`   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
+| `auto_start`       | yes      | Instructs _Server Service Manager_ to run this service automatically on ZEUS startup        |
+| `service_settings` | no       | Allows to pass a set of custom parameters to the _Server Service_ factory                   |
 
 If no `logger_adapter` is specified, ZEUS injects its own _Logger_ instance to the service.
 
@@ -452,12 +484,12 @@ return [
 
 The table below describes the configuration parameters:
 
-| Parameter        | Required | Description                                                                                 |
-|------------------|:--------:|---------------------------------------------------------------------------------------------|
-| reporting_level  | no       | Minimum severity required to log the event (see `Zend\Log\Logger::*`, default: `DEBUG`)     |
-| output           | no       | Specifies where to write the logs, used only by default ZEUS logger, default: `STDOUT`      |
-| show_banner      | no       | Controls whether default ZEUS logger should render its banner on startup or not             |
-| logger_adapter   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
+| Parameter          | Required | Description                                                                                 |
+|--------------------|:--------:|---------------------------------------------------------------------------------------------|
+| `reporting_level`  | no       | Minimum severity required to log the event (see `Zend\Log\Logger::*`, default: `DEBUG`)     |
+| `output`           | no       | Specifies where to write the logs, used only by default ZEUS logger, default: `STDOUT`      |
+| `show_banner`      | no       | Controls whether default ZEUS logger should render its banner on startup or not             |
+| `logger_adapter`   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
 
 ### Web Server
 
@@ -507,12 +539,12 @@ return [
 
 The table below describes the `service_settings` configuration parameters:
 
-| Parameter          | Required | Description                                                                                 |
-|--------------------|:--------:|---------------------------------------------------------------------------------------------|
-| listen_port        | yes      | The service listen port, 80 is a default HTTP port                                          |
-| listen_address     | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
-| blocked_file_types | yes      | A blacklist of file extensions that should not be served as plain text by ZEUS Web Server   |
-| logger_adapter     | yes      | Custom logger service used for HTTP request logging (instantiated by ZF `ServiceManager` )  |
+| Parameter            | Required | Description                                                                                 |
+|----------------------|:--------:|---------------------------------------------------------------------------------------------|
+| `listen_port`        | yes      | The service listen port, 80 is a default HTTP port                                          |
+| `listen_address`     | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
+| `blocked_file_types` | yes      | A blacklist of file extensions that should not be served as plain text by ZEUS Web Server   |
+| `logger_adapter`     | no       | Custom logger service used for HTTP request logging (instantiated by ZF `ServiceManager` )  |
 
 To start such a service, the following command must be issued in a terminal:
 
@@ -564,12 +596,12 @@ return [
 
 The table below describes the `service_settings` configuration parameters:
 
-| Parameter        | Required | Description                                                                                 |
-|------------------|:--------:|---------------------------------------------------------------------------------------------|
-| listen_port      | yes      | The service listen port, 11211 is a default memcached port                                  |
-| listen_address   | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
-| server_cache     | yes      | Name of the `zend-cache` instance. This cache is used for server needs, such as statistics  |
-| client_cache     | yes      | Name of the `zend-cache` instance. This cache is used to store client cache entries         |
+| Parameter          | Required | Description                                                                                 |
+|--------------------|:--------:|---------------------------------------------------------------------------------------------|
+| `listen_port`      | yes      | The service listen port, 11211 is a default memcached port                                  |
+| `listen_address`   | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
+| `server_cache`     | yes      | Name of the `zend-cache` instance. This cache is used for server needs, such as statistics  |
+| `client_cache`     | yes      | Name of the `zend-cache` instance. This cache is used to store client cache entries         |
 
 Please check Zend Framework `zend-cache` [documentation](https://framework.zend.com/manual/2.3/en/modules/zend.cache.storage.adapter.html) to read how to configure or implement your own cache instances.
 
@@ -648,12 +680,12 @@ The above configuration parameters have been described in the __Process Schedule
 
 ### Server Service Manager
 - Additional `EventManager` events covering full application lifecycle
-- More advanced Service reporting and control tools for terminal and remote use
-- Add a plugin that drops user privileges on start of the _Server Service_
+- (implemented) ~~More advanced Service reporting and control tools for terminal and remote use~~
+- (implemented) ~~Add a plugin that drops user privileges on start of the _Server Service_~~
 - Advanced, `systemd`-like handling of Server Service failures or remote shutdowns
 
 ### Process Manager
-- Configurable, more robust scheduling strategies (like terminating processes that handled the largest amount of request, etc)*[]: 
+- (implemented) ~~Configurable, more robust scheduling strategies (like terminating processes that handled the largest amount of request, etc)*~~ 
 
 ### Tests
 - More automatic tests
@@ -675,5 +707,5 @@ The above configuration parameters have been described in the __Process Schedule
 ### Experimental support for Windows platform
 
 ### Other services
-- Redis Server Service implementation PoC
+- (implemented Memcached instead) ~~Redis Server Service implementation PoC ~~ 
 - More features introduced to ZEUS Web Server
