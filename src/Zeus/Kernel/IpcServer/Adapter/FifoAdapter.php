@@ -2,13 +2,22 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter;
 
+use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
+use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
+
 /**
  * Class FifoAdapter
  * @package Zeus\Kernel\IpcServer\Adapter
  * @internal
  */
-final class FifoAdapter implements IpcAdapterInterface
+final class FifoAdapter implements
+    IpcAdapterInterface,
+    NamedLocalConnectionInterface,
+    MessageSizeLimitInterface
 {
+    use MessagePackager;
+
     /** @var resource[] sockets */
     protected $ipc = [];
 
@@ -23,6 +32,8 @@ final class FifoAdapter implements IpcAdapterInterface
 
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
+
+    protected static $maxPipeCapacity = null;
 
     /**
      * Creates IPC object.
@@ -84,7 +95,11 @@ final class FifoAdapter implements IpcAdapterInterface
     {
         $channelNumber = $this->channelNumber;
         $this->checkChannelAvailability($channelNumber);
-        $message = base64_encode(serialize($message));
+        $message = $this->packMessage($message);
+
+        if (strlen($message) + 1 > $this->getMessageSizeLimit()) {
+            throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
+        }
 
         fwrite($this->ipc[$channelNumber], $message . "\n", strlen($message) + 1);
 
@@ -115,10 +130,10 @@ final class FifoAdapter implements IpcAdapterInterface
             return null;
         }
 
-        $message = fgets($readSocket[0], 165536);
+        $message = fgets($readSocket[0]);
 
         if (is_string($message) && $message !== "") {
-            $message = unserialize(base64_decode($message));
+            $message = $this->unpackMessage($message);
             return $message;
         }
     }
@@ -193,5 +208,39 @@ final class FifoAdapter implements IpcAdapterInterface
     public static function isSupported()
     {
         return function_exists('posix_mkfifo');
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageSizeLimit()
+    {
+        if (!static::$maxPipeCapacity) {
+            $fileName = $this->getFilename(2);
+            posix_mkfifo($fileName, 0600);
+
+            $ipc = fopen($fileName, "r+"); // ensures at least one writer (us) so will be non-blocking
+            stream_set_blocking($ipc, false);
+
+            $wrote = 1;
+            $size = 1;
+            $message = str_repeat('a', 524288);
+            while ($size < 524288 && $wrote > 0) {
+                if (fwrite($ipc, $message, $size) !== $size) {
+                    $size = $size >> 1;
+                    break;
+                }
+
+                fgets($ipc);
+                $size = $size << 1;
+            }
+
+            fclose($ipc);
+            unlink($fileName);
+
+            static::$maxPipeCapacity = $size;
+        }
+
+        return static::$maxPipeCapacity;
     }
 }

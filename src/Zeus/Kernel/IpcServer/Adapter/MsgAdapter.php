@@ -2,14 +2,23 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter;
 
+use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
+use Zeus\Kernel\IpcServer\MessageQueueCapacityInterface;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
+use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
+
 /**
  * Handles Inter Process Communication using SystemV functionality.
  *
  * @internal
  */
-final class MsgAdapter implements IpcAdapterInterface
+final class MsgAdapter implements
+    IpcAdapterInterface,
+    NamedLocalConnectionInterface,
+    MessageSizeLimitInterface,
+    MessageQueueCapacityInterface
 {
-    const MAX_MESSAGE_SIZE = 16384;
+    use MessagePackager;
 
     /**
      * Queue links.
@@ -30,6 +39,9 @@ final class MsgAdapter implements IpcAdapterInterface
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var int[] */
+    protected $queueInfo;
+
     /**
      * Creates IPC object.
      *
@@ -43,8 +55,10 @@ final class MsgAdapter implements IpcAdapterInterface
 
         $id1 = $this->getQueueId();
         $this->ipc[0] = msg_get_queue($id1, 0600);
+        msg_set_queue($this->ipc[0], ['msg_qbytes' => $this->getMessageSizeLimit()]);
         $id2 = $this->getQueueId();
         $this->ipc[1] = msg_get_queue($id2, 0600);
+        msg_set_queue($this->ipc[0], ['msg_qbytes' => $this->getMessageSizeLimit()]);
 
         if (!$id1 || !$id2) {
             // something went wrong
@@ -63,18 +77,23 @@ final class MsgAdapter implements IpcAdapterInterface
     }
 
     /**
-     * @todo: handle situation where all queues are reserved already
-     * @return int|bool
+     * @return int
      */
     protected function getQueueId()
     {
         $queueId = 0;
+        $info = $this->getQueueInfo();
+        $maxQueueId = $info['queues_max'];
 
-        while (msg_queue_exists($queueId)) {
+        while ($queueId < $maxQueueId) {
+            if (!msg_queue_exists($queueId)) {
+                return $queueId;
+            }
+
             $queueId++;
         }
 
-        return $queueId;
+        throw new \RuntimeException('No available queue was found');
     }
 
     /**
@@ -93,14 +112,16 @@ final class MsgAdapter implements IpcAdapterInterface
             $channelNumber = 0;
 
         $this->checkChannelAvailability($channelNumber);
-        $message = serialize($message);
+        $message = $this->packMessage($message);
 
-        if (strlen($message) > static::MAX_MESSAGE_SIZE) {
-            throw new \RuntimeException("Message lengths exceeds max packet size of " . static::MAX_MESSAGE_SIZE);
+        if (strlen($message) + 1 > $this->getMessageSizeLimit()) {
+            throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
         }
 
-        if (!@msg_send($this->ipc[$channelNumber], 1, $message, true, true, $errorNumber)) {
-            throw new \RuntimeException(sprintf('Error %d occurred when sending message to channel %d', $errorNumber, $channelNumber));
+        error_clear_last();
+        if (!@msg_send($this->ipc[$channelNumber], 1, $message . "\n", true, true, $errorNumber)) {
+            $error = error_get_last();
+            throw new \RuntimeException(sprintf('Error %d occurred when sending message to channel %d: %s', $errorNumber, $channelNumber, $error['message']));
         }
 
         return $this;
@@ -117,9 +138,9 @@ final class MsgAdapter implements IpcAdapterInterface
         $this->checkChannelAvailability($channelNumber);
 
         $messageType = 1;
-        msg_receive($this->ipc[$channelNumber], $messageType, $messageType, self::MAX_MESSAGE_SIZE, $message, true, MSG_IPC_NOWAIT);
+        msg_receive($this->ipc[$channelNumber], $messageType, $messageType,  $this->getMessageSizeLimit(), $message, true, MSG_IPC_NOWAIT);
 
-        return unserialize($message);
+        return $this->unpackMessage($message);
     }
 
     /**
@@ -202,5 +223,61 @@ final class MsgAdapter implements IpcAdapterInterface
         $this->channelNumber = $channelNumber;
 
         return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageSizeLimit()
+    {
+        $info = $this->getQueueInfo();
+
+        return $info['msg_qbytes'];
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageQueueCapacity()
+    {
+        $info = $this->getQueueInfo();
+
+        return $info['msg_default'];
+    }
+
+    /**
+     * @return int[]
+     */
+    protected function getQueueInfo()
+    {
+        if (!$this->queueInfo) {
+            $id = null;
+            $queue = $this->ipc[0] ? $this->ipc[0] : ($this->ipc[1] ? $this->ipc[1] : null);
+
+            // detect queue limits...
+            $this->queueInfo['msg_default'] = 10;
+            $fileName = '/proc/sys/fs/mqueue/msg_default';
+            if (file_exists($fileName) && is_readable($fileName)) {
+                $this->queueInfo['msg_default'] = (int) file_get_contents($fileName);
+            }
+
+            $this->queueInfo['queues_max'] = 256;
+            $fileName = '/proc/sys/fs/mqueue/queues_max';
+            if (file_exists($fileName) && is_readable($fileName)) {
+                $this->queueInfo['queues_max'] = (int) file_get_contents($fileName);
+            }
+
+            if (!$queue) {
+                $id = $this->getQueueId();
+                $queue = msg_get_queue($id, 0600);
+            }
+
+            $this->queueInfo = array_merge($this->queueInfo, msg_stat_queue($queue));
+            if ($id) {
+                msg_remove_queue($queue);
+            }
+        }
+
+        return $this->queueInfo;
     }
 }

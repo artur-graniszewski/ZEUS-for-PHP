@@ -7,7 +7,10 @@ use Zeus\Kernel\IpcServer\Adapter\ApcAdapter;
 use Zeus\Kernel\IpcServer\Adapter\FifoAdapter;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Adapter\MsgAdapter;
+use Zeus\Kernel\IpcServer\Adapter\SharedMemoryAdapter;
 use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
+use Zeus\Kernel\IpcServer\MessageQueueCapacityInterface;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\ZeusFactories;
@@ -23,6 +26,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
             [SocketAdapter::class],
             [MsgAdapter::class],
             [ApcAdapter::class],
+            //[SharedMemoryAdapter::class],
         ];
     }
 
@@ -59,13 +63,21 @@ class IpcTest extends PHPUnit_Framework_TestCase
 
         $ipcAdapter->useChannelNumber(1);
         $output = $ipcAdapter->receiveAll();
-        $this->assertEquals($messagesAmount, count($output), 'Output queue should contain all the messages');
+        $this->assertEquals($messagesAmount, count($output), 'Output queue should contain all the messages: ' . json_encode($output));
         $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Output queue should be empty after fetching the data');
 
         foreach (range(1, $messagesAmount) as $index) {
             $message = 'Message number ' . $index;
 
             $this->assertContains($message, $output, $message . ' should have been returned as output');
+        }
+
+        if ($ipcAdapter instanceof MessageSizeLimitInterface) {
+            $this->assertGreaterThan(0, $ipcAdapter->getMessageSizeLimit());
+        }
+
+        if ($ipcAdapter instanceof MessageQueueCapacityInterface) {
+            $this->assertGreaterThan(0, $ipcAdapter->getMessageQueueCapacity());
         }
 
         $ipcAdapter->disconnect();
@@ -79,7 +91,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
     {
         $sm = $this->getServiceManager();
         /** @var IpcAdapterInterface $ipcAdapter */
-        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => $adapter, 'service_name' => 'zeus-test2-' . md5($adapter)]);
+        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => $adapter, 'service_name' => 'zeus-test2-' . md5($adapter . microtime(true))]);
 
         $this->assertInstanceOf($adapter, $ipcAdapter);
 

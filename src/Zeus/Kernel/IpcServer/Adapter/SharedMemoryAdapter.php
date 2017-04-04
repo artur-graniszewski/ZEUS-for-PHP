@@ -8,7 +8,7 @@ use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
  * Handles Inter Process Communication using APCu functionality.
  * @internal
  */
-final class ApcAdapter implements
+final class SharedMemoryAdapter implements
     IpcAdapterInterface,
     NamedLocalConnectionInterface
 {
@@ -24,6 +24,10 @@ final class ApcAdapter implements
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    protected $ipc = [0 => null, 1 => null];
+
+    protected $sem = [];
+
     /**
      * Creates IPC object.
      *
@@ -36,10 +40,16 @@ final class ApcAdapter implements
         $this->config = $config;
 
         if (static::isSupported()) {
-            apcu_store($this->namespace . '_readindex_0', 0, 0);
-            apcu_store($this->namespace . '_writeindex_0', 0, 0);
-            apcu_store($this->namespace . '_readindex_1', 0, 0);
-            apcu_store($this->namespace . '_writeindex_1', 0, 0);
+            $key = crc32(sha1($namespace . '_0'));
+            $this->ipc[0] = shm_attach($key, 1024 * 1024 * 32);
+            $this->sem[0] = sem_get($key, 1);
+            $key = crc32(sha1($namespace . '_1'));
+            $this->ipc[1] = shm_attach($key, 1024 * 1024 * 32);
+            $this->sem[1] = sem_get($key, 1);
+            shm_put_var($this->ipc[0], 1, 3);
+            shm_put_var($this->ipc[0], 2, 3);
+            shm_put_var($this->ipc[0], 1, 3);
+            shm_put_var($this->ipc[1], 2, 3);
         }
     }
 
@@ -60,16 +70,22 @@ final class ApcAdapter implements
 
         $this->checkChannelAvailability($channelNumber);
 
-        $index = apcu_fetch($this->namespace . '_writeindex_' . $channelNumber);
-        $success = apcu_store($this->namespace . '_data_' . $channelNumber . '_' . $index, $message, 0);
+        sem_acquire($this->sem[$channelNumber]);
+        $index = shm_get_var($this->ipc[$channelNumber], 2);
+        $success = shm_put_var($this->ipc[$channelNumber], $index, $message);
 
         if (!$success) {
+            sem_release($this->sem[$channelNumber]);
             throw new \RuntimeException(sprintf('Error occurred when sending message to channel %d', $channelNumber));
         }
 
-        if (65535 < apcu_inc($this->namespace . '_writeindex_' . $channelNumber)) {
-            apcu_store($this->namespace . '_writeindex_' . $channelNumber, 0, 0);
+        $index++;
+        if (65535 < $index) {
+            $index = 3;
         }
+
+        shm_put_var($this->ipc[$channelNumber], 2, $index);
+        sem_release($this->sem[$channelNumber]);
 
         return $this;
     }
@@ -85,13 +101,26 @@ final class ApcAdapter implements
 
         $this->checkChannelAvailability($channelNumber);
 
-        $readIndex = apcu_fetch($this->namespace . '_readindex_' . $channelNumber);
-        $result = apcu_fetch($this->namespace . '_data_' . $channelNumber . '_' . $readIndex, $success);
-        apcu_delete($this->namespace . '_data_' . $channelNumber . '_' . $readIndex);
+        sem_acquire($this->sem[$channelNumber]);
+        $success = shm_has_var($this->ipc[$channelNumber], 1);
 
-        if ($success && 65535 < apcu_inc($this->namespace . '_readindex_' . $channelNumber)) {
-            apcu_store($this->namespace . '_readindex_' . $channelNumber, 0, 0);
+        $readIndex = $success ? (int) shm_get_var($this->ipc[$channelNumber], 1) : 3;
+        $success = shm_has_var($this->ipc[$channelNumber], $readIndex);
+
+        $result = null;
+        if ($success) {
+            $result = shm_get_var($this->ipc[$channelNumber], $readIndex);
+            shm_remove_var($this->ipc[$channelNumber], $readIndex);
         }
+
+        $readIndex++;
+
+        if (65535 < $readIndex) {
+            $readIndex = 3;
+        }
+
+        shm_put_var($this->ipc[$channelNumber], 1, $readIndex);
+        sem_release($this->sem[$channelNumber]);
 
         return $result;
     }
@@ -117,13 +146,25 @@ final class ApcAdapter implements
      * @param int $channelNumber
      * @return $this
      */
-    public function disconnect($channelNumber = 0)
+    public function disconnect($channelNumber = -1)
     {
-        $this->checkChannelAvailability($channelNumber);
+        if ($channelNumber !== -1) {
+            $this->checkChannelAvailability($channelNumber);
 
-        apcu_delete($this->namespace . '_writeindex_' . $channelNumber);
+            shm_remove($this->ipc[$channelNumber]);
+            unset($this->ipc[$channelNumber]);
+            $this->activeChannels[$channelNumber] = false;
 
-        $this->activeChannels[$channelNumber] = false;
+            return $this;
+        }
+
+        foreach (array_keys($this->ipc) as $channelNumber) {
+            shm_remove($this->ipc[$channelNumber]);
+            unset($this->ipc[$channelNumber]);
+        }
+
+        $this->activeChannels = [0 => false, 1 => false];
+
         return $this;
     }
 
@@ -142,14 +183,19 @@ final class ApcAdapter implements
      */
     public static function isSupported()
     {
+        return false;
         return (
-            extension_loaded('apcu')
+            function_exists('shm_get_var')
             &&
-            false !== @apcu_cache_info()
+            function_exists('shm_put_var')
             &&
-            function_exists('apcu_store')
+            function_exists('shm_remove_var')
             &&
-            function_exists('apcu_fetch')
+            function_exists('shm_remove')
+            &&
+            function_exists('shm_get')
+            &&
+            function_exists('shm_attach')
         );
     }
 
