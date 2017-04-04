@@ -208,6 +208,8 @@ final class SharedMemoryAdapter implements
     public static function isSupported()
     {
         return (
+            !defined('HHVM_VERSION') // @todo: troubleshoot HHVM issues
+            &&
             function_exists('shm_get_var')
             &&
             function_exists('shm_put_var')
