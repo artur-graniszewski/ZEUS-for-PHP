@@ -31,7 +31,7 @@ class ApcuIpcBenchmark extends AthleticEvent
         $this->ipcAdapter = $this->serviceManager->build(IpcAdapterInterface::class, ['ipc_adapter' => ApcAdapter::class, 'service_name' => 'zeus-test-' . md5(microtime(true))]);
 
         $adapter = $this->ipcAdapter;
-        if (!$adapter::isSupported()) {
+        if (!$adapter->isSupported()) {
             throw new \RuntimeException('The PHP configuration or OS system does not support ' . get_class($adapter));
         }
     }

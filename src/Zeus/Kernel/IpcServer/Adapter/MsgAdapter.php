@@ -74,6 +74,10 @@ final class MsgAdapter implements
             throw new \LogicException("Connection already established");
         }
 
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
         $id1 = $this->getQueueId();
         $this->ipc[0] = msg_get_queue($id1, 0600);
         msg_set_queue($this->ipc[0], ['msg_qbytes' => $this->getMessageSizeLimit()]);
@@ -238,7 +242,7 @@ final class MsgAdapter implements
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return function_exists('msg_stat_queue');
     }

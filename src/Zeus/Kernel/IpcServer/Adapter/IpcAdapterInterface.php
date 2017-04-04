@@ -64,7 +64,7 @@ interface IpcAdapterInterface
     /**
      * @return bool
      */
-    public static function isSupported();
+    public function isSupported();
 
     /**
      * @param int $channelNumber

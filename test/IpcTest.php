@@ -53,7 +53,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
 
         $this->assertInstanceOf($adapter, $ipcAdapter);
 
-        if (!$ipcAdapter::isSupported()) {
+        if (!$ipcAdapter->isSupported()) {
             $this->markTestSkipped('The PHP configuration or OS system does not support ' . get_class($ipcAdapter));
         }
 
@@ -111,7 +111,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
             'logger_adapter' => $logger
         ]);
 
-        if (!$ipcAdapter::isSupported()) {
+        if (!$ipcAdapter->isSupported()) {
             $this->markTestSkipped('The PHP configuration or OS system does not support ' . get_class($ipcAdapter));
         }
 

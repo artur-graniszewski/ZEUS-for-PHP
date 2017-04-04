@@ -48,6 +48,10 @@ final class ApcAdapter implements
             throw new \LogicException("Connection already established");
         }
 
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
         apcu_store($this->namespace . '_readindex_0', 0, 0);
         apcu_store($this->namespace . '_writeindex_0', 0, 0);
         apcu_store($this->namespace . '_readindex_1', 0, 0);
@@ -173,7 +177,7 @@ final class ApcAdapter implements
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return (
             extension_loaded('apcu')

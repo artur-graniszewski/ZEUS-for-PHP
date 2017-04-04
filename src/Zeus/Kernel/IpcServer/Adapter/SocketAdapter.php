@@ -67,6 +67,10 @@ final class SocketAdapter implements
             throw new \LogicException("Connection already established");
         }
 
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
         $domain = strtoupper(substr(PHP_OS, 0, 3) == 'WIN' ? AF_INET : AF_UNIX);
 
         if (!socket_create_pair($domain, SOCK_SEQPACKET, 0, $this->ipc)) {
@@ -221,7 +225,7 @@ final class SocketAdapter implements
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return function_exists('socket_create_pair');
     }

@@ -67,6 +67,10 @@ final class FifoAdapter implements
             throw new \LogicException("Connection already established");
         }
 
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
         $fileName1 = $this->getFilename(0);
         $fileName2 = $this->getFilename(1);
         posix_mkfifo($fileName1, 0600);
@@ -238,7 +242,7 @@ final class FifoAdapter implements
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return function_exists('posix_mkfifo');
     }

@@ -69,6 +69,10 @@ final class SharedMemoryAdapter implements
             throw new \LogicException("Connection already established");
         }
 
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
         $namespace = $this->namespace;
 
         $key = crc32(sha1($namespace . '_0'));
@@ -238,7 +242,7 @@ final class SharedMemoryAdapter implements
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return (
             !defined('HHVM_VERSION') // @todo: troubleshoot HHVM issues
