@@ -281,6 +281,9 @@ final class Scheduler implements EventsCapableInterface
             ]
         ];
 
+        if (!$this->ipcAdapter->isConnected()) {
+            $this->ipcAdapter->connect();
+        }
         $this->ipcAdapter->useChannelNumber(1);
         $this->ipcAdapter->send($payload);
 
@@ -386,7 +389,6 @@ final class Scheduler implements EventsCapableInterface
      */
     private function handleException($exception)
     {
-        trigger_error($exception->getMessage(), E_USER_WARNING);
         $schedulerEvent = $this->event;
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $schedulerEvent->setParams($this->getEventExtraData());
@@ -404,6 +406,10 @@ final class Scheduler implements EventsCapableInterface
     {
         $this->setId(getmypid());
         $this->attach();
+        $this->log(\Zend\Log\Logger::INFO, "Establishing IPC");
+        if (!$this->ipcAdapter->isConnected()) {
+            $this->ipcAdapter->connect();
+        }
 
         $this->log(\Zend\Log\Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
@@ -467,6 +473,7 @@ final class Scheduler implements EventsCapableInterface
 
         $this->log(\Zend\Log\Logger::INFO, "Scheduler terminated");
 
+        $this->log(\Zend\Log\Logger::INFO, "Stopping IPC");
         $this->ipcAdapter->disconnect();
     }
 

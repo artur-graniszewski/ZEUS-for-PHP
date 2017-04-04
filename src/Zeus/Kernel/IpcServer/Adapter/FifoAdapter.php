@@ -33,6 +33,9 @@ final class FifoAdapter implements
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var bool */
+    protected $connected;
+
     protected static $maxPipeCapacity = null;
 
     /**
@@ -45,6 +48,24 @@ final class FifoAdapter implements
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
+        }
 
         $fileName1 = $this->getFilename(0);
         $fileName2 = $this->getFilename(1);
@@ -56,6 +77,10 @@ final class FifoAdapter implements
         stream_set_blocking($this->ipc[0], false); // prevent fread / fwrite blocking
         stream_set_blocking($this->ipc[1], false); // prevent fread / fwrite blocking
         $this->getMessageSizeLimit();
+
+        $this->connected = true;
+
+        return $this;
     }
 
     /**
@@ -63,6 +88,10 @@ final class FifoAdapter implements
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
+
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }

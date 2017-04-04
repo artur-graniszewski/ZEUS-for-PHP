@@ -3,6 +3,8 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zeus\Kernel\IpcServer\Adapter\ApcAdapter;
 use Zeus\Kernel\IpcServer\Adapter\FifoAdapter;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
@@ -38,15 +40,24 @@ class IpcTest extends PHPUnit_Framework_TestCase
     {
         $messagesAmount = 100;
 
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
+
         $sm = $this->getServiceManager();
         /** @var IpcAdapterInterface $ipcAdapter */
-        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => $adapter, 'service_name' => 'zeus-test-' . md5($adapter)]);
+        $ipcAdapter = $sm->build(IpcAdapterInterface::class, [
+            'ipc_adapter' => $adapter,
+            'service_name' => 'zeus-test-' . md5($adapter),
+            'logger_adapter' => $logger
+        ]);
 
         $this->assertInstanceOf($adapter, $ipcAdapter);
 
         if (!$ipcAdapter::isSupported()) {
             $this->markTestSkipped('The PHP configuration or OS system does not support ' . get_class($ipcAdapter));
         }
+
+        $ipcAdapter->connect();
 
         $ipcAdapter->useChannelNumber(0);
         $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Input queue should be empty');
@@ -89,9 +100,18 @@ class IpcTest extends PHPUnit_Framework_TestCase
      */
     public function testIpcDisconnects($adapter)
     {
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
+
         $sm = $this->getServiceManager();
         /** @var IpcAdapterInterface $ipcAdapter */
-        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => $adapter, 'service_name' => 'zeus-test2-' . md5($adapter . microtime(true))]);
+        $ipcAdapter = $sm->build(IpcAdapterInterface::class, [
+            'ipc_adapter' => $adapter,
+            'service_name' => 'zeus-test2-' . md5($adapter . microtime(true)),
+            'logger_adapter' => $logger
+        ]);
+
+        $ipcAdapter->connect();
 
         $this->assertInstanceOf($adapter, $ipcAdapter);
 
@@ -128,10 +148,17 @@ class IpcTest extends PHPUnit_Framework_TestCase
 
     public function testIpcLogger()
     {
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
+
         $serviceName = 'zeus-test-' . md5(__CLASS__);
         $sm = $this->getServiceManager();
         /** @var IpcAdapterInterface $ipcAdapter */
-        $ipcAdapter = $sm->build(IpcAdapterInterface::class, ['ipc_adapter' => SocketAdapter::class, 'service_name' => $serviceName]);
+        $ipcAdapter = $sm->build(IpcAdapterInterface::class, [
+            'ipc_adapter' => SocketAdapter::class,
+            'service_name' => $serviceName,
+            'logger_adapter' => $logger
+        ]);
 
         /** @var LoggerInterface $logger */
         $logger = $sm->build(IpcLoggerInterface::class, ['ipc_adapter' => $ipcAdapter, 'service_name' => $serviceName]);

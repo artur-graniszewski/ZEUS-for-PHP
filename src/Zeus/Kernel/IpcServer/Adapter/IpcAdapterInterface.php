@@ -18,6 +18,20 @@ interface IpcAdapterInterface
     public function __construct($namespace, array $config);
 
     /**
+     * Establishes inter-process communication.
+     *
+     * @return $this
+     */
+    public function connect();
+
+    /**
+     * Checks if connection is established.
+     *
+     * @return bool
+     */
+    public function isConnected();
+
+    /**
      * Sends a message to the queue.
      *
      * @return $this

@@ -37,6 +37,9 @@ final class SharedMemoryAdapter implements
 
     protected $semaphores = [];
 
+    /** @var bool */
+    protected $connected;
+
     /**
      * Creates IPC object.
      *
@@ -47,25 +50,47 @@ final class SharedMemoryAdapter implements
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
 
-        if (static::isSupported()) {
-            $key = crc32(sha1($namespace . '_0'));
-            $this->ipc[0] = shm_attach($key, 1024 * 1024 * 32);
-            $this->semaphores[0] = sem_get($key, 1);
-            $key = crc32(sha1($namespace . '_1'));
-            $this->ipc[1] = shm_attach($key, 1024 * 1024 * 32);
-            $this->semaphores[1] = sem_get($key, 1);
-            foreach ($this->ipc as $ipc) {
-                @shm_put_var($ipc, static::READ_INDEX, 3);
-                if (!shm_has_var($ipc, static::READ_INDEX)) {
-                    throw new \RuntimeException("Shared memory segment is unavailable");
-                }
-                @shm_put_var($ipc, static::WRITE_INDEX, 3);
-                if (!shm_has_var($ipc, static::WRITE_INDEX)) {
-                    throw new \RuntimeException("Shared memory segment is unavailable");
-                }
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
+        }
+
+        $namespace = $this->namespace;
+
+        $key = crc32(sha1($namespace . '_0'));
+        $this->ipc[0] = shm_attach($key, 1024 * 1024 * 32);
+        $this->semaphores[0] = sem_get($key, 1);
+        $key = crc32(sha1($namespace . '_1'));
+        $this->ipc[1] = shm_attach($key, 1024 * 1024 * 32);
+        $this->semaphores[1] = sem_get($key, 1);
+        foreach ($this->ipc as $ipc) {
+            @shm_put_var($ipc, static::READ_INDEX, 3);
+            if (!shm_has_var($ipc, static::READ_INDEX)) {
+                throw new \RuntimeException("Shared memory segment is unavailable");
+            }
+            @shm_put_var($ipc, static::WRITE_INDEX, 3);
+            if (!shm_has_var($ipc, static::WRITE_INDEX)) {
+                throw new \RuntimeException("Shared memory segment is unavailable");
             }
         }
+
+        $this->connected = true;
+
+        return $this;
     }
 
     /**
@@ -201,6 +226,10 @@ final class SharedMemoryAdapter implements
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
+
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }

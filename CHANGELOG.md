@@ -2,8 +2,10 @@
 
 ## Version 1.5.1
 - [Feature] Implemented `SharedMemoryIpcAdapter`
+- [Feature] Implemented additional methods enumerating IPC adapter capabilities, such as message size limit or queue capacity
 - [Fix] Fixed message indexing in a `ApcIpcAdapter` queue
 - [Improvement] Major performance tweaks introduced to the most of IPC adapters (up to 300% performance gain)
+- [Improvement] Implemented lazy loading of Server Services
 
 ## Version 1.5.0
 - [Feature] Added plugin support to ZEUS Server Service Manager

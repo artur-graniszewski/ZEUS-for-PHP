@@ -35,6 +35,9 @@ final class SocketAdapter implements
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var bool */
+    protected $connected;
+
     /**
      * Creates IPC object.
      *
@@ -45,6 +48,24 @@ final class SocketAdapter implements
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
+        }
 
         $domain = strtoupper(substr(PHP_OS, 0, 3) == 'WIN' ? AF_INET : AF_UNIX);
 
@@ -55,6 +76,10 @@ final class SocketAdapter implements
 
         socket_set_nonblock($this->ipc[0]);
         socket_set_nonblock($this->ipc[1]);
+
+        $this->connected = true;
+
+        return $this;
     }
 
     /**
@@ -185,6 +210,9 @@ final class SocketAdapter implements
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }

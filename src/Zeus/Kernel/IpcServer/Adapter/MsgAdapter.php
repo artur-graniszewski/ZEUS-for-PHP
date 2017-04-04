@@ -42,6 +42,9 @@ final class MsgAdapter implements
     /** @var int[] */
     protected $queueInfo;
 
+    /** @var bool */
+    protected $connected;
+
     /**
      * Creates IPC object.
      *
@@ -52,6 +55,24 @@ final class MsgAdapter implements
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
+        }
 
         $id1 = $this->getQueueId();
         $this->ipc[0] = msg_get_queue($id1, 0600);
@@ -64,6 +85,10 @@ final class MsgAdapter implements
             // something went wrong
             throw new \RuntimeException("Failed to find a queue for IPC");
         }
+
+        $this->connected = true;
+
+        return $this;
     }
 
     /**
@@ -71,6 +96,10 @@ final class MsgAdapter implements
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
+
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }

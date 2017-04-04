@@ -24,6 +24,9 @@ final class ApcAdapter implements
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var bool */
+    protected $connected;
+
     /**
      * Creates IPC object.
      *
@@ -34,13 +37,33 @@ final class ApcAdapter implements
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
 
-        if (static::isSupported()) {
-            apcu_store($this->namespace . '_readindex_0', 0, 0);
-            apcu_store($this->namespace . '_writeindex_0', 0, 0);
-            apcu_store($this->namespace . '_readindex_1', 0, 0);
-            apcu_store($this->namespace . '_writeindex_1', 0, 0);
+    /**
+     * return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
         }
+
+        apcu_store($this->namespace . '_readindex_0', 0, 0);
+        apcu_store($this->namespace . '_writeindex_0', 0, 0);
+        apcu_store($this->namespace . '_readindex_1', 0, 0);
+        apcu_store($this->namespace . '_writeindex_1', 0, 0);
+
+        $this->connected = true;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
     }
 
     /**
@@ -138,6 +161,10 @@ final class ApcAdapter implements
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
+
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }

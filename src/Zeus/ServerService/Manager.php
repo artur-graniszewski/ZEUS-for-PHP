@@ -115,7 +115,8 @@ final class Manager
             throw new \RuntimeException("Service \"$serviceName\" not found");
         }
 
-        return $this->services[$serviceName]['service'];
+        $service = $this->services[$serviceName]['service'];
+        return ($service instanceof ServerServiceInterface ? $service : $service());
     }
 
     /**
@@ -136,11 +137,11 @@ final class Manager
 
     /**
      * @param string $serviceName
-     * @param ServerServiceInterface $service
+     * @param ServerServiceInterface|Closure $service
      * @param bool $autoStart
      * @return $this
      */
-    public function registerService($serviceName, ServerServiceInterface $service, $autoStart)
+    public function registerService($serviceName, $service, $autoStart)
     {
         $this->services[$serviceName] = [
             'service' => $service,
