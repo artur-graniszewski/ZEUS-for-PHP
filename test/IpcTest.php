@@ -26,7 +26,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
             [SocketAdapter::class],
             [MsgAdapter::class],
             [ApcAdapter::class],
-            //[SharedMemoryAdapter::class],
+            [SharedMemoryAdapter::class],
         ];
     }
 

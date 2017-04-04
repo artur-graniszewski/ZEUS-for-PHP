@@ -2,6 +2,8 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter;
 
+use Zeus\Kernel\IpcServer\MessageQueueCapacityInterface;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
 
 /**
@@ -10,8 +12,15 @@ use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
  */
 final class SharedMemoryAdapter implements
     IpcAdapterInterface,
-    NamedLocalConnectionInterface
+    NamedLocalConnectionInterface,
+    MessageQueueCapacityInterface,
+    MessageSizeLimitInterface
 {
+    const READ_INDEX = 1;
+    const WRITE_INDEX = 2;
+    const MAX_QUEUE_SIZE = 65536;
+    const MAX_MEMORY_SIZE = 33554432;
+
     /** @var string */
     protected $namespace;
 
@@ -26,7 +35,7 @@ final class SharedMemoryAdapter implements
 
     protected $ipc = [0 => null, 1 => null];
 
-    protected $sem = [];
+    protected $semaphores = [];
 
     /**
      * Creates IPC object.
@@ -42,14 +51,20 @@ final class SharedMemoryAdapter implements
         if (static::isSupported()) {
             $key = crc32(sha1($namespace . '_0'));
             $this->ipc[0] = shm_attach($key, 1024 * 1024 * 32);
-            $this->sem[0] = sem_get($key, 1);
+            $this->semaphores[0] = sem_get($key, 1);
             $key = crc32(sha1($namespace . '_1'));
             $this->ipc[1] = shm_attach($key, 1024 * 1024 * 32);
-            $this->sem[1] = sem_get($key, 1);
-            shm_put_var($this->ipc[0], 1, 3);
-            shm_put_var($this->ipc[0], 2, 3);
-            shm_put_var($this->ipc[0], 1, 3);
-            shm_put_var($this->ipc[1], 2, 3);
+            $this->semaphores[1] = sem_get($key, 1);
+            foreach ($this->ipc as $ipc) {
+                @shm_put_var($ipc, static::READ_INDEX, 3);
+                if (!shm_has_var($ipc, static::READ_INDEX)) {
+                    throw new \RuntimeException("Shared memory segment is unavailable");
+                }
+                @shm_put_var($ipc, static::WRITE_INDEX, 3);
+                if (!shm_has_var($ipc, static::WRITE_INDEX)) {
+                    throw new \RuntimeException("Shared memory segment is unavailable");
+                }
+            }
         }
     }
 
@@ -70,22 +85,30 @@ final class SharedMemoryAdapter implements
 
         $this->checkChannelAvailability($channelNumber);
 
-        sem_acquire($this->sem[$channelNumber]);
-        $index = shm_get_var($this->ipc[$channelNumber], 2);
-        $success = shm_put_var($this->ipc[$channelNumber], $index, $message);
+        sem_acquire($this->semaphores[$channelNumber]);
+        $index = shm_get_var($this->ipc[$channelNumber], static::WRITE_INDEX);
+        $exists = shm_has_var($this->ipc[$channelNumber], $index);
+        if ($exists) {
+            sem_release($this->semaphores[$channelNumber]);
+            throw new \RuntimeException(sprintf('Message queue on channel %d', $channelNumber));
+        }
+
+        error_clear_last();
+        $success = @shm_put_var($this->ipc[$channelNumber], $index, $message);
 
         if (!$success) {
-            sem_release($this->sem[$channelNumber]);
-            throw new \RuntimeException(sprintf('Error occurred when sending message to channel %d', $channelNumber));
+            sem_release($this->semaphores[$channelNumber]);
+            $error = error_get_last();
+            throw new \RuntimeException(sprintf('Error occurred when sending message to channel %d: %s', $channelNumber, $error['message']));
         }
 
         $index++;
-        if (65535 < $index) {
+        if ($this->getMessageQueueCapacity() < $index) {
             $index = 3;
         }
 
-        shm_put_var($this->ipc[$channelNumber], 2, $index);
-        sem_release($this->sem[$channelNumber]);
+        shm_put_var($this->ipc[$channelNumber], static::WRITE_INDEX, $index);
+        sem_release($this->semaphores[$channelNumber]);
 
         return $this;
     }
@@ -101,26 +124,23 @@ final class SharedMemoryAdapter implements
 
         $this->checkChannelAvailability($channelNumber);
 
-        sem_acquire($this->sem[$channelNumber]);
-        $success = shm_has_var($this->ipc[$channelNumber], 1);
-
-        $readIndex = $success ? (int) shm_get_var($this->ipc[$channelNumber], 1) : 3;
+        sem_acquire($this->semaphores[$channelNumber]);
+        $readIndex = shm_get_var($this->ipc[$channelNumber], static::READ_INDEX);
         $success = shm_has_var($this->ipc[$channelNumber], $readIndex);
 
         $result = null;
         if ($success) {
             $result = shm_get_var($this->ipc[$channelNumber], $readIndex);
             shm_remove_var($this->ipc[$channelNumber], $readIndex);
+            $readIndex++;
         }
 
-        $readIndex++;
-
-        if (65535 < $readIndex) {
+        if ($this->getMessageQueueCapacity() < $readIndex) {
             $readIndex = 3;
         }
 
-        shm_put_var($this->ipc[$channelNumber], 1, $readIndex);
-        sem_release($this->sem[$channelNumber]);
+        shm_put_var($this->ipc[$channelNumber], static::READ_INDEX, $readIndex);
+        sem_release($this->semaphores[$channelNumber]);
 
         return $result;
     }
@@ -152,6 +172,7 @@ final class SharedMemoryAdapter implements
             $this->checkChannelAvailability($channelNumber);
 
             shm_remove($this->ipc[$channelNumber]);
+            shm_detach($this->ipc[$channelNumber]);
             unset($this->ipc[$channelNumber]);
             $this->activeChannels[$channelNumber] = false;
 
@@ -160,6 +181,7 @@ final class SharedMemoryAdapter implements
 
         foreach (array_keys($this->ipc) as $channelNumber) {
             shm_remove($this->ipc[$channelNumber]);
+            shm_detach($this->ipc[$channelNumber]);
             unset($this->ipc[$channelNumber]);
         }
 
@@ -183,7 +205,6 @@ final class SharedMemoryAdapter implements
      */
     public static function isSupported()
     {
-        return false;
         return (
             function_exists('shm_get_var')
             &&
@@ -193,9 +214,11 @@ final class SharedMemoryAdapter implements
             &&
             function_exists('shm_remove')
             &&
-            function_exists('shm_get')
+            function_exists('sem_get')
             &&
             function_exists('shm_attach')
+            &&
+            function_exists('shm_detach')
         );
     }
 
@@ -209,5 +232,21 @@ final class SharedMemoryAdapter implements
         $this->channelNumber = $channelNumber;
 
         return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageQueueCapacity()
+    {
+        return static::MAX_QUEUE_SIZE;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageSizeLimit()
+    {
+        return static::MAX_MEMORY_SIZE;
     }
 }
