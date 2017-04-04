@@ -130,15 +130,17 @@ final class MsgAdapter implements
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
+        $success = false;
         $channelNumber = $this->channelNumber;
         $this->checkChannelAvailability($channelNumber);
 
         $messageType = 1;
-        msg_receive($this->ipc[$channelNumber], $messageType, $messageType,  $this->getMessageSizeLimit(), $message, true, MSG_IPC_NOWAIT);
+        $success = msg_receive($this->ipc[$channelNumber], $messageType, $messageType,  $this->getMessageSizeLimit(), $message, true, MSG_IPC_NOWAIT);
 
         return $this->unpackMessage($message);
     }
@@ -164,9 +166,9 @@ final class MsgAdapter implements
         }
 
         for(;;) {
-            $message = $this->receive();
+            $message = $this->receive($success);
 
-            if (!$message) {
+            if (!$success) {
                 break;
             }
 

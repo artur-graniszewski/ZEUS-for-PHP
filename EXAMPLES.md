@@ -178,7 +178,7 @@ Command:
 artur@osboxes:/var/www/zf-apigility-skeleton$ ab -n 50000 -c 8 -k -i http://127.0.0.1:7070/apigility-ui/img/ag-hero.png
 ```
 
-Output (on _Intel Core i3_):
+Output (on the _Intel Core i3_ processor):
 ```
 This is ApacheBench, Version 2.3 <$Revision: 1706008 $>
 Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
@@ -249,32 +249,69 @@ To execute the benchmarks the following command must be issued:
 artur@osboxes:/var/www/zf-apigility-skeleton/vendor/zeus-server/zf3-server$ ../../bin/athletic -p benchmarks
 ```
 
-Output (on _Intel Core i7_):
+Output (on the _Intel Core i7_ processor):
 ```
 
 ZeusBench\HttpMessageBenchmark
     Method Name                    Iterations    Average Time      Ops/second
     ----------------------------  ------------  --------------    -------------
-    getLargeRequest             : [5,000     ] [0.0000861983299] [11,601.15284]
-    getMediumRequest            : [5,000     ] [0.0000538723469] [18,562.39904]
-    getSmallRequest             : [5,000     ] [0.0000384906769] [25,980.31734]
-    getDeflatedLargeRequest     : [5,000     ] [0.0017424072742] [573.91863]
-    getDeflatedMediumRequest    : [5,000     ] [0.0005528312206] [1,808.87034]
-    getDeflatedSmallRequest     : [5,000     ] [0.0000820228100] [12,191.73057]
-    optionsLargeRequest         : [5,000     ] [0.0001936281204] [5,164.53911]
-    optionsMediumRequest        : [5,000     ] [0.0000501904488] [19,924.10956]
-    optionsSmallRequest         : [5,000     ] [0.0000386358261] [25,882.71303]
-    optionsDeflatedLargeRequest : [5,000     ] [0.0015684711456] [637.56353]
-    optionsDeflatedMediumRequest: [5,000     ] [0.0004385448456] [2,280.26851]
-    optionsDeflatedSmallRequest : [5,000     ] [0.0000567888260] [17,609.09796]
+    getLargeRequest             : [5,000     ] [0.0000876446247] [11,409.71284]
+    getMediumRequest            : [5,000     ] [0.0000542313576] [18,439.51626]
+    getSmallRequest             : [5,000     ] [0.0000369216919] [27,084.34930]
+    getDeflatedLargeRequest     : [5,000     ] [0.0015375246048] [650.39610]
+    getDeflatedMediumRequest    : [5,000     ] [0.0005287565708] [1,891.22945]
+    getDeflatedSmallRequest     : [5,000     ] [0.0000904949665] [11,050.33836]
+    optionsLargeRequest         : [5,000     ] [0.0001906073570] [5,246.38721]
+    optionsMediumRequest        : [5,000     ] [0.0000480278969] [20,821.23234]
+    optionsSmallRequest         : [5,000     ] [0.0000361358643] [27,673.33840]
+    optionsDeflatedLargeRequest : [5,000     ] [0.0015187056065] [658.45546]
+    optionsDeflatedMediumRequest: [5,000     ] [0.0004220429897] [2,369.42687]
+    optionsDeflatedSmallRequest : [5,000     ] [0.0000562005043] [17,793.43464]
+
+
+ZeusBench\Ipc\ApcuIpcBenchmark
+    Method Name         Iterations    Average Time      Ops/second
+    -----------------  ------------  --------------    -------------
+    testSmallMessage : [10,000    ] [0.0000030758858] [325,109.60221]
+    testMediumMessage: [10,000    ] [0.0000050517321] [197,951.90787]
+    testLargeMessage : [10,000    ] [0.0000070984125] [140,876.56896]
+
+
+ZeusBench\Ipc\FifoIpcBenchmark
+    Method Name         Iterations    Average Time      Ops/second
+    -----------------  ------------  --------------    -------------
+    testSmallMessage : [10,000    ] [0.0000049222708] [203,158.26693]
+    testMediumMessage: [10,000    ] [0.0000193856239] [51,584.61773]
+
+
+ZeusBench\Ipc\MsgIpcBenchmark
+    Method Name        Iterations    Average Time      Ops/second
+    ----------------  ------------  --------------    -------------
+    testSmallMessage: [10,000    ] [0.0000037575006] [266,134.35194]
+
+
+ZeusBench\Ipc\SharedMemoryIpcBenchmark
+    Method Name         Iterations    Average Time      Ops/second
+    -----------------  ------------  --------------    -------------
+    testSmallMessage : [10,000    ] [0.0000036380529] [274,872.30571]
+    testMediumMessage: [10,000    ] [0.0000084872961] [117,823.15448]
+    testLargeMessage : [10,000    ] [0.0000139183760] [71,847.46282]
+
+
+ZeusBench\Ipc\SocketIpcBenchmark
+    Method Name         Iterations    Average Time      Ops/second
+    -----------------  ------------  --------------    -------------
+    testSmallMessage : [10,000    ] [0.0000045817614] [218,256.67498]
+    testMediumMessage: [10,000    ] [0.0000142321825] [70,263.29235]
+    testLargeMessage : [10,000    ] [0.0000252086639] [39,668.90123]
 
 
 ZeusBench\MemcachedMessageBenchmark
     Method Name   Iterations    Average Time      Ops/second
     -----------  ------------  --------------    -------------
-    setCommand : [5,000     ] [0.0000413805485] [24,165.94358]
-    getCommand : [5,000     ] [0.0000325757980] [30,697.63629]
-    incrCommand: [5,000     ] [0.0000228866100] [43,693.67061]
-    decrCommand: [5,000     ] [0.0000221291542] [45,189.25535]
+    setCommand : [5,000     ] [0.0000400159359] [24,990.04403]
+    getCommand : [5,000     ] [0.0000306358337] [32,641.51413]
+    incrCommand: [5,000     ] [0.0000211413860] [47,300.58845]
+    decrCommand: [5,000     ] [0.0000209878922] [47,646.51890]
 
 ```

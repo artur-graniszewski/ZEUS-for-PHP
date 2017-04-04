@@ -109,10 +109,12 @@ final class FifoAdapter implements
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
+        $success = false;
         $channelNumber = $this->channelNumber;
 
         $channelNumber == 0 ?
@@ -134,6 +136,7 @@ final class FifoAdapter implements
 
         if (is_string($message) && $message !== "") {
             $message = $this->unpackMessage($message);
+            $success = true;
             return $message;
         }
     }
@@ -163,8 +166,8 @@ final class FifoAdapter implements
 
         if (@stream_select($readSocket, $writeSocket, $except, 1)) {
             for (;;) {
-                $message = $this->receive();
-                if ($message === null) {
+                $message = $this->receive($success);
+                if (!$success) {
 
                     break;
                 }

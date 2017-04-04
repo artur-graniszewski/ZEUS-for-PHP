@@ -79,8 +79,9 @@ final class ApcAdapter implements
      *
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
+        $success = false;
         $channelNumber = $this->channelNumber;
 
         $this->checkChannelAvailability($channelNumber);
@@ -104,7 +105,8 @@ final class ApcAdapter implements
     public function receiveAll()
     {
         $results = [];
-        while ($result = $this->receive()) {
+        $success = true;
+        while ($result = $this->receive($success) && $success) {
             $results[] = $result;
         }
 

@@ -91,12 +91,14 @@ final class SocketAdapter implements
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
-        $this->checkChannelAvailability($this->channelNumber);
         $message = '';
+        $success = false;
+        $this->checkChannelAvailability($this->channelNumber);
 
         $readSocket = [$this->ipc[$this->channelNumber]];
         $writeSocket = $except = [];
@@ -119,6 +121,7 @@ final class SocketAdapter implements
             $message = socket_read($readSocket[0], static::MAX_MESSAGE_SIZE);
 
         if (is_string($message) && $message !== "") {
+            $success = true;
             return $this->unpackMessage($message);
         }
     }
@@ -138,8 +141,8 @@ final class SocketAdapter implements
 
         if (@socket_select($readSocket, $writeSocket, $except, 1)) {
             for (;;) {
-                $message = $this->receive();
-                if ($message === null) {
+                $message = $this->receive($success);
+                if (!$success) {
 
                     break;
                 }

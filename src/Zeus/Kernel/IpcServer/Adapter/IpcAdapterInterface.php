@@ -27,9 +27,10 @@ interface IpcAdapterInterface
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive();
+    public function receive(& $success = false);
 
     /**
      * Receives all messages from the queue.

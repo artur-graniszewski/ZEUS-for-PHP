@@ -116,10 +116,12 @@ final class SharedMemoryAdapter implements
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
+        $success = false;
         $channelNumber = $this->channelNumber;
 
         $this->checkChannelAvailability($channelNumber);
@@ -153,7 +155,7 @@ final class SharedMemoryAdapter implements
     public function receiveAll()
     {
         $results = [];
-        while ($result = $this->receive()) {
+        while ($result = $this->receive($success) && $success) {
             $results[] = $result;
         }
 
