@@ -111,13 +111,13 @@ class IpcTest extends PHPUnit_Framework_TestCase
             'logger_adapter' => $logger
         ]);
 
-        $ipcAdapter->connect();
-
-        $this->assertInstanceOf($adapter, $ipcAdapter);
-
         if (!$ipcAdapter::isSupported()) {
             $this->markTestSkipped('The PHP configuration or OS system does not support ' . get_class($ipcAdapter));
         }
+
+        $ipcAdapter->connect();
+
+        $this->assertInstanceOf($adapter, $ipcAdapter);
 
         $ipcAdapter->useChannelNumber(0);
         $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Input queue should be empty');
