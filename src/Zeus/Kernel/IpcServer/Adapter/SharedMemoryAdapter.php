@@ -93,7 +93,7 @@ final class SharedMemoryAdapter implements
             throw new \RuntimeException(sprintf('Message queue on channel %d', $channelNumber));
         }
 
-        error_clear_last();
+        function_exists('error_clear_last') ? error_clear_last() : @trigger_error("", E_USER_NOTICE);
         $success = @shm_put_var($this->ipc[$channelNumber], $index, $message);
 
         if (!$success) {
