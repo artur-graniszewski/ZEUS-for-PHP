@@ -137,6 +137,10 @@ final class SharedMemoryAdapter implements
             $readIndex++;
         }
 
+        if (!$success) {
+            usleep(1000);
+        }
+
         if ($this->getMessageQueueCapacity() < $readIndex) {
             $readIndex = 3;
         }
@@ -155,7 +159,7 @@ final class SharedMemoryAdapter implements
     public function receiveAll()
     {
         $results = [];
-        while ($result = $this->receive($success) && $success) {
+        while (($result = $this->receive($success)) && $success) {
             $results[] = $result;
         }
 

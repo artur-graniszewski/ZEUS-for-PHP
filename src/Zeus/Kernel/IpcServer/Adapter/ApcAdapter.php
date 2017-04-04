@@ -94,6 +94,10 @@ final class ApcAdapter implements
             apcu_store($this->namespace . '_readindex_' . $channelNumber, 0, 0);
         }
 
+        if (!$success) {
+            usleep(1000);
+        }
+
         return $result;
     }
 
@@ -106,7 +110,7 @@ final class ApcAdapter implements
     {
         $results = [];
         $success = true;
-        while ($result = $this->receive($success) && $success) {
+        while (($result = $this->receive($success)) && $success) {
             $results[] = $result;
         }
 

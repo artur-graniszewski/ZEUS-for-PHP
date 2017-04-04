@@ -103,7 +103,7 @@ final class SocketAdapter implements
         $readSocket = [$this->ipc[$this->channelNumber]];
         $writeSocket = $except = [];
 
-        $value = @socket_select($readSocket, $writeSocket, $except, 0, 100);
+        $value = @socket_select($readSocket, $writeSocket, $except, 0, 10);
 
         if ($value === false) {
             throw new \RuntimeException(sprintf('Error %d occurred when receiving data from channel number %d', socket_last_error($this->ipc[$this->channelNumber]), $this->channelNumber));

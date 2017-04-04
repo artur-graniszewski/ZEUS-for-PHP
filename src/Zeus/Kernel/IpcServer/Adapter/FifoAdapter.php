@@ -55,6 +55,7 @@ final class FifoAdapter implements
         $this->ipc[1] = fopen($fileName2, "r+"); // ensures at least one writer (us) so will be non-blocking
         stream_set_blocking($this->ipc[0], false); // prevent fread / fwrite blocking
         stream_set_blocking($this->ipc[1], false); // prevent fread / fwrite blocking
+        $this->getMessageSizeLimit();
     }
 
     /**
@@ -127,7 +128,7 @@ final class FifoAdapter implements
         $readSocket = [$this->ipc[$channelNumber]];
         $writeSocket = $except = [];
 
-        if (!@stream_select($readSocket, $writeSocket, $except, 0, 100)) {
+        if (!@stream_select($readSocket, $writeSocket, $except, 0, 10)) {
 
             return null;
         }

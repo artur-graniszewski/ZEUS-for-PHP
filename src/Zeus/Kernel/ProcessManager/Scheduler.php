@@ -386,6 +386,7 @@ final class Scheduler implements EventsCapableInterface
      */
     private function handleException($exception)
     {
+        trigger_error($exception->getMessage(), E_USER_WARNING);
         $schedulerEvent = $this->event;
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $schedulerEvent->setParams($this->getEventExtraData());
@@ -643,6 +644,8 @@ final class Scheduler implements EventsCapableInterface
                     break;
             }
         }
+
+        @time_sleep_until($this->getCurrentTime() + 0.00001);
 
         return $this;
     }
