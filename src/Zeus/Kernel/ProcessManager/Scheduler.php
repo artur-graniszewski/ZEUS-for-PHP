@@ -281,6 +281,9 @@ final class Scheduler implements EventsCapableInterface
             ]
         ];
 
+        if (!$this->ipcAdapter->isConnected()) {
+            $this->ipcAdapter->connect();
+        }
         $this->ipcAdapter->useChannelNumber(1);
         $this->ipcAdapter->send($payload);
 
@@ -403,6 +406,10 @@ final class Scheduler implements EventsCapableInterface
     {
         $this->setId(getmypid());
         $this->attach();
+        $this->log(\Zend\Log\Logger::INFO, "Establishing IPC");
+        if (!$this->ipcAdapter->isConnected()) {
+            $this->ipcAdapter->connect();
+        }
 
         $this->log(\Zend\Log\Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
@@ -466,6 +473,7 @@ final class Scheduler implements EventsCapableInterface
 
         $this->log(\Zend\Log\Logger::INFO, "Scheduler terminated");
 
+        $this->log(\Zend\Log\Logger::INFO, "Stopping IPC");
         $this->ipcAdapter->disconnect();
     }
 
@@ -643,6 +651,8 @@ final class Scheduler implements EventsCapableInterface
                     break;
             }
         }
+
+        @time_sleep_until($this->getCurrentTime() + 0.00001);
 
         return $this;
     }

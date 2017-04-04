@@ -9,6 +9,8 @@ use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\FifoAdapter;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\IpcServer\MessageQueueCapacityInterface;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 
 final class IpcServerFactory implements FactoryInterface
 {
@@ -31,10 +33,28 @@ final class IpcServerFactory implements FactoryInterface
     {
         $channelName = $options['service_name'];
 
+        $logger = $options['logger_adapter'];
         $ipcAdapter = isset($options['ipc_adapter']) ? $options['ipc_adapter'] : FifoAdapter::class;
 
         if (!isset(self::$channels[$channelName])) {
-            self::$channels[$channelName] = $container->build($ipcAdapter, $options);
+            $ipcInstance = $container->build($ipcAdapter, $options);
+            self::$channels[$channelName] = $ipcInstance;
+            $logger->info(sprintf("Using %s for $channelName IPC", $ipcAdapter));
+            $info = [];
+            if ($ipcInstance instanceof MessageQueueCapacityInterface) {
+                $info[] = sprintf('queue capacity: %d messages', $ipcInstance->getMessageQueueCapacity());
+            }
+
+            if ($ipcInstance instanceof MessageSizeLimitInterface) {
+                $info[] = sprintf('message size limit: %d bytes', $ipcInstance->getMessageSizeLimit());
+            }
+
+            if ($info) {
+                $logger->info(sprintf("Enumerating IPC capabilities:"));
+                foreach ($info as $row) {
+                    $logger->info(sprintf("IPC %s", $row));
+                }
+            }
         }
 
         return self::$channels[$channelName];

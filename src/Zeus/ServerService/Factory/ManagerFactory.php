@@ -50,10 +50,12 @@ final class ManagerFactory implements FactoryInterface
         $this->startPlugins($container, $manager, isset($config['zeus_process_manager']['manager']['plugins']) ? $config['zeus_process_manager']['manager']['plugins'] : []);
 
         foreach ($configs as $serviceConfig) {
-            try {
+            $serviceName = $serviceConfig['service_name'];
+
+            $services[$serviceName] = function() use ($serviceConfig, $container, $mainLogger) {
                 $serviceAdapter = $serviceConfig['service_adapter'];
                 $serviceName = $serviceConfig['service_name'];
-                $ipcAdapter = $container->build(IpcAdapterInterface::class, ['service_name' => $serviceName]);
+                $ipcAdapter = $container->build(IpcAdapterInterface::class, ['service_name' => $serviceName, 'logger_adapter' => $mainLogger]);
 
                 if (!is_subclass_of($serviceAdapter, ServerServiceInterface::class)) {
                     throw new \RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
@@ -76,7 +78,7 @@ final class ManagerFactory implements FactoryInterface
                     throw new \LogicException("No such service $serviceName");
                 }
 
-                $services[$serviceName] = $container->build($serviceAdapter,
+                $service = $container->build($serviceAdapter,
                     [
                         'scheduler_adapter' => $scheduler,
                         'config' => $serviceConfig,
@@ -86,13 +88,16 @@ final class ManagerFactory implements FactoryInterface
                     ]
                 );
 
+                return $service;
 
-                $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
-                $manager->registerService($serviceName, $services[$serviceName], $autoStart);
                 //$this->startPlugins($container, $services[$serviceName]->getEventManager(), isset($serviceConfig['plugins']) ? $serviceConfig['plugins'] : []);
-            } catch (\Exception $ex) {
-                $manager->registerBrokenService($serviceName, $ex);
-            }
+            };
+//            catch (\Exception $ex) {
+//                $manager->registerBrokenService($serviceName, $ex);
+//            }
+
+            $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
+            $manager->registerService($serviceName, $services[$serviceName], $autoStart);
         }
 
         $mainLogger->info(sprintf("Found %d service(s): %s",

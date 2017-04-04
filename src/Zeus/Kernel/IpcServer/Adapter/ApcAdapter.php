@@ -2,11 +2,15 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter;
 
+use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
+
 /**
  * Handles Inter Process Communication using APCu functionality.
  * @internal
  */
-final class ApcAdapter implements IpcAdapterInterface
+final class ApcAdapter implements
+    IpcAdapterInterface,
+    NamedLocalConnectionInterface
 {
     /** @var string */
     protected $namespace;
@@ -20,6 +24,9 @@ final class ApcAdapter implements IpcAdapterInterface
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var bool */
+    protected $connected;
+
     /**
      * Creates IPC object.
      *
@@ -30,13 +37,37 @@ final class ApcAdapter implements IpcAdapterInterface
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
 
-        if (static::isSupported()) {
-            apcu_store($this->namespace . '_readindex_0', 0, 0);
-            apcu_store($this->namespace . '_writeindex_0', 1, 0);
-            apcu_store($this->namespace . '_readindex_1', 0, 0);
-            apcu_store($this->namespace . '_writeindex_1', 1, 0);
+    /**
+     * return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
         }
+
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
+        apcu_store($this->namespace . '_readindex_0', 0, 0);
+        apcu_store($this->namespace . '_writeindex_0', 0, 0);
+        apcu_store($this->namespace . '_readindex_1', 0, 0);
+        apcu_store($this->namespace . '_writeindex_1', 0, 0);
+
+        $this->connected = true;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
     }
 
     /**
@@ -57,10 +88,14 @@ final class ApcAdapter implements IpcAdapterInterface
         $this->checkChannelAvailability($channelNumber);
 
         $index = apcu_fetch($this->namespace . '_writeindex_' . $channelNumber);
-        apcu_store($this->namespace . '_data_' . $channelNumber . '_' . $index, $message, 0);
+        $success = apcu_store($this->namespace . '_data_' . $channelNumber . '_' . $index, $message, 0);
+
+        if (!$success) {
+            throw new \RuntimeException(sprintf('Error occurred when sending message to channel %d', $channelNumber));
+        }
 
         if (65535 < apcu_inc($this->namespace . '_writeindex_' . $channelNumber)) {
-            apcu_store($this->namespace . '_writeindex_' . $channelNumber, 1, 0);
+            apcu_store($this->namespace . '_writeindex_' . $channelNumber, 0, 0);
         }
 
         return $this;
@@ -71,18 +106,23 @@ final class ApcAdapter implements IpcAdapterInterface
      *
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
+        $success = false;
         $channelNumber = $this->channelNumber;
 
         $this->checkChannelAvailability($channelNumber);
 
         $readIndex = apcu_fetch($this->namespace . '_readindex_' . $channelNumber);
-        $result = apcu_fetch($this->namespace . '_data_' . $channelNumber . '_' . $readIndex);
+        $result = apcu_fetch($this->namespace . '_data_' . $channelNumber . '_' . $readIndex, $success);
         apcu_delete($this->namespace . '_data_' . $channelNumber . '_' . $readIndex);
 
-        if (65535 < apcu_inc($this->namespace . '_readindex_' . $channelNumber)) {
+        if ($success && 65535 < apcu_inc($this->namespace . '_readindex_' . $channelNumber)) {
             apcu_store($this->namespace . '_readindex_' . $channelNumber, 0, 0);
+        }
+
+        if (!$success) {
+            usleep(1000);
         }
 
         return $result;
@@ -96,7 +136,8 @@ final class ApcAdapter implements IpcAdapterInterface
     public function receiveAll()
     {
         $results = [];
-        while ($result = $this->receive()) {
+        $success = true;
+        while (($result = $this->receive($success)) && $success) {
             $results[] = $result;
         }
 
@@ -124,6 +165,10 @@ final class ApcAdapter implements IpcAdapterInterface
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
+
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
@@ -132,7 +177,7 @@ final class ApcAdapter implements IpcAdapterInterface
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return (
             extension_loaded('apcu')

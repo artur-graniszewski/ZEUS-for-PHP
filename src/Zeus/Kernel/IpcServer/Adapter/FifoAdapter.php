@@ -2,13 +2,22 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter;
 
+use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
+use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
+
 /**
  * Class FifoAdapter
  * @package Zeus\Kernel\IpcServer\Adapter
  * @internal
  */
-final class FifoAdapter implements IpcAdapterInterface
+final class FifoAdapter implements
+    IpcAdapterInterface,
+    NamedLocalConnectionInterface,
+    MessageSizeLimitInterface
 {
+    use MessagePackager;
+
     /** @var resource[] sockets */
     protected $ipc = [];
 
@@ -24,6 +33,11 @@ final class FifoAdapter implements IpcAdapterInterface
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var bool */
+    protected $connected;
+
+    protected static $maxPipeCapacity = null;
+
     /**
      * Creates IPC object.
      *
@@ -34,6 +48,28 @@ final class FifoAdapter implements IpcAdapterInterface
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
+        }
+
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
 
         $fileName1 = $this->getFilename(0);
         $fileName2 = $this->getFilename(1);
@@ -44,6 +80,11 @@ final class FifoAdapter implements IpcAdapterInterface
         $this->ipc[1] = fopen($fileName2, "r+"); // ensures at least one writer (us) so will be non-blocking
         stream_set_blocking($this->ipc[0], false); // prevent fread / fwrite blocking
         stream_set_blocking($this->ipc[1], false); // prevent fread / fwrite blocking
+        $this->getMessageSizeLimit();
+
+        $this->connected = true;
+
+        return $this;
     }
 
     /**
@@ -51,6 +92,10 @@ final class FifoAdapter implements IpcAdapterInterface
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
+
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
@@ -84,7 +129,11 @@ final class FifoAdapter implements IpcAdapterInterface
     {
         $channelNumber = $this->channelNumber;
         $this->checkChannelAvailability($channelNumber);
-        $message = base64_encode(serialize($message));
+        $message = $this->packMessage($message);
+
+        if (strlen($message) + 1 > $this->getMessageSizeLimit()) {
+            throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
+        }
 
         fwrite($this->ipc[$channelNumber], $message . "\n", strlen($message) + 1);
 
@@ -94,10 +143,12 @@ final class FifoAdapter implements IpcAdapterInterface
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
+        $success = false;
         $channelNumber = $this->channelNumber;
 
         $channelNumber == 0 ?
@@ -110,15 +161,16 @@ final class FifoAdapter implements IpcAdapterInterface
         $readSocket = [$this->ipc[$channelNumber]];
         $writeSocket = $except = [];
 
-        if (!@stream_select($readSocket, $writeSocket, $except, 0, 100)) {
+        if (!@stream_select($readSocket, $writeSocket, $except, 0, 10)) {
 
             return null;
         }
 
-        $message = fgets($readSocket[0], 165536);
+        $message = fgets($readSocket[0]);
 
         if (is_string($message) && $message !== "") {
-            $message = unserialize(base64_decode($message));
+            $message = $this->unpackMessage($message);
+            $success = true;
             return $message;
         }
     }
@@ -148,8 +200,8 @@ final class FifoAdapter implements IpcAdapterInterface
 
         if (@stream_select($readSocket, $writeSocket, $except, 1)) {
             for (;;) {
-                $message = $this->receive();
-                if ($message === null) {
+                $message = $this->receive($success);
+                if (!$success) {
 
                     break;
                 }
@@ -190,8 +242,42 @@ final class FifoAdapter implements IpcAdapterInterface
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return function_exists('posix_mkfifo');
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageSizeLimit()
+    {
+        if (!static::$maxPipeCapacity) {
+            $fileName = $this->getFilename(2);
+            posix_mkfifo($fileName, 0600);
+
+            $ipc = fopen($fileName, "r+"); // ensures at least one writer (us) so will be non-blocking
+            stream_set_blocking($ipc, false);
+
+            $wrote = 1;
+            $size = 1;
+            $message = str_repeat('a', 524288);
+            while ($size < 524288 && $wrote > 0) {
+                if (fwrite($ipc, $message, $size) !== $size) {
+                    $size = $size >> 1;
+                    break;
+                }
+
+                fgets($ipc);
+                $size = $size << 1;
+            }
+
+            fclose($ipc);
+            unlink($fileName);
+
+            static::$maxPipeCapacity = $size;
+        }
+
+        return static::$maxPipeCapacity;
     }
 }

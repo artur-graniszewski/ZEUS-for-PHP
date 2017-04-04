@@ -18,6 +18,20 @@ interface IpcAdapterInterface
     public function __construct($namespace, array $config);
 
     /**
+     * Establishes inter-process communication.
+     *
+     * @return $this
+     */
+    public function connect();
+
+    /**
+     * Checks if connection is established.
+     *
+     * @return bool
+     */
+    public function isConnected();
+
+    /**
      * Sends a message to the queue.
      *
      * @return $this
@@ -27,9 +41,10 @@ interface IpcAdapterInterface
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive();
+    public function receive(& $success = false);
 
     /**
      * Receives all messages from the queue.
@@ -49,7 +64,7 @@ interface IpcAdapterInterface
     /**
      * @return bool
      */
-    public static function isSupported();
+    public function isSupported();
 
     /**
      * @param int $channelNumber

@@ -1,6 +1,6 @@
 <?php
 
-use Zeus\Controller\ZeusController;
+use Zeus\Controller\ConsoleController;
 
 return [
     'routes' => [
@@ -8,7 +8,7 @@ return [
             'options' => [
                 'route' => 'zeus (start|list|status|stop) [<service>]',
                 'defaults' => [
-                    'controller' => ZeusController::class
+                    'controller' => ConsoleController::class
                 ]
             ]
         ]

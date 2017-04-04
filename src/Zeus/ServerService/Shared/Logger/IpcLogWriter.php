@@ -18,6 +18,9 @@ class IpcLogWriter extends AbstractWriter implements WriterInterface
     public function setIpcAdapter(IpcAdapterInterface $adapter)
     {
         $this->ipcAdapter = $adapter;
+        if (!$adapter->isConnected()) {
+            $adapter->connect();
+        }
 
         return $this;
     }

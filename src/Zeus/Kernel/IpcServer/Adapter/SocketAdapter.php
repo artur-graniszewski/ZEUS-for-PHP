@@ -2,13 +2,24 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter;
 
+use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
+use Zeus\Kernel\IpcServer\AnonymousLocalConnectionInterface;
+use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
+
 /**
  * Handles Inter Process Communication using sockets functionality.
  *
  * @internal
  */
-final class SocketAdapter implements IpcAdapterInterface
+final class SocketAdapter implements
+    IpcAdapterInterface,
+    AnonymousLocalConnectionInterface,
+    MessageSizeLimitInterface
 {
+    use MessagePackager;
+
+    const MAX_MESSAGE_SIZE = 131072;
+
     /** @var resource[] sockets */
     protected $ipc = [];
 
@@ -24,6 +35,9 @@ final class SocketAdapter implements IpcAdapterInterface
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
+    /** @var bool */
+    protected $connected;
+
     /**
      * Creates IPC object.
      *
@@ -34,6 +48,28 @@ final class SocketAdapter implements IpcAdapterInterface
     {
         $this->namespace = $namespace;
         $this->config = $config;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
+
+    /**
+     * @return $this
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            throw new \LogicException("Connection already established");
+        }
+
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
 
         $domain = strtoupper(substr(PHP_OS, 0, 3) == 'WIN' ? AF_INET : AF_UNIX);
 
@@ -44,6 +80,10 @@ final class SocketAdapter implements IpcAdapterInterface
 
         socket_set_nonblock($this->ipc[0]);
         socket_set_nonblock($this->ipc[1]);
+
+        $this->connected = true;
+
+        return $this;
     }
 
     /**
@@ -68,7 +108,7 @@ final class SocketAdapter implements IpcAdapterInterface
     public function send($message)
     {
         $this->checkChannelAvailability($this->channelNumber);
-        $message = base64_encode(serialize($message));
+        $message = $this->packMessage($message);
 
         socket_set_block($this->ipc[$this->channelNumber]);
         socket_write($this->ipc[$this->channelNumber], $message . "\n", strlen($message) + 1);
@@ -80,17 +120,19 @@ final class SocketAdapter implements IpcAdapterInterface
     /**
      * Receives a message from the queue.
      *
+     * @param bool $success
      * @return mixed Received message.
      */
-    public function receive()
+    public function receive(& $success = false)
     {
-        $this->checkChannelAvailability($this->channelNumber);
         $message = '';
+        $success = false;
+        $this->checkChannelAvailability($this->channelNumber);
 
         $readSocket = [$this->ipc[$this->channelNumber]];
         $writeSocket = $except = [];
 
-        $value = @socket_select($readSocket, $writeSocket, $except, 0, 100);
+        $value = @socket_select($readSocket, $writeSocket, $except, 0, 10);
 
         if ($value === false) {
             throw new \RuntimeException(sprintf('Error %d occurred when receiving data from channel number %d', socket_last_error($this->ipc[$this->channelNumber]), $this->channelNumber));
@@ -102,13 +144,14 @@ final class SocketAdapter implements IpcAdapterInterface
 
         defined('HHVM_VERSION') ?
             // HHVM...
-            $message = stream_get_line($readSocket[0], 165536)
+            $message = stream_get_line($readSocket[0], static::MAX_MESSAGE_SIZE)
             :
-            socket_recv($readSocket[0], $message, 165536, MSG_DONTWAIT);
+            //socket_recv($readSocket[0], $message, static::MAX_MESSAGE_SIZE, MSG_DONTWAIT);
+            $message = socket_read($readSocket[0], static::MAX_MESSAGE_SIZE);
 
         if (is_string($message) && $message !== "") {
-            $message = unserialize(base64_decode($message));
-            return $message;
+            $success = true;
+            return $this->unpackMessage($message);
         }
     }
 
@@ -127,8 +170,8 @@ final class SocketAdapter implements IpcAdapterInterface
 
         if (@socket_select($readSocket, $writeSocket, $except, 1)) {
             for (;;) {
-                $message = $this->receive();
-                if ($message === null) {
+                $message = $this->receive($success);
+                if (!$success) {
 
                     break;
                 }
@@ -160,6 +203,7 @@ final class SocketAdapter implements IpcAdapterInterface
             socket_shutdown($socket, 2);
             socket_close($socket);
             unset($this->ipc[$channelNumber]);
+            $this->activeChannels[$channelNumber] = false;
         }
 
         return $this;
@@ -170,6 +214,9 @@ final class SocketAdapter implements IpcAdapterInterface
      */
     protected function checkChannelAvailability($channelNumber)
     {
+        if (!$this->connected) {
+            throw new \LogicException("Connection is not established");
+        }
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
@@ -178,8 +225,16 @@ final class SocketAdapter implements IpcAdapterInterface
     /**
      * @return bool
      */
-    public static function isSupported()
+    public function isSupported()
     {
         return function_exists('socket_create_pair');
+    }
+
+    /**
+     * @return int
+     */
+    public function getMessageSizeLimit()
+    {
+        return static::MAX_MESSAGE_SIZE;
     }
 }
