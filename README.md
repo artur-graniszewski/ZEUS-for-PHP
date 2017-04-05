@@ -10,7 +10,8 @@ To guarantee true parallelism and resource isolation ZEUS employs preemptive sch
 
 ***ZEUS for PHP is not a standalone service, in order to use it, it must be installed as a module on-top of any Zend Framework application!.***
 
-It's designed to be compliant with any ZF3 applications such as Apigility or ZendSkeleton. Custom applications must provide index.php file which starts the Zend Framework MVC `Application` class.
+It's designed to be compliant with any ZF3 application such as Apigility or ZendSkeleton. Custom applications must provide index.php file which starts the Zend Framework MVC `Application` class.
+
 # Requirements
 
 ## _OS requirements_
@@ -18,7 +19,7 @@ It's designed to be compliant with any ZF3 applications such as Apigility or Zen
 - _Windows platform currently not supported_
 
 ## _PHP requirements_
-- PHP 5.6+, HHVM or PHP 7+ recommended for performance reasons (its up to 4x faster, less memory used)
+- PHP 5.6+ (HHVM or PHP 7+ is recommended for performance reasons as ZEUS can be up to 4x faster and use less memory)
 - Posix module installed and enabled
 - Pcntl module installed and enabled
 - socket functions enabled for IPC purposes
@@ -240,7 +241,7 @@ _When serving Zend Framework 3 PHP applications - it's able to outperform other,
 In case of acting as as server for static content such as images or binary files, ZEUS Web Server can be up to 50% slower than the Apache counterpart (but still able to handle more than **16000** static file requests per second on a 3.2Ghz _Intel Core i7_ processor).
 
 > **Please note:** 
-> ZEUS Web Service is not a full-featured web server. In it's current state, it's meant to be used as a development aid or a simple, yet efficient intranet web service without a direct access to a public network.
+> ZEUS Web Service is not a fully-featured web server. In it's current state, it's meant to be used as a development aid or a simple, yet efficient intranet web service without a direct access to a public network.
 >
 > If required, for increased security and performance, this server can be launched behind a forward proxy such as Varnish, NGINX Proxy or Squid.
 
