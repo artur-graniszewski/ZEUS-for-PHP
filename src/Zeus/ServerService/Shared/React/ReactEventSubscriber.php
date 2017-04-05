@@ -25,15 +25,20 @@ final class ReactEventSubscriber
     /** @var int */
     protected $lastTickTime = 0;
 
+    /** @var int */
+    protected $tickInterval = 1;
+
     /**
      * ReactEventSubscriber constructor.
      * @param LoopInterface $loop
      * @param IoServerInterface $server
+     * @param int $tickInterval
      */
-    public function __construct(LoopInterface $loop, IoServerInterface $server)
+    public function __construct(LoopInterface $loop, IoServerInterface $server, $tickInterval = 1)
     {
         $this->loop = $loop;
         $this->socket = $server->getServer();
+        $this->tickInterval = $tickInterval;
     }
 
     /**
@@ -75,7 +80,7 @@ final class ReactEventSubscriber
     {
         if (($connectionSocket = @stream_socket_accept($this->socket->master, 1))) {
             $event->getProcess()->setRunning();
-            $timer = $this->loop->addPeriodicTimer(1, [$this, 'heartBeat']);
+            $timer = $this->loop->addPeriodicTimer($this->tickInterval, [$this, 'heartBeat']);
 
             $this->socket->handleConnection($connectionSocket);
             $this->loop->run();

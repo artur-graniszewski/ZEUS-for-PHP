@@ -9,6 +9,8 @@ use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\ServerService\Async\AsyncPlugin;
+use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
@@ -40,6 +42,15 @@ return $config = [
             RequestFactory::class => RequestFactory::class,
         ]
     ],
+    'controller_plugins' => [
+        'factories' => [
+            AsyncPlugin::class => AsyncPluginFactory::class,
+        ],
+        'aliases' => [
+            'async' => AsyncPlugin::class
+        ]
+    ],
+
     'service_manager' => [
         'factories' => [
             IpcLoggerInterface::class => IpcLoggerFactory::class,
@@ -130,6 +141,16 @@ return $config = [
                     'listen_address' => '0.0.0.0',
                     'server_cache' => 'zeus_server_cache',
                     'client_cache' => 'zeus_client_cache',
+                ],
+            ],
+            'zeus_async' => [
+                'auto_start' => false,
+                'service_name' => 'zeus_async',
+                'scheduler_name' => 'zeus_web_scheduler',
+                'service_adapter' => \Zeus\ServerService\Async\Service::class,
+                'service_settings' => [
+                    'listen_port' => 9999,
+                    'listen_address' => '127.0.0.1',
                 ],
             ]
         ]
