@@ -1,11 +1,16 @@
 # Changelog
 
+## Version 1.5.2
+- [Fix] Fixed bug where HTTP Server returned 400 code when PATCH request contained request body
+- [Fix] Fixed Athletic tests for IPC adapters
+- [Fix] Fixed typos in CHANGELOG file
+
 ## Version 1.5.1
-- [Feature] Implemented `SharedMemoryIpcAdapter`
+- [Feature] Implemented `SharedMemoryAdapter` for IPC
 - [Feature] Implemented additional methods enumerating IPC adapter capabilities, such as message size limit or queue capacity
-- [Feature] Added `connect()` and `isConnected()` methods to the APC adapters.
-- [Feature] Added `& $isSuccess` parameter to `receive()` method in APC adapters. 
-- [Fix] Fixed message indexing in a `ApcIpcAdapter` queue
+- [Feature] Added `connect()` and `isConnected()` methods to the IPC adapters.
+- [Feature] Added `& $isSuccess` parameter to `receive()` method in IPC adapters. 
+- [Fix] Fixed message indexing in a `ApcAdapter` IPC queue
 - [Improvement] Major performance tweaks introduced to the most of IPC adapters (up to 300% performance gain)
 - [Improvement] Implemented lazy loading of Server Services
 - [Improvement] Improved error handling and parameter validation in IPC adapters

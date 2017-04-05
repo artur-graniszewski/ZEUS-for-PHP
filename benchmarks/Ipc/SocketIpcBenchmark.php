@@ -3,6 +3,8 @@
 namespace ZeusBench\Ipc;
 
 use Athletic\AthleticEvent;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
 use ZeusTest\Helpers\ZeusFactories;
@@ -24,16 +26,19 @@ class SocketIpcBenchmark extends AthleticEvent
 
     public function __construct()
     {
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
         $this->largeMessage = str_repeat('A', 65536);
         $this->mediumMessage = str_repeat('A', 32768);
         $this->smallMessage = str_repeat('A', 4096);
         $this->serviceManager = $this->getServiceManager();
-        $this->ipcAdapter = $this->serviceManager->build(IpcAdapterInterface::class, ['ipc_adapter' => SocketAdapter::class, 'service_name' => 'zeus-test-' . md5(microtime(true))]);
+        $this->ipcAdapter = $this->serviceManager->build(IpcAdapterInterface::class, ['logger_adapter' => $logger, 'ipc_adapter' => SocketAdapter::class, 'service_name' => 'zeus-test-' . md5(microtime(true))]);
 
         $adapter = $this->ipcAdapter;
         if (!$adapter->isSupported()) {
             throw new \RuntimeException('The PHP configuration or OS system does not support ' . get_class($adapter));
         }
+        $adapter->connect();
     }
 
     public function __destruct()

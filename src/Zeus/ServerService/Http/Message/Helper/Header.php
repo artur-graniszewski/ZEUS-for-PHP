@@ -122,6 +122,7 @@ trait Header
         switch ($request->getMethod()) {
             case 'POST':
             case 'PUT':
+            case 'PATCH':
                 return true;
             default:
                 return false;
