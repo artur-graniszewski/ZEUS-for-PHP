@@ -18,6 +18,10 @@ class Service extends AbstractServerService
 
     public function start()
     {
+        if (!class_exists('Opis\Closure\SerializableClosure')) {
+            throw new \LogicException("Async service failed: serialization module is missing");
+        }
+
         $this->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
             $this->process = $event->getProcess();
         });

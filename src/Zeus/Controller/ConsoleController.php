@@ -135,7 +135,8 @@ class ConsoleController extends AbstractActionController
             if ($serviceName && isset($brokenServices[$serviceName])) {
                 /** @var \Exception $exception */
                 $exception = $brokenServices[$serviceName];
-                $this->logger->err("Service \"$serviceName\" is broken: " . $exception->getPrevious()->getMessage());
+                $exceptionMessage = $exception->getPrevious() ? $exception->getPrevious()->getMessage() : $exception->getMessage();
+                $this->logger->err("Service \"$serviceName\" is broken: " . $exceptionMessage);
                 $result = true;
             }
         }

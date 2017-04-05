@@ -87,12 +87,7 @@ final class ManagerFactory implements FactoryInterface
                 ]);
 
                 return $service;
-
-                //$this->startPlugins($container, $services[$serviceName]->getEventManager(), isset($serviceConfig['plugins']) ? $serviceConfig['plugins'] : []);
             };
-//            catch (\Exception $ex) {
-//                $manager->registerBrokenService($serviceName, $ex);
-//            }
 
             $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
             $manager->registerService($serviceName, $services[$serviceName], $autoStart);

@@ -20,7 +20,9 @@
     "server",
     "ipc",
     "scheduler",
-    "plugins"
+    "plugins",
+    "async",
+    "hhvm"
   ],
   "require": {
     "php": "^5.6 || ^7.0",
@@ -34,12 +36,14 @@
     "zendframework/zend-log": "^2.9"
   },
   "suggest": {
-    "zendframework/zend-cache": "^2.7, to use Memcached Server Service"
+    "zendframework/zend-cache": "^2.7, to use Memcached Server Service",
+    "opis/closure": "^2.4.0, to use Async Server Service"
   },
   "require-dev": {
     "phpunit/phpunit": "^4.8 || ^5.7",
     "squizlabs/php_codesniffer": "^2.7",
     "zendframework/zend-cache": "^2.7",
+    "opis/closure": "^2.4.0",
     "athletic/athletic": "^0.1"
   },
   "autoload": {

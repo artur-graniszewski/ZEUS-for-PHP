@@ -194,11 +194,22 @@ final class Manager
                 $this->onServiceStop($service);
             }, -10000);
 
-        $service->start();
-        $schedulerPid = $service->getScheduler()->getId();
-        $this->logger->debug('Scheduler running as process #' . $schedulerPid);
-        $this->pidToServiceMap[$schedulerPid] = $service;
-        $this->servicesRunning++;
+        $e = null;
+        try {
+            $service->start();
+            $schedulerPid = $service->getScheduler()->getId();
+            $this->logger->debug('Scheduler running as process #' . $schedulerPid);
+            $this->pidToServiceMap[$schedulerPid] = $service;
+            $this->servicesRunning++;
+        } catch (\Exception $e) {
+            $this->registerBrokenService($serviceName, $e);
+
+            return $this;
+        } catch (\Throwable $e) {
+            $this->registerBrokenService($serviceName, $e);
+
+            return $this;
+        }
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);

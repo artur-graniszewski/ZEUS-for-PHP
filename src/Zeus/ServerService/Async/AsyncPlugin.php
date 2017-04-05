@@ -28,6 +28,9 @@ class AsyncPlugin extends AbstractPlugin
      */
     public function run(\Closure $callable)
     {
+        if (!class_exists('Opis\Closure\SerializableClosure')) {
+            throw new \LogicException("Async call failed: serialization module is missing");
+        }
         $closure = new SerializableClosure($callable);
         $message = serialize($closure);
         $message = sprintf("%d:%s\n", strlen($message), $message);
@@ -35,7 +38,7 @@ class AsyncPlugin extends AbstractPlugin
         $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         $result = socket_connect($socket, $this->config->getListenAddress(), $this->config->getListenPort());
         if (!$result) {
-            throw new \RuntimeException("Async server is offline");
+            throw new \RuntimeException("Async call failed: async server is offline");
         }
 
         $messageSize = strlen($message);
@@ -43,12 +46,12 @@ class AsyncPlugin extends AbstractPlugin
 
         if ($messageSize !== $sent) {
             socket_close($socket);
-            throw new \RuntimeException("Unable to issue async call");
+            throw new \RuntimeException("Async call failed: unable to issue async call");
         }
         $read = socket_recv($socket, $out, 11, MSG_PEEK);
         if (!$read || substr($out, 0, 11) !== "PROCESSING\n" || socket_recv($socket, $out, 11, MSG_DONTWAIT) != 11) {
             socket_close($socket);
-            throw new \RuntimeException("Async call failed, received: " . rtrim($out));
+            throw new \RuntimeException("Async call failed, server response: " . rtrim($out));
         }
 
         $this->handles[] = $socket;
@@ -69,6 +72,9 @@ class AsyncPlugin extends AbstractPlugin
         $write = $except = [];
 
         foreach ($callIds as $id) {
+            if (!isset($this->handles[$id])) {
+                throw new \LogicException(sprintf("Invalid callback ID: %s", $id));
+            }
             $read[$id] = $this->handles[$id];
             unset($this->handles[$id]);
         }
@@ -108,14 +114,14 @@ class AsyncPlugin extends AbstractPlugin
         $pos = strpos($result, ':');
 
         if (false === $pos) {
-            throw new \RuntimeException("Async call failed, response is corrupted");
+            throw new \RuntimeException("Async call failed: response is corrupted");
         }
 
         /** @var int $size */
         $size = substr($result, 0, $pos);
 
         if (!ctype_digit($size) || $size < 1) {
-            throw new \RuntimeException("Async call failed, response size is invalid");
+            throw new \RuntimeException("Async call failed: response size is invalid");
         }
 
         socket_recv($socket, $out, $size + $pos + 2, MSG_WAITALL);
@@ -124,11 +130,11 @@ class AsyncPlugin extends AbstractPlugin
         $result = substr($out, $pos + 1, -1);
 
         if ($end !== "\n") {
-            throw new \RuntimeException("Async call failed, callback result is corrupted");
+            throw new \RuntimeException("Async call failed: callback result is corrupted");
         }
 
         if (strlen($result) != $size) {
-            throw new \RuntimeException("Async call failed, response size is invalid");
+            throw new \RuntimeException("Async call failed: response size is invalid");
         }
 
         $result = unserialize($result);
