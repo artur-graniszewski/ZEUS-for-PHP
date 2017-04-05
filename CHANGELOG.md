@@ -1,6 +1,7 @@
 # Changelog
 
 ## Version 1.5.2
+- [Fix] Fixed bug where HTTP Server returned 400 code when PATCH request contained request body
 - [Fix] Fixed Athletic tests for IPC adapters
 - [Fix] Fixed typos in CHANGELOG file
 
