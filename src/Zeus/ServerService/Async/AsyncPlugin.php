@@ -30,7 +30,7 @@ class AsyncPlugin extends AbstractPlugin
     protected function getSocket()
     {
         $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        $result = socket_connect($socket, $this->config->getListenAddress(), $this->config->getListenPort());
+        $result = @socket_connect($socket, $this->config->getListenAddress(), $this->config->getListenPort());
         if (!$result) {
             throw new \RuntimeException("Async call failed: async server is offline");
         }
@@ -54,16 +54,15 @@ class AsyncPlugin extends AbstractPlugin
         $socket = $this->getSocket();
 
         $messageSize = strlen($message);
-        socket_set_nonblock($socket);
-        $sent = socket_write($socket, $message, $messageSize);
+        $sent = @socket_write($socket, $message, $messageSize);
 
         if ($messageSize !== $sent) {
             socket_close($socket);
             throw new \RuntimeException("Async call failed: unable to issue async call");
         }
 
-        $read = socket_recv($socket, $out, 11, MSG_PEEK);
-        if (!$read || substr($out, 0, 11) !== "PROCESSING\n" || socket_recv($socket, $out, 11, MSG_DONTWAIT) != 11) {
+        $read = @socket_recv($socket, $out, 11, MSG_PEEK);
+        if (!$read || substr($out, 0, 11) !== "PROCESSING\n" || @socket_recv($socket, $out, 11, MSG_DONTWAIT) != 11) {
             socket_close($socket);
             throw new \RuntimeException("Async call failed, server response: " . rtrim($out));
         }
@@ -96,7 +95,7 @@ class AsyncPlugin extends AbstractPlugin
         $sockets = $read;
         $this->time = time();
         while ($read) {
-            $amount = socket_select($read, $write, $except, 1);
+            $amount = @socket_select($read, $write, $except, 1);
 
             if (!$amount) {
                 $this->onSelectTimeout();
@@ -135,14 +134,18 @@ class AsyncPlugin extends AbstractPlugin
         $read = [$this->handles[$callId]];
         $write = $except = [];
 
-        $result = socket_select($read, $write, $except, 0);
+        $result = @socket_select($read, $write, $except, 0);
 
         return $result === false ? false : true;
     }
 
     protected function doJoin($socket)
     {
-        socket_recv($socket, $result, 17, MSG_PEEK);
+        $success = @socket_recv($socket, $result, 17, MSG_PEEK);
+        if ($success === false) {
+            throw new \RuntimeException("Async call failed: server connection lost", 1);
+        }
+
         if ($result === "CORRUPTED_REQUEST") {
             throw new \RuntimeException("Async call failed: request was corrupted");
         }
@@ -160,7 +163,10 @@ class AsyncPlugin extends AbstractPlugin
             throw new \RuntimeException("Async call failed: response size is invalid");
         }
 
-        socket_recv($socket, $out, $size + $pos + 2, MSG_WAITALL);
+        $success = @socket_recv($socket, $out, $size + $pos + 2, MSG_WAITALL);
+        if ($success === false) {
+            throw new \RuntimeException("Async call failed: server connection lost", 2);
+        }
 
         $end = substr($out, -1, 1);
         $result = substr($out, $pos + 1, -1);

@@ -92,6 +92,17 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin->run(function() { return "ok"; });
     }
 
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed: async server is offline
+     */
+    public function testErrorHandlingOnRunWhenOffline()
+    {
+        $plugin = $this->getPlugin(false);
+
+        $plugin->run(function() { return "ok"; });
+    }
+
     public function testSocketIsClosedOnError()
     {
         socket_write($this->sockets[1], "BAD_REQUEST\n");
@@ -187,6 +198,24 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
             ->willReturn($this->sockets[0]);
 
         $id = $plugin->run(function() { return "ok"; });
+        $plugin->join($id);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed: server connection lost
+     */
+    public function testTimeoutOnJoin()
+    {
+        socket_write($this->sockets[1], "PROCESSING\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        socket_close($this->sockets[1]);
         $plugin->join($id);
     }
 
