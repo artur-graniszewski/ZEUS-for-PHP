@@ -139,8 +139,17 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     protected function run($message)
     {
+        if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+            @trigger_error("");
+        }
         /** @var Callable $callable */
         $callable = unserialize($message);
+        if (!$callable && version_compare(PHP_VERSION, '7.0.0', '<')) {
+            $error = error_get_last();
+            if ($error['message']) {
+                throw new \Error($error);
+            }
+        }
         $result = $callable();
 
         return $result;
