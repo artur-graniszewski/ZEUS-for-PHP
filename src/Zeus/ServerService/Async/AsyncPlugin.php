@@ -132,10 +132,10 @@ class AsyncPlugin extends AbstractPlugin
             throw new \LogicException(sprintf("Invalid callback ID: %s", $callId));
         }
 
-        $callId = [$callId];
+        $read = [$this->handles[$callId]];
         $write = $except = [];
 
-        $result = socket_select($callId, $write, $except, 0);
+        $result = socket_select($read, $write, $except, 0);
 
         return $result === false ? false : true;
     }

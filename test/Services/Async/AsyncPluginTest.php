@@ -124,4 +124,103 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
 
         $plugin->run(function() { return "ok"; });
     }
+
+    public function testIsWorking()
+    {
+        socket_write($this->sockets[1], "PROCESSING\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        $isWorking = $plugin->isWorking($id);
+        $this->assertTrue($isWorking, 'Callback should be reported as working');
+    }
+
+    public function testResultOnJoin()
+    {
+        $data = "OK! " . microtime(true);
+        $message = serialize($data);
+        $size = strlen($message);
+        socket_write($this->sockets[1], "PROCESSING\n$size:$message\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        $result = $message = $plugin->join($id);
+        $this->assertEquals($data, $result);
+    }
+
+    public function testResultOnArrayJoin()
+    {
+        $data = "OK! " . microtime(true);
+        $message = serialize($data);
+        $size = strlen($message);
+        socket_write($this->sockets[1], "PROCESSING\n$size:$message\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        $result = $message = $plugin->join([$id]);
+        $this->assertEquals([$data], $result);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed: request was corrupted
+     */
+    public function testSerializationErrorOnJoin()
+    {
+        socket_write($this->sockets[1], "PROCESSING\nCORRUPTED_REQUEST\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        $plugin->join($id);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed: response is corrupted
+     */
+    public function testCorruptedResultOnJoin()
+    {
+        socket_write($this->sockets[1], "PROCESSING\naaaa\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        $plugin->join($id);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed: response size is invalid
+     */
+    public function testCorruptedResultSizeOnJoin()
+    {
+        socket_write($this->sockets[1], "PROCESSING\naaaa12:aaa\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->sockets[0]);
+
+        $id = $plugin->run(function() { return "ok"; });
+        $plugin->join($id);
+    }
 }
