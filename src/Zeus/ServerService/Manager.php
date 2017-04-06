@@ -82,17 +82,6 @@ final class Manager
     }
 
     /**
-     * @param ManagerEvent $event
-     * @return $this
-     */
-    protected function setEvent(ManagerEvent $event)
-    {
-        $this->event = $event;
-
-        return $this;
-    }
-
-    /**
      * @return ManagerEvent
      */
     protected function getEvent()
