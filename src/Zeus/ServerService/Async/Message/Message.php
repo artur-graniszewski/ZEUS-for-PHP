@@ -21,6 +21,14 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     protected $callback;
 
+    /** @var \LogicException */
+    protected $exception;
+
+    public function __construct()
+    {
+        $this->exception = new \LogicException("Callback unserialization failed");
+    }
+
     public function onHeartBeat(ConnectionInterface $connection, $data = null)
     {
         if ($this->callback) {
@@ -28,7 +36,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             $e = null;
             try {
                 $result = $this->run(substr($this->callback, 0, -1));
-            } catch (\Exception $e) {
+            } catch (\LogicException $e) {
 
             } catch (\Throwable $e) {
 
@@ -133,20 +141,22 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     protected function run($message)
     {
         /** @var Callable $callable */
-        if (version_compare(PHP_VERSION, '7.0.0', '<')) {
-            @trigger_error("");
-            $callable = @unserialize($message);
-            if (!$callable) {
-                $error = error_get_last();
-                if ($error['message']) {
-                    throw new \LogicException($error['message']);
-                }
-            }
-
-            return $callable();
-        }
+        $error = [];
+        set_error_handler(function ($errno, $errstr, $errfile, $errline) use (&$error) {
+            $error = array(
+                'message' => $errstr,
+                'number' => $errno,
+                'file' => $errfile,
+                'line' => $errline
+            );
+        });
 
         $callable = unserialize($message);
+        if (!$callable) {
+            if ($error['message']) {
+                throw $this->exception;
+            }
+        }
 
         return $callable();
     }
