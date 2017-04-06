@@ -23,6 +23,11 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->async->onOpen($this->connection);
     }
 
+    public function tearDown()
+    {
+        $this->async->onClose($this->connection);
+    }
+
     public function testConnectionClosedOnError()
     {
         $result = $this->send("test\n", true);
