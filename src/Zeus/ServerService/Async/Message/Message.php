@@ -31,10 +31,18 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     public function onHeartBeat(ConnectionInterface $connection, $data = null)
     {
         if ($this->callback) {
-            $result = $this->run(substr($this->callback, 0, -1));
+            $result = null;
+            $e = null;
+            try {
+                $result = $this->run(substr($this->callback, 0, -1));
+            } catch (\Exception $e) {
+
+            } catch (\Throwable $e) {
+
+            }
 
             if ($connection->isWritable()) {
-                $result = serialize($result);
+                $result = serialize($e ? $e : $result);
                 $size = strlen($result);
                 $connection->write("$size:$result\n");
                 $connection->end();
@@ -91,7 +99,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $this->message .= $message;
 
         if (!$this->expectedPayloadSize) {
-            if (($pos = strpos($this->message, ":")) > 1) {
+            if (($pos = strpos($this->message, ":")) > 0) {
                 $size = substr($this->message, 0, $pos);
 
                 if (!ctype_digit($size) || $size < 1) {
@@ -103,6 +111,14 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
                 $this->expectedPayloadSize = (int) $size;
 
                 $this->message = substr($this->message, $pos + 1);
+            }
+
+            if (!$pos) {
+                if (!ctype_digit($this->message)) {
+                    $connection->write("BAD_REQUEST\n");
+                    $connection->end();
+                    return;
+                }
             }
         }
 

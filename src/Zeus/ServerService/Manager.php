@@ -154,10 +154,13 @@ final class Manager
     /**
      * @param string $serviceName
      * @param \Exception $ex
+     * @return $this
      */
     public function registerBrokenService($serviceName, $ex)
     {
         $this->brokenServices[$serviceName] = $ex;
+
+        return $this;
     }
 
     /**
@@ -217,8 +220,14 @@ final class Manager
         $event->setService($service);
         $event->stopPropagation(false);
         $this->getEventManager()->triggerEvent($event);
+
+        return $this;
     }
 
+    /**
+     * @param string|string[] $serviceNames
+     * @return $this
+     */
     public function startServices($serviceNames)
     {
         $event = $this->getEvent();
@@ -245,7 +254,7 @@ final class Manager
         if (count($serviceNames) === 0) {
             $this->logger->err('No server service started');
 
-            return;
+            return $this;
         }
 
         // @todo: get rid of this loop!!
@@ -255,6 +264,8 @@ final class Manager
             $event->stopPropagation(false);
             $this->getEventManager()->triggerEvent($event);
         }
+
+        return $this;
     }
 
     /**

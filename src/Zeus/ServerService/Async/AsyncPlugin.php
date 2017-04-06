@@ -67,7 +67,7 @@ class AsyncPlugin extends AbstractPlugin
     {
         $callIds = is_array($callId) ? $callId : [$callId];
 
-        $result = [];
+        $results = [];
         $read = [];
         $write = $except = [];
 
@@ -91,8 +91,8 @@ class AsyncPlugin extends AbstractPlugin
             if ($amount) {
                 foreach($read as $socket) {
                     $index = array_search($socket, $sockets);
-                    $x = $this->doJoin($socket);
-                    $result[$index] = $x;
+                    $result = $this->doJoin($socket);
+                    $results[$index] = $result;
                     unset($sockets[$index]);
                 }
             }
@@ -101,11 +101,29 @@ class AsyncPlugin extends AbstractPlugin
         };
 
         if (is_array($callId)) {
-            ksort($result, SORT_NUMERIC);
-            return $result;
+            ksort($results, SORT_NUMERIC);
+            return $results;
         }
 
-        return current($result);
+        return current($results);
+    }
+
+    /**
+     * @param int $callId
+     * @return bool
+     */
+    public function isWorking($callId)
+    {
+        if (!isset($this->handles[$callId])) {
+            throw new \LogicException(sprintf("Invalid callback ID: %s", $callId));
+        }
+
+        $callId = [$callId];
+        $write = $except = [];
+
+        $result = socket_select($callId, $write, $except, 0);
+
+        return $result === false ? false : true;
     }
 
     protected function doJoin($socket)
