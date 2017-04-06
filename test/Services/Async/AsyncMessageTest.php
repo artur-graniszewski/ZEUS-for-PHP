@@ -66,7 +66,11 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->assertStringMatchesFormat("%d:%s", $result);
         $pos = strpos($result, ":");
         $result = unserialize(substr($result, $pos +1));
-        $this->assertInstanceOf(\Throwable::class, $result);
+        if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+            $this->assertInstanceOf(\LogicException::class, $result);
+        } else {
+            $this->assertInstanceOf(\Throwable::class, $result);
+        }
         $this->assertEquals("unserialize(): Error at offset 0 of 3 bytes", $result->getMessage());
     }
 

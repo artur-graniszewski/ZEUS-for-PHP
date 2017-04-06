@@ -146,7 +146,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             if (!$callable) {
                 $error = error_get_last();
                 if ($error['message']) {
-                    throw new \Error($error['message']);
+                    throw new \LogicException($error['message']);
                 }
             }
 
