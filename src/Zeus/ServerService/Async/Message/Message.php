@@ -2,13 +2,6 @@
 
 namespace Zeus\ServerService\Async\Message;
 
-use Zend\Cache\Storage\Adapter\Apcu;
-use Zend\Cache\Storage\AvailableSpaceCapableInterface;
-use Zend\Cache\Storage\FlushableInterface;
-use Zend\Cache\Storage\StorageInterface;
-use Zend\Cache\Storage\TotalSpaceCapableInterface;
-use Zeus\Module;
-use Zeus\ServerService\Shared\Exception\PrerequisitesNotMetException;
 use Zeus\ServerService\Shared\React\ConnectionInterface;
 use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\React\MessageComponentInterface;

@@ -2,6 +2,7 @@
 
 namespace ZeusTest\Services\Async;
 
+use Opis\Closure\SerializableClosure;
 use PHPUnit_Framework_TestCase;
 use Zeus\Module;
 use Zeus\ServerService\Async\Message\Message;
@@ -39,6 +40,21 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->assertTrue($this->connection->isConnectionClosed(), "Connection should be closed on error");
     }
 
+    public function testResultOfValidCallback()
+    {
+        $callback = new SerializableClosure(function() { return 4;});
+        $message = serialize($callback);
+        $size = strlen($message);
+        $result = $this->send("$size:$message\n", true);
+        $this->assertEquals("PROCESSING\n", $result);
+        $this->async->onHeartBeat($this->connection);
+        $result = $this->connection->getSentData();
+        $this->assertStringMatchesFormat("%d:%s", $result);
+        $pos = strpos($result, ":");
+        $result = unserialize(substr($result, $pos +1));
+        $this->assertEquals(4, $result);
+    }
+
     public function testErrorOnCorruptedRequest()
     {
         $result = $this->send("3:aaaa\n", true);
@@ -55,6 +71,7 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be open if no error");
     }
 
+    /*
     public function testUnSerializationFailure()
     {
         $result = $this->send("3:aaa\n", true);
@@ -73,6 +90,7 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         }
         $this->assertEquals("unserialize(): Error at offset 0 of 3 bytes", $result->getMessage());
     }
+    */
 
     protected function send($message, $useExactMessage)
     {
