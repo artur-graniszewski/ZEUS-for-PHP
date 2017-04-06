@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Async\Message;
 
+use Zeus\ServerService\Async\UnserializeException;
 use Zeus\ServerService\Shared\React\ConnectionInterface;
 use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\React\MessageComponentInterface;
@@ -21,12 +22,12 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     protected $callback;
 
-    /** @var \LogicException */
+    /** @var UnserializeException */
     protected $exception;
 
     public function __construct()
     {
-        $this->exception = new \LogicException("Callback unserialization failed");
+        $this->exception = new UnserializeException("Callback unserialization failed");
     }
 
     public function onHeartBeat(ConnectionInterface $connection, $data = null)
@@ -36,13 +37,19 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             $e = null;
             try {
                 $result = $this->run(substr($this->callback, 0, -1));
-            } catch (\LogicException $e) {
+            } catch (\Exception $e) {
 
             } catch (\Throwable $e) {
 
             }
 
             if ($connection->isWritable()) {
+                if ($e instanceof UnserializeException) {
+                    $connection->write("CORRUPTED_REQUEST\n");
+                    $connection->end();
+
+                    return;
+                }
                 $result = serialize($e ? $e : $result);
                 $size = strlen($result);
                 $connection->write("$size:$result\n");

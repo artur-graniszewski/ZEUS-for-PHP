@@ -128,7 +128,11 @@ class AsyncPlugin extends AbstractPlugin
 
     protected function doJoin($socket)
     {
-        socket_recv($socket, $result, 12, MSG_PEEK);
+        socket_recv($socket, $result, 17, MSG_PEEK);
+        if ($result === "CORRUPTED_REQUEST") {
+            throw new \RuntimeException("Async call failed: request was corrupted");
+        }
+
         $pos = strpos($result, ':');
 
         if (false === $pos) {

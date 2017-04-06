@@ -39,6 +39,17 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->assertTrue($this->connection->isConnectionClosed(), "Connection should be closed on error");
     }
 
+    public function testUnSerializationFailure()
+    {
+        $result = $this->send("3:aaa\n", true);
+        $this->assertEquals("PROCESSING\n", $result);
+
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be open if no error");
+        $this->async->onHeartBeat($this->connection);
+        $result = $this->connection->getSentData();
+        $this->assertEquals("CORRUPTED_REQUEST\n", $result);
+    }
+
     public function testResultOfValidCallback()
     {
         $callback = new SerializableClosure(function() { return 4;});
@@ -68,22 +79,6 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("PROCESSING\n", $result);
 
         $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be open if no error");
-    }
-
-    public function testUnSerializationFailure()
-    {
-        $result = $this->send("3:aaa\n", true);
-        $this->assertEquals("PROCESSING\n", $result);
-
-        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be open if no error");
-        $this->async->onHeartBeat($this->connection);
-        $result = $this->connection->getSentData();
-        //$this->assertStringMatchesFormat("%d:%s", $result);
-        $pos = strpos($result, ":");
-        $result = unserialize(substr($result, $pos +1));
-        $this->assertInstanceOf(\LogicException::class, $result);
-
-        $this->assertEquals("Callback unserialization failed", $result->getMessage());
     }
 
     protected function send($message, $useExactMessage)
