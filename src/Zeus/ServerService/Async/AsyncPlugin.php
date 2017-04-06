@@ -13,6 +13,8 @@ class AsyncPlugin extends AbstractPlugin
     /** @var Config */
     protected $config;
 
+    protected $time;
+
     /**
      * AsyncPlugin constructor.
      * @param Config $config
@@ -20,6 +22,20 @@ class AsyncPlugin extends AbstractPlugin
     public function __construct(Config $config)
     {
         $this->config = $config;
+    }
+
+    /**
+     * @return resource
+     */
+    protected function getSocket()
+    {
+        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        $result = socket_connect($socket, $this->config->getListenAddress(), $this->config->getListenPort());
+        if (!$result) {
+            throw new \RuntimeException("Async call failed: async server is offline");
+        }
+
+        return $socket;
     }
 
     /**
@@ -35,19 +51,17 @@ class AsyncPlugin extends AbstractPlugin
         $message = serialize($closure);
         $message = sprintf("%d:%s\n", strlen($message), $message);
 
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        $result = socket_connect($socket, $this->config->getListenAddress(), $this->config->getListenPort());
-        if (!$result) {
-            throw new \RuntimeException("Async call failed: async server is offline");
-        }
+        $socket = $this->getSocket();
 
         $messageSize = strlen($message);
+        socket_set_nonblock($socket);
         $sent = socket_write($socket, $message, $messageSize);
 
         if ($messageSize !== $sent) {
             socket_close($socket);
             throw new \RuntimeException("Async call failed: unable to issue async call");
         }
+
         $read = socket_recv($socket, $out, 11, MSG_PEEK);
         if (!$read || substr($out, 0, 11) !== "PROCESSING\n" || socket_recv($socket, $out, 11, MSG_DONTWAIT) != 11) {
             socket_close($socket);
@@ -80,12 +94,12 @@ class AsyncPlugin extends AbstractPlugin
         }
 
         $sockets = $read;
-        $time = time();
+        $this->time = time();
         while ($read) {
             $amount = socket_select($read, $write, $except, 1);
 
-            if (!$amount && time() - $time > 30) {
-                throw new \RuntimeException("Join timeout encountered");
+            if (!$amount) {
+                $this->onSelectTimeout();
             }
 
             if ($amount) {
@@ -163,5 +177,12 @@ class AsyncPlugin extends AbstractPlugin
         socket_close($socket);
 
         return $result;
+    }
+
+    protected function onSelectTimeout()
+    {
+        if (time() - $this->time > 30) {
+            throw new \RuntimeException("Join timeout encountered");
+        }
     }
 }
