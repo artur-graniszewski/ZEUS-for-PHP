@@ -564,7 +564,7 @@ World
     protected function getHttpMessageParser($dispatcher, $errorHandler = null, ConnectionInterface $connection = null)
     {
         $dispatcherWrapper = function($request, $response) use ($dispatcher) {
-            $response = $dispatcher($request, $response);
+            $dispatcher($request, $response);
         };
 
         $adapter = new Message($dispatcherWrapper, $errorHandler);

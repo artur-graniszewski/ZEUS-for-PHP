@@ -52,6 +52,7 @@ After downloading, contents of the compressed `ZEUS-for-PHP-master` directory in
 After installation, ZEUS for PHP must be activated in Zend Framework's `config/modules.config.php` file, like so:
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/modules.config.php" file:
 
 return [
@@ -251,6 +252,62 @@ To start the service manually, following command must be executed:
 
 `php public/index.php zeus start zeus_httpd`
 
+#### Async Server Service
+
+Since version 1.6.0, ZEUS comes equipped with Async Server Service and Controller Plugin. This set of components provides the ability to execute anonymous functions and closures asynchronously.
+
+To enable this feature, additional ZEUS instance must be started with the following command:
+
+`php public/index.php zeus start zeus_async`
+
+After starting ZEUS Async Server Service every Zend Framework 3 controller can execute asynchronous code using the `async()` plugin, like so:
+
+```php
+<?php 
+// contents of "zf3-application-directory/module/SomeModule/src/Controller/SomeController.php" file:
+
+namespace Application\Controller;
+
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use ZF\Apigility\Admin\Module as AdminModule;
+
+class IndexController extends AbstractActionController
+{
+    public function indexAction()
+    {
+        for ($i = 0; $i < 12; $i++) {
+            // each run() command immediately starts one task in the background and returns a handle ID
+            $handles[$i] = $this->async()->run(function () use ($i) {
+                sleep($i);
+                return "OK$i";
+            });
+        }
+
+        // join() accepts either an array of handle IDs or a single handle ID (without array)
+        // - in case of array of handles, join will return an array of results,
+        // - in case of a single handler, join will return a single result (not wrapped into the array)
+        $results = $this->async()->join($handles);
+
+        // because of the sleep(11) executed in a last callback, join() command will wait up to 11 seconds to fetch
+        // results from all the handles, on success $result variable will contain the following data:
+        // ["OK0","OK1","OK2","OK3","OK4","OK5","OK6","OK7","OK8","OK9","OK10","OK11"]
+
+        // please keep in mind that each handle can be joined independently and join() blocks until the slowest
+        // callback returns the data, therefore running $this->async()->join($handles[3]) command instead
+        // would block this controller only for 3 seconds
+
+        // usual Zend Framework stuff to return data to the view layer
+        $view = new ViewModel();
+        $view->setVariable('async_results', $results);
+    }
+}
+```
+
+> **Please note:** 
+> Asynchronous closures are running outside the scope of the main thread that started them, therefore its not possible to modify variables of the main thread directly in the closure.
+> Closures should either return results on their exit (as seen in an example above), or communicate with a main thread using the IPC functionality.
+
 #### Memcache Server Service
 
 ZEUS Memcache Server is a native PHP implementation of the Memcached distributed memory object caching system.
@@ -300,6 +357,7 @@ As of version 1.4.1 of ZEUS for PHP, Schedulers behaviour can be extended throug
 Custom plugins can be specified in Schedulers configuration like so (see `plugins` JSON node):
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
@@ -352,6 +410,7 @@ This is especially handy when running ZEUS services with root privileges using `
 Multiple _Process Schedulers_ can be configured in a regular Zend Framework 3 configuration file, like so:
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
@@ -410,7 +469,8 @@ The Server Service Manager utilizes a `Zeus\ServerService\ManagerEvent` to handl
 
 Server Service Manager can be customized by using custom plugins, which can be enabled in ZEUS configuration, like so:
 
-```
+```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 return [
@@ -429,6 +489,7 @@ return [
 Multiple _Server Services_ can be configured in a regular Zend Framework 3 configuration file, like so:
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
@@ -469,6 +530,7 @@ If no `logger_adapter` is specified, ZEUS injects its own _Logger_ instance to t
 Different output streams, as well as custom `Logger` adapters can be provided through a Zend Framework `ServiceManager` and its configuration files, like so:
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 return [
@@ -497,6 +559,7 @@ The table below describes the configuration parameters:
 Different listening port or address can be provided through a Zend Framework `ServiceManager` and its configuration files, like so:
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
@@ -556,6 +619,7 @@ To start such a service, the following command must be issued in a terminal:
 Different cache adapters may be provided through a Zend Framework `Zend\Cache\Service\StorageCacheAbstractServiceFactory` and its configuration files, like so:
 
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 return [
@@ -624,6 +688,7 @@ To speed up the development process, ZEUS is shipped with the following classes 
 Each service must be listed in the `services` section of `zeus_process_manager` configuration entry and point to a valid _Scheduler_ configuration (or specify its own implementation in ZEUS `schedulers` section), like so:
  
 ```php
+<?php 
 // contents of "zf3-application-directory/config/some-config.config.php" file:
 
 use Zeus\ServerService\Shared\Logger\LoggerInterface;

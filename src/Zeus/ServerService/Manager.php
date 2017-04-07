@@ -148,6 +148,7 @@ final class Manager
     public function registerBrokenService($serviceName, $ex)
     {
         $this->brokenServices[$serviceName] = $ex;
+        $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $ex->getMessage()));
 
         return $this;
     }
@@ -236,10 +237,8 @@ final class Manager
         $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
         $managerTime = $now - $startTime;
 
-        $servicesRunning = count($serviceNames);
-
         $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
-        $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2f)", $servicesRunning, $managerTime, $phpTime));
+        $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2f)", $this->servicesRunning, $managerTime, $phpTime));
         if (count($serviceNames) === 0) {
             $this->logger->err('No server service started');
 

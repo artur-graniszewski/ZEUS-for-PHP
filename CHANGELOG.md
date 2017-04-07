@@ -2,8 +2,9 @@
 
 ## Version 1.6.0
 - [Feature] Implemented new Async Server Service (Experimental)
-- [Feature] Implemented async() ZF3 controller plugin that allows to execute multiple anonymous functions/closures asynchronously
+- [Feature] Implemented `async()` ZF3 controller plugin that allows to execute multiple anonymous functions/closures asynchronously
 - [Fix] Better handling/reporting of broken services on ZEUS startup
+- [Fix] Fixed chunked encoding in ZEUS Web Server
 
 ## Version 1.5.2
 - [Fix] Fixed bug where HTTP Server returned 400 code when PATCH request contained request body
