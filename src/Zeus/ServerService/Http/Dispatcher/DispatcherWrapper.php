@@ -33,12 +33,12 @@ class DispatcherWrapper implements DispatcherInterface
      * @param Request $httpRequest
      * @return Response
      */
-    public function dispatch(Request $httpRequest)
+    public function dispatch(Request $httpRequest, Response $httpResponse)
     {
         /** @var Process $process */
         //$process = $this->config['service']->getProcess();
         //$process->setRunning($httpRequest->getUriString());
-        $result = $this->anotherDispatcher->dispatch($httpRequest);
+        $result = $this->anotherDispatcher->dispatch($httpRequest, $httpResponse);
         //$process->setWaiting($httpRequest->getUriString());
 
         return $result;

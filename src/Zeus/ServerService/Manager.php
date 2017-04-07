@@ -82,17 +82,6 @@ final class Manager
     }
 
     /**
-     * @param ManagerEvent $event
-     * @return $this
-     */
-    protected function setEvent(ManagerEvent $event)
-    {
-        $this->event = $event;
-
-        return $this;
-    }
-
-    /**
      * @return ManagerEvent
      */
     protected function getEvent()
@@ -154,10 +143,14 @@ final class Manager
     /**
      * @param string $serviceName
      * @param \Exception $ex
+     * @return $this
      */
     public function registerBrokenService($serviceName, $ex)
     {
         $this->brokenServices[$serviceName] = $ex;
+        $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $ex->getMessage()));
+
+        return $this;
     }
 
     /**
@@ -185,20 +178,28 @@ final class Manager
      */
     protected function doStartService($serviceName)
     {
-        $plugins = $this->getPluginRegistry()->count();
-        $this->logger->info(sprintf("Starting Server Service Manager with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
-
         $service = $this->getService($serviceName);
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
 
-        $service->start();
-        $schedulerPid = $service->getScheduler()->getId();
-        $this->logger->debug('Scheduler running as process #' . $schedulerPid);
-        $this->pidToServiceMap[$schedulerPid] = $service;
-        $this->servicesRunning++;
+        $e = null;
+        try {
+            $service->start();
+            $schedulerPid = $service->getScheduler()->getId();
+            $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
+            $this->pidToServiceMap[$schedulerPid] = $service;
+            $this->servicesRunning++;
+        } catch (\Exception $e) {
+            $this->registerBrokenService($serviceName, $e);
+
+            return $this;
+        } catch (\Throwable $e) {
+            $this->registerBrokenService($serviceName, $e);
+
+            return $this;
+        }
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);
@@ -206,10 +207,19 @@ final class Manager
         $event->setService($service);
         $event->stopPropagation(false);
         $this->getEventManager()->triggerEvent($event);
+
+        return $this;
     }
 
+    /**
+     * @param string|string[] $serviceNames
+     * @return $this
+     */
     public function startServices($serviceNames)
     {
+        $plugins = $this->getPluginRegistry()->count();
+        $this->logger->info(sprintf("Starting Server Service Manager with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+
         $event = $this->getEvent();
 
         $this->attach();
@@ -227,14 +237,15 @@ final class Manager
         $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
         $managerTime = $now - $startTime;
 
-        $servicesRunning = count($serviceNames);
-
         $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
-        $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2f)", $servicesRunning, $managerTime, $phpTime));
-        if (count($serviceNames) === 0) {
-            $this->logger->err('No server service started');
+        if ($this->servicesRunning > 0) {
+            $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2fs)", $this->servicesRunning, $managerTime, $phpTime));
+        }
 
-            return;
+        if ($this->servicesRunning === 0) {
+            $this->logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
+
+            return $this;
         }
 
         // @todo: get rid of this loop!!
@@ -244,6 +255,8 @@ final class Manager
             $event->stopPropagation(false);
             $this->getEventManager()->triggerEvent($event);
         }
+
+        return $this;
     }
 
     /**

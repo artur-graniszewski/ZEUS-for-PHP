@@ -91,7 +91,7 @@ class ZendFrameworkDispatcher implements DispatcherInterface
      * @param Request $httpRequest
      * @return Response
      */
-    public function dispatch(Request $httpRequest)
+    public function dispatch(Request $httpRequest, Response $httpResponse)
     {
         /** @var Application $app */
         static $app;
@@ -127,11 +127,15 @@ class ZendFrameworkDispatcher implements DispatcherInterface
         $app->run();
 
         Console::overrideIsConsole(true);
-        $httpResponse = $app->getResponse();
+        /** @var Response $zendResponse */
+        $zendResponse = $app->getResponse();
+        $httpResponse->setContent($zendResponse->getContent());
+        $httpResponse->setStatusCode($zendResponse->getStatusCode());
+        $httpResponse->setContent($zendResponse->getContent());
+        $httpResponse->setHeaders($zendResponse->getHeaders());
         $app = null;
 
         $this->callGarbageCollector();
 
-        return $httpResponse;
     }
 }

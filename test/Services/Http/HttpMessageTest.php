@@ -3,6 +3,8 @@
 namespace ZeusTest\Services\Http;
 
 use PHPUnit_Framework_TestCase;
+use Zend\Http\Header\ContentLength;
+use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
@@ -127,6 +129,30 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
             echo $responseBody;
+        }, null, $testConnection);
+
+        $httpAdapter->onMessage($testConnection, $message);
+
+        $rawResponse = Response::fromString($testConnection->getSentData());
+        $this->assertEquals($responseBody, $rawResponse->getBody());
+    }
+
+    /**
+     * @param string $responseBody
+     * @dataProvider responseBodyProvider
+     */
+    public function testIfChunkedResponseBodyIsCorrect($responseBody)
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new TestConnection();
+        /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
+        $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
+            echo $responseBody;
+
+            $response = new Response();
+            $response->getHeaders()->addHeader(new TransferEncoding("chunked"));
+
+            return $response;
         }, null, $testConnection);
 
         $httpAdapter->onMessage($testConnection, $message);
@@ -290,7 +316,11 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             $testConnection = new TestConnection();
             /** @var Request $request */
             $request = null;
-            $requestHandler = function($_request) use (&$request, &$response, $testString) {$request = $_request; echo $testString; };
+            $requestHandler = function(Request $_request, Response $_response) use (&$request, &$response, $testString) {
+                $request = $_request;
+                $_response->getHeaders()->addHeader(new ContentLength(strlen($testString)));
+                echo $testString;
+            };
             $httpAdapter = $this->getHttpMessageParser($requestHandler, $requestHandler);
             $httpAdapter->onMessage($testConnection, $message);
             $rawResponse = Response::fromString($testConnection->getSentData());
@@ -314,13 +344,12 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             $pad = str_repeat("A", $i);
             $testString = "$pad test string";
 
-            $message = $this->getHttpCustomMethodRequestString('HEAD', "/", []);
+            $message = $this->getHttpCustomMethodRequestString('GET', "/", ['host' => 'localhost'] ,'1.1');
 
             $httpAdapter->onMessage($testConnection, $message);
             $rawResponse = Response::fromString($testConnection->getSentData());
 
-            $this->assertEquals(0, strlen($rawResponse->getBody()), "No content should be returned in response");
-            $this->assertEquals(strlen($testString), $rawResponse->getHeaders()->get('Content-Length')->getFieldValue(), "Incorrect Content-Length header returned in response");
+            $this->assertEquals($testString, $rawResponse->getBody(), "Original content should be returned in response");
         }
     }
 
@@ -534,14 +563,8 @@ World
      */
     protected function getHttpMessageParser($dispatcher, $errorHandler = null, ConnectionInterface $connection = null)
     {
-        $dispatcherWrapper = function(& $request) use ($dispatcher) {
-            $response = $dispatcher($request);
-
-            if (!$response) {
-                return new Response();
-            }
-
-            return $response;
+        $dispatcherWrapper = function($request, $response) use ($dispatcher) {
+            $dispatcher($request, $response);
         };
 
         $adapter = new Message($dispatcherWrapper, $errorHandler);

@@ -43,9 +43,9 @@ class StaticFileDispatcher implements DispatcherInterface
 
     /**
      * @param Request $httpRequest
-     * @return Response
+     * @param Response $httpResponse
      */
-    public function dispatch(Request $httpRequest)
+    public function dispatch(Request $httpRequest, Response $httpResponse)
     {
         $path = $httpRequest->getUri()->getPath();
 
@@ -54,46 +54,33 @@ class StaticFileDispatcher implements DispatcherInterface
         $fileName = $this->publicDirectory . DIRECTORY_SEPARATOR . $path;
         $realPath = substr(realpath($fileName), 0, strlen($this->publicDirectory));
         if ($realPath && $realPath !== $this->publicDirectory) {
-            return $this->getHttpResponse(Response::STATUS_CODE_400, $httpRequest->getVersion());
+            $httpResponse->setStatusCode(Response::STATUS_CODE_400);
+            return;
         }
 
         $blockedFileTypes = isset($this->config['blocked_file_types']) ? implode('|', $this->config['blocked_file_types']) : null;
 
         if (file_exists($fileName) && !is_dir($fileName)) {
             if ($blockedFileTypes && preg_match('~\.(' . $blockedFileTypes . ')$~', $fileName)) {
-
-                return $this->getHttpResponse(Response::STATUS_CODE_403, $httpRequest->getVersion());
+                $httpResponse->setStatusCode(Response::STATUS_CODE_403);
+                return;
             }
 
-            $httpResponse = $this->getHttpResponse($code, $httpRequest->getVersion());
+            $httpResponse->setStatusCode($code);
             $httpResponse->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
             $httpResponse->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
             readfile($fileName);
 
-            return $httpResponse;
+            return;
         }
 
         $code = is_dir($fileName) ? Response::STATUS_CODE_403 : Response::STATUS_CODE_404;
 
         if ($this->anotherDispatcher) {
 
-            return $this->anotherDispatcher->dispatch($httpRequest);
+            return $this->anotherDispatcher->dispatch($httpRequest, $httpResponse);
         }
 
-        return $this->getHttpResponse($code, $httpRequest->getVersion());
-    }
-
-    /**
-     * @param int $code
-     * @param string $version
-     * @return Response
-     */
-    protected function getHttpResponse($code, $version)
-    {
-        $httpResponse = new Response();
         $httpResponse->setStatusCode($code);
-        $httpResponse->setVersion($version);
-
-        return $httpResponse;
     }
 }

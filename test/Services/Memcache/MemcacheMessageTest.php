@@ -16,7 +16,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
     /** @var ConnectionInterface */
     protected $connection;
 
-    /** @var StorageInterface */
+    /** @var Message */
     protected $memcache;
 
     protected function getTmpDir()
@@ -69,11 +69,22 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    public function testTimeout()
+    {
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be opened before timeout");
+
+        for($i = 0; $i < 10000; $i++) {
+            $this->memcache->onHeartBeat($this->connection);
+        }
+
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be closed after timeout");
+    }
+
     /**
- * @param string $noReplyParam
- * @param string $expectedStatus
- * @dataProvider noReplyProvider
- */
+     * @param string $noReplyParam
+     * @param string $expectedStatus
+     * @dataProvider noReplyProvider
+     */
     public function testSetCommand($noReplyParam, $expectedStatus)
     {
         $testConnection = new TestConnection();

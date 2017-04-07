@@ -78,23 +78,16 @@ final class ManagerFactory implements FactoryInterface
                     throw new \LogicException("No such service $serviceName");
                 }
 
-                $service = $container->build($serviceAdapter,
-                    [
-                        'scheduler_adapter' => $scheduler,
-                        'config' => $serviceConfig,
-                        'logger_adapter' => $serviceLogger,
-                        'ipc_adapter' => $scheduler->getIpcAdapter(),
-                        'service_name' => $serviceName
-                    ]
-                );
+                $service = $container->build($serviceAdapter, [
+                    'scheduler_adapter' => $scheduler,
+                    'config' => $serviceConfig,
+                    'logger_adapter' => $serviceLogger,
+                    'ipc_adapter' => $scheduler->getIpcAdapter(),
+                    'service_name' => $serviceName
+                ]);
 
                 return $service;
-
-                //$this->startPlugins($container, $services[$serviceName]->getEventManager(), isset($serviceConfig['plugins']) ? $serviceConfig['plugins'] : []);
             };
-//            catch (\Exception $ex) {
-//                $manager->registerBrokenService($serviceName, $ex);
-//            }
 
             $autoStart = isset($serviceConfig['auto_start']) ? $serviceConfig['auto_start'] : true;
             $manager->registerService($serviceName, $services[$serviceName], $autoStart);

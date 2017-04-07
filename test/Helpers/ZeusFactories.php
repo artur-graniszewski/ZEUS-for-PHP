@@ -34,11 +34,6 @@ use Zend\Router;
 
 trait ZeusFactories
 {
-    public function getApplication()
-    {
-
-    }
-
     /**
      * @param mixed[] $customConfig
      * @return ServiceManager

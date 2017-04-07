@@ -11,6 +11,8 @@ class TestConnection implements ConnectionInterface
 
     protected $isConnectionClosed = false;
 
+    protected $isConnectionWritable = true;
+
     protected $remoteAddress = '127.0.0.2:7071';
 
     protected $serverAddress = '127.0.0.1:7070';
@@ -164,6 +166,17 @@ class TestConnection implements ConnectionInterface
 
     public function isWritable()
     {
-        // TODO: Implement isWritable() method.
+        return $this->isConnectionWritable;
+    }
+
+    /**
+     * @param bool $isConnectionWritable
+     * @return TestConnection
+     */
+    public function setIsConnectionWritable($isConnectionWritable)
+    {
+        $this->isConnectionWritable = $isConnectionWritable;
+
+        return $this;
     }
 }
