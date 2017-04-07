@@ -178,9 +178,6 @@ final class Manager
      */
     protected function doStartService($serviceName)
     {
-        $plugins = $this->getPluginRegistry()->count();
-        $this->logger->info(sprintf("Starting Server Service Manager with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
-
         $service = $this->getService($serviceName);
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
@@ -191,7 +188,7 @@ final class Manager
         try {
             $service->start();
             $schedulerPid = $service->getScheduler()->getId();
-            $this->logger->debug('Scheduler running as process #' . $schedulerPid);
+            $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
             $this->pidToServiceMap[$schedulerPid] = $service;
             $this->servicesRunning++;
         } catch (\Exception $e) {
@@ -220,6 +217,9 @@ final class Manager
      */
     public function startServices($serviceNames)
     {
+        $plugins = $this->getPluginRegistry()->count();
+        $this->logger->info(sprintf("Starting Server Service Manager with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+
         $event = $this->getEvent();
 
         $this->attach();
@@ -238,9 +238,12 @@ final class Manager
         $managerTime = $now - $startTime;
 
         $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
-        $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2f)", $this->servicesRunning, $managerTime, $phpTime));
-        if (count($serviceNames) === 0) {
-            $this->logger->err('No server service started');
+        if ($this->servicesRunning > 0) {
+            $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2fs)", $this->servicesRunning, $managerTime, $phpTime));
+        }
+
+        if ($this->servicesRunning === 0) {
+            $this->logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
 
             return $this;
         }

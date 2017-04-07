@@ -57,7 +57,7 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         $manager->startServices(['test-service']);
 
         $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
-        $this->assertGreaterThan(0, strpos($logEntries, 'Started 1 services in '));
+        $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STARTED'));
     }
 
     public function testServiceStart()
@@ -68,7 +68,7 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         $manager->startService('test-service');
 
         $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
-        $this->assertGreaterThan(0, strpos($logEntries, 'Started 1 services in '));
+        $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STARTED'));
     }
 
     public function testManagerEvents()
