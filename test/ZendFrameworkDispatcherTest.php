@@ -56,8 +56,9 @@ class ZendFrameworkDispatcherTest extends PHPUnit_Framework_TestCase
         $dispatcher = new ZendFrameworkDispatcher([], null);
 
         $httpRequest = Request::fromString("GET / HTTP/1.0\r\n\r\n");
+        $httpResponse = new Response();
         /** @var Response $httpResponse */
-        $httpResponse = $dispatcher->dispatch($httpRequest);
+        $dispatcher->dispatch($httpRequest, $httpResponse);
         $result = ob_get_contents();
 
         $this->assertGreaterThan(0, strpos($result, 'ERROR 404 DETECTED!'));

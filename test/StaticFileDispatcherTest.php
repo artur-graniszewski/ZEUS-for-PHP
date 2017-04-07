@@ -54,13 +54,15 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $dispatcher = new StaticFileDispatcher($config);
 
         $request = Request::fromString("GET test.xml HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
 
         $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
         $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
 
         $request = Request::fromString("GET test_xml HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
 
         $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
         $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
@@ -73,7 +75,8 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $dispatcher = new StaticFileDispatcher($config);
 
         $request = Request::fromString("GET test.xml HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
         $this->assertEquals(Response::STATUS_CODE_403, $response->getStatusCode());
 
         $config['blocked_file_types'] = ['xml', 'json'];
@@ -81,7 +84,8 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $dispatcher = new StaticFileDispatcher($config);
 
         $request = Request::fromString("GET test.json HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
         $this->assertEquals(Response::STATUS_CODE_403, $response->getStatusCode());
     }
 
@@ -92,7 +96,8 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $dispatcher = new StaticFileDispatcher($config);
 
         $request = Request::fromString("GET / HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
         $this->assertEquals(Response::STATUS_CODE_403, $response->getStatusCode());
     }
 
@@ -105,7 +110,8 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $fileName = basename(__FILE__);
 
         $request = Request::fromString("GET ../$fileName HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
         $this->assertEquals(Response::STATUS_CODE_400, $response->getStatusCode());
     }
 
@@ -116,7 +122,8 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
         $anotherDispatcher = new DummyFileDispatcher($config);
         $dispatcher = new StaticFileDispatcher($config, $anotherDispatcher);
         $request = Request::fromString("GET incorrect.path HTTP/1.0\r\n\r\n");
-        $response = $dispatcher->dispatch($request);
+        $response = new Response();
+        $dispatcher->dispatch($request, $response);
 
         $this->assertTrue($anotherDispatcher->isDispatchPerformed());
     }

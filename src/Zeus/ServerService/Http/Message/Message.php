@@ -258,7 +258,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
                 $this->sendResponse($connection, $buffer);
             }, $this->bufferSize);
             $this->mapUploadedFiles($this->request);
-            $this->response = $callback($this->request);
+            $callback($this->request, $this->response);
 
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
             ob_end_flush();
@@ -360,25 +360,38 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $transferEncoding = $responseHeaders->get('Transfer-Encoding');
 
         $isChunkedResponse = ($transferEncoding && $transferEncoding->getFieldValue() === $this::ENCODING_CHUNKED);
+        $isChunkedResponse = $isChunkedResponse || !$responseHeaders->has('Content-Length');
+
         $requestPhase = $this->requestPhase;
-        $responseHeaders->addHeader($request->getMetadata('isKeepAliveConnection') ? $this->keepAliveHeader : $this->closeHeader);
 
         // keep-alive should be disabled for HTTP/1.0 and chunked output (btw. Transfer Encoding should not be set for 1.0)
         // we can also disable chunked response if buffer contained entire response body
-        if ($requestVersion === Request::VERSION_10 || $requestPhase === static::REQUEST_PHASE_SENDING) {
-            $isChunkedResponse = false;
+        if ($requestVersion === Request::VERSION_10) {
+            if ($requestPhase !== static::REQUEST_PHASE_SENDING) {
+                $request->setMetadata('isKeepAliveConnection', false);
+            }
+
             if ($transferEncoding) {
                 $responseHeaders->removeHeader(new TransferEncoding());
             }
+        }
 
-            $this->enableCompressionIfSupported($request, $responseHeaders, $requestPhase, $buffer);
+        $responseHeaders->addHeader($request->getMetadata('isKeepAliveConnection') ? $this->keepAliveHeader : $this->closeHeader);
+        
+        if ($requestPhase === static::REQUEST_PHASE_SENDING) {
+            $isCompressed = $this->enableCompressionIfSupported($request, $response, $requestPhase, $buffer);
+            if (!$isCompressed && !$isChunkedResponse) {
+                $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
+            }
         } else {
             if (!$isChunkedResponse && $this->isBodyAllowedInResponse($request) && !$responseHeaders->has('Content-Length')) {
-                // is this a chunked encoding? valid only for HTTP 1.1+
-                $responseHeaders->addHeader($this->chunkedHeader);
-
                 $isChunkedResponse = true;
             }
+        }
+
+        if ($isChunkedResponse) {
+            // is this a chunked encoding? valid only for HTTP 1.1+
+            $responseHeaders->addHeader($this->chunkedHeader);
         }
 
         $response->setMetadata('isChunkedResponse', $isChunkedResponse);
@@ -394,12 +407,14 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /**
      * @param Request $request
-     * @param Headers $responseHeaders
+     * @param Response $response
      * @param int $requestPhase
      * @param string $buffer
+     * @return bool
      */
-    protected function enableCompressionIfSupported(Request $request, Headers $responseHeaders, $requestPhase, & $buffer)
+    protected function enableCompressionIfSupported(Request $request, Response $response, $requestPhase, & $buffer)
     {
+        $responseHeaders = $response->getHeaders();
         $acceptEncoding = $request->getHeaderOverview('Accept-Encoding', true);
         $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
 
@@ -407,8 +422,12 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $buffer = gzcompress($buffer, 1);
             $responseHeaders->addHeader(new ContentEncoding('deflate'));
             $responseHeaders->addHeader(new Vary('Accept'));
+            $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
+
+            return true;
         }
-        $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
+
+        return false;
     }
 
     /**
@@ -418,11 +437,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function sendResponse(ConnectionInterface $connection, $buffer)
     {
-        $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
-
         if (!$this->headersSent) {
             $this->sendHeaders($connection, $buffer);
         }
+
+        $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
 
         if ($this->isBodyAllowedInResponse($this->request)) {
             if ($isChunkedResponse) {

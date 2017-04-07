@@ -11,11 +11,9 @@ class DummyFileDispatcher implements DispatcherInterface
     /** @var bool */
     protected $dispatched = false;
 
-    public function dispatch(Request $request)
+    public function dispatch(Request $request, Response $response)
     {
         $this->dispatched = true;
-
-        return new Response();
     }
 
     /**

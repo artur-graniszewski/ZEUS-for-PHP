@@ -16,7 +16,7 @@ interface DispatcherInterface
 
     /**
      * @param Request $httpRequest
-     * @return Response
+     * @param Response $httpResponse
      */
-    public function dispatch(Request $httpRequest);
+    public function dispatch(Request $httpRequest, Response $httpResponse);
 }
