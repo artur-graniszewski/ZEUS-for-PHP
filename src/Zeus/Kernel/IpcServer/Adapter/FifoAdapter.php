@@ -129,13 +129,13 @@ final class FifoAdapter implements
     {
         $channelNumber = $this->channelNumber;
         $this->checkChannelAvailability($channelNumber);
-        $message = $this->packMessage($message);
 
+        $message = $this->packMessage($message);
         if (strlen($message) + 1 > $this->getMessageSizeLimit()) {
             throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
         }
 
-        fwrite($this->ipc[$channelNumber], $message . "\0", strlen($message) + 1);
+        fwrite($this->ipc[$channelNumber], $message . "\0");
 
         return $this;
     }

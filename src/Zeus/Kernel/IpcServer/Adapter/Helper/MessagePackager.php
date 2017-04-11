@@ -11,8 +11,8 @@ trait MessagePackager
     protected function unpackMessage($message)
     {
         $command = $message[0];
+        $message = substr($message, 1);
         if ($command !== '@') {
-            $message = substr($message, 1);
             if ($command === '0') {
                 $message = stripslashes($message);
             }
@@ -21,7 +21,7 @@ trait MessagePackager
             return $message;
         }
 
-        return substr($message, 1);
+        return $message;
     }
 
     /**
@@ -30,14 +30,14 @@ trait MessagePackager
      */
     protected function packMessage($message)
     {
-        $newLine = false;
+        $noNull = false;
 
-        if (!is_object($message) && !is_array($message) && ($newLine = (false === strpos($message, "\0")))) {
+        if (!is_object($message) && !is_array($message) && ($noNull = (false === strpos($message, "\0")))) {
             return '@' . $message;
         }
 
         $message = serialize($message);
-        $message = $newLine ? '0' . addslashes($message) : '!' . $message;
+        $message = $noNull ? '!' . $message : '0' . addslashes($message);
 
         return $message;
     }
