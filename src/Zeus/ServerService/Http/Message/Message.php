@@ -438,6 +438,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     {
         if (!$this->headersSent) {
             $this->sendHeaders($connection, $buffer);
+            $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         }
 
         $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
@@ -460,7 +461,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
         }
 
-        $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         if ($this->requestPhase !== static::REQUEST_PHASE_SENDING) {
             return '';
         }

@@ -67,8 +67,7 @@ class StaticFileDispatcher implements DispatcherInterface
             }
 
             $httpResponse->setStatusCode($code);
-            $httpResponse->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
-            $httpResponse->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
+            $this->addHeadersForFile($httpResponse, $fileName);
             readfile($fileName);
 
             return;
@@ -82,5 +81,15 @@ class StaticFileDispatcher implements DispatcherInterface
         }
 
         $httpResponse->setStatusCode($code);
+    }
+
+    /**
+     * @param Response $httpResponse
+     * @param string $fileName
+     */
+    protected function addHeadersForFile(Response $httpResponse, $fileName)
+    {
+        $httpResponse->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
+        $httpResponse->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
     }
 }

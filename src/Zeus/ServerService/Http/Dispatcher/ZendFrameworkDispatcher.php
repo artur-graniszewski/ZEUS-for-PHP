@@ -93,6 +93,15 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
     }
 
     /**
+     * @param string $name
+     * @param mixed $value
+     */
+    protected function setEnvVariable($name, $value)
+    {
+        $_SERVER[$name] = $value;
+    }
+
+    /**
      * @param Request $httpRequest
      * @return Response
      */
@@ -110,10 +119,10 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
 
         $host = $httpRequest->getUri()->getHost();
         $port = $httpRequest->getUri()->getPort();
-        $_SERVER['HTTP_HOST'] = sprintf("%s:%d", $host, $port);
-        $_SERVER['HTTP_PORT'] = $port;
-        $_SERVER['SERVER_PORT'] = $port;
-        $_SERVER['SERVER_NAME'] = $host;
+        $this->setEnvVariable('HTTP_HOST', sprintf("%s:%d", $host, $port));
+        $this->setEnvVariable('HTTP_PORT', $port);
+        $this->setEnvVariable('SERVER_PORT', $port);
+        $this->setEnvVariable('SERVER_NAME', $host);
 
         Module::setOverrideConfig($config);
         if (!$app) {
@@ -141,6 +150,5 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
         $app = null;
 
         $this->callGarbageCollector();
-
     }
 }
