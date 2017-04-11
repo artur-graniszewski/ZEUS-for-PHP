@@ -5,6 +5,11 @@ namespace Zeus\ServerService\Shared\React;
 use React\EventLoop\LoopInterface;
 use React\Socket\ServerInterface;
 
+/**
+ * Class ReactIoServer
+ * @package Zeus\ServerService\Shared\React
+ * @internal
+ */
 class ReactIoServer implements IoServerInterface
 {
     /** @var LoopInterface */

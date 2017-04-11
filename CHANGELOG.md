@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 1.6.1
+- [Improvement] Major performance improvement in IPC adapters (up to 10x performance increase)
+- [Improvement] Lots of code improvements based on static code analysis
+- [Fix] Standardized behaviour of disconnect() method in all IPC adapters
+
 ## Version 1.6.0
 - [Feature] Implemented new Async Server Service (Experimental)
 - [Feature] Implemented `async()` ZF3 controller plugin that allows to execute multiple anonymous functions/closures asynchronously

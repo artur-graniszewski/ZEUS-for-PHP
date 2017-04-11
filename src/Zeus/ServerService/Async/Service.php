@@ -2,16 +2,12 @@
 
 namespace Zeus\ServerService\Async;
 
-use React\EventLoop\StreamSelectLoop;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Message\Message;
-use Zeus\ServerService\Shared\AbstractServerService;
-use Zeus\ServerService\Shared\React\ReactEventSubscriber;
-use Zeus\ServerService\Shared\React\ReactIoServer;
-use Zeus\ServerService\Shared\React\ReactServer;
+use Zeus\ServerService\Shared\AbstractReactServerService;
 
-class Service extends AbstractServerService
+class Service extends AbstractReactServerService
 {
     /** @var Process */
     protected $process;
@@ -28,7 +24,9 @@ class Service extends AbstractServerService
 
         $this->config['logger'] = get_class();
 
-        $this->createReactLoop(new Message());
+        $config = new Config($this->getConfig());
+        $server = $this->getServer(new Message(), $config);
+        $server->setHeartBeatInterval(0.00001);
         parent::start();
 
         return $this;
@@ -40,28 +38,6 @@ class Service extends AbstractServerService
     public function getProcess()
     {
         return $this->process;
-    }
-
-    /**
-     * @param Message $messageComponent
-     * @return $this
-     * @throws \React\Socket\ConnectionException
-     */
-    protected function createReactLoop(Message $messageComponent)
-    {
-        $config = new Config($this->getConfig());
-
-        $this->logger->info(sprintf('Launching Async server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
-        $loop = new StreamSelectLoop();
-        $reactServer = new ReactServer($loop);
-        $reactServer->listen($config->getListenPort(), $config->getListenAddress());
-        $loop->removeStream($reactServer->master);
-
-        $server = new ReactIoServer($messageComponent, $reactServer, $loop);
-        $reactSubscriber = new ReactEventSubscriber($loop, $server, 0.00001);
-        $reactSubscriber->attach($this->scheduler->getEventManager());
-
-        return $this;
     }
 
     /**

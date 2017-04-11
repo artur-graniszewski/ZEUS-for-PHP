@@ -129,13 +129,13 @@ final class FifoAdapter implements
     {
         $channelNumber = $this->channelNumber;
         $this->checkChannelAvailability($channelNumber);
-        $message = $this->packMessage($message);
 
+        $message = $this->packMessage($message);
         if (strlen($message) + 1 > $this->getMessageSizeLimit()) {
             throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
         }
 
-        fwrite($this->ipc[$channelNumber], $message . "\n", strlen($message) + 1);
+        fwrite($this->ipc[$channelNumber], $message . "\0");
 
         return $this;
     }
@@ -166,7 +166,7 @@ final class FifoAdapter implements
             return null;
         }
 
-        $message = fgets($readSocket[0]);
+        $message = stream_get_line($readSocket[0], $this->getMessageSizeLimit(), "\0");
 
         if (is_string($message) && $message !== "") {
             $message = $this->unpackMessage($message);
@@ -223,15 +223,19 @@ final class FifoAdapter implements
             $this->checkChannelAvailability($channelNumber);
 
             fclose($this->ipc[$channelNumber]);
+            $this->ipc[$channelNumber] = null;
             $this->activeChannels[$channelNumber] = false;
 
             return $this;
         }
 
         foreach ($this->ipc as $channelNumber => $stream) {
-            fclose($this->ipc[$channelNumber]);
+            if (!$stream) {
+                continue;
+            }
+            fclose($stream);
             unlink($this->getFilename($channelNumber));
-            unset($this->ipc[$channelNumber]);
+            $this->ipc[$channelNumber] = null;
         }
 
         $this->activeChannels = [0 => false, 1 => false];

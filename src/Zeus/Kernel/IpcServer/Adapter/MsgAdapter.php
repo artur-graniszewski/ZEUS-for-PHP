@@ -152,7 +152,7 @@ final class MsgAdapter implements
         }
 
         function_exists('error_clear_last') ? error_clear_last() : @trigger_error("", E_USER_NOTICE);
-        if (!@msg_send($this->ipc[$channelNumber], 1, $message . "\n", true, true, $errorNumber)) {
+        if (!@msg_send($this->ipc[$channelNumber], 1, $message, true, true, $errorNumber)) {
             $error = error_get_last();
             throw new \RuntimeException(sprintf('Error %d occurred when sending message to channel %d: %s', $errorNumber, $channelNumber, $error['message']));
         }
@@ -286,29 +286,26 @@ final class MsgAdapter implements
     protected function getQueueInfo()
     {
         if (!$this->queueInfo) {
-            $id = null;
+            $queueId = null;
             $queue = $this->ipc[0] ? $this->ipc[0] : ($this->ipc[1] ? $this->ipc[1] : null);
 
             // detect queue limits...
             $this->queueInfo['msg_default'] = 10;
-            $fileName = '/proc/sys/fs/mqueue/msg_default';
-            if (file_exists($fileName) && is_readable($fileName)) {
-                $this->queueInfo['msg_default'] = (int) file_get_contents($fileName);
-            }
-
             $this->queueInfo['queues_max'] = 256;
-            $fileName = '/proc/sys/fs/mqueue/queues_max';
-            if (file_exists($fileName) && is_readable($fileName)) {
-                $this->queueInfo['queues_max'] = (int) file_get_contents($fileName);
+            foreach (['msg_default', 'queues_max'] as $setting) {
+                $fileName = '/proc/sys/fs/mqueue/' . $setting;
+                if (is_readable($fileName)) {
+                    $this->queueInfo[$setting] = (int)file_get_contents($fileName);
+                }
             }
 
             if (!$queue) {
-                $id = $this->getQueueId();
-                $queue = msg_get_queue($id, 0600);
+                $queueId = $this->getQueueId();
+                $queue = msg_get_queue($queueId, 0600);
             }
 
             $this->queueInfo = array_merge($this->queueInfo, msg_stat_queue($queue));
-            if ($id) {
+            if ($queueId) {
                 msg_remove_queue($queue);
             }
         }

@@ -38,8 +38,28 @@ final class ReactEventSubscriber
     {
         $this->loop = $loop;
         $this->socket = $server->getServer();
-        $this->tickInterval = $tickInterval;
+        $this->setHeartBeatInterval($tickInterval);
     }
+
+    /**
+     * @param int $tickInterval
+     * @return $this
+     */
+    public function setHeartBeatInterval($tickInterval)
+    {
+        $this->tickInterval = $tickInterval;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getHeartBeatInterval()
+    {
+        return $this->tickInterval;
+    }
+
 
     /**
      * @param EventManagerInterface $events

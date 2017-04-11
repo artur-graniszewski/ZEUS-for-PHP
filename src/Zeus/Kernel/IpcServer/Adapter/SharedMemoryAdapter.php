@@ -214,10 +214,13 @@ final class SharedMemoryAdapter implements
             return $this;
         }
 
-        foreach (array_keys($this->ipc) as $channelNumber) {
-            shm_remove($this->ipc[$channelNumber]);
-            shm_detach($this->ipc[$channelNumber]);
-            unset($this->ipc[$channelNumber]);
+        foreach ($this->ipc as $channelNumber => $handle) {
+            if (!$handle) {
+                continue;
+            }
+            shm_remove($handle);
+            shm_detach($handle);
+            $this->ipc[$channelNumber] = null;
         }
 
         $this->activeChannels = [0 => false, 1 => false];

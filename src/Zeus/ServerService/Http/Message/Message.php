@@ -107,8 +107,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->closeHeader = (new Connection())->setValue("close");
         $this->keepAliveHeader = (new Connection())->setValue("keep-alive; timeout=" . $this->keepAliveTimer);
         $this->dispatcher = $dispatcher;
-        $this->initNewRequest();
-        $this->restartKeepAliveCounter();
         $this->responseHandler = $responseHandler;
     }
 
@@ -133,8 +131,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     public function onOpen(ConnectionInterface $connection)
     {
-        $this->connection = $connection;
+        $this->initNewRequest();
         $this->restartKeepAliveCounter();
+        $this->connection = $connection;
         $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
     }
 
@@ -439,6 +438,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     {
         if (!$this->headersSent) {
             $this->sendHeaders($connection, $buffer);
+            $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         }
 
         $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
@@ -461,7 +461,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
         }
 
-        $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         if ($this->requestPhase !== static::REQUEST_PHASE_SENDING) {
             return '';
         }
@@ -472,15 +471,16 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         $this->requestsFinished++;
-        if ($this->request->getMetadata('isKeepAliveConnection')) {
-            $this->keepAliveCount--;
-            $this->initNewRequest();
-            $this->restartKeepAliveTimer();
-            $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
-        } else {
+        if (!$this->request->getMetadata('isKeepAliveConnection')) {
             $this->onClose($connection);
+
+            return '';
         }
 
+        $this->keepAliveCount--;
+        $this->initNewRequest();
+        $this->restartKeepAliveTimer();
+        $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
         return '';
     }
 

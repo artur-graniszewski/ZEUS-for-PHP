@@ -67,7 +67,6 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $message = $this->getHttpGetRequestString("/");
         $testConnection = new TestConnection();
         $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
-        $httpAdapter->onOpen($testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertTrue($testConnection->isConnectionClosed(), "HTTP 1.0 connection should be closed after request");
@@ -77,7 +76,8 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "keep-alive"]);
         $testConnection = new TestConnection();
-        $this->getHttpMessageParser(function() {}, null, $testConnection)->onMessage($testConnection, $message);
+        $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.0 keep-alive connection should be left open after request");
     }
@@ -86,7 +86,8 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
         $testConnection = new TestConnection();
-        $this->getHttpMessageParser(function() {}, null, $testConnection)->onMessage($testConnection, $message);
+        $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
     }
@@ -174,6 +175,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             echo $responseBody;
         }, null, $testConnection);
 
+        $httpAdapter->onOpen($testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
         $rawResponse = Response::fromString($testConnection->getSentData());
@@ -192,7 +194,8 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "close", 'Host' => '127.0.0.1:80'], "1.1");
         $testConnection = new TestConnection();
-        $this->getHttpMessageParser(function() {}, null, $testConnection)->onMessage($testConnection, $message);
+        $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertTrue($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be closed when Connection: close header is present");
     }
@@ -242,6 +245,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
                 $request = $_request;
             };
             $httpAdapter = $this->getHttpMessageParser($requestHandler, $errorHandler);
+            $httpAdapter->onOpen($testConnection);
 
             $chunks = str_split($message, $chunkSize);
             foreach ($chunks as $index => $chunk) {
@@ -290,6 +294,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
                 $request = $_request;
             };
             $httpAdapter = $this->getHttpMessageParser($requestHandler, $errorHandler);
+            $httpAdapter->onOpen($testConnection);
 
             $chunks = str_split($message, $chunkSize);
             foreach ($chunks as $index => $chunk) {
@@ -322,6 +327,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
                 echo $testString;
             };
             $httpAdapter = $this->getHttpMessageParser($requestHandler, $requestHandler);
+            $httpAdapter->onOpen($testConnection);
             $httpAdapter->onMessage($testConnection, $message);
             $rawResponse = Response::fromString($testConnection->getSentData());
 
@@ -339,6 +345,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         /** @var Request $request */
         $request = null;
         $httpAdapter = $this->getHttpMessageParser($requestHandler);
+        $httpAdapter->onOpen($testConnection);
 
         for($i = 1; $i < 10; $i++) {
             $pad = str_repeat("A", $i);
@@ -382,6 +389,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
                 }
             };
             $httpAdapter = $this->getHttpMessageParser($requestHandler, $errorHandler);
+            $httpAdapter->onOpen($testConnection);
 
             $chunks = str_split($message, $chunkSize);
             foreach ($chunks as $index => $chunk) {
@@ -429,6 +437,7 @@ Hello_World";
             };
 
             $httpAdapter = $this->getHttpMessageParser($requestHandler, $errorHandler);
+            $httpAdapter->onOpen($testConnection);
 
             $chunks = str_split($message, $chunkSize);
             foreach ($chunks as $index => $chunk) {
@@ -508,6 +517,7 @@ World
         $request = null;
         $requestHandler = function($_request) use (&$request) {$request = $_request; };
         $httpAdapter = $this->getHttpMessageParser($requestHandler, $requestHandler);
+        $httpAdapter->onOpen($testConnection);
         $httpAdapter->onMessage($testConnection, $message);
         $rawResponse = Response::fromString($testConnection->getSentData());
 

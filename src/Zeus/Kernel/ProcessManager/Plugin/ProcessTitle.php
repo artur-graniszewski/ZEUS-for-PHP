@@ -5,10 +5,13 @@ namespace Zeus\Kernel\ProcessManager\Plugin;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\Kernel\ProcessManager\Helper\AddUnitsToNumbers;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class ProcessTitle implements ListenerAggregateInterface
 {
+    use AddUnitsToNumbers;
+
     /** @var EventManagerInterface */
     protected $events;
 
@@ -33,15 +36,15 @@ class ProcessTitle implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 0)
     {
         if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessWaiting']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop']);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessWaiting'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop'], $priority);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], $priority);
         }
     }
 
@@ -94,17 +97,5 @@ class ProcessTitle implements ListenerAggregateInterface
         foreach ($this->eventHandles as $handle) {
             $events->detach($handle);
         }
-    }
-
-    private function addUnitsToNumber($value, $precision = 2)
-    {
-        $unit = ["", "K", "M", "G"];
-        $exp = floor(log($value, 1000)) | 0;
-        $division = pow(1000, $exp);
-
-        if (!$division) {
-            return 0;
-        }
-        return round($value / $division, $precision) . $unit[$exp];
     }
 }

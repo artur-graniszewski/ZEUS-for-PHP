@@ -56,7 +56,7 @@ class LruDiscipline implements DisciplineInterface
 
         if ($allProcesses === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
 
-            return $processesToCreate = $config->getMaxSpareProcesses();
+            return $config->getMaxSpareProcesses();
         }
 
         return 0;

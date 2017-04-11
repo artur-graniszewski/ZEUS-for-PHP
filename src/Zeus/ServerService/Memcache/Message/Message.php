@@ -235,7 +235,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     protected function markHit($operation, $hits = 1)
     {
-        if ($this->trackStats) {
+        if ($this->trackStats && $hits > 0) {
             $this->status->incrementItem('zeus_hits_' . $operation, $hits);
         }
 
@@ -251,7 +251,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     protected function markMiss($operation, $misses = 1)
     {
-        if ($this->trackStats) {
+        if ($this->trackStats && $misses > 0) {
             $this->status->incrementItem('zeus_misses_' . $operation, $misses);
         }
 
@@ -497,13 +497,8 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         }
 
         $this->markCommandUsage('get');
-        if ($hits) {
-            $this->markHit('get', $hits);
-        }
-
-        if ($misses) {
-            $this->markMiss('get', $misses);
-        }
+        $this->markHit('get', $hits);
+        $this->markMiss('get', $misses);
 
         $this->connection->write("END\r\n");
     }
@@ -627,9 +622,11 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             }
             $this->incrementItemsCount();
             $this->sendStatus("STORED");
-        } else {
-            $this->sendStatus("NOT_STORED");
+
+            return;
         }
+
+        $this->sendStatus("NOT_STORED");
     }
 
     /**

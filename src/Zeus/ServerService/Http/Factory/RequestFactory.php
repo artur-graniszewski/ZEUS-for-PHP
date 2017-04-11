@@ -26,6 +26,6 @@ class RequestFactory implements FactoryInterface
     {
         $config = $container->get('configuration');
 
-        return $config['zeus_process_manager']['services']['Request'];
+        return $config['zeus_process_manager']['services'][$requestedName];
     }
 }
