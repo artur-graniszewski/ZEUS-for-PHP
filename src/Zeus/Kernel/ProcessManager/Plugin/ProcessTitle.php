@@ -11,7 +11,7 @@ use Zeus\Kernel\ProcessManager\SchedulerEvent;
 class ProcessTitle implements ListenerAggregateInterface
 {
     use AddUnitsToNumbers;
-    
+
     /** @var EventManagerInterface */
     protected $events;
 

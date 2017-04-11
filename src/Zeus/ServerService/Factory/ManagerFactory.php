@@ -45,7 +45,7 @@ final class ManagerFactory implements FactoryInterface
         $services = [];
 
         $mainLogger->info("Scanning configuration for services...");
-        $manager = new Manager([]);
+        $manager = new $requestedName($options ? $options : []);
         $manager->setLogger($mainLogger);
         $this->startPlugins($container, $manager, isset($config['zeus_process_manager']['manager']['plugins']) ? $config['zeus_process_manager']['manager']['plugins'] : []);
 

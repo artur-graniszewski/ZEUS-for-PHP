@@ -12,7 +12,12 @@ use Zeus\Module;
 use Zeus\ServerService\Http\Factory\RequestFactory;
 use Zeus\ServerService\Http\ZendFramework\ApplicationProxy;
 
-class ZendFrameworkDispatcher implements DispatcherInterface
+/**
+ * Class ZendFrameworkDispatcher
+ * @package Zeus\ServerService\Http\Dispatcher
+ * @internal
+ */
+final class ZendFrameworkDispatcher implements DispatcherInterface
 {
     protected static $applicationConfig;
 

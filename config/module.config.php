@@ -39,7 +39,7 @@ return $config = [
         ],
         'factories' => [
             ConsoleController::class => ConsoleControllerFactory::class,
-            RequestFactory::class => RequestFactory::class,
+
         ]
     ],
     'controller_plugins' => [
