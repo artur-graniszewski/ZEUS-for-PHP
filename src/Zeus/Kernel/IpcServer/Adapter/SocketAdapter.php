@@ -111,7 +111,7 @@ final class SocketAdapter implements
         $message = $this->packMessage($message);
 
         socket_set_block($this->ipc[$this->channelNumber]);
-        socket_write($this->ipc[$this->channelNumber], $message . "\n", strlen($message) + 1);
+        socket_write($this->ipc[$this->channelNumber], $message . "\0", strlen($message) + 1);
         socket_set_nonblock($this->ipc[$this->channelNumber]);
 
         return $this;
@@ -142,16 +142,21 @@ final class SocketAdapter implements
             return null;
         }
 
-        defined('HHVM_VERSION') ?
+        if (defined('HHVM_VERSION')) {
             // HHVM...
-            $message = stream_get_line($readSocket[0], static::MAX_MESSAGE_SIZE)
-            :
-            //socket_recv($readSocket[0], $message, static::MAX_MESSAGE_SIZE, MSG_DONTWAIT);
-            $message = socket_read($readSocket[0], static::MAX_MESSAGE_SIZE);
+            $message = stream_get_line($readSocket[0], static::MAX_MESSAGE_SIZE, "\0");
+        }
+
+        if (!defined('HHVM_VERSION')) {
+            $message = '';
+            do {
+                $message .= socket_read($readSocket[0], static::MAX_MESSAGE_SIZE);
+            } while (substr($message, -1) !== "\0");
+        }
 
         if (is_string($message) && $message !== "") {
             $success = true;
-            return $this->unpackMessage($message);
+            return $this->unpackMessage(defined('HHVM_VERSION') ? $message : substr($message, 0, -1));
         }
     }
 

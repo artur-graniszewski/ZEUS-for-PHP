@@ -135,7 +135,7 @@ final class FifoAdapter implements
             throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
         }
 
-        fwrite($this->ipc[$channelNumber], $message . "\n", strlen($message) + 1);
+        fwrite($this->ipc[$channelNumber], $message . "\0", strlen($message) + 1);
 
         return $this;
     }
@@ -166,7 +166,12 @@ final class FifoAdapter implements
             return null;
         }
 
-        $message = fgets($readSocket[0]);
+        //defined('HHVM_VERSION') ?
+            // HHVM...
+            $message = stream_get_line($readSocket[0], $this->getMessageSizeLimit()  , "\0");
+            //:
+            //socket_recv($readSocket[0], $message, static::MAX_MESSAGE_SIZE, MSG_DONTWAIT);
+            //$message = socket_read($readSocket[0], $this->getMessageSizeLimit());
 
         if (is_string($message) && $message !== "") {
             $message = $this->unpackMessage($message);

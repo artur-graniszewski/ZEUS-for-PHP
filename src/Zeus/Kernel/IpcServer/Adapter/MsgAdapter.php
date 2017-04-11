@@ -152,7 +152,7 @@ final class MsgAdapter implements
         }
 
         function_exists('error_clear_last') ? error_clear_last() : @trigger_error("", E_USER_NOTICE);
-        if (!@msg_send($this->ipc[$channelNumber], 1, $message . "\n", true, true, $errorNumber)) {
+        if (!@msg_send($this->ipc[$channelNumber], 1, $message, true, true, $errorNumber)) {
             $error = error_get_last();
             throw new \RuntimeException(sprintf('Error %d occurred when sending message to channel %d: %s', $errorNumber, $channelNumber, $error['message']));
         }

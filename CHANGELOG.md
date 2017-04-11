@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.6.1
+- [Improvement] Major performance improvement in IPC adapters (up to 10x performance increase)
+
 ## Version 1.6.0
 - [Feature] Implemented new Async Server Service (Experimental)
 - [Feature] Implemented `async()` ZF3 controller plugin that allows to execute multiple anonymous functions/closures asynchronously
