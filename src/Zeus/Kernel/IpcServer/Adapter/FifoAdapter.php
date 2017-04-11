@@ -166,20 +166,10 @@ final class FifoAdapter implements
             return null;
         }
 
-        if (defined('HHVM_VERSION')) {
-            // HHVM...
-            $message = stream_get_line($readSocket[0], $this->getMessageSizeLimit(), "\0");
-        }
-
-        if (!defined('HHVM_VERSION')) {
-            $message = '';
-            do {
-                $message .= fgets($readSocket[0], $this->getMessageSizeLimit());
-            } while (substr($message, -1) !== "\0");
-        }
+        $message = stream_get_line($readSocket[0], $this->getMessageSizeLimit(), "\0");
 
         if (is_string($message) && $message !== "") {
-            $message = $this->unpackMessage(defined('HHVM_VERSION') ? $message : substr($message, 0, -1));
+            $message = $this->unpackMessage($message);
             $success = true;
             return $message;
         }
