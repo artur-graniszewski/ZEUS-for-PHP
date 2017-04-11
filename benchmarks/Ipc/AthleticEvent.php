@@ -58,7 +58,6 @@ class AthleticEvent extends Event
         $this->ipcAdapter->useChannelNumber(1);
         $message = $this->ipcAdapter->receive();
         if ($message !== $this->smallMessage) {
-            var_dump(json_encode($message), json_encode($this->smallMessage)); die();
             throw new \Exception('Small message is corrupted');
         }
     }
