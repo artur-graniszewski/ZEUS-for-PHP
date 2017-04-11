@@ -205,11 +205,15 @@ final class SocketAdapter implements
         }
 
         foreach ($this->ipc as $channelNumber => $socket) {
+            if (!$socket) {
+                continue;
+            }
             socket_shutdown($socket, 2);
             socket_close($socket);
-            unset($this->ipc[$channelNumber]);
-            $this->activeChannels[$channelNumber] = false;
+            $this->ipc[$channelNumber] = null;
         }
+
+        $this->activeChannels = [0 => false, 1 => false];
 
         return $this;
     }

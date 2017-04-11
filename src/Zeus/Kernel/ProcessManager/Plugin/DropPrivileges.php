@@ -67,8 +67,8 @@ class DropPrivileges implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {
-            $this->onProcessInit($e);
-        });
+            $this->onProcessInit();
+        }, $priority);
     }
 
     /**
@@ -84,10 +84,7 @@ class DropPrivileges implements ListenerAggregateInterface
         }
     }
 
-    /**
-     * @param SchedulerEvent $event
-     */
-    protected function onProcessInit(SchedulerEvent $event)
+    protected function onProcessInit()
     {
         $this->setGroup($this->gid, false);
         $this->setUser($this->uid, false);

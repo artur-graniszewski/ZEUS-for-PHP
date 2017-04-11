@@ -223,15 +223,19 @@ final class FifoAdapter implements
             $this->checkChannelAvailability($channelNumber);
 
             fclose($this->ipc[$channelNumber]);
+            $this->ipc[$channelNumber] = null;
             $this->activeChannels[$channelNumber] = false;
 
             return $this;
         }
 
         foreach ($this->ipc as $channelNumber => $stream) {
-            fclose($this->ipc[$channelNumber]);
+            if (!$stream) {
+                continue;
+            }
+            fclose($stream);
             unlink($this->getFilename($channelNumber));
-            unset($this->ipc[$channelNumber]);
+            $this->ipc[$channelNumber] = null;
         }
 
         $this->activeChannels = [0 => false, 1 => false];

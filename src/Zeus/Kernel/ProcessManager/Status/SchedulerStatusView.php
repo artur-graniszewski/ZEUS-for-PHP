@@ -4,6 +4,7 @@ namespace Zeus\Kernel\ProcessManager\Status;
 
 use Zend\Console\ColorInterface;
 use Zend\Console\Console;
+use Zeus\Kernel\ProcessManager\Helper\AddUnitsToNumbers;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zend\Console\Adapter\AdapterInterface;
 use Zeus\ServerService\ServerServiceInterface;
@@ -15,6 +16,8 @@ use Zeus\ServerService\ServerServiceInterface;
  */
 class SchedulerStatusView
 {
+    use AddUnitsToNumbers;
+
     /**
      * @var Scheduler
      */
@@ -115,7 +118,7 @@ class SchedulerStatusView
         );
 
         $output .= sprintf("%s requests/sec" . PHP_EOL,
-            ProcessState::addUnitsToNumber($schedulerStatus['requests_finished'] / max($uptime, 0.01))
+            $this->addUnitsToNumber($schedulerStatus['requests_finished'] / max($uptime, 0.01))
         );
 
         $output .= sprintf("%d tasks currently being processed, %d idle processes" . PHP_EOL . PHP_EOL, $busyChildren, $idleChildren);
@@ -163,8 +166,8 @@ class SchedulerStatusView
                     $processStatus->getId(),
                     $processStatusChars[$processStatus->getId()],
                     $processStatus->getCpuUsage(),
-                    ProcessState::addUnitsToNumber($processStatus->getNumberOfTasksPerSecond()),
-                    ProcessState::addUnitsToNumber($processStatus->getNumberOfFinishedTasks()),
+                    $this->addUnitsToNumber($processStatus->getNumberOfTasksPerSecond()),
+                    $this->addUnitsToNumber($processStatus->getNumberOfFinishedTasks()),
                     $processStatus->getStatusDescription() ? ': ' . $processStatus->getStatusDescription() : ''
                 ),
                 $color

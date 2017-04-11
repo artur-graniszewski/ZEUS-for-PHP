@@ -34,23 +34,23 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     {
         if ($this->callback) {
             $result = null;
-            $e = null;
+            $exception = null;
             try {
                 $result = $this->run(substr($this->callback, 0, -1));
-            } catch (\Exception $e) {
+            } catch (\Exception $exception) {
 
-            } catch (\Throwable $e) {
+            } catch (\Throwable $exception) {
 
             }
 
             if ($connection->isWritable()) {
-                if ($e instanceof UnserializeException) {
+                if ($exception instanceof UnserializeException) {
                     $connection->write("CORRUPTED_REQUEST\n");
                     $connection->end();
 
                     return;
                 }
-                $result = serialize($e ? $e : $result);
+                $result = serialize($exception ? $exception : $result);
                 $size = strlen($result);
                 $connection->write("$size:$result\n");
                 $connection->end();

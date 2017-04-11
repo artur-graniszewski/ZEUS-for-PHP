@@ -152,11 +152,21 @@ final class ApcAdapter implements
      */
     public function disconnect($channelNumber = 0)
     {
-        $this->checkChannelAvailability($channelNumber);
+        if ($channelNumber !== -1) {
+            $this->checkChannelAvailability($channelNumber);
 
-        apcu_delete($this->namespace . '_writeindex_' . $channelNumber);
+            apcu_delete($this->namespace . '_writeindex_' . $channelNumber);
+            $this->activeChannels[$channelNumber] = false;
 
-        $this->activeChannels[$channelNumber] = false;
+            return $this;
+        }
+
+        foreach (range(0, 1) as $channelNumber) {
+            apcu_delete($this->namespace . '_writeindex_' . $channelNumber);
+        }
+
+        $this->activeChannels = [0 => false, 1 => false];
+
         return $this;
     }
 

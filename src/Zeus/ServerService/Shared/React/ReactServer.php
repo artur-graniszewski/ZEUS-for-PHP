@@ -6,6 +6,11 @@ use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionException;
 use React\Socket\Server;
 
+/**
+ * Class ReactServer
+ * @package Zeus\ServerService\Shared\React
+ * @internal
+ */
 class ReactServer extends Server
 {
     private $loop;

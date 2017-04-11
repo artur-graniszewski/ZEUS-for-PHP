@@ -142,13 +142,13 @@ final class Manager
 
     /**
      * @param string $serviceName
-     * @param \Exception $ex
+     * @param \Exception|\Throwable $exception
      * @return $this
      */
-    public function registerBrokenService($serviceName, $ex)
+    public function registerBrokenService($serviceName, $exception)
     {
-        $this->brokenServices[$serviceName] = $ex;
-        $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $ex->getMessage()));
+        $this->brokenServices[$serviceName] = $exception;
+        $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $exception->getMessage()));
 
         return $this;
     }
@@ -184,19 +184,19 @@ final class Manager
                 $this->onServiceStop($service);
             }, -10000);
 
-        $e = null;
+        $exception = null;
         try {
             $service->start();
             $schedulerPid = $service->getScheduler()->getId();
             $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
             $this->pidToServiceMap[$schedulerPid] = $service;
             $this->servicesRunning++;
-        } catch (\Exception $e) {
-            $this->registerBrokenService($serviceName, $e);
+        } catch (\Exception $exception) {
+            $this->registerBrokenService($serviceName, $exception);
 
             return $this;
-        } catch (\Throwable $e) {
-            $this->registerBrokenService($serviceName, $e);
+        } catch (\Throwable $exception) {
+            $this->registerBrokenService($serviceName, $exception);
 
             return $this;
         }
