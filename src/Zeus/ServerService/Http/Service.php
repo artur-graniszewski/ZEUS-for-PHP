@@ -2,7 +2,6 @@
 
 namespace Zeus\ServerService\Http;
 
-use React\EventLoop\StreamSelectLoop;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Stdlib\RequestInterface;
@@ -14,13 +13,10 @@ use Zeus\ServerService\Http\Dispatcher\DispatcherWrapper;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
-use Zeus\ServerService\Shared\AbstractServerService;
-use Zeus\ServerService\Shared\React\ReactEventSubscriber;
-use Zeus\ServerService\Shared\React\ReactIoServer;
-use Zeus\ServerService\Shared\React\ReactServer;
+use Zeus\ServerService\Shared\AbstractReactServerService;
 use Zeus\Kernel\ProcessManager\Scheduler;
 
-class Service extends AbstractServerService
+class Service extends AbstractReactServerService
 {
     /** @var Process */
     protected $process;
@@ -30,37 +26,8 @@ class Service extends AbstractServerService
         $this->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
             $this->process = $event->getProcess();
         });
-        $messageComponent = Message::class;
+
         $this->config['logger'] = get_class();
-
-        $this->createReactLoop($messageComponent);
-        parent::start();
-
-        return $this;
-    }
-
-    /**
-     * @return Process
-     */
-    public function getProcess()
-    {
-        return $this->process;
-    }
-
-    /**
-     * @param object $messageComponent
-     * @return $this
-     * @throws \React\Socket\ConnectionException
-     */
-    protected function createReactLoop($messageComponent)
-    {
-        $httpConfig = new Config($this->getConfig());
-
-        $this->logger->info(sprintf('Launching HTTP server on %s%s', $httpConfig->getListenAddress(), $httpConfig->getListenPort() ? ':' . $httpConfig->getListenPort(): ''));
-        $loop = new StreamSelectLoop();
-        $reactServer = new ReactServer($loop);
-        $reactServer->listen($httpConfig->getListenPort(), $httpConfig->getListenAddress());
-        $loop->removeStream($reactServer->master);
 
         $dispatcherConfig = $this->getConfig();
         $dispatcherConfig['service'] = $this;
@@ -76,17 +43,25 @@ class Service extends AbstractServerService
             );
 
         $messageComponent =
-            new $messageComponent(
+            new Message(
                 [$dispatchers, 'dispatch'],
                 null,
                 [$this, 'logRequest']
             );
 
-        $server = new ReactIoServer($messageComponent, $reactServer, $loop);
-        $reactSubscriber = new ReactEventSubscriber($loop, $server);
-        $reactSubscriber->attach($this->scheduler->getEventManager());
+        $config = new Config($this->getConfig());
+        $this->getServer($messageComponent, $config);
+        parent::start();
 
         return $this;
+    }
+
+    /**
+     * @return Process
+     */
+    public function getProcess()
+    {
+        return $this->process;
     }
 
     /**
