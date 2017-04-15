@@ -2,7 +2,7 @@
 
 # Introduction
 
-![ZEUS for PHP logo](docs/book/images/zeus-logo-small.png)
+![ZEUS for PHP logo](http://php.webtutor.pl/zeus/zeus-logo-small.png)
 
 **ZEUS for PHP** is an event-driven, preemptive _Multitasking Runtime Environment_ and _Service Management System_ integrated with Zend Framework 3. It's main purpose is to perform multiple tasks (processes) concurrently.
 
@@ -12,7 +12,7 @@ To guarantee true parallelism and resource isolation ZEUS employs preemptive sch
 
 It's designed to be compliant with any ZF3 application such as Apigility or ZendSkeleton. Custom applications must provide index.php file which starts the Zend Framework MVC `Application` class.
 
-![ZEUS for PHP overview](docs/book/images/thumbnails.png)
+![ZEUS for PHP overview](http://php.webtutor.pl/zeus/thumbnails.png)
 
 # Features
 
