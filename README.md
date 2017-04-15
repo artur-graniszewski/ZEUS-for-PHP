@@ -2,7 +2,7 @@
 
 # Introduction
 
-![ZEUS for PHP logo](docs/images/zeus-logo-small.png)
+![ZEUS for PHP logo](docs/book/images/zeus-logo-small.png)
 
 **ZEUS for PHP** is an event-driven, preemptive _Multitasking Runtime Environment_ and _Service Management System_ integrated with Zend Framework 3. It's main purpose is to perform multiple tasks (processes) concurrently.
 
@@ -12,20 +12,229 @@ To guarantee true parallelism and resource isolation ZEUS employs preemptive sch
 
 It's designed to be compliant with any ZF3 application such as Apigility or ZendSkeleton. Custom applications must provide index.php file which starts the Zend Framework MVC `Application` class.
 
+![ZEUS for PHP overview](docs/book/images/thumbnails.png)
+
+# Features
+
+- **Preemptive schedulers** allowing to run multiple services asynchronously
+- **Built-in IPC server** with various IPC Adapters suitable for different Operating Systems or usage characteristics
+- **Server service manager** allowing to start, stop and track the status of ZEUS server services
+- Well defined, extensive Server Service life-cycle based on Zend Framework `EventManager` functionality and events such as `SchedulerEvent` and `ManagerEvent`
+- Possibility to **write your own asynchronous Server Services** by using just few lines of boilerplate code
+- Advanced status reporting tools tracking the life-cycle and usage statistics of each service and its processes
+- Deep integration with Zend Framework 3+ and its services such as `EventManager` and `ServiceManager`
+- Plugin support allowing to extend functionality of ZEUS Schedulers and Server Services
+- **Attachable, event-driven** Server Services, Processes and Schedulers, allowing to react on and alter each step of their life-cycle
+- Customizable, user friendly **Logger functionality** based on and compatible with Zend Framework 3 `Logger` module
+- Easy configuration and customization of ZEUS components provided by Zend Framework 3 `Config` module
+- Built-in `async()` controller plugin and the Async Server Service which allow to run multiple anonymous function/closures asynchronously
+- Self hosted - ZEUS comes equipped with its own, **high-speed HTTP Server Service** implementation supporting HTTP/1.0 and HTTP/1.1 protocols, keep-alive connections and a deflate compression
+- Can be integrated with any Zend Framework 3 Application with just few commands issued in a terminal
+- Compatible with Zend Framework `MVC` module, enabling ZEUS to dispatch HTTP requests both for static files as well as any Zend Framework Application controller
+- Equipped with its own, customizable *Memcached Server Service* that is integrated with Zend Framework 3 `Cache` module, allowing to use any of its `Cache` adapters as a Memcached key storage
+- Compatible with any UNIX/Linux/BSD platform
+- Well documented and [unit tested](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) (with at least [90% code coverage](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP))
+- Stress tested, shipped with its own benchmark tests
+- Compatible with and [tested](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) against **PHP 5.6, PHP 7.0, PHP 7.1** and **HHVM**
+
+# Documentation
+
+**Full documentation can be [found here](http://php.webtutor.pl/zeus/docs/).**
+
+# Sample usage
+
+## Supported command line options
+
+Since version 1.3.5, the following commands are supported (assuming that Zend Framework's `index.php` application bootstrap file is compatible with Zend Framework 3 `MVC` Module):
+
+* `index.php zeus start` - Starts all ZEUS Server Services
+* `index.php zeus start <service-name>` - Starts selected Server Service
+* `index.php zeus list` - Lists all Server Services and their configuration
+* `index.php zeus list <service-name>` - Shows the configuration of a selected Server Service
+* `index.php zeus status` - Returns current status of all Server Services
+* `index.php zeus status <service-name>` - Returns current status of the selected Server Service
+* `index.php zeus stop` - Stops all ZEUS Server Services
+* `index.php zeus stop <service-name>` - Stops selected Server Service
+
+## Starting built-in Web Server
+
+Command:
+```
+user@host:/var/www/zf-application/public$ php index.php zeus start zeus_httpd
+```
+
+Output:
+```
+2017-04-15 14:10:48.769    INFO 24904 --- [           main] erverService\Shared\Logger\LoggerFactory :
+ __________            _________
+ \____    /____  __ __/   _____/ PHP
+   /     // __ \|  |  \_____  \
+  /     /\  ___/|  |  /        \
+ /_______ \___  >____/_______  /
+         \/   \/             \/
+ ZEUS for PHP - ZF3 Edition   (1.6.1)
+
+2017-04-15 14:10:48.769    INFO 24904 --- [           main] eus\ServerService\Factory\ManagerFactory : Scanning configuration for services...
+2017-04-15 14:10:48.770    INFO 24904 --- [           main] eus\ServerService\Factory\ManagerFactory : Found 4 service(s): httpd, zeus_httpd, zeus_memcache, zeus_async
+2017-04-15 14:10:48.771    INFO 24904 --- [           main] Zeus\ServerService\Manager               : Starting Server Service Manager with 0 plugins
+2017-04-15 14:10:48.772    INFO 24904 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : Using Zeus\Kernel\IpcServer\Adapter\FifoAdapter for zeus_httpd IPC
+2017-04-15 14:10:48.773    INFO 24904 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : Enumerating IPC capabilities:
+2017-04-15 14:10:48.773    INFO 24904 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : IPC message size limit: 65536 bytes
+2017-04-15 14:10:48.783    INFO 24904 --- [     zeus_httpd] ervice\Shared\AbstractReactServerService : Launching server on 0.0.0.0:7070
+2017-04-15 14:10:48.786    INFO 24904 --- [     zeus_httpd] Zeus\Kernel\ProcessManager\Scheduler     : Starting Scheduler with 1 plugin
+2017-04-15 14:10:48.795    INFO 24905 --- [     zeus_httpd] Zeus\Kernel\ProcessManager\Scheduler     : Establishing IPC
+2017-04-15 14:10:48.795    INFO 24905 --- [     zeus_httpd] Zeus\Kernel\ProcessManager\Scheduler     : Scheduler started
+2017-04-15 14:10:48.797   DEBUG 24904 --- [           main] Zeus\ServerService\Manager               : Scheduler running as process #24905
+2017-04-15 14:10:48.798    INFO 24904 --- [           main] Zeus\ServerService\Manager               : Started 1 services in 0.03 seconds (PHP running for 0.12s)
+
+```
+
+## Checking any Server Service status
+
+Command:
+```
+user@host:/var/www/zf-application/public$ php index.php zeus status zeus_httpd
+```
+
+Output:
+```
+2017-04-15 14:17:44.953    INFO 28567 --- [           main] erverService\Shared\Logger\LoggerFactory :
+ __________            _________
+ \____    /____  __ __/   _____/ PHP
+   /     // __ \|  |  \_____  \
+  /     /\  ___/|  |  /        \
+ /_______ \___  >____/_______  /
+         \/   \/             \/
+ ZEUS for PHP - ZF3 Edition   (1.6.1)
+
+2017-04-15 14:17:44.953    INFO 28567 --- [           main] eus\ServerService\Factory\ManagerFactory : Scanning configuration for services...
+2017-04-15 14:17:44.954    INFO 28567 --- [           main] eus\ServerService\Factory\ManagerFactory : Found 4 service(s): httpd, zeus_httpd, zeus_memcache, zeus_async
+2017-04-15 14:17:44.960    INFO 28567 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : Using Zeus\Kernel\IpcServer\Adapter\FifoAdapter for zeus_httpd IPC
+2017-04-15 14:17:44.961    INFO 28567 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : Enumerating IPC capabilities:
+2017-04-15 14:17:44.961    INFO 28567 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : IPC message size limit: 65536 bytes
+2017-04-15 14:17:44.984    INFO 28567 --- [           main] Zeus\Controller\ConsoleController        : Service Status:
+
+Service: zeus_httpd
+
+Current time: Saturday, 15-Apr-2017 14:17:44 UTC
+Restart time: Saturday, 15-Apr-2017 14:16:54 UTC
+Service uptime: 50 seconds
+Total tasks finished: 185957, 3.72K requests/sec
+6 tasks currently being processed, 6 idle processes
+
+E_____EERE_R....................
+
+Scoreboard Key:
+"_" Waiting for task, "R" Currently running, "E" Exiting,
+"T" Terminated, "." Open slot with no current process
+
+Service zeus_httpd
+ └─┬ Scheduler 26574, CPU: 46%
+   ├── Process 28510 [E] CPU: 44%, RPS: 0, REQ: 100
+   ├── Process 28517 [_] CPU: 33%, RPS: 0, REQ: 78
+   ├── Process 28523 [_] CPU: 52%, RPS: 0, REQ: 19
+   ├── Process 28521 [_] CPU: 33%, RPS: 0, REQ: 26
+   ├── Process 28524 [_] CPU: 19%, RPS: 0, REQ: 8
+   ├── Process 28513 [_] CPU: 35%, RPS: 0, REQ: 96
+   ├── Process 28515 [E] CPU: 33%, RPS: 0, REQ: 100
+   ├── Process 28514 [E] CPU: 35%, RPS: 0, REQ: 100
+   ├── Process 28519 [R] CPU: 29%, RPS: 0, REQ: 68
+   ├── Process 28516 [E] CPU: 42%, RPS: 0, REQ: 100
+   ├── Process 28520 [_] CPU: 42%, RPS: 0, REQ: 58
+   └── Process 28522 [R] CPU: 41%, RPS: 0, REQ: 31
+```
+
+## Viewing process status using OS commands
+
+Command:
+```
+user@host:/var/www/zf-application/public$ ps auxw|grep zeus|grep -v grep
+```
+
+
+```
+osboxes   31259  0.6  2.7 639276 41972 pts/1    S+   15:43   0:00 zeus server zeus_httpd [start] 0 req done, 0 rps, 0% CPU usage
+osboxes   31260 35.6  1.0 639276 16708 pts/1    S+   15:43   0:07 zeus scheduler zeus_httpd [loop] 58.78K req done, 3.97K rps, 35% CPU usage
+osboxes   31862  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [waiting] 71 req done, 0 rps, 35% CPU usage
+osboxes   31863  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [running] 70 req done, 0 rps, 48% CPU usage
+osboxes   31864  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [waiting] 76 req done, 0 rps, 43% CPU usage
+osboxes   31865  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [running] 55 req done, 0 rps, 34% CPU usage
+osboxes   31866  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [waiting] 69 req done, 0 rps, 47% CPU usage
+osboxes   31867  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [running] 52 req done, 0 rps, 39% CPU usage
+osboxes   31868  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [running] 52 req done, 0 rps, 48% CPU usage
+osboxes   31869  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [running] 61 req done, 0 rps, 51% CPU usage
+osboxes   31870  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [running] 92 req done, 0 rps, 68% CPU usage
+osboxes   31871  0.0  1.1 639276 18252 pts/1    R+   15:43   0:00 zeus process zeus_httpd [waiting] 12 req done, 0 rps, 37% CPU usage
+```
+
+## Executing functions asynchronously in ZF3 controllers
+
+First, the Async Server Service must be launched in order to execute anonymous functions.
+
+Command:
+```
+user@host:/var/www/zf-application/public$ php index.php zeus status zeus_httpd
+```
+
+The following ZF3 Application code can be handled by any HTTP Server, such as Apache HTTPD or Nginx - such functions are serialized and send to Async Server Service for asynchronous execution.
+
+```php
+<?php 
+// contents of "zf3-application-directory/module/SomeModule/src/Controller/SomeController.php" file:
+
+namespace Application\Controller;
+
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use ZF\Apigility\Admin\Module as AdminModule;
+
+class IndexController extends AbstractActionController
+{
+    public function indexAction()
+    {
+        for ($i = 0; $i < 12; $i++) {
+            // each run() command immediately starts one task in the background and returns a handle ID
+            $handles[$i] = $this->async()->run(function () use ($i) {
+                sleep($i);
+                return "OK $i";
+            });
+        }
+
+        // join() accepts either an array of handle IDs or a single handle ID (without array)
+        // - in case of array of handles, join will return an array of results,
+        // - in case of a single handler, join will return a single result (not wrapped into the array)
+        $results = $this->async()->join($handles);
+
+        // because of the sleep(11) executed in a last callback, join() command will wait up to 11 seconds to fetch
+        // results from all the handles, on success $result variable will contain the following data:
+        // ["OK0","OK1","OK2","OK3","OK4","OK5","OK6","OK7","OK8","OK9","OK10","OK11"]
+
+        // please keep in mind that each handle can be joined independently and join() blocks until the slowest
+        // callback returns the data, therefore running $this->async()->join($handles[3]) command instead
+        // would block this controller only for 3 seconds
+
+        // usual Zend Framework stuff to return data to the view layer
+        $view = new ViewModel();
+        $view->setVariable('async_results', $results);
+    }
+}
+```
+
 # Requirements
 
-## _OS requirements_
+## OS requirements
 - Linux/Unix/BSD platform
 - _Windows platform currently not supported_
 
-## _PHP requirements_
+## PHP requirements
 - PHP 5.6+ (HHVM or PHP 7+ is recommended for performance reasons as ZEUS can be up to 4x faster and use less memory)
 - Posix module installed and enabled
 - Pcntl module installed and enabled
 - socket functions enabled for IPC purposes
 
-## _Library requirements_
+## Library requirements
 - Zend Framework 3+ application (with the following modules installed: `zend-mvc`, `zend-mvc-console`, `zend-console`, `zend-log`, `zend-config`)
+- Opis library (`opis/closure`)
 - ReactPHP library
 
 # Installation
@@ -37,8 +246,8 @@ ZEUS for PHP can be installed in two different ways:
 ### via Composer: 
 
 ```
-cd zf3-application-directory
-composer require zeus-server/zf3-server`
+user@host:/var/www/$ cd zf3-application-directory
+user@host:/var/www/zf3-application-directory$ composer require zeus-server/zf3-server
 ```
 
 ### by downloading source code
@@ -65,666 +274,34 @@ return [
 
 This can be achieved either by modifying configuration file in any text editor, or by issuing `sed` command in Application's root directory:
 ```
-sed -i "s/'Zend\\\Log',/'Zend\\\Log','Zeus',/g" config/modules.config.php
+user@host:/var/www/zf3-application-directory$ sed -i "s/'Zend\\\Log',/'Zend\\\Log','Zeus',/g" config/modules.config.php
 ```
 
 If ZEUS for PHP is installed correctly, the following terminal command will show ZEUS version and its services in console:
 
-`php public/index.php zeus status`
-
-# Basic usage
-
-## Supported command line options
-
-As of version 1.3.5, the following commands are supported (assuming that Zend Framework's `index.php` application bootstrap file is in the project's `public` directory):
-
-* `public/index.php zeus start` - Starts all ZEUS Server Services
-* `public/index.php zeus start <service-name>` - Starts selected Server Service
-* `public/index.php zeus list` - Lists all Server Services and their configuration
-* `public/index.php zeus list <service-name>` - Shows the configuration of a selected Server Service
-* `public/index.php zeus status` - Returns current status of all Server Services
-* `public/index.php zeus status <service-name>` - Returns current status of the selected Server Service
-* `public/index.php zeus stop` - Stops all ZEUS Server Services
-* `public/index.php zeus stop <service-name>` - Stops selected Server Service
-
-
-## Command line use cases
-
-### Starting ZEUS Web Server
-
-ZEUS Web Service is a built-in HTTP server that demonstrates ZEUS capabilities by hosting Zend Framework applications in pure PHP. 
-
-By default, it's configured to not to start automatically with ZEUS.  To start the service manually, following command must be executed (`index.php` file must be provided by Zend Framework application):
-
-`php public/index.php zeus start zeus_httpd`
-
-In its default configuration, Zend Framework 3 web application can be accessed under http://localhost:7070/ URL (hostname may differ if ZEUS is accessed remotely).
-
-### Tracking Sever Service status
-
-ZEUS for PHP is able to report current status of its Server Services to the user. It achieves this by modifying names of the active processes, which in turn, can be watched real-time in tools like `top`, `htop` or `ps`:
-
-![ZEUS for PHP process status](docs/images/zeus-console-status.png)
-
-Also, since version 1.2.0, a new set of command line options is available:
-
-`php public/index.php zeus status` 
-
-and 
-
-`php public/index.php zeus start <service name>`
-
-Which will show the user-friendly Server Service status:
-![Screenshot of ZEUS Service Status in terminal](docs/images/zeus-service-status.png)
-
-# Architecture
-
-## ZEUS is integrated with Zend Framework 3
-
-ZEUS for PHP is highly integrated with _Zend Framework 3_ (ZF3) services such as `ServiceManager` and `EventManager`. Thus, most of ZEUS components and classes are declared as ZF3 services and service factories.
- 
-Any custom integration with ZEUS should therefore be performed through ZF3 Service Manager and its configuration.
-
-## ZEUS is layered
-
-ZEUS Runtime Environment consists of two layers (user mode and kernel mode):
-
-### Kernel Mode
-
-This is a low level set of features needed to implement any multi-tasking service.
-
-Kernel consists of the following components:
-
-#### Process
-
-In ZEUS, Process is defined as an instance of a PHP application that is being executed. 
-
-The execution of a single process must progress in a sequential fashion, therefore to achieve true concurrency, ZEUS may use _Process Scheduler_ to instantiate more than one such process at the same time.
-
-When a process executes, it passes through different states. In ZEUS, a process can have one of the following five states at a time:
-
-![Process life-cycle figure](docs/images/zeus-process-lifecycle.png)
-
-Process can use hardware resources in only two states: waiting and running.
-
-The following table describes each state in details:
-
-| State        | Description                                                                                                                                 |
-|--------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| `STARTED`    | An initial state when a process is first created                                                                                            |
-| `WAITING`    | Process is in a waiting state if it needs to wait for a resource, such as waiting for network connection, or some data to become available  |
-| `RUNNING`    | Process sets the state to running just before it starts processing its data                                                                 |
-| `TERMINATED` | When process is terminated by the Process Scheduler, it is moved to the terminated state where it waits to be removed from the Task Pool    |
-| `EXITED`     | This state is set when process finishes its execution, and it waits to be removed from the Task Pool                                        |
-
-#### Process Scheduler
-
-The _Process Scheduler_ is responsible for removal of running processes* from the CPU and the selection of another processes using the Task-Pool strategy. 
-
-It implements the concept of a _Server Service_, which is treated as a group of processes that can be managed as a whole, share same data and be placed under shared restrictions (such as timeouts, resource usage or effective user privileges). As Process Scheduler has the ability to stop and start processes - it decides how many processes are to run as part of a each Service, and the degree of concurrency to be supported at any one time.
-
-Scheduler is responsible for:
-
-- running _Server Services_ in parallel using __preemptive multitasking__
-- supporting custom _Multi-Processing Modules_
-- managing the number of processes based on a Task-Pool strategy and Scheduler Disciplines
-- handling Process lifecycle
-- keeping track of and reporting Process state
-
-#### Scheduler Disciplines
-
-In ZEUS, scheduling disciplines are algorithms used for distributing hardware resources (such as CPU time or memory) among Scheduler processes. 
-
-The main purpose of scheduling algorithms is to minimize resource starvation by creating or termination of processes to keep number of active processes within the boundaries specified by Scheduler configuration. 
-Some algorithms may focus on termination of processes that were idle for too long, while other may terminate processes based on their actual memory footprint or a number of requests that they already processed.
-
-> Since version 1.3.4, Schedulers can be configured to use custom `\Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface` implementations. 
-> **If no such implementation is specified, ZEUS defaults to a built-in _LRU (Least Recently Used) Discipline_.**
-
-#### Multi-Processing Modules
-
-Certain multitasking architectures are incompatible or not efficient enough on different operating systems. To remedy this issue, ZEUS provides a Multi-Processing Module interface between an application and the underlying operating system that is designed to hide these differences by providing a consistent platform on which the application is run. 
- 
-MPM's primary role is to optimize ZEUS for each platform, by providing platform specific architecture implementation that might be more advantageous than others.
-
-_ZEUS is shipped with a POSIX compliant process implementation which is well suited for most Unix/Linux operating systems._
-
-Custom made MPMs must implement `Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleInterface`
-
-#### Inter-Process Communication Server
-
-ZEUS provides the mechanisms for multiple processes to communicate with one another and share the data.
-
-By default, ZEUS uses Named Pipes (FIFO) mechanism to communicate with its processes. 
-
-The pluggable _IPC Server_ is shipped with four different IPC implementations (FIFO, APCu Shared Memory, SystemV, Socket) that can be enabled in ZEUS configuration depending on the operating system in use, or a developer preference.
-
-_If selected IPC implementation is not yet supported or is ineffective on a given platform, plugging a different IPC adapter or writing a new one may be necessary._
-
-### User Mode
-
-This is a higher-level ZEUS layer which provides specific services implementation by using the low level Kernel functionality.
-
-It contains the following components:
-
-#### Server Service Manager
-
-In ZEUS _Server Service Manager_ is a component responsible for managing and instantiating ZEUS Server Services*. 
-
-It allows to:
-
-- view a list of installed Server Services along with their names, description and configuration
-- start and stop a single Server Service
-- auto-start multiple Server Services based depending on their configuration
-
-_\* In ZEUS, Server Service is a set of one or more PHP processes running concurrently in the background. It's code must conform to the interface rules of the Server Service Manager._
-
-To launch all `auto_start` enabled _Server Services_, the following command must be used in a user terminal:
-
-`php public/index.php zeus start`
-
-#### Logger
-
-ZEUS provides a set of components able to record either events that occur in its core services, or messages between different processes.
-
-By default ZEUS log entries are written to `STDOUT` (standard output stream) and therefore, visible as a user-friendly text in the user terminal.
-
-![Screenshot of ZEUS from a user terminal](docs/images/zeus-console-log.png)
-
-Custom loggers and output streams can be specified in ZEUS configuration.
-
-#### Web Server Service
-
-ZEUS Web Server is a simple _Server Service_ HTTP/1.1 daemon responsible for hosting _Zend Framework 3_ web applications in a multi-processing environment.
-
-_When serving Zend Framework 3 PHP applications - it's able to outperform other, standalone servers such as Apache HTTPD or NGINX by a margin of up to 30%._
-
-In case of acting as as server for static content such as images or binary files, ZEUS Web Server can be up to 50% slower than the Apache counterpart (but still able to handle more than **16000** static file requests per second on a 3.2Ghz _Intel Core i7_ processor).
-
-> **Please note:** 
-> ZEUS Web Service is not a fully-featured web server. In it's current state, it's meant to be used as a development aid or a simple, yet efficient intranet web service without a direct access to a public network.
->
-> If required, for increased security and performance, this server can be launched behind a forward proxy such as Varnish, NGINX Proxy or Squid.
-
-This service is not enabled by default, but can be configured to auto-start with ZEUS if needed.
-
-To start the service manually, following command must be executed:
-
-`php public/index.php zeus start zeus_httpd`
-
-#### Async Server Service
-
-Since version 1.6.0, ZEUS comes equipped with Async Server Service and Controller Plugin. This set of components provides the ability to execute anonymous functions and closures asynchronously.
-
-To enable this feature, additional ZEUS instance must be started with the following command:
-
-`php public/index.php zeus start zeus_async`
-
-After starting ZEUS Async Server Service every Zend Framework 3 controller can execute asynchronous code using the `async()` plugin, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/module/SomeModule/src/Controller/SomeController.php" file:
-
-namespace Application\Controller;
-
-use Zend\Mvc\Controller\AbstractActionController;
-use Zend\View\Model\ViewModel;
-use ZF\Apigility\Admin\Module as AdminModule;
-
-class IndexController extends AbstractActionController
-{
-    public function indexAction()
-    {
-        for ($i = 0; $i < 12; $i++) {
-            // each run() command immediately starts one task in the background and returns a handle ID
-            $handles[$i] = $this->async()->run(function () use ($i) {
-                sleep($i);
-                return "OK$i";
-            });
-        }
-
-        // join() accepts either an array of handle IDs or a single handle ID (without array)
-        // - in case of array of handles, join will return an array of results,
-        // - in case of a single handler, join will return a single result (not wrapped into the array)
-        $results = $this->async()->join($handles);
-
-        // because of the sleep(11) executed in a last callback, join() command will wait up to 11 seconds to fetch
-        // results from all the handles, on success $result variable will contain the following data:
-        // ["OK0","OK1","OK2","OK3","OK4","OK5","OK6","OK7","OK8","OK9","OK10","OK11"]
-
-        // please keep in mind that each handle can be joined independently and join() blocks until the slowest
-        // callback returns the data, therefore running $this->async()->join($handles[3]) command instead
-        // would block this controller only for 3 seconds
-
-        // usual Zend Framework stuff to return data to the view layer
-        $view = new ViewModel();
-        $view->setVariable('async_results', $results);
-    }
-}
+```
+user@host:/var/www/zf-application/public$ php index.php zeus status zeus_httpd
 ```
 
-> **Please note:** 
-> Asynchronous closures are running outside the scope of the main thread that started them, therefore its not possible to modify variables of the main thread directly in the closure.
-> Closures should either return results on their exit (as seen in an example above), or communicate with a main thread using the IPC functionality.
+# Getting ZEUS documentation
 
-#### Memcache Server Service
+## Building HTML documentation
 
-ZEUS Memcache Server is a native PHP implementation of the Memcached distributed memory object caching system.
+Please note, *mkdocs* must be installed first using the `apt-get` command, or any other OS-specific package-manager.
 
-This service is highly integrated with Zend Framework caching mechanism, and allows to use any zend-cache compatible adapter (be it `APC`, `Filesystem`, `Memory` or custom ones) as distributed cache through the memcached protocol.
-
-> **Please note:** 
-> Clients of memcached must communicate with ZEUS Memcache Server Service through TCP connections using the memcached text protocol. 
->
-> As of version 1.4.0, neither UDP interface nor memcached binary protocol are available. 
-
-To run this service, the following requirements must be met:
-
-- a `zendframework/zend-cache` component must be installed and enabled in Zend Application
-- when using APC or APCu cache adapters, appropriate PHP extension must be installed and configured: `apc.enabled` and `apc.cli_enable` parameters in `php.ini` file must be set to `1`, and depending on the usage characteristics, `apc.shm_size` parameter should be set to a higher number such as `256M`.
-- when using Filesystem based cache adapters, SSD or RAMDISK storage is highly recommended for performance reasons.
-
-**Service will refuse to start if the cache preconditions are not met.**
-
-This service is not enabled by default, but can be configured to auto-start with ZEUS if needed.
-
-To start the service manually, following command must be executed:
-
-`php public/index.php zeus start zeus_memcache`
-
-*In its default configuration, ZEUS Memcache Server uses APCu adapter that is shipped with `zend-cache` component*. This adapter can be replaced anytime by modifying certain service configuration (see "ZEUS Configuration" section for details).
-
-
-## ZEUS is Event Driven
-
-ZEUS for PHP incorporates and utilizes a custom Zend event implementation - `Zeus\Kernel\ProcessManager\SchedulerEvent` throughout its entire life-cycle process.
-
-Access to this event is public and can used to fully customize ZEUS for PHP behaviour.
-
-_By default, the following ZEUS event flow is in effect (events are colored yellow and light-blue):_
-
-![ZEUS for PHP lifecycle](docs/images/zeus-events-flow.png)
-
-Both Scheduler and Process instances are isolated from each other and can share their data only through the _Inter-Process Communication_ messages. 
-The same applies to ZEUS events: Scheduler events (yellow) can't be intercepted by the Process instances, as well as Process events (light-blue) by a Scheduler instance.
-
-
-## ZEUS is Pluggable
-
-As of version 1.4.1 of ZEUS for PHP, Schedulers behaviour can be extended through its configuration with custom plugins implementing the `\Zend\EventManager\ListenerAggregateInterface` interface.
-
-Custom plugins can be specified in Schedulers configuration like so (see `plugins` JSON node):
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
-
-return [
-    'zeus_process_manager' => [
-        'schedulers' => [
-            'scheduler_1' => [
-                'scheduler_name' => 'sample_scheduler',
-                'scheduler_discipline' => LruDiscipline::class,
-                'multiprocessing_module' => PosixProcess::class,
-                'max_processes' => 32,
-                'max_process_tasks' => 100,
-                'min_spare_processes' => 3,
-                'max_spare_processes' => 5,
-                'start_processes' => 8,
-                'enable_process_cache' => true,
-                'plugins => [
-                    \Zeus\Kernel\ProcessManager\Plugin\ProcessTitle::class, // by class name
-                    
-                    'SomeZFServiceManagerServiceName`, // by name of ZF Service instantiated by its ServiceManager,
-                    
-                    \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [ // by class name in array key and constructor params in array value
-                        'user' => 'www-data',
-                        'group' => 'www-data',
-                    ], 
-                    
-                    $someObject // directly as an object instance
-                ]
-            ]
-        ]
-    ]
-];
+Command:
+```
+user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-server
 ```
 
-Out of the box, ZEUS comes equipped with two Scheduler plugins: `\Zeus\Kernel\ProcessManager\Plugin\ProcessTitle` and `\Zeus\Kernel\ProcessManager\Plugin\DropPrivileges`.
+## Serving markdown documentation
 
-ProcessTitle plugin does not take any options, its main purpose is to alter process names in terminal to show current operations performed by ZEUS.
-
-DropPrivileges plugin requires two options to be set (user and group, see example above). Its main purpose is to switch real user of the process from root to an unprivileged account (for security purposes).
-This is especially handy when running ZEUS services with root privileges using `sudo` command so they can listen on the root-restricted ports (in range of 0-1024).
-
-# ZEUS configuration
-
-## Kernel mode
-
-### Scheduler
-
-Multiple _Process Schedulers_ can be configured in a regular Zend Framework 3 configuration file, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
-
-return [
-    'zeus_process_manager' => [
-        'schedulers' => [
-            'scheduler_1' => [
-                'scheduler_name' => 'sample_scheduler',
-                'scheduler_discipline' => LruDiscipline::class, // choice available since version 1.3.4
-                'multiprocessing_module' => PosixProcess::class,
-                'max_processes' => 32,
-                'max_process_tasks' => 100,
-                'min_spare_processes' => 3,
-                'max_spare_processes' => 5,
-                'start_processes' => 8,
-                'enable_process_cache' => true,
-                'plugins' => [ // optional
-                    'pluginClassName', // see "ZEUS is Pluggable" documentation section for other examples of plugin definitions
-                ]
-            ]
-        ]
-    ]
-];
+Command:
+```
+user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-build
 ```
 
-The table below describes the configuration parameters:
-
-| Parameter                | Required | Description                                                                           |
-|--------------------------|:--------:|---------------------------------------------------------------------------------------|
-| `scheduler_name`         | yes      | Unique name of the scheduler configuration                                            |
-| `scheduler_discipline`   | no       | Zend Framework service providing Scheduler's process management strategy              |
-| `multiprocessing_module` | yes      | Specifies a `MultiProcessingModuleInterface` implementation to be used in a Scheduler |
-| `start_processes`        | yes      | Specifies the number of processes that will initially launch with each Server Service |
-| `max_processes`          | yes      | Maximum number of running/waiting processes of each Server Service                    |
-| `max_process_tasks`      | yes      | Maximum number of tasks performed by each process before its exit                     |
-| `enable_process_cache`   | yes      | Controls whether pre-forking mechanism should be used for increased performance       |
-| `min_spare_processes`    | yes      | Minimal number of processes in a waiting state when process cache is enabled          |
-| `max_spare_processes`    | yes      | Maximum number of waiting processes when the process cache is enabled                 |
-| `plugins`                | no       | List of plugins that should be enabled for a particular scheduler                     |
-
-## User mode
-
-### Server Service Manager
-
-Its a ZEUS component responsible for listing, starting, stopping and getting statuses of _Server Services_.
-
-The Server Service Manager utilizes a `Zeus\ServerService\ManagerEvent` to handle the life-cycle of all services it handles. As of version 1.5.0, the following events are triggered:
-
-| Constant                            | Description                                                                           |
-|-------------------------------------|---------------------------------------------------------------------------------------|
-| `ManagerEvent::EVENT_MANAGER_INIT`  | Triggers when Server Service Manager starts                                           |
-| `ManagerEvent::EVENT_SERVICE_START` | Triggers each time the Server Service is started by a Server Service Manager          |
-| `ManagerEvent::EVENT_SERVICE_STOP`  | Triggers each time the Server Service is stopped by a Server Service Manager          |
-
-Server Service Manager can be customized by using custom plugins, which can be enabled in ZEUS configuration, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-return [
-    'zeus_process_manager' => [
-        'manager' => [
-            'plugins' => [ // optional
-                'pluginClassName', // see "ZEUS is Pluggable" documentation section for other examples of plugin definitions
-            ]
-        ]
-    ]
-];
-```
-
-### Server Services
-
-Multiple _Server Services_ can be configured in a regular Zend Framework 3 configuration file, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-use Zeus\ServerService\Shared\Logger\LoggerInterface;
-
-return [
-    'zeus_process_manager' => [
-        'services' => [
-            'service_name_1' => [
-                'auto_start' => false,
-                'service_name' => 'some_service_name',
-                'scheduler_name' => 'sample_scheduler',
-                'service_adapter' => 'CustomZendFrameworkServiceName',
-                'logger_adapter' => LoggerInterface::class
-                'service_settings' => [
-                    'service_custom_data' => 'value'
-                ]
-            ]
-        ]
-    ]
-];
-```
-
-The table below describes the configuration parameters:
-
-| Parameter          | Required | Description                                                                                 |
-|--------------------|:--------:|---------------------------------------------------------------------------------------------|
-| `service_name`     | yes      | Unique name of this _Server Service_                                                        |
-| `scheduler_name`   | yes      | Specifies which Scheduler configuration should be used to run this service                  |
-| `service_adapter`  | yes      | Specifies which `Zeus\ServerService\ServiceInterface` implementation should be launched     |
-| `logger_adapter`   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
-| `auto_start`       | yes      | Instructs _Server Service Manager_ to run this service automatically on ZEUS startup        |
-| `service_settings` | no       | Allows to pass a set of custom parameters to the _Server Service_ factory                   |
-
-If no `logger_adapter` is specified, ZEUS injects its own _Logger_ instance to the service.
-
-### Logger
-
-Different output streams, as well as custom `Logger` adapters can be provided through a Zend Framework `ServiceManager` and its configuration files, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-return [
-    'zeus_process_manager' => [
-        'logger' => [
-            'reporting_level' => \Zend\Log\Logger::DEBUG,
-            'output' => 'php://stdout',
-            'show_banner' => true,
-            'logger_adapter' => 'CustomLoggerServiceName'
-        ]
-    ]
-];
-```
-
-The table below describes the configuration parameters:
-
-| Parameter          | Required | Description                                                                                 |
-|--------------------|:--------:|---------------------------------------------------------------------------------------------|
-| `reporting_level`  | no       | Minimum severity required to log the event (see `Zend\Log\Logger::*`, default: `DEBUG`)     |
-| `output`           | no       | Specifies where to write the logs, used only by default ZEUS logger, default: `STDOUT`      |
-| `show_banner`      | no       | Controls whether default ZEUS logger should render its banner on startup or not             |
-| `logger_adapter`   | no       | Allows to use a custom `Zend\Log\LoggerInterface` implementation for service logging        |
-
-### Web Server
-
-Different listening port or address can be provided through a Zend Framework `ServiceManager` and its configuration files, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
-
-return [
-    'zeus_process_manager' => [
-        'schedulers' => [
-            'custom_web_scheduler_1' => [
-                'scheduler_name' => 'custom_web_scheduler',
-                'multiprocessing_module' => PosixProcess::class,
-                'scheduler_discipline' => LruDiscipline::class,
-                'max_processes' => 32,
-                'max_process_tasks' => 100,
-                'min_spare_processes' => 3,
-                'max_spare_processes' => 5,
-                'start_processes' => 8,
-                'enable_process_cache' => true,
-            ]
-        ],
-        'services' => [
-            'custom_httpd_1' => [
-                'auto_start' => true,
-                'service_name' => 'custom_httpd',
-                'scheduler_name' => 'custom_web_scheduler',
-                'service_adapter' => \Zeus\ServerService\Http\Service::class,
-                'service_settings' => [
-                    'listen_port' => 80,
-                    'listen_address' => '0.0.0.0',
-                    'blocked_file_types' => [
-                        'php',
-                        'phtml'
-                    ]
-                ],
-                //'logger_adapter' => LoggerInterface::class // optional
-            ]
-        ],
-    ]
-];
-```
-
-The table below describes the `service_settings` configuration parameters:
-
-| Parameter            | Required | Description                                                                                 |
-|----------------------|:--------:|---------------------------------------------------------------------------------------------|
-| `listen_port`        | yes      | The service listen port, 80 is a default HTTP port                                          |
-| `listen_address`     | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
-| `blocked_file_types` | yes      | A blacklist of file extensions that should not be served as plain text by ZEUS Web Server   |
-| `logger_adapter`     | no       | Custom logger service used for HTTP request logging (instantiated by ZF `ServiceManager` )  |
-
-To start such a service, the following command must be issued in a terminal:
-
-`php public/index.php zeus start custom_httpd`
-
-### Memcache Server
-
-Different cache adapters may be provided through a Zend Framework `Zend\Cache\Service\StorageCacheAbstractServiceFactory` and its configuration files, like so:
-
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-return [
-    'caches' => [
-        'custom_internal_cache' => [
-            'adapter' => [
-                'name'    => 'filesystem',
-                'options' => [
-                    'cache_dir' => '/tmp/'
-                ]
-            ],
-        ],
-        'custom_user_cache' => [
-            'adapter' => [
-                'name'    => 'apcu',
-                'options' => [
-                ]
-            ],
-        ]
-    ],
-    'zeus_process_manager' => [
-        'services' => [
-            'custom_memcache' => [
-                'auto_start' => false,
-                'service_name' => 'custom_memcache',
-                'scheduler_name' => 'zeus_web_scheduler',
-                'service_adapter' => \Zeus\ServerService\Memcache\Service::class,
-                'service_settings' => [
-                    'listen_port' => 11211,
-                    'listen_address' => '0.0.0.0',
-                    'server_cache' => 'custom_internal_cache',
-                    'client_cache' => 'custom_user_cache',
-                ],
-            ]
-        ]
-    ]
-];
-```
-
-The table below describes the `service_settings` configuration parameters:
-
-| Parameter          | Required | Description                                                                                 |
-|--------------------|:--------:|---------------------------------------------------------------------------------------------|
-| `listen_port`      | yes      | The service listen port, 11211 is a default memcached port                                  |
-| `listen_address`   | yes      | The service listen address, use 0.0.0.0 to listen on all available network addresses        |
-| `server_cache`     | yes      | Name of the `zend-cache` instance. This cache is used for server needs, such as statistics  |
-| `client_cache`     | yes      | Name of the `zend-cache` instance. This cache is used to store client cache entries         |
-
-Please check Zend Framework `zend-cache` [documentation](https://framework.zend.com/manual/2.3/en/modules/zend.cache.storage.adapter.html) to read how to configure or implement your own cache instances.
-
-To start such a service, the following command must be issued in a terminal:
-
-`php public/index.php zeus start custom_memcache`
-
-# ZEUS Customization
-
-## Creating a custom Server Service
-
-Every _Server Service_ needs to implement `Zeus\ServerService\ServiceInterface`. 
-
-To speed up the development process, ZEUS is shipped with the following classes and factories that can be used as a base for new services:
-
-- `Zeus\ServerService\Shared\AbstractServerService` - a very crude boilerplate for new _Server Services_
-- `Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory` - an abstract Zend Framework factory that creates _Server Services_ if they don't use their own factories. 
-
-Each service must be listed in the `services` section of `zeus_process_manager` configuration entry and point to a valid _Scheduler_ configuration (or specify its own implementation in ZEUS `schedulers` section), like so:
- 
-```php
-<?php 
-// contents of "zf3-application-directory/config/some-config.config.php" file:
-
-use Zeus\ServerService\Shared\Logger\LoggerInterface;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-
-return [
-    'zeus_process_manager' => [
-        'services' => [
-            'service_name_1' => [
-                'auto_start' => false,
-                'service_name' => 'some_service_name',
-                'scheduler_name' => 'sample_scheduler',
-                'service_adapter' => 'CustomZendFrameworkServiceName',
-                'logger_adapter' => LoggerInterface::class
-                'service_settings' => [
-                    'service_custom_data' => 'value'
-                ]
-            ]
-        ],
-        'schedulers' => [
-            'scheduler_1' => [
-                'scheduler_name' => 'sample_scheduler',
-                'multiprocessing_module' => PosixProcess::class,
-                'max_processes' => 32,
-                'max_process_tasks' => 100,
-                'min_spare_processes' => 3,
-                'max_spare_processes' => 5,
-                'start_processes' => 8,
-                'enable_process_cache' => true
-            ]
-        ]
-    ]
-];
-```
-
-The above configuration parameters have been described in the __Process Scheduler__ and __Server Service Manager__ documentation chapters.
+After executing above command, ZEUS documentation can be found under the following URL: http://127.0.0.1:8080/
 
 # Road map
 

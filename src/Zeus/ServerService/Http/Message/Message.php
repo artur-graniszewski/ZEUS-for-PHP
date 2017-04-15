@@ -43,7 +43,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $requestPhase = self::REQUEST_PHASE_IDLE;
 
     /** @var int */
-    protected $bufferSize = 0;
+    protected $bufferSize = 65536;
 
     /** @var callable */
     protected $errorHandler;
@@ -214,14 +214,18 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->requestPhase = static::REQUEST_PHASE_READING;
 
         if (!$this->headersReceived) {
-            if ($request = $this->parseRequestHeaders($message)) {
-                $this->request = $request;
-                $this->headersReceived = true;
-                $this->validateRequestHeaders($connection);
-                $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
-                $isKeepAliveRequest = $this->keepAliveCount > 0 && $request->getConnectionType() === 'keep-alive';
-                $request->setMetadata('isKeepAliveConnection', $isKeepAliveRequest);
+            $request = $this->parseRequestHeaders($message);
+            if (!$request) {
+                return;
             }
+
+            $this->request = $request;
+            $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
+            $this->response->setVersion($this->request->getVersion());
+            $this->headersReceived = true;
+            $this->validateRequestHeaders($connection);
+            $isKeepAliveRequest = $this->keepAliveCount > 0 && $request->getConnectionType() === 'keep-alive';
+            $request->setMetadata('isKeepAliveConnection', $isKeepAliveRequest);
         }
 
         if ($this->headersReceived) {
@@ -247,6 +251,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param ConnectionInterface $connection
      * @param callback $callback
      * @return $this
+     * @throws \Exception
+     * @throws \Throwable
      */
     protected function dispatchRequest(ConnectionInterface $connection, $callback)
     {
@@ -303,7 +309,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             // everything's ok, should we send "100 Continue" first?
             $expectHeader = $this->request->getHeaderOverview('Expect', false);
             if ($expectHeader === '100-continue') {
-                $connection->write(sprintf("HTTP/%s 100 Continue\r\n\r\n", $this->request->getVersion()));
+                $connection->write(sprintf("HTTP/%s 100 Continue\r\n\r\n", Request::VERSION_11));
             }
         }
 
@@ -316,22 +322,23 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function decodeRequestBody(& $message)
     {
-        if ($this->bodyReceived || false === $this->headersReceived) {
+        if ($this->bodyReceived) {
             return $this;
         }
 
         if (!$this->isBodyAllowedInRequest($this->request)) {
-            if (!isset($message[0])) {
-                $this->requestComplete = true;
-                $this->bodyReceived = true;
-
-                return $this;
+            if (isset($message[0])) {
+                // method is not allowing to send a body
+                throw new \InvalidArgumentException("Body not allowed in this request", Response::STATUS_CODE_400);
             }
-            // method is not allowing to send a body
-            throw new \InvalidArgumentException("Body not allowed in this request", Response::STATUS_CODE_400);
+
+            $this->requestComplete = true;
+            $this->bodyReceived = true;
+
+            return $this;
         }
 
-        if ($this->getEncodingType($this->request) === $this::ENCODING_CHUNKED) {
+        if ($this->getEncodingType($this->request) === static::ENCODING_CHUNKED) {
             $this->decodeChunkedRequestBody($this->request, $message);
 
             return $this;
@@ -354,7 +361,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $request = $this->request;
         $responseHeaders = $response->getHeaders();
         $requestVersion = $this->request->getVersion();
-        $response->setVersion($requestVersion);
 
         $transferEncoding = $responseHeaders->get('Transfer-Encoding');
 

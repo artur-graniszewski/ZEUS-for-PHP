@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 1.6.2
+- [Improvement] Minor code cleanup in HTTP Server Service
+- [Improvement] Created [Mkdocs documentation](http://php.webtutor.pl/zeus/docs/)
+- [Improvement] Shortened README file
+- [Fix] Added description of "exiting" process status in Server Service status view
+
 ## Version 1.6.1
 - [Improvement] Major performance improvement in IPC adapters (up to 10x performance increase)
 - [Improvement] Lots of code improvements based on static code analysis

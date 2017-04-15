@@ -9,7 +9,6 @@ use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\ServerService\Http\Dispatcher\DispatcherWrapper;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
@@ -32,13 +31,10 @@ class Service extends AbstractReactServerService
         $dispatcherConfig = $this->getConfig();
         $dispatcherConfig['service'] = $this;
         $dispatchers =
-            new DispatcherWrapper(
+            new StaticFileDispatcher(
                 $dispatcherConfig,
-                new StaticFileDispatcher(
-                    $dispatcherConfig,
-                    new ZendFrameworkDispatcher(
-                        $dispatcherConfig
-                    )
+                new ZendFrameworkDispatcher(
+                    $dispatcherConfig
                 )
             );
 
