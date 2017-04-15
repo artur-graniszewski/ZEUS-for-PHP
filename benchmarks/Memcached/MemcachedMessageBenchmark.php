@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusBench;
+namespace ZeusBench\Memcached;
 
 use Athletic\AthleticEvent;
 use Zend\Cache\Storage\Adapter\Memory;

@@ -104,13 +104,14 @@ trait Header
 
         try {
             $request = Request::fromStringOfHeaders($this->headers, false);
-            $request->getUri()->setScheme('http');
             $this->headers = null;
-
-            return $request;
         } catch (\Exception $e) {
+            $this->headers = null;
             throw new \InvalidArgumentException('Incorrect headers: ' . $this->headers, Response::STATUS_CODE_400);
         }
+
+        $request->getUri()->setScheme('http');
+        return $request;
     }
 
     /**

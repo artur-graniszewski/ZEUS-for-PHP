@@ -129,8 +129,8 @@ class SchedulerStatusView
 
         $output .= PHP_EOL;
 
-        $output .= "Scoreboard Key:" . PHP_EOL . '"_" Waiting for task, "R" Currently running, "T" Terminating,' . PHP_EOL;
-        $output .= '"." Open slot with no current process' . PHP_EOL . PHP_EOL;
+        $output .= "Scoreboard Key:" . PHP_EOL . '"_" Waiting for task, "R" Currently running, "E" Exiting,' . PHP_EOL;
+        $output .= '"T" Terminated, "." Open slot with no current process' . PHP_EOL . PHP_EOL;
 
         $output .= $this->listProcessDetails($processList, $processStatusChars, $schedulerStatus);
 

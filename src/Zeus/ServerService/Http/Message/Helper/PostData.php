@@ -8,13 +8,13 @@ trait PostData
 {
     protected function parseRequestPostData(Request $request)
     {
-        if ($request->getHeaderOverview('Content-Type', true) !== 'application/x-www-form-urlencoded') {
-            return;
+        $body = $request->getContent();
+
+        if (!$body || $request->getHeaderOverview('Content-Type', true) !== 'application/x-www-form-urlencoded') {
+            return $this;
         }
 
         $requestPost = $request->getPost();
-
-        $body = $request->getContent();
 
         while (false !== ($pos = strpos($body, "&", $this->posInRequestBody)) || $this->bodyReceived) {
             $paramsLength = $pos === false ? strlen($body) : $pos;
@@ -34,5 +34,7 @@ trait PostData
                 break;
             }
         }
+
+        return $this;
     }
 }

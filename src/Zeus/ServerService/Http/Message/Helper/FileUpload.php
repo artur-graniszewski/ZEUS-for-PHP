@@ -85,25 +85,26 @@ trait FileUpload
 
     /**
      * @param string $headerPart
+     * @return $this
      */
     protected function checkContentDisposition($headerPart)
     {
         $part = trim($headerPart);
         if ($part === 'form-data') {
 
-            return;
+            return $this;
         }
 
         if (preg_match('~^filename="([^"]+)"$~i', $part, $matches)) {
             $this->currentFormDataInfo['name'] = $matches[1];
 
-            return;
+            return $this;
         }
 
         if (preg_match('~^name="([^"]+)"$~i', $part, $matches)) {
             $this->currentFormDataInfo['form_name'] = $matches[1];
 
-            return;
+            return $this;
         }
 
         throw new \InvalidArgumentException("Unknown content-disposition parameter: $part", Response::STATUS_CODE_400);
@@ -111,13 +112,15 @@ trait FileUpload
 
     /**
      * @param Request $request
+     * @return $this
      */
     protected function parseRequestFileData(Request $request)
     {
+        $body = $request->getContent();
         $boundaryLine = $this->getMultipartDataBoundary($request);
 
-        if ($this->formDataReceived || !$boundaryLine) {
-            return;
+        if (!$body || $this->formDataReceived || !$boundaryLine) {
+            return $this;
         }
 
         $boundaryClosingLine = $boundaryLine . '--';
@@ -147,7 +150,7 @@ trait FileUpload
 
                     $this->formDataReceived = true;
 
-                    return;
+                    return $this;
                 }
 
                 fwrite($this->currentFormDataInfo['handle'], $bodyLine);
@@ -159,7 +162,7 @@ trait FileUpload
 
         if (!$this->formDataHeadersReceived) {
             // headers are incomplete, fetch more data...
-            return;
+            return $this;
         }
 
         // check if there's a boundary in the buffer
@@ -170,7 +173,7 @@ trait FileUpload
 
             $this->formDataReceived = true;
             // @todo: validate if ending boundary line is exactly at the end of a request
-            return;
+            return $this;
         }
 
         // no new line found, check if its a buffer that can be sent to disk (or if it may contain part of the boundary)
@@ -178,16 +181,21 @@ trait FileUpload
         if ($body !== substr($boundaryLine, 0, strlen($body)) && $body !== substr($boundaryClosingLine, 0, strlen($body))) {
             if (substr($body, -1) === "\r") {
                 // the new line at the end of a buffer may preceed the boundary string, don't write anything yet
-                return;
+                return $this;
             }
             fwrite($this->currentFormDataInfo['handle'], $body);
             $request->setContent('');
-            return;
         }
+
+        return $this;
 
         // there may be a boundary hidden here, fetch more data
     }
 
+    /**
+     * @param Request $request
+     * @return $this
+     */
     protected function registerUploadedFile(Request $request)
     {
         $this->formDataHeadersReceived = false;
@@ -204,20 +212,31 @@ trait FileUpload
             unlink($this->currentFormDataInfo['tmp_name']);
             $this->currentFormDataInfo = [];
 
-            return;
+            return $this;
         }
 
         $this->requestFilesInfo[$this->currentFormDataInfo['form_name']][] = $this->currentFormDataInfo;
         $this->currentFormDataInfo = [];
+
+        return $this;
     }
 
+    /**
+     * @param Request $request
+     * @return $this
+     */
     protected function mapUploadedFiles(Request $request)
     {
         $request->getFiles()->fromArray($this->requestFilesInfo);
         $this->requestFilesInfo = [];
         $this->formDataHeadersReceived = false;
+
+        return $this;
     }
 
+    /**
+     * @return $this
+     */
     protected function deleteTemporaryFiles()
     {
         foreach ($this->requestFilesInfo as $formData) {
@@ -227,6 +246,8 @@ trait FileUpload
                 }
             }
         }
+
+        return $this;
     }
 
     /**

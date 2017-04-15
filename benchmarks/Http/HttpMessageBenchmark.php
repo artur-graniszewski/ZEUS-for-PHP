@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusBench;
+namespace ZeusBench\Http;
 
 use Athletic\AthleticEvent;
 use Zend\Http\Request;

@@ -1,0 +1,38 @@
+docs_dir: docs/book
+site_dir: docs/html
+theme: readthedocs
+pages:
+    - index.md
+    - "Quick Start":
+        - Installation: installation.md
+        - "Basic usage": usage.md
+        - Examples:
+             - "Integration with Apigility": apigility-example.md
+        - Benchmarking:
+             - "Benchmarking HTTP Server": http-benchmark-example.md
+             - "Benchmarking Memcached Server": memcached-benchmark-example.md
+             - "Benchmarking IPC Server": ipc-benchmark-example.md
+    - Architecture:
+        - Introduction: architecture.md
+        - Layers:
+            - "Kernel":
+               - "Process": kernel-process.md
+               - "Scheduler": kernel-scheduler.md
+               - "IPC Server": kernel-ipc.md
+            - "User":
+              - "Manager": server-service-manager.md
+              - "Logger": server-service-logger.md
+              - "Custom services": server-service-implementation.md
+    - "Built-in servers":
+        - "Async Server": async-server.md
+        - "Web Server": http-server.md
+        - "Memcached Server": memcached-server.md
+site_name: 'ZEUS for PHP'
+site_url: 'https://github.com/artur-graniszewski/ZEUS-for-PHP'
+site_description: 'ZEUS for PHP is an event-driven, preemptive Multitasking Runtime Environment and Service Management System integrated with Zend Framework 3'
+repo_url: 'https://github.com/artur-graniszewski/ZEUS-for-PHP'
+repo_name: 'GitHub'
+copyright: 'Copyright (c) 2017 <a href="http://php.webtutor.pl/">Artur Graniszewski</a>'
+google_analytics:
+  - 'UA-2584054-13'
+  - 'auto'

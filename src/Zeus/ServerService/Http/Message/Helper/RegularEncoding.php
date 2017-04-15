@@ -13,7 +13,15 @@ trait RegularEncoding
     {
         $expectedBodyLength = $request->getHeaderOverview('Content-Length', false);
 
-        if (is_null($expectedBodyLength) || !ctype_digit($expectedBodyLength) || $expectedBodyLength < 0) {
+        if (false === $expectedBodyLength) {
+            $this->bodyReceived = true;
+            $this->requestComplete = true;
+            $this->contentReceived = 0;
+
+            return $this;
+        }
+
+        if (!ctype_digit($expectedBodyLength) || $expectedBodyLength < 0) {
             throw new \InvalidArgumentException("Invalid or missing Content-Length header: $expectedBodyLength", Response::STATUS_CODE_400);
         }
 
@@ -36,5 +44,7 @@ trait RegularEncoding
             $this->requestComplete = true;
             $this->contentReceived = 0;
         }
+
+        return $this;
     }
 }
