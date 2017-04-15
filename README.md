@@ -220,6 +220,24 @@ class IndexController extends AbstractActionController
 }
 ```
 
+## Building HTML documentation
+
+Please note, *mkdocs* must be installed first using the `apt-get` command, or any other OS-specific package-manager.
+
+Command:
+```
+user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-server
+```
+
+## Serving markdown documentation
+
+Command:
+```
+user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-build
+```
+
+After executing above command, ZEUS documentation can be found under the following URL: http://127.0.0.1:8080/
+
 # Requirements
 
 ## OS requirements
@@ -282,26 +300,6 @@ If ZEUS for PHP is installed correctly, the following terminal command will show
 ```
 user@host:/var/www/zf-application/public$ php index.php zeus status zeus_httpd
 ```
-
-# Getting ZEUS documentation
-
-## Building HTML documentation
-
-Please note, *mkdocs* must be installed first using the `apt-get` command, or any other OS-specific package-manager.
-
-Command:
-```
-user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-server
-```
-
-## Serving markdown documentation
-
-Command:
-```
-user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-build
-```
-
-After executing above command, ZEUS documentation can be found under the following URL: http://127.0.0.1:8080/
 
 # Road map
 
