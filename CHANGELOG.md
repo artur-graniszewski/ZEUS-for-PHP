@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.6.3
+- [Improvement] Changed image URLs to absolute in the README file
+
 ## Version 1.6.2
 - [Improvement] Minor code cleanup in HTTP Server Service
 - [Improvement] Created [Mkdocs documentation](http://php.webtutor.pl/zeus/docs/)
