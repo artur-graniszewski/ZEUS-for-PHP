@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 1.6.4
+- [Improvement] Performance tweaks in ZEUS Web Server, service throughput for large files increased by 800% (achieving speed of 900 megabytes per second)
+- [Improvement] Minor code refactoring in ZEUS and ReactPHP integration layer
+- [Improvement] Documentation update
+
 ## Version 1.6.3
 - [Improvement] Changed image URLs to absolute in the README file
 
