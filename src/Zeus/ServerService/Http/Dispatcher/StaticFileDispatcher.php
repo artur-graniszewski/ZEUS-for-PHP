@@ -44,6 +44,7 @@ class StaticFileDispatcher implements DispatcherInterface
     /**
      * @param Request $httpRequest
      * @param Response $httpResponse
+     * @return void
      */
     public function dispatch(Request $httpRequest, Response $httpResponse)
     {
@@ -68,6 +69,12 @@ class StaticFileDispatcher implements DispatcherInterface
 
             $httpResponse->setStatusCode($code);
             $this->addHeadersForFile($httpResponse, $fileName);
+            if (is_callable([$httpResponse, 'setStream'])) {
+                $httpResponse->setStream(fopen($fileName, "r"));
+
+
+                return;
+            }
             readfile($fileName);
 
             return;
@@ -76,8 +83,9 @@ class StaticFileDispatcher implements DispatcherInterface
         $code = is_dir($fileName) ? Response::STATUS_CODE_403 : Response::STATUS_CODE_404;
 
         if ($this->anotherDispatcher) {
+            $this->anotherDispatcher->dispatch($httpRequest, $httpResponse);
 
-            return $this->anotherDispatcher->dispatch($httpRequest, $httpResponse);
+            return;
         }
 
         $httpResponse->setStatusCode($code);

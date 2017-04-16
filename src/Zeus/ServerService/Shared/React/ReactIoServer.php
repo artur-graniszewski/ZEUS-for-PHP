@@ -58,11 +58,10 @@ class ReactIoServer implements IoServerInterface
 
         $connection->on('data', [$this, 'handleData']);
         $connection->on('end', [$this, 'handleEnd']);
-        $connection->on('error', function($exception) use ($connection) {
-            $this->handleError($connection, $exception);
+        $connection->on('error', function($exception) {
+            $this->handleError($exception);
         });
 
-        $connection->on('error', [$this, 'cleanUp']);
         $connection->on('end', [$this, 'cleanUp']);
 
         $this->app->onOpen($connection);
@@ -84,10 +83,10 @@ class ReactIoServer implements IoServerInterface
         if ($this->app instanceof HeartBeatMessageInterface) {
             try {
                 $this->app->onHeartBeat($this->connection, $data);
-            } catch (\Throwable $e) {
-                $this->handleError($this->connection, $e);
-            } catch (\Exception $e) {
-                $this->handleError($this->connection, $e);
+            } catch (\Throwable $exception) {
+                $this->handleError($exception);
+            } catch (\Exception $exception) {
+                $this->handleError($exception);
             }
         }
 
@@ -104,9 +103,9 @@ class ReactIoServer implements IoServerInterface
         try {
             $this->app->onMessage($connection, $data);
         } catch (\Throwable $exception) {
-            $this->handleError($this->connection, $exception);
+            $this->handleError($exception);
         } catch (\Exception $exception) {
-            $this->handleError($this->connection, $exception);
+            $this->handleError($exception);
         }
 
         return $this;
@@ -121,8 +120,10 @@ class ReactIoServer implements IoServerInterface
     {
         try {
             $this->app->onClose($connection);
-        } catch (\Exception $e) {
-            $this->handleError($connection, $e);
+        } catch (\Throwable $exception) {
+            $this->handleError($exception);
+        } catch (\Exception $exception) {
+            $this->handleError($exception);
         }
 
         unset($connection->decor);
@@ -132,19 +133,23 @@ class ReactIoServer implements IoServerInterface
 
     /**
      * An error has occurred, let the listening application know
-     * @param ConnectionInterface $connection
-     * @param \Exception $exception
+     * @param \Exception|\Throwable $exception
      */
-    public function handleError(ConnectionInterface $connection, $exception)
+    public function handleError($exception)
     {
         try {
-            $this->app->onError($connection, $exception);
-        } catch (\Exception $e) {
-            $this->cleanUp();
-            throw $e;
-        } catch (\Throwable $e) {
-            $this->cleanUp();
-            throw $e;
+            $this->app->onError($this->connection, $exception);
+            $exception = null;
+        } catch (\Throwable $exception) {
+
+        } catch (\Exception $exception) {
+
+        }
+
+        $this->cleanUp();
+
+        if ($exception) {
+            throw $exception;
         }
     }
 
@@ -154,7 +159,7 @@ class ReactIoServer implements IoServerInterface
     public function cleanUp()
     {
         $this->loop->stop();
-        unset($this->connection);
+        $this->connection = null;
 
         return $this;
     }
