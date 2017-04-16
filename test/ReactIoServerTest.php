@@ -11,6 +11,18 @@ use Zeus\ServerService\Shared\React\ReactIoServer;
 
 class ReactIoServerTest extends ReactServerTest
 {
+    public function setUp()
+    {
+        ob_start();
+        parent::setUp();
+    }
+
+    public function tearDown()
+    {
+        parent::tearDown();
+        ob_end_clean();
+    }
+
     public function testNewConnection()
     {
         /** @var Request $request */
