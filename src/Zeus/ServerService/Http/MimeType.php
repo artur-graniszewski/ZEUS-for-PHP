@@ -997,6 +997,21 @@ class MimeType
     {
         $extension = pathinfo($fileName, PATHINFO_EXTENSION);
 
-        return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : mime_content_type($fileName);
+        //return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : mime_content_type($fileName);
+        return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : static::getMimeMagic($fileName);
+    }
+
+    protected static function getMimeMagic($fileName)
+    {
+        $file = fopen($fileName, 'r');
+        $tmpFile = tmpfile();
+        fwrite($tmpFile, fread($file, 1024));
+        fclose($file);
+        $tmpMetaData = stream_get_meta_data($tmpFile);
+        $tmpFileName = $tmpMetaData['uri'];
+        $magicType = mime_content_type($tmpFileName);
+        fclose($tmpFile);
+
+        return $magicType ? $magicType : 'text/plain';
     }
 }

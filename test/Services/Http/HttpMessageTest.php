@@ -34,6 +34,10 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
     public function tearDown()
     {
+        if ($this->fileHandle) {
+            fclose($this->fileHandle);
+        }
+
         ob_end_clean();
 
         $files = glob($this->getTmpDir() . '*');
@@ -130,6 +134,28 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
             echo $responseBody;
+        }, null, $testConnection);
+
+        $httpAdapter->onMessage($testConnection, $message);
+
+        $rawResponse = Response::fromString($testConnection->getSentData());
+        $this->assertEquals($responseBody, $rawResponse->getBody());
+    }
+
+    /**
+     * @param string $responseBody
+     * @dataProvider responseBodyProvider
+     */
+    public function testIfResponseStreamIsCorrect($responseBody)
+    {
+        file_put_contents($this->getTmpDir() . 'test.file', $responseBody);
+        $this->fileHandle = fopen($this->getTmpDir() . 'test.file', 'r');
+
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new TestConnection();
+        /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
+        $httpAdapter = $this->getHttpMessageParser(function(Request $request, Response\Stream $response) {
+            $response->setStream($this->fileHandle);
         }, null, $testConnection);
 
         $httpAdapter->onMessage($testConnection, $message);

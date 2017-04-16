@@ -79,11 +79,18 @@ In this test, ZEUS Web Server served over **17,918** requests per second.
 
 ## Bandwidth test
 
-In this scenario we will test the performance of 16 concurrent GET requests (the `-c 16` switches) using the keep-alive connections (`-k` switch) on a 19KB static file.
+First, we will create a 1MB static file in `public` directory of the Zend Framework 3 application.
 
 Command:
 ```
-user@host:/var/www/zf-apigility-skeleton$ ab -n 50000 -c 16 -k http://127.0.0.1:7070/apigility-ui/img/ag-hero.png
+user@host:/var/www/zf-apigility-skeleton$ dd if=/dev/zero of=public/test.file.txt bs=1 count=1 seek=1048575
+```
+
+Now, we lets test the performance of 16 concurrent GET requests (the `-c 16` switches) using the keep-alive connections (`-k` switch) on a newly generated static file.
+
+Command:
+```
+user@host:/var/www/zf-apigility-skeleton$ ab -n 50000 -c 16 -k http://127.0.0.1:7070/test.file.txt
 ```
 
 Output (on the _Intel Core i7_ processor with a _7200RPM HDD_):
@@ -110,41 +117,41 @@ Server Software:
 Server Hostname:        127.0.0.1
 Server Port:            7070
 
-Document Path:          /apigility-ui/img/ag-hero.png
-Document Length:        19869 bytes
+Document Path:          /test.file.txt
+Document Length:        1048576 bytes
 
 Concurrency Level:      16
-Time taken for tests:   3.465 seconds
+Time taken for tests:   51.878 seconds
 Complete requests:      50000
 Failed requests:        0
-Keep-Alive requests:    49514
-Total transferred:      1000392224 bytes
-HTML transferred:       993450000 bytes
-Requests per second:    14428.10 [#/sec] (mean)
-Time per request:       1.109 [ms] (mean)
-Time per request:       0.069 [ms] (mean, across all concurrent requests)
-Transfer rate:          281909.42 [Kbytes/sec] received
+Keep-Alive requests:    49513
+Total transferred:      52435892208 bytes
+HTML transferred:       52428800000 bytes
+Requests per second:    963.80 [#/sec] (mean)
+Time per request:       16.601 [ms] (mean)
+Time per request:       1.038 [ms] (mean, across all concurrent requests)
+Transfer rate:          987060.80 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
 Connect:        0    0   0.0      0       1
-Processing:     0    1   1.2      1      28
-Waiting:        0    1   1.2      1      28
-Total:          0    1   1.2      1      28
+Processing:     1   17   5.5     16     419
+Waiting:        1    5   4.9      4     403
+Total:          1   17   5.5     16     419
 
 Percentage of the requests served within a certain time (ms)
-  50%      1
-  66%      1
-  75%      1
-  80%      1
-  90%      2
-  95%      3
-  98%      4
-  99%      6
- 100%     28 (longest request)
+  50%     16
+  66%     17
+  75%     17
+  80%     18
+  90%     20
+  95%     23
+  98%     30
+  99%     35
+ 100%    419 (longest request)
 ```
 
-In this test setup, ZEUS Web Server achieved the speed of around **280** megabytes, or **2202** megabits (2 Gb) per second.
+In this test setup, ZEUS Web Server sent *50* gigabytes of data, achieving a speed of around **980** megabytes, or **8085** megabits (8 Gbits) per second.
 
 # Athletic tests
 

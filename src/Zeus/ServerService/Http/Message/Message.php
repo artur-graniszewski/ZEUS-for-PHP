@@ -1,8 +1,7 @@
 <?php
 
 namespace Zeus\ServerService\Http\Message;
-
-use Zend\Http\Headers;
+use React\Stream\Buffer;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
@@ -16,7 +15,7 @@ use Zend\Http\Header\ContentEncoding;
 use Zend\Http\Header\ContentLength;
 use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Header\Vary;
-use Zend\Http\Response;
+use Zend\Http\Response\Stream as Response;
 use Zend\Validator\Hostname as HostnameValidator;
 
 class Message implements MessageComponentInterface, HeartBeatMessageInterface
@@ -256,22 +255,33 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function dispatchRequest(ConnectionInterface $connection, $callback)
     {
-        $this->requestPhase = static::REQUEST_PHASE_PROCESSING;
+        $flushable = false;
+        $exception = null;
 
-        try {
+        if ($this->requestPhase !== static::REQUEST_PHASE_PROCESSING) {
+            $flushable = true;
             ob_start(function ($buffer) use ($connection) {
                 $this->sendResponse($connection, $buffer);
             }, $this->bufferSize);
+        }
+
+        try {
+            $this->requestPhase = static::REQUEST_PHASE_PROCESSING;
             $this->mapUploadedFiles($this->request);
             $callback($this->request, $this->response);
 
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
-            ob_end_flush();
         } catch (\Exception $exception) {
-            ob_end_clean();
-            throw $exception;
+
         } catch (\Throwable $exception) {
-            ob_end_clean();
+
+        }
+
+        if ($flushable) {
+            ob_end_flush();
+        }
+
+        if ($exception) {
             throw $exception;
         }
 
@@ -385,7 +395,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         
         if ($requestPhase === static::REQUEST_PHASE_SENDING) {
             $isCompressed = $this->enableCompressionIfSupported($request, $response, $requestPhase, $buffer);
-            if (!$isCompressed && !$isChunkedResponse) {
+            if (!$isCompressed && !$isChunkedResponse && !$responseHeaders->has('Content-Length')) {
                 $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
             }
         } else {
@@ -447,9 +457,48 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         }
 
-        $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
+        $stream = $this->response->getStream();
+
+        if (!is_resource($stream)) {
+            $this->sendBody($connection, $buffer);
+
+            return '';
+        }
 
         if ($this->isBodyAllowedInResponse($this->request)) {
+            $this->requestPhase = static::REQUEST_PHASE_PROCESSING;
+            if ($buffer) {
+                $this->sendBody($connection, $buffer);
+            }
+
+            while (!feof($stream)) {
+                $data = fread($stream, $this->bufferSize);
+                $this->sendBody($connection, $data);
+                /** @var Buffer $buffer */
+                //$buffer = $connection->getBuffer();
+                //$buffer->handleWrite();
+            }
+            $this->requestPhase = static::REQUEST_PHASE_SENDING;
+        }
+
+        $this->sendBody($connection, null);
+
+        $this->response->setStream(null);
+        fclose($stream);
+
+        return '';
+    }
+
+    /**
+     * @param ConnectionInterface $connection
+     * @param string $buffer
+     * @return $this
+     */
+    protected function sendBody(ConnectionInterface $connection, $buffer)
+    {
+        if ($this->isBodyAllowedInResponse($this->request)) {
+            $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
+
             if ($isChunkedResponse) {
                 $bufferSize = strlen($buffer);
                 if ($bufferSize > 0) {
@@ -467,10 +516,19 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
         }
 
-        if ($this->requestPhase !== static::REQUEST_PHASE_SENDING) {
-            return '';
+        if ($this->requestPhase === static::REQUEST_PHASE_SENDING) {
+            return $this->finalizeRequest($connection);
         }
 
+        return $this;
+    }
+
+    /**
+     * @param ConnectionInterface $connection
+     * @return $this
+     */
+    protected function finalizeRequest(ConnectionInterface $connection)
+    {
         if (is_callable($this->responseHandler)) {
             $callback = $this->responseHandler;
             $callback($this->request, $this->response);
@@ -480,14 +538,15 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         if (!$this->request->getMetadata('isKeepAliveConnection')) {
             $this->onClose($connection);
 
-            return '';
+            return $this;
         }
 
         $this->keepAliveCount--;
         $this->initNewRequest();
         $this->restartKeepAliveTimer();
         $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
-        return '';
+
+        return $this;
     }
 
     /**

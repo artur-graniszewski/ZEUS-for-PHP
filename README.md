@@ -238,6 +238,90 @@ user@host:/var/www/zf-application/vendor/zeus-server/zf3-server$ make doc-build
 
 After executing above command, ZEUS documentation can be found under the following URL: http://127.0.0.1:8080/
 
+# Performance
+
+Most of the ZEUS code was heavily optimized and thoroughly tested for speed and efficiency. 
+
+As the response times of most of ZEUS services dropped below **1 milisecond**, its common for ZEUS to handle more than **17,000 requests/second** on an average mobile Intel Core i7 processor:
+```
+Server Software:
+Server Hostname:        127.0.0.1
+Server Port:            7070
+
+Document Path:          /apigility-ui/img/ag-hero.png
+Document Length:        0 bytes
+
+Concurrency Level:      16
+Time taken for tests:   2.515 seconds
+Complete requests:      50000
+Failed requests:        0
+Keep-Alive requests:    49513
+Total transferred:      6942208 bytes
+HTML transferred:       0 bytes
+Requests per second:    19883.55 [#/sec] (mean)
+Time per request:       0.805 [ms] (mean)
+Time per request:       0.050 [ms] (mean, across all concurrent requests)
+Transfer rate:          2696.01 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       1
+Processing:     0    1   1.2      1      70
+Waiting:        0    1   1.2      1      70
+Total:          0    1   1.2      1      70
+
+Percentage of the requests served within a certain time (ms)
+  50%      1
+  66%      1
+  75%      1
+  80%      1
+  90%      1
+  95%      2
+  98%      3
+  99%      4
+ 100%     70 (longest request)
+```
+
+Or achieve transfer speeds higher than **8 Gbits/sec**:
+```
+Server Software:
+Server Hostname:        127.0.0.1
+Server Port:            7070
+
+Document Path:          /test.file.txt
+Document Length:        1048576 bytes
+
+Concurrency Level:      16
+Time taken for tests:   51.878 seconds
+Complete requests:      50000
+Failed requests:        0
+Keep-Alive requests:    49513
+Total transferred:      52435892208 bytes
+HTML transferred:       52428800000 bytes
+Requests per second:    963.80 [#/sec] (mean)
+Time per request:       16.601 [ms] (mean)
+Time per request:       1.038 [ms] (mean, across all concurrent requests)
+Transfer rate:          987060.80 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       1
+Processing:     1   17   5.5     16     419
+Waiting:        1    5   4.9      4     403
+Total:          1   17   5.5     16     419
+
+Percentage of the requests served within a certain time (ms)
+  50%     16
+  66%     17
+  75%     17
+  80%     18
+  90%     20
+  95%     23
+  98%     30
+  99%     35
+ 100%    419 (longest request)
+```
+
 # Requirements
 
 ## OS requirements

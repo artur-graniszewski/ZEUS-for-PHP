@@ -48,6 +48,19 @@ class ReactIoServer implements IoServerInterface
         return $this->socket;
     }
 
+    protected function safeExecute($callback)
+    {
+        $args = func_get_args();
+        array_shift($args);
+        try {
+            call_user_func_array($callback, $args);
+        } catch (\Throwable $exception) {
+            $this->handleError($exception);
+        } catch (\Exception $exception) {
+            $this->handleError($exception);
+        }
+    }
+
     /**
      * @param ConnectionInterface $connection
      * @return $this
@@ -58,11 +71,7 @@ class ReactIoServer implements IoServerInterface
 
         $connection->on('data', [$this, 'handleData']);
         $connection->on('end', [$this, 'handleEnd']);
-        $connection->on('error', function($exception) use ($connection) {
-            $this->handleError($connection, $exception);
-        });
-
-        $connection->on('error', [$this, 'cleanUp']);
+        $connection->on('error', [$this, 'handleError']);
         $connection->on('end', [$this, 'cleanUp']);
 
         $this->app->onOpen($connection);
@@ -82,13 +91,7 @@ class ReactIoServer implements IoServerInterface
         }
 
         if ($this->app instanceof HeartBeatMessageInterface) {
-            try {
-                $this->app->onHeartBeat($this->connection, $data);
-            } catch (\Throwable $e) {
-                $this->handleError($this->connection, $e);
-            } catch (\Exception $e) {
-                $this->handleError($this->connection, $e);
-            }
+            $this->safeExecute([$this->app, 'onHeartBeat'], $this->connection, $data);
         }
 
         return $this;
@@ -101,13 +104,7 @@ class ReactIoServer implements IoServerInterface
      */
     public function handleData($data, ConnectionInterface $connection)
     {
-        try {
-            $this->app->onMessage($connection, $data);
-        } catch (\Throwable $exception) {
-            $this->handleError($this->connection, $exception);
-        } catch (\Exception $exception) {
-            $this->handleError($this->connection, $exception);
-        }
+        $this->safeExecute([$this->app, 'onMessage'], $connection, $data);
 
         return $this;
     }
@@ -119,11 +116,7 @@ class ReactIoServer implements IoServerInterface
      */
     public function handleEnd(ConnectionInterface $connection)
     {
-        try {
-            $this->app->onClose($connection);
-        } catch (\Exception $e) {
-            $this->handleError($connection, $e);
-        }
+        $this->safeExecute([$this->app, 'onClose'], $connection);
 
         unset($connection->decor);
 
@@ -132,20 +125,23 @@ class ReactIoServer implements IoServerInterface
 
     /**
      * An error has occurred, let the listening application know
-     * @param ConnectionInterface $connection
-     * @param \Exception $exception
+     * @param \Exception|\Throwable $exception
+     * @throws \Throwable
      */
-    public function handleError(ConnectionInterface $connection, $exception)
+    public function handleError($exception)
     {
         try {
-            $this->app->onError($connection, $exception);
-        } catch (\Exception $e) {
-            $this->cleanUp();
-            throw $e;
-        } catch (\Throwable $e) {
-            $this->cleanUp();
-            throw $e;
+            if ($this->connection) {
+                $this->app->onError($this->connection, $exception);
+            }
+
+        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
         }
+
+        $this->cleanUp();
+
+        throw $exception;
     }
 
     /**
@@ -154,7 +150,7 @@ class ReactIoServer implements IoServerInterface
     public function cleanUp()
     {
         $this->loop->stop();
-        unset($this->connection);
+        $this->connection = null;
 
         return $this;
     }
