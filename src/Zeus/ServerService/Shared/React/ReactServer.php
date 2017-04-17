@@ -48,6 +48,6 @@ class ReactServer extends Server
      */
     public function createConnection($socket)
     {
-        return new IoConnection($socket, $this->loop, new Buffer($socket, $this->loop));
+        return new IoConnection($socket, $this->loop, new ReactWritableHighSpeedBuffer($socket, $this->loop));
     }
 }

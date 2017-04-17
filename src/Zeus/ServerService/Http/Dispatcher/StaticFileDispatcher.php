@@ -42,20 +42,20 @@ class StaticFileDispatcher implements DispatcherInterface
     }
 
     /**
-     * @param Request $httpRequest
-     * @param Response $httpResponse
+     * @param Request $request
+     * @param Response $response
      * @return void
      */
-    public function dispatch(Request $httpRequest, Response $httpResponse)
+    public function dispatch(Request $request, Response $response)
     {
-        $path = $httpRequest->getUri()->getPath();
+        $path = $request->getUri()->getPath();
 
         $code = Response::STATUS_CODE_200;
 
         $fileName = $this->publicDirectory . DIRECTORY_SEPARATOR . $path;
         $realPath = substr(realpath($fileName), 0, strlen($this->publicDirectory));
         if ($realPath && $realPath !== $this->publicDirectory) {
-            $httpResponse->setStatusCode(Response::STATUS_CODE_400);
+            $response->setStatusCode(Response::STATUS_CODE_400);
             return;
         }
 
@@ -63,14 +63,14 @@ class StaticFileDispatcher implements DispatcherInterface
 
         if (file_exists($fileName) && !is_dir($fileName)) {
             if ($blockedFileTypes && preg_match('~\.(' . $blockedFileTypes . ')$~', $fileName)) {
-                $httpResponse->setStatusCode(Response::STATUS_CODE_403);
+                $response->setStatusCode(Response::STATUS_CODE_403);
                 return;
             }
 
-            $httpResponse->setStatusCode($code);
-            $this->addHeadersForFile($httpResponse, $fileName);
-            if (is_callable([$httpResponse, 'setStream'])) {
-                $httpResponse->setStream(fopen($fileName, "r"));
+            $response->setStatusCode($code);
+            $this->addHeadersForFile($response, $fileName);
+            if (is_callable([$response, 'setStream'])) {
+                $response->setStream(fopen($fileName, "r"));
 
 
                 return;
@@ -83,21 +83,21 @@ class StaticFileDispatcher implements DispatcherInterface
         $code = is_dir($fileName) ? Response::STATUS_CODE_403 : Response::STATUS_CODE_404;
 
         if ($this->anotherDispatcher) {
-            $this->anotherDispatcher->dispatch($httpRequest, $httpResponse);
+            $this->anotherDispatcher->dispatch($request, $response);
 
             return;
         }
 
-        $httpResponse->setStatusCode($code);
+        $response->setStatusCode($code);
     }
 
     /**
-     * @param Response $httpResponse
+     * @param Response $response
      * @param string $fileName
      */
-    protected function addHeadersForFile(Response $httpResponse, $fileName)
+    protected function addHeadersForFile(Response $response, $fileName)
     {
-        $httpResponse->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
-        $httpResponse->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
+        $response->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
+        $response->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));
     }
 }

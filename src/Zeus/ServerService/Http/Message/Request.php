@@ -63,7 +63,7 @@ class Request extends ZendRequest
         $regex = '#^(?P<method>' . $methods . ')\s(?P<uri>[^ ]*)(?:\sHTTP\/(?P<version>\d+\.\d+)){1}' . "\r\n#sS";
         if (!preg_match($regex, $buffer, $matches)) {
             throw new \InvalidArgumentException(
-                'A valid request line was not found in the provided string'
+                'A valid request line was not found in the provided string '
             );
         }
 
@@ -86,6 +86,8 @@ class Request extends ZendRequest
         if ($buffer === "\r\n") {
             return $request;
         }
+
+        $request->headers = $buffer;
 
         if (preg_match_all('/(?P<name>[^()><@,;:\"\\/\[\]?=}{ \t]+):[\s]*(?P<value>[^\r\n]*)' . "[\s]*\r\n/sS", $buffer, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
