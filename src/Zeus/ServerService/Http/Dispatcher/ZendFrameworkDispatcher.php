@@ -102,10 +102,10 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
     }
 
     /**
-     * @param Request $httpRequest
+     * @param Request $request
      * @return Response
      */
-    public function dispatch(Request $httpRequest, Response $httpResponse)
+    public function dispatch(Request $request, Response $response)
     {
         /** @var Application $app */
         static $app;
@@ -115,10 +115,10 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
         $config = Module::getOverrideConfig();
         $config['service_manager']['factories']['Request'] = RequestFactory::class;
         //$app = Application::init($this->getApplicationConfig());
-        $config['zeus_process_manager']['services']['Request'] = $httpRequest;
+        $config['zeus_process_manager']['services']['Request'] = $request;
 
-        $host = $httpRequest->getUri()->getHost();
-        $port = $httpRequest->getUri()->getPort();
+        $host = $request->getUri()->getHost();
+        $port = $request->getUri()->getPort();
         $this->setEnvVariable('HTTP_HOST', sprintf("%s:%d", $host, $port));
         $this->setEnvVariable('HTTP_PORT', $port);
         $this->setEnvVariable('SERVER_PORT', $port);
@@ -133,20 +133,20 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
         $event->setName(MvcEvent::EVENT_BOOTSTRAP);
         $event->setTarget($app);
         $event->setApplication($app);
-        $event->setRequest($httpRequest);
+        $event->setRequest($request);
         $event->setResponse($app->getServiceManager()->get('Response'));
         $event->setRouter($app->getServiceManager()->get('Router'));
-        $event->setRequest($httpRequest);
+        $event->setRequest($request);
 
         $app->run();
 
         Console::overrideIsConsole(true);
         /** @var Response $zendResponse */
         $zendResponse = $app->getResponse();
-        $httpResponse->setContent($zendResponse->getContent());
-        $httpResponse->setStatusCode($zendResponse->getStatusCode());
-        $httpResponse->setContent($zendResponse->getContent());
-        $httpResponse->setHeaders($zendResponse->getHeaders());
+        $response->setContent($zendResponse->getContent());
+        $response->setStatusCode($zendResponse->getStatusCode());
+        $response->setContent($zendResponse->getContent());
+        $response->setHeaders($zendResponse->getHeaders());
         $app = null;
 
         $this->callGarbageCollector();

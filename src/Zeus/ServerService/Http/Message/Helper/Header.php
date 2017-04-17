@@ -31,7 +31,7 @@ trait Header
             }
         }
 
-        if (isset($this->serverHostCache[$fullHost])) {
+        if ($fullHost && isset($this->serverHostCache[$fullHost])) {
             $currentUri = $request->getUri();
             $cachedUri = $this->serverHostCache[$fullHost];
             $currentUri->setHost($cachedUri['host']);

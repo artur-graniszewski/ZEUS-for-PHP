@@ -15,6 +15,8 @@ use ZeusTest\Helpers\TestConnection;
 
 class HttpMessageTest extends PHPUnit_Framework_TestCase
 {
+    protected $fileHandle;
+
     protected function getTmpDir()
     {
         $tmpDir = __DIR__ . '/../../tmp/';
@@ -28,17 +30,13 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         parent::setUp();
-
-        ob_start();
     }
 
     public function tearDown()
     {
-        if ($this->fileHandle) {
+        if (is_resource($this->fileHandle)) {
             fclose($this->fileHandle);
         }
-
-        ob_end_clean();
 
         $files = glob($this->getTmpDir() . '*');
 
@@ -80,10 +78,25 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "keep-alive"]);
         $testConnection = new TestConnection();
-        $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
+        $httpAdapter = $this->getHttpMessageParser(function($request, Response\Stream $response) {
+            $response->getHeaders()->addHeader(new ContentLength(2));
+            echo "OK";
+        }, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.0 keep-alive connection should be left open after request");
+    }
+
+    public function testIfHttp10KeepAliveConnectionIsClosedAfterSingleChunkedRequest()
+    {
+        $message = $this->getHttpGetRequestString("/", ["Connection" => "keep-alive"]);
+        $testConnection = new TestConnection();
+        $httpAdapter = $this->getHttpMessageParser(function() {
+            echo "OK";
+        }, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
+
+        $this->assertTrue($testConnection->isConnectionClosed(), "HTTP 1.0 keep-alive connection should be closed on chunked response");
     }
 
     public function testIfHttp11ConnectionIsOpenAfterSingleRequest()
@@ -117,9 +130,11 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function responseBodyProvider()
     {
         return [
-            ['TEST MESSAGE!'],
-            ["TEST\nMessage\n!"],
-            [str_pad('TEST STRING', 10000, '-', STR_PAD_RIGHT)],
+            ['TEST MESSAGE!',  true],
+            ["TEST\nMessage\n!", true],
+            [str_pad('TEST STRING', 10000, '-', STR_PAD_RIGHT), true],
+            ['Another test message!',  false],
+            ["Another multiline\nmessage\n!", false],
         ];
     }
 
@@ -190,14 +205,18 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
     /**
      * @param string $responseBody
+     * @param bool $isChunkedEncoding
      * @dataProvider responseBodyProvider
      */
-    public function testIfGzippedResponseBodyIsCorrect($responseBody)
+    public function testIfDeflatedResponseBodyIsCorrect($responseBody, $isChunkedEncoding)
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost', 'Accept-Encoding' => 'gzip, deflate'], "1.1");
         $testConnection = new TestConnection();
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
-        $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
+        $httpAdapter = $this->getHttpMessageParser(function($request, $response) use ($responseBody, $isChunkedEncoding) {
+            if (!$isChunkedEncoding) {
+                $response->getHeaders()->addHeader(new ContentLength(strlen($responseBody)));
+            }
             echo $responseBody;
         }, null, $testConnection);
 
@@ -475,8 +494,9 @@ Hello_World";
             }
 
             $rawResponse = Response::fromString($testConnection->getSentData());
+            $httpAdapter->onClose($testConnection);
 
-            $this->assertEquals("Hello_World", $request->getContent(), "HTTP response should have returned 'Hello_World', received: " . $request->getContent());
+            $this->assertEquals("Hello_World", $request->getContent(), "HTTP response should have returned 'Hello_World', received: " . $rawResponse->getContent());
         }
     }
 

@@ -66,9 +66,7 @@ class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
 
-        // known issue, HHVM's mime_content_type() requires complete file to detect its type
-        // for performance reasons ZEUS uses only first 1KB of the file to detect its type, therefore HHVM fails to recognize it
-        $this->assertEquals(defined("HHVM_VERSION") ? 'text/plain' : 'application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
+        $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
     }
 
     public function testFileExtensionBlacklist()

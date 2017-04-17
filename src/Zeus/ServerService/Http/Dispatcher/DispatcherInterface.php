@@ -15,8 +15,8 @@ interface DispatcherInterface
     public function __construct(array $config, DispatcherInterface $anotherDispatcher = null);
 
     /**
-     * @param Request $httpRequest
-     * @param Response $httpResponse
+     * @param Request $request
+     * @param Response $response
      */
-    public function dispatch(Request $httpRequest, Response $httpResponse);
+    public function dispatch(Request $request, Response $response);
 }
