@@ -429,7 +429,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param string $buffer
      * @return string
      */
-    protected function sendResponse($buffer)
+    public function sendResponse($buffer)
     {
         $connection = $this->connection;
 
