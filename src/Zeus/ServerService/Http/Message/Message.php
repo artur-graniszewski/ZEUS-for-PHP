@@ -1,7 +1,9 @@
 <?php
 
 namespace Zeus\ServerService\Http\Message;
+
 use React\Stream\Buffer;
+use Zend\Http\Headers;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
@@ -42,7 +44,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $requestPhase = self::REQUEST_PHASE_IDLE;
 
     /** @var int */
-    protected $bufferSize = 65536;
+    protected $bufferSize = 16384;
 
     /** @var callable */
     protected $errorHandler;
@@ -255,19 +257,13 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function dispatchRequest(ConnectionInterface $connection, $callback)
     {
-        $flushable = false;
         $exception = null;
-
-        if ($this->requestPhase !== static::REQUEST_PHASE_PROCESSING) {
-            $flushable = true;
-            ob_start(function ($buffer) use ($connection) {
-                $this->sendResponse($connection, $buffer);
-            }, $this->bufferSize);
-        }
+        $this->connection = $connection;
 
         try {
             $this->requestPhase = static::REQUEST_PHASE_PROCESSING;
             $this->mapUploadedFiles($this->request);
+            ob_start([$this, 'sendResponse'], $this->bufferSize);
             $callback($this->request, $this->response);
 
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
@@ -277,9 +273,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         }
 
-        if ($flushable) {
-            ob_end_flush();
-        }
+        ob_end_flush();
 
         if ($exception) {
             throw $exception;
@@ -360,56 +354,39 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
      * @param string $buffer
      * @return $this
      */
-    protected function sendHeaders(ConnectionInterface $connection, & $buffer)
+    protected function sendHeaders(& $buffer)
     {
+        $connection = $this->connection;
+        $isChunkedResponse = false;
+
+        $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         $this->headersSent = true;
         $response = $this->response;
         $request = $this->request;
         $responseHeaders = $response->getHeaders();
-        $requestVersion = $this->request->getVersion();
 
-        $transferEncoding = $responseHeaders->get('Transfer-Encoding');
+        $isChunkedResponse = !$responseHeaders->has('Content-Length');
 
-        $isChunkedResponse = ($transferEncoding && $transferEncoding->getFieldValue() === $this::ENCODING_CHUNKED);
-        $isChunkedResponse = $isChunkedResponse || !$responseHeaders->has('Content-Length');
-
-        $requestPhase = $this->requestPhase;
-
-        // keep-alive should be disabled for HTTP/1.0 and chunked output (btw. Transfer Encoding should not be set for 1.0)
-        // we can also disable chunked response if buffer contained entire response body
-        if ($requestVersion === Request::VERSION_10) {
-            if ($requestPhase !== static::REQUEST_PHASE_SENDING) {
-                $request->setMetadata('isKeepAliveConnection', false);
-            }
-
-            if ($transferEncoding) {
-                $responseHeaders->removeHeader(new TransferEncoding());
-            }
+        if ($responseHeaders->has('Transfer-Encoding')) {
+            $responseHeaders->removeHeader(new TransferEncoding());
         }
 
-        $responseHeaders->addHeader($request->getMetadata('isKeepAliveConnection') ? $this->keepAliveHeader : $this->closeHeader);
-        
-        if ($requestPhase === static::REQUEST_PHASE_SENDING) {
-            $isCompressed = $this->enableCompressionIfSupported($request, $response, $requestPhase, $buffer);
-            if (!$isCompressed && !$isChunkedResponse && !$responseHeaders->has('Content-Length')) {
-                $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
-            }
-        } else {
-            if (!$isChunkedResponse && $this->isBodyAllowedInResponse($request) && !$responseHeaders->has('Content-Length')) {
-                $isChunkedResponse = true;
-            }
-        }
+        $this->enableCompressionIfSupported($buffer);
 
         if ($isChunkedResponse) {
-            // is this a chunked encoding? valid only for HTTP 1.1+
-            $responseHeaders->addHeader($this->chunkedHeader);
+            if ($this->request->getVersion() === Request::VERSION_10) {
+                // keep-alive should be disabled for HTTP/1.0 and chunked output (btw. Transfer Encoding should not be set for 1.0)
+                $request->setMetadata('isKeepAliveConnection', false);
+            } else {
+                $responseHeaders->addHeader($this->chunkedHeader);
+            }
         }
 
         $response->setMetadata('isChunkedResponse', $isChunkedResponse);
+        $responseHeaders->addHeader($request->getMetadata('isKeepAliveConnection') ? $this->keepAliveHeader : $this->closeHeader);
 
         $connection->write(
             $response->renderStatusLine() . "\r\n" .
@@ -421,40 +398,43 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param Request $request
-     * @param Response $response
-     * @param int $requestPhase
      * @param string $buffer
      * @return bool
      */
-    protected function enableCompressionIfSupported(Request $request, Response $response, $requestPhase, & $buffer)
+    protected function enableCompressionIfSupported(& $buffer)
     {
-        $responseHeaders = $response->getHeaders();
-        $acceptEncoding = $request->getHeaderOverview('Accept-Encoding', true);
-        $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
+        $responseHeaders = $this->response->getHeaders();
 
-        if ($requestPhase === static::REQUEST_PHASE_SENDING && isset($buffer[8192]) && in_array('deflate', $encodingsArray)) {
-            $buffer = gzcompress($buffer, 1);
-            $responseHeaders->addHeader(new ContentEncoding('deflate'));
-            $responseHeaders->addHeader(new Vary('Accept'));
-            $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
-
-            return true;
+        if ($this->requestPhase !== static::REQUEST_PHASE_SENDING || !isset($buffer[8192]) || !$this->isBodyAllowedInResponse($this->request)) {
+            return false;
         }
 
-        return false;
+        $acceptEncoding = $this->request->getHeaderOverview('Accept-Encoding', true);
+        $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
+
+        if (!in_array('deflate', $encodingsArray)) {
+            return false;
+        }
+
+        $buffer = gzcompress($buffer, 1);
+        $responseHeaders->addHeader(new ContentEncoding('deflate'));
+        $responseHeaders->addHeader(new Vary('Accept'));
+        $responseHeaders->removeHeader(new ContentLength());
+        $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
+
+        return true;
     }
 
     /**
-     * @param ConnectionInterface $connection
      * @param string $buffer
      * @return string
      */
-    protected function sendResponse(ConnectionInterface $connection, $buffer)
+    protected function sendResponse($buffer)
     {
+        $connection = $this->connection;
+
         if (!$this->headersSent) {
-            $this->sendHeaders($connection, $buffer);
-            $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
+            $this->sendHeaders($buffer);
         }
 
         $stream = $this->response->getStream();

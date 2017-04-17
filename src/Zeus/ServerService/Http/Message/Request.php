@@ -58,20 +58,7 @@ class Request extends ZendRequest
         $matches   = null;
         $methods   = $allowCustomMethods
             ? '[\w-]+'
-            : implode(
-                '|',
-                [
-                    self::METHOD_OPTIONS,
-                    self::METHOD_GET,
-                    self::METHOD_HEAD,
-                    self::METHOD_POST,
-                    self::METHOD_PUT,
-                    self::METHOD_DELETE,
-                    self::METHOD_TRACE,
-                    self::METHOD_CONNECT,
-                    self::METHOD_PATCH
-                ]
-            );
+            : 'OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH';
 
         $regex = '#^(?P<method>' . $methods . ')\s(?P<uri>[^ ]*)(?:\sHTTP\/(?P<version>\d+\.\d+)){1}' . "\r\n#sS";
         if (!preg_match($regex, $buffer, $matches)) {
@@ -100,10 +87,7 @@ class Request extends ZendRequest
             return $request;
         }
 
-        $headers = substr($buffer, 0, -2);
-        $request->headers = $headers;
-
-        if (preg_match_all('/(?P<name>[^()><@,;:\"\\/\[\]?=}{ \t]+):[\s]*(?P<value>[^\r\n]*)' . "[\s]*\r\n/sS", $headers, $matches, PREG_SET_ORDER)) {
+        if (preg_match_all('/(?P<name>[^()><@,;:\"\\/\[\]?=}{ \t]+):[\s]*(?P<value>[^\r\n]*)' . "[\s]*\r\n/sS", $buffer, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $request->headersOverview[strtolower($match['name'])][] = $match['value'];
             }
