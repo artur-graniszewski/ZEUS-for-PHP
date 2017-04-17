@@ -1003,14 +1003,14 @@ class MimeType
 
     protected static function getMimeMagic($fileName)
     {
+        $tmpFileName = tempnam('', 'zeus_mime_');
         $file = fopen($fileName, 'r');
-        $tmpFile = tmpfile();
+        $tmpFile = fopen($tmpFileName, "w");
         fwrite($tmpFile, fread($file, 1024));
         fclose($file);
-        $tmpMetaData = stream_get_meta_data($tmpFile);
-        $tmpFileName = $tmpMetaData['uri'];
         $magicType = mime_content_type($tmpFileName);
         fclose($tmpFile);
+        unlink($tmpFileName);
 
         return $magicType ? $magicType : 'text/plain';
     }
