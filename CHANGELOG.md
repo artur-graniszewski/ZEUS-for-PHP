@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.6.6
+- [Improvement] Additional metadata in composer.json file
+
 ## Version 1.6.5
 - [Improvement] Minor code refactoring in ZEUS Web Server + performance improvements
 - [Fix] Fix for v1.6.4 performance regression in ZEUS Web/Memcached Servers and the underlying ReactPHP Buffer class
