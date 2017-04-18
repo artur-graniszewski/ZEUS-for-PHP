@@ -22,7 +22,7 @@ class Module implements
     ConsoleUsageProviderInterface,
     ConsoleBannerProviderInterface
 {
-    const MODULE_VERSION = "1.6.5";
+    const MODULE_VERSION = "1.6.6";
 
     protected static $overrideConfig = [];
 
