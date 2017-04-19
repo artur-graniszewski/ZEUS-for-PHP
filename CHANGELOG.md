@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.6.7
+- [Fix] Documentation fix in README.md file regarding incorrect terminal command used to start Async Server Service
+- [Improvement] Minor documentation and README improvements
+
 ## Version 1.6.6
 - [Improvement] Additional metadata in composer.json file
 
