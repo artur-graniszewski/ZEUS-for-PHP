@@ -45,23 +45,23 @@ Document Path:          /apigility-ui/img/ag-hero.png
 Document Length:        0 bytes
 
 Concurrency Level:      16
-Time taken for tests:   2.790 seconds
+Time taken for tests:   2.515 seconds
 Complete requests:      50000
 Failed requests:        0
 Keep-Alive requests:    49513
 Total transferred:      6942208 bytes
 HTML transferred:       0 bytes
-Requests per second:    17918.78 [#/sec] (mean)
-Time per request:       0.893 [ms] (mean)
-Time per request:       0.056 [ms] (mean, across all concurrent requests)
-Transfer rate:          2429.61 [Kbytes/sec] received
+Requests per second:    19883.55 [#/sec] (mean)
+Time per request:       0.805 [ms] (mean)
+Time per request:       0.050 [ms] (mean, across all concurrent requests)
+Transfer rate:          2696.01 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
 Connect:        0    0   0.0      0       1
-Processing:     0    1   1.1      1      33
-Waiting:        0    1   1.1      1      33
-Total:          0    1   1.1      1      33
+Processing:     0    1   1.2      1      70
+Waiting:        0    1   1.2      1      70
+Total:          0    1   1.2      1      70
 
 Percentage of the requests served within a certain time (ms)
   50%      1
@@ -71,11 +71,11 @@ Percentage of the requests served within a certain time (ms)
   90%      1
   95%      2
   98%      3
-  99%      5
- 100%     33 (longest request)
+  99%      4
+ 100%     70 (longest request)
 ```
 
-In this test, ZEUS Web Server served over **17,918** requests per second.
+In this test, ZEUS Web Server served over **19883** requests per second.
 
 ## Bandwidth test
 

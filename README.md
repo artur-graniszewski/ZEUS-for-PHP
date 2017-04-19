@@ -10,7 +10,7 @@ To guarantee true parallelism and resource isolation ZEUS employs preemptive sch
 
 ***ZEUS for PHP is not a standalone service, in order to use it, it must be installed as a module on-top of any Zend Framework application!.***
 
-It's designed to be compliant with any ZF3 application such as Apigility or ZendSkeleton. Custom applications must provide index.php file which starts the Zend Framework MVC `Application` class.
+It's designed to be compliant with any ZF3 application such as [Apigility](https://github.com/zfcampus/zf-apigility) or [ZendSkeletonApplication](https://github.com/zendframework/ZendSkeletonApplication). Custom applications must provide `index.php` file such as [this](https://github.com/zendframework/ZendSkeletonApplication/blob/master/public/index.php) which instantiates the Zend Framework MVC `Zend\Mvc\Application` class.
 
 ![ZEUS for PHP overview](http://php.webtutor.pl/zeus/thumbnails.png)
 
@@ -31,7 +31,7 @@ It's designed to be compliant with any ZF3 application such as Apigility or Zend
 - Self hosted - ZEUS comes equipped with its own, **high-speed HTTP Server Service** implementation supporting HTTP/1.0 and HTTP/1.1 protocols, keep-alive connections and a deflate compression
 - Can be integrated with any Zend Framework 3 Application with just few commands issued in a terminal
 - Compatible with Zend Framework `MVC` module, enabling ZEUS to dispatch HTTP requests both for static files as well as any Zend Framework Application controller
-- Equipped with its own, customizable *Memcached Server Service* that is integrated with Zend Framework 3 `Cache` module, allowing to use any of its `Cache` adapters as a Memcached key storage
+- Equipped with its own, customizable **Memcached Server Service** that is integrated with Zend Framework 3 `Cache` module, allowing to use any of its `Cache` adapters as a Memcached key storage
 - Compatible with any UNIX/Linux/BSD platform
 - Well documented and [unit tested](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) (with at least [90% code coverage](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP))
 - Stress tested, shipped with its own benchmark tests
@@ -173,7 +173,7 @@ First, the Async Server Service must be launched in order to execute anonymous f
 
 Command:
 ```
-user@host:/var/www/zf-application/public$ php index.php zeus status zeus_httpd
+user@host:/var/www/zf-application/public$ php index.php zeus start zeus_async
 ```
 
 The following ZF3 Application code can be handled by any HTTP Server, such as Apache HTTPD or Nginx - such functions are serialized and send to Async Server Service for asynchronous execution.
@@ -242,7 +242,7 @@ After executing above command, ZEUS documentation can be found under the followi
 
 Most of the ZEUS code was heavily optimized and thoroughly tested for speed and efficiency. 
 
-As the response times of most of ZEUS services dropped below **1 milisecond**, its common for ZEUS to handle more than **17,000 requests/second** on an average mobile Intel Core i7 processor:
+As the response times of most of ZEUS services dropped below **1 milisecond**, its common for ZEUS to handle more than **19,000 requests/second** on an average mobile Intel Core i7 processor:
 ```
 Server Software:
 Server Hostname:        127.0.0.1
