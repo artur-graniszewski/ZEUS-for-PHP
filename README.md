@@ -242,7 +242,7 @@ After executing above command, ZEUS documentation can be found under the followi
 
 Most of the ZEUS code was heavily optimized and thoroughly tested for speed and efficiency. 
 
-As the response times of most of ZEUS services dropped below **1 milisecond**, its common for ZEUS to handle more than **17,000 requests/second** on an average mobile Intel Core i7 processor:
+As the response times of most of ZEUS services dropped below **1 milisecond**, its common for ZEUS to handle more than **19,000 requests/second** on an average mobile Intel Core i7 processor:
 ```
 Server Software:
 Server Hostname:        127.0.0.1
