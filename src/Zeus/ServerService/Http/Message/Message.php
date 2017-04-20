@@ -3,15 +3,15 @@
 namespace Zeus\ServerService\Http\Message;
 
 use React\Stream\Buffer;
-use Zend\Http\Headers;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
 use Zeus\ServerService\Http\Message\Helper\RegularEncoding;
 use Zeus\ServerService\Http\Message\Helper\FileUpload;
-use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
-use Zeus\ServerService\Shared\React\MessageComponentInterface;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
+use Zeus\ServerService\Shared\Networking\FlushableConnectionInterface;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
+use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
+use Zeus\ServerService\Shared\Networking\ConnectionInterface;
 use Zend\Http\Header\Connection;
 use Zend\Http\Header\ContentEncoding;
 use Zend\Http\Header\ContentLength;
@@ -36,6 +36,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
+    const MAX_KEEP_ALIVE_REQUESTS = 100;
 
     /** @var ConnectionInterface */
     protected $connection;
@@ -360,7 +361,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected function sendHeaders(& $buffer)
     {
         $connection = $this->connection;
-        $isChunkedResponse = false;
 
         $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         $this->headersSent = true;
@@ -516,11 +516,15 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         $this->requestsFinished++;
         if (!$this->request->getMetadata('isKeepAliveConnection')) {
+            $this->connection->flush();
             $this->onClose($connection);
 
             return $this;
         }
 
+        if ($this->connection instanceof FlushableConnectionInterface) {
+            $this->connection->flush();
+        }
         $this->keepAliveCount--;
         $this->initNewRequest();
         $this->restartKeepAliveTimer();
@@ -553,7 +557,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function restartKeepAliveCounter()
     {
-        $this->keepAliveCount = 100;
+        $this->keepAliveCount = static::MAX_KEEP_ALIVE_REQUESTS;
         $this->restartKeepAliveTimer();
 
         return $this;
