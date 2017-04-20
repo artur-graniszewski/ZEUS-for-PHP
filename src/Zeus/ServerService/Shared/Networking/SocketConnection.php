@@ -16,11 +16,18 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
     protected $data;
 
-    protected $bufferSize = 819200;
+    protected $bufferSize = 81920;
 
     public function __construct($stream)
     {
         $this->stream = $stream;
+
+        stream_set_blocking($this->stream, 0);
+
+        if (function_exists('stream_set_read_buffer')) {
+            stream_set_read_buffer($this->stream, 0);
+            stream_set_write_buffer($this->stream, 0);
+        }
         /*
         stream_set_blocking($stream, false);
         if (function_exists('stream_set_read_buffer')) {
@@ -228,16 +235,19 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
         while ($sent !== $size) {
             $wrote = @stream_socket_sendto($this->stream, $data);
+            fflush($this->stream);
             if ($wrote < 0) {
                 $this->isWritable = false;
                 $this->isReadable = false;// remove this?
 //                throw new \LogicException("Write to stream failed");
+                $this->close();
                 break;
             }
 
             $sent += $wrote;
             $data = substr($data, $wrote);
         };
+
 
         $this->data = '';
 

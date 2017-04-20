@@ -98,15 +98,16 @@ final class SocketEventSubscriber
 
             if ($this->connection) {
                 if ($this->connection->isReadable()) {
-                    if ($this->connection->select(1)) {
+                    do {
+                    //if ($this->connection->select(1)) {
                         $data = $this->connection->read();
-                        if ($data !== false) {
+                        if ($data !== false && $data !== '') {
                             $this->message->onMessage($this->connection, $data);
                         }
-                    }
+                    } while ($data !== false && $this->connection && $this->connection->isReadable());
                 }
 
-                if (!$this->connection->isReadable()) {
+                if (!$this->connection || !$this->connection->isReadable()) {
                     $this->connection = null;
                     return $this;
                 }
@@ -136,7 +137,7 @@ final class SocketEventSubscriber
 
     public function onTaskExit()
     {
-        if ($this->connection->isReadable()) {
+        if ($this->connection && $this->connection->isReadable()) {
             $this->connection->close();
             $this->connection = null;
         }
