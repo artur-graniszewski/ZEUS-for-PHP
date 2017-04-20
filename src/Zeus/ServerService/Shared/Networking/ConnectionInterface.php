@@ -21,6 +21,8 @@ interface ConnectionInterface
 
     public function read();
 
+    public function isReadable();
+
     /**
      * @param int $timeout
      * @return bool

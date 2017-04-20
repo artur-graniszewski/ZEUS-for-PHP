@@ -16,7 +16,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
     protected $data;
 
-    protected $bufferSize = 65536;
+    protected $bufferSize = 819200;
 
     public function __construct($stream)
     {
@@ -114,23 +114,24 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $this->isReadable = false;
         $this->isWritable = false;
 
-//        $write = [$this->stream];
-//        $read = $except = [];
-//        stream_set_blocking($this->stream, true);
-//        stream_select($read, $write, $except, null);
-
-//        socket_send($this->stream, ' ', 0, MSG_EOF);
-        socket_shutdown($this->stream, STREAM_SHUT_RDWR);
-
-        //socket_shutdown($this->stream, STREAM_SHUT_WR);
-        socket_close($this->stream);
-        //stream_set_blocking($this->stream, false);
-        //stream_get_contents($this->stream);
-        //fclose($this->stream);
+        stream_set_blocking($this->stream, true);
+        stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
+//        stream_set_blocking($this->stream, false);
+        fclose($this->stream);
 
         $this->stream = null;
 
         return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isEof()
+    {
+        $info = stream_get_meta_data($this->stream);
+
+        return $info['eof'] || $info['timed_out'];
     }
 
     public function isWritable()
@@ -144,10 +145,25 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
             throw new \LogicException("Stream is not readable");
         }
 
-        $data = socket_read($this->stream, $this->bufferSize);
+        $error = null;
+        set_error_handler(function ($errno, $errstr, $errfile, $errline) use (&$error) {
+            $error = new \ErrorException(
+                $errstr,
+                0,
+                $errno,
+                $errfile,
+                $errline
+            );
+        });
 
-        if (!is_resource($this->stream)) {
+        $data = stream_get_contents($this->stream, $this->bufferSize);
+
+        restore_error_handler();
+
+        if ($error !== null || $this->isEof()) {
             $this->close();
+
+            return false;
         }
 
         return $data;
@@ -166,7 +182,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $write = $except = [];
         $read = [$this->stream];
 
-        $result = socket_select($read, $write, $except, $timeout);
+        $result = @stream_select($read, $write, $except, $timeout);
         if ($result === false) {
             $this->isReadable = false;
             throw new \RuntimeException("Stream select failed");
@@ -203,21 +219,20 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $data = $this->data;
 
         if (!$this->isWritable()) {
-            throw new \LogicException("Stream is not writable");
+            $this->data = '';
+            return $this;
         }
 
         $size = strlen($data);
         $sent = 0;
 
-        while ($sent < $size && $data) {
-            //$socket = socket_import_stream($this->stream);
-            $wrote = socket_send($this->stream, $data, strlen($data), MSG_EOF);
-            //$wrote = stream_socket_sendto($this->stream, $data);
-
-            if ($wrote === false || $wrote < 0 || !is_resource($this->stream)) {
+        while ($sent !== $size) {
+            $wrote = @stream_socket_sendto($this->stream, $data);
+            if ($wrote < 0) {
                 $this->isWritable = false;
                 $this->isReadable = false;// remove this?
-                throw new \LogicException("Write to stream failed");
+//                throw new \LogicException("Write to stream failed");
+                break;
             }
 
             $sent += $wrote;

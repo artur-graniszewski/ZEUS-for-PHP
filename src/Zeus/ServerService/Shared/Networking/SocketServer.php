@@ -18,29 +18,27 @@ class SocketServer
     {
         $uri = 'tcp://' . $this->config->getListenAddress() . ':' . $this->config->getListenPort();
 
-        $this->socket = socket_create(AF_INET, SOCK_STREAM, 0);
-        socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, 1);
-        //socket_set_option($this->socket, SOL_SOCKET, TCP_NODELAY, 1);
-        socket_bind($this->socket, $this->config->getListenAddress(), $this->config->getListenPort());
-        socket_listen($this->socket);
+        $this->socket = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN);
+        if (false === $this->socket) {
+            throw new \RuntimeException("Could not bind to $uri: $errstr", $errno);
+        }
 
-        //@stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN);
-//        if (false === $this->socket) {
-//            throw new \RuntimeException("Could not bind to $uri: $errstr", $errno);
-//        }
-
-        //stream_set_blocking($this->socket, 0);
-
-        socket_set_nonblock($this->socket);
+        stream_set_blocking($this->socket, 0);
     }
 
     public function listen($timeout)
     {
-        $newSocket = @socket_accept($this->socket);
+        $newSocket = @stream_socket_accept($this->socket, $timeout);
         if ($newSocket) {
+            stream_set_blocking($newSocket, false);
             return new SocketConnection($newSocket);
-        } else {
-            usleep(1000);
         }
+    }
+
+    public function stop()
+    {
+//        socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        //stream_socket_close($this->socket);
+        $this->socket = null;
     }
 }

@@ -36,7 +36,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
-    const MAX_KEEP_ALIVE_REQUESTS = 100;
+    const MAX_KEEP_ALIVE_REQUESTS = 10;
 
     /** @var ConnectionInterface */
     protected $connection;
@@ -45,7 +45,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $requestPhase = self::REQUEST_PHASE_IDLE;
 
     /** @var int */
-    protected $bufferSize = 16384;
+    protected $bufferSize = 8192;
 
     /** @var callable */
     protected $errorHandler;
@@ -568,7 +568,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function restartKeepAliveTimer()
     {
-        $this->keepAliveTimer = 5;
+        $this->keepAliveTimer = 10;
 
         return $this;
     }

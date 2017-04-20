@@ -87,6 +87,8 @@ final class SocketEventSubscriber
 
         try {
             if (!$this->connection) {
+                $event->getProcess()->setWaiting();
+
                 if ($connection = $this->server->listen(1)) {
                     $event->getProcess()->setRunning(time());
                     $this->message->onOpen($connection);
@@ -97,18 +99,19 @@ final class SocketEventSubscriber
             if ($this->connection) {
                 if ($this->connection->isReadable()) {
                     if ($this->connection->select(1)) {
-                        $this->message->onMessage($this->connection, $this->connection->read());
+                        $data = $this->connection->read();
+                        if ($data !== false) {
+                            $this->message->onMessage($this->connection, $data);
+                        }
                     }
-
-
-                    $this->heartBeat();
                 }
 
-                $event->getProcess()->setWaiting();
                 if (!$this->connection->isReadable()) {
                     $this->connection = null;
                     return $this;
                 }
+
+                $this->heartBeat();
             }
         } catch (\Exception $exception) {
 
@@ -119,6 +122,8 @@ final class SocketEventSubscriber
         if ($exception) {
             if ($this->connection) {
                 $this->message->onError($this->connection, $exception);
+                $this->connection->close();
+                $this->connection = null;
             }
 
             $event->getProcess()->setWaiting();
@@ -133,10 +138,10 @@ final class SocketEventSubscriber
     {
         if ($this->connection->isReadable()) {
             $this->connection->close();
-            sleep(1);
-            trigger_error("EXITING");
             $this->connection = null;
         }
+
+        $this->server->stop();
     }
 
     /**
@@ -147,7 +152,7 @@ final class SocketEventSubscriber
         $now = time();
         if ($this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
-            $this->message->onHeartBeat($this->connection, []);
+            //$this->message->onHeartBeat($this->connection, []);
         }
 
         return $this;
