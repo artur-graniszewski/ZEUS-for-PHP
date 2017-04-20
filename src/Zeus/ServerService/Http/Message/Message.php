@@ -45,7 +45,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $requestPhase = self::REQUEST_PHASE_IDLE;
 
     /** @var int */
-    protected $bufferSize = 8192;
+    protected $bufferSize = 16384;
 
     /** @var callable */
     protected $errorHandler;
@@ -515,16 +515,16 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         $this->requestsFinished++;
-        if (!$this->request->getMetadata('isKeepAliveConnection')) {
+        if ($this->connection instanceof FlushableConnectionInterface) {
             $this->connection->flush();
+        }
+
+        if (!$this->request->getMetadata('isKeepAliveConnection')) {
             $this->onClose($connection);
 
             return $this;
         }
 
-        if ($this->connection instanceof FlushableConnectionInterface) {
-            $this->connection->flush();
-        }
         $this->keepAliveCount--;
         $this->initNewRequest();
         $this->restartKeepAliveTimer();
@@ -568,7 +568,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function restartKeepAliveTimer()
     {
-        $this->keepAliveTimer = 10;
+        $this->keepAliveTimer = 5;
 
         return $this;
     }

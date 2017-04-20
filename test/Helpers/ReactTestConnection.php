@@ -5,7 +5,7 @@ namespace ZeusTest\Helpers;
 use React\Stream\WritableStreamInterface;
 use Zeus\ServerService\Shared\React\ConnectionInterface;
 
-class TestConnection implements ConnectionInterface
+class ReactTestConnection implements ConnectionInterface
 {
     protected $dataSent = null;
 
@@ -171,7 +171,7 @@ class TestConnection implements ConnectionInterface
 
     /**
      * @param bool $isConnectionWritable
-     * @return TestConnection
+     * @return ReactTestConnection
      */
     public function setIsConnectionWritable($isConnectionWritable)
     {

@@ -6,7 +6,7 @@ use Opis\Closure\SerializableClosure;
 use PHPUnit_Framework_TestCase;
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\React\ConnectionInterface;
-use ZeusTest\Helpers\TestConnection;
+use ZeusTest\Helpers\ReactTestConnection;
 
 class AsyncMessageTest extends PHPUnit_Framework_TestCase
 {
@@ -18,7 +18,7 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->connection = new TestConnection();
+        $this->connection = new ReactTestConnection();
         $this->async = new Message();
         $this->async->onOpen($this->connection);
     }
