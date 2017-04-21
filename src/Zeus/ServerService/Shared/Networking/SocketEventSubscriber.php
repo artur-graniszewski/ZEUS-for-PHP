@@ -18,9 +18,6 @@ final class SocketEventSubscriber
     /** @var int */
     protected $lastTickTime = 0;
 
-    /** @var int */
-    protected $tickInterval = 1;
-
     /** @var MessageComponentInterface */
     protected $message;
 
@@ -32,26 +29,6 @@ final class SocketEventSubscriber
         $this->server = $server;
         $this->message = $message;
     }
-
-    /**
-     * @param int $tickInterval
-     * @return $this
-     */
-    public function setHeartBeatInterval($tickInterval)
-    {
-        $this->tickInterval = $tickInterval;
-
-        return $this;
-    }
-
-    /**
-     * @return int
-     */
-    public function getHeartBeatInterval()
-    {
-        return $this->tickInterval;
-    }
-
 
     /**
      * @param EventManagerInterface $events
