@@ -219,7 +219,6 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
             $this->assertEquals(0, strlen($received), 'Data should be stored in buffer if its not full');
         } else {
             $time = time();
-            $received = '';
             do {
                 $read = stream_get_contents($client);
                 $received .= $read;
