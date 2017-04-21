@@ -80,7 +80,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $read = @stream_get_contents($client);
         $eof = feof($client);
         $this->assertEquals("", $read, 'Stream should not contain any message');
-        $this->assertEquals(true, $eof, 'Client stream should not be readable when connected');
+        $this->assertEquals(true, $eof, 'Client stream should not be readable when disconnected');
         $this->assertFalse($connection->isReadable(), 'Stream should not be readable when connected');
         $this->assertFalse($connection->isWritable(), 'Stream should not be writable when connected');
         fclose($client);

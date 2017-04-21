@@ -5,7 +5,7 @@ namespace ZeusTest\Helpers;
 use Zeus\ServerService\Shared\React\ConnectionInterface;
 use Zeus\ServerService\Shared\React\MessageComponentInterface;
 
-class TestMessage implements MessageComponentInterface
+class ReactTestMessage implements MessageComponentInterface
 {
     protected $callback;
 
