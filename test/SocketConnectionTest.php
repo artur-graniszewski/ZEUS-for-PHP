@@ -97,7 +97,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $connection = $this->server->listen(1);
         $this->assertInstanceOf(SocketConnection::class, $connection);
         $connection->end($dataToSend);
-        $read = @stream_get_contents($client);
+        $read = stream_socket_recvfrom($client, strlen($dataToSend));
         $this->assertEquals($dataToSend, $read, 'Stream should contain ending message');
         fclose($client);
     }

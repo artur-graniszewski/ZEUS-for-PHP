@@ -15,7 +15,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
     protected $stream;
 
-    protected $data;
+    protected $data = '';
 
     protected $writeBufferSize = self::DEFAULT_WRITE_BUFFER_SIZE;
 
@@ -31,12 +31,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
         stream_set_blocking($this->stream, 0);
 
-        if (function_exists('stream_set_read_buffer')) {
-            stream_set_read_buffer($this->stream, 0);
-            stream_set_write_buffer($this->stream, 0);
+        if (function_exists('stream_set_chunk_size')) {
+            stream_set_chunk_size($this->stream, 1);
         }
-        /*
-        stream_set_blocking($stream, false);
+
         if (function_exists('stream_set_read_buffer')) {
             stream_set_read_buffer($this->stream, 0);
         }
@@ -44,9 +42,6 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         if (function_exists('stream_set_write_buffer')) {
             stream_set_write_buffer($this->stream, 0);
         }
-
-        stream_set_chunk_size($this->stream, 1);
-        */
     }
 
     /**
@@ -58,20 +53,24 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
     }
 
     /**
-     * Returns the remote address (client IP) where this connection has been established from
-     *
-     * @return string|null remote address (client IP) or null if unknown
+     * @return string|null Remote address (client IP) or null if unknown
      */
     public function getRemoteAddress()
     {
         return @stream_socket_get_name($this->stream, true);
     }
 
+    /**
+     * @return bool
+     */
     public function isReadable()
     {
         return $this->isReadable;
     }
 
+    /**
+     * @return $this
+     */
     public function close()
     {
         if ($this->isClosing) {
@@ -100,16 +99,22 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     protected function isEof()
     {
-        $info = stream_get_meta_data($this->stream);
+        $info = @stream_get_meta_data($this->stream);
 
         return $info['eof'] || $info['timed_out'];
     }
 
+    /**
+     * @return bool
+     */
     public function isWritable()
     {
         return $this->isWritable;
     }
 
+    /**
+     * @return bool|string
+     */
     public function read()
     {
         if (!$this->isReadable()) {
@@ -207,9 +212,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $sent = 0;
 
         while ($sent !== $size) {
-            $wrote = @stream_socket_sendto($this->stream, $data);
+
+            $wrote = defined("HHVM_VERSION") ? @fwrite($this->stream, $data) : @stream_socket_sendto($this->stream, $data);
             fflush($this->stream);
-            if ($wrote < 0) {
+            if ($wrote < 0 || false === $wrote || $this->isEof()) {
                 $this->isWritable = false;
                 $this->isReadable = false;// remove this?
 //                throw new \LogicException("Write to stream failed");
@@ -218,9 +224,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
             }
 
             $sent += $wrote;
-            $data = substr($data, $wrote);
+            if ($wrote) {
+                $data = substr($data, $wrote);
+            }
         };
-
 
         $this->data = '';
 
