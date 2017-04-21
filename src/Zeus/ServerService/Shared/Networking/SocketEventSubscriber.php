@@ -81,6 +81,8 @@ final class SocketEventSubscriber
                         if ($data !== false && $data !== '') {
                             $this->message->onMessage($this->connection, $data);
                         }
+
+                        $this->heartBeat();
                     } while ($data !== false && $this->connection && $this->connection->isReadable());
                 }
 
@@ -128,7 +130,7 @@ final class SocketEventSubscriber
     public function heartBeat()
     {
         $now = time();
-        if ($this->lastTickTime !== $now) {
+        if ($this->connection && $this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
             if ($this->message instanceof HeartBeatMessageInterface) {
                 $this->message->onHeartBeat($this->connection, []);

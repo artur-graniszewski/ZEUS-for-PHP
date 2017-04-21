@@ -4,14 +4,20 @@ namespace ZeusTest\Helpers;
 
 use Zeus\ServerService\Shared\Networking\ConnectionInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 
-class SocketTestMessage implements MessageComponentInterface
+class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageInterface
 {
-    protected $callback;
+    protected $readCallback;
+    /**
+     * @var
+     */
+    private $heartBeatCallback;
 
-    public function __construct($callback)
+    public function __construct($readCallback, $heartBeatCallback = null)
     {
-        $this->callback = $callback;
+        $this->readCallback = $readCallback;
+        $this->heartBeatCallback = $heartBeatCallback;
     }
 
     /**
@@ -49,6 +55,13 @@ class SocketTestMessage implements MessageComponentInterface
      */
     function onMessage(ConnectionInterface $connection, $message)
     {
-        call_user_func($this->callback, $connection, $message);
+        call_user_func($this->readCallback, $connection, $message);
+    }
+
+    public function onHeartBeat(ConnectionInterface $connection, $data = null)
+    {
+        $callback = $this->heartBeatCallback ? $this->heartBeatCallback : function() {};
+
+        $callback($connection, $data);
     }
 }

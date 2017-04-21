@@ -44,9 +44,16 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $process->setEventManager($events);
 
         $received = null;
-        $message = new SocketTestMessage(function($connection, $data) use (&$received) {
+        $steps = 0;
+        $message = new SocketTestMessage(function($connection, $data) use (&$received, &$steps) {
             $received = $data;
-            $connection->close();
+            $steps ++;
+        }, function($connection) use (& $heartBeats) {
+            $heartBeats++;
+
+            if ($heartBeats == 2) {
+                $connection->close();
+            }
         });
         $eventSubscriber = new SocketEventSubscriber($this->server, $message);
         $eventSubscriber->attach($events);
@@ -62,9 +69,16 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
 
         $event->setName(SchedulerEvent::EVENT_PROCESS_LOOP);
         $events->triggerEvent($event);
+        $events->triggerEvent($event);
 
         fclose($client);
+
+        $event->setName(SchedulerEvent::EVENT_PROCESS_EXIT);
+        $events->triggerEvent($event);
+
         $this->assertEquals($requestString, $received);
+        $this->assertEquals(1, $steps, "Message should be fetched twice");
+        $this->assertEquals(2, $heartBeats, "Heartbeat should be called twice");
     }
 
     public function testSubscriberErrorHandling()
