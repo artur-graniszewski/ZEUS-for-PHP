@@ -54,7 +54,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf(SocketConnection::class, $connection);
 
         $this->assertTrue($connection->isReadable(), 'Stream should be readable when connected');
-        $this->assertTrue($connection->isReadable(), 'Stream should be writable when connected');
+        $this->assertTrue($connection->isWritable(), 'Stream should be writable when connected');
         fclose($client);
     }
 
@@ -82,7 +82,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("", $read, 'Stream should not contain any message');
         $this->assertEquals(true, $eof, 'Client stream should not be readable when connected');
         $this->assertFalse($connection->isReadable(), 'Stream should not be readable when connected');
-        $this->assertFalse($connection->isReadable(), 'Stream should not be writable when connected');
+        $this->assertFalse($connection->isWritable(), 'Stream should not be writable when connected');
         fclose($client);
     }
 
@@ -161,7 +161,6 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
 
         $chunks = str_split($dataToSend, 8192);
         $received = '';
@@ -188,7 +187,6 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
         $received = '';
         $time = time();
         $connection->write($dataToSend);
@@ -200,6 +198,41 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals($dataToSend, $received, 'Server should get the same message as sent by the client');
         fclose($client);
+    }
+
+    public function testServerReadWhenDisconnected()
+    {
+        $client = stream_socket_client('tcp://localhost:' . $this->port);
+        stream_set_blocking($client, true);
+        $connection = $this->server->listen(1);
+        fclose($client);
+        $connection->read();
+        $this->assertFalse($connection->isReadable(), 'Stream should not be readable when disconnected');
+        $this->assertFalse($connection->isWritable(), 'Stream should not be writable when disconnected');
+    }
+
+    /**
+     * @expectedException \LogicException
+     * @expectedExceptionMessage Stream is not readable
+     */
+    public function testServerSelectThrowsExceptionWhenDisconnected()
+    {
+        $client = stream_socket_client('tcp://localhost:' . $this->port);
+        stream_set_blocking($client, true);
+        $connection = $this->server->listen(1);
+        fclose($client);
+        $connection->read();
+        $connection->select(1);
+    }
+
+    public function testServerSelectReturnsTrueWhenDisconnected()
+    {
+        $client = stream_socket_client('tcp://localhost:' . $this->port);
+        stream_set_blocking($client, true);
+        $connection = $this->server->listen(1);
+        fclose($client);
+        $result = $connection->select(1);
+        $this->assertTrue($result, 'Select should report stream as readable until read is performed on disconnected client');
     }
 
     /**
