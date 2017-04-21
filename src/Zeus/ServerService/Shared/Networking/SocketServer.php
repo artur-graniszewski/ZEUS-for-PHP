@@ -37,8 +37,8 @@ class SocketServer
 
     public function stop()
     {
-//        socket_shutdown($this->socket, STREAM_SHUT_RDWR);
-        //stream_socket_close($this->socket);
+        stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        fclose($this->socket);
         $this->socket = null;
     }
 }

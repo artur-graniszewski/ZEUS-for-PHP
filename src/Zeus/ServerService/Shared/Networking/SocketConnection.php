@@ -2,10 +2,11 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-use React\Stream\WritableStreamInterface;
-
 class SocketConnection implements ConnectionInterface, FlushableConnectionInterface
 {
+    const DEFAULT_WRITE_BUFFER_SIZE = 65536;
+    const DEFAULT_READ_BUFFER_SIZE = 8192;
+
     protected $isWritable = true;
 
     protected $isReadable = true;
@@ -16,8 +17,14 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
     protected $data;
 
-    protected $bufferSize = 81920;
+    protected $writeBufferSize = self::DEFAULT_WRITE_BUFFER_SIZE;
 
+    protected $readBufferSize = self::DEFAULT_READ_BUFFER_SIZE;
+
+    /**
+     * SocketConnection constructor.
+     * @param resource $stream
+     */
     public function __construct($stream)
     {
         $this->stream = $stream;
@@ -42,9 +49,12 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         */
     }
 
+    /**
+     * @return string|null Server address (IP) or null if unknown
+     */
     public function getServerAddress()
     {
-        return '127.0.0.1'; //@stream_socket_get_name($this->stream, false);
+        return @stream_socket_get_name($this->stream, false);
     }
 
     /**
@@ -54,57 +64,12 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function getRemoteAddress()
     {
-        return '127.0.0.1'; //@stream_socket_get_name($this->stream, true);
-    }
-
-    public function on($event, callable $listener)
-    {
-        // TODO: Implement on() method.
-    }
-
-    public function once($event, callable $listener)
-    {
-        // TODO: Implement once() method.
-    }
-
-    public function removeListener($event, callable $listener)
-    {
-        // TODO: Implement removeListener() method.
-    }
-
-    public function removeAllListeners($event = null)
-    {
-        // TODO: Implement removeAllListeners() method.
-    }
-
-    public function listeners($event)
-    {
-        // TODO: Implement listeners() method.
-    }
-
-    public function emit($event, array $arguments = [])
-    {
-        // TODO: Implement emit() method.
+        return @stream_socket_get_name($this->stream, true);
     }
 
     public function isReadable()
     {
         return $this->isReadable;
-    }
-
-    public function pause()
-    {
-        // TODO: Implement pause() method.
-    }
-
-    public function resume()
-    {
-        // TODO: Implement resume() method.
-    }
-
-    public function pipe(WritableStreamInterface $dest, array $options = array())
-    {
-        // TODO: Implement pipe() method.
     }
 
     public function close()
@@ -123,7 +88,6 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
         stream_set_blocking($this->stream, true);
         stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
-//        stream_set_blocking($this->stream, false);
         fclose($this->stream);
 
         $this->stream = null;
@@ -153,21 +117,21 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         }
 
         $error = null;
-        set_error_handler(function ($errno, $errstr, $errfile, $errline) use (&$error) {
+        set_error_handler(function ($errorNumber, $errorMessage, $errorFile, $errorLine) use (&$error) {
             $error = new \ErrorException(
-                $errstr,
+                $errorMessage,
                 0,
-                $errno,
-                $errfile,
-                $errline
+                $errorNumber,
+                $errorFile,
+                $errorLine
             );
         });
 
-        $data = stream_get_contents($this->stream, $this->bufferSize);
+        $data = stream_get_contents($this->stream, $this->readBufferSize);
 
         restore_error_handler();
 
-        if ($error !== null || $this->isEof()) {
+        if ($error !== null || $data === false || $this->isEof()) {
             $this->close();
 
             return false;
@@ -198,13 +162,16 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         return $result === 1;
     }
 
+    /**
+     * @param string $data
+     * @return $this
+     */
     public function write($data)
     {
         if (!$this->isClosing) {
             $this->data .= $data;
 
-            //$this->doWrite();
-            if (isset($this->data[$this->bufferSize])) {
+            if (isset($this->data[$this->writeBufferSize])) {
                 $this->doWrite();
             }
         }
@@ -212,6 +179,9 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     public function flush()
     {
         if (!$this->isClosing) {
@@ -221,6 +191,9 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     protected function doWrite()
     {
         $data = $this->data;
@@ -254,6 +227,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         return $this;
     }
 
+    /**
+     * @param string $data
+     * @return $this
+     */
     public function end($data = null)
     {
         if ($this->isWritable()) {

@@ -142,7 +142,7 @@ final class SocketEventSubscriber
             $this->connection = null;
         }
 
-        $this->server->stop();
+        unset($this->server);
     }
 
     /**
@@ -153,7 +153,9 @@ final class SocketEventSubscriber
         $now = time();
         if ($this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
-            //$this->message->onHeartBeat($this->connection, []);
+            if ($this->message instanceof HeartBeatMessageInterface) {
+                $this->message->onHeartBeat($this->connection, []);
+            }
         }
 
         return $this;
