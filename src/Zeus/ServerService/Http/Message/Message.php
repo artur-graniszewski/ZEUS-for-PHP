@@ -277,7 +277,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         ob_end_flush();
 
         if ($exception) {
-            throw $exception;
+            $this->onError($connection, $exception);
         }
 
         return $this;

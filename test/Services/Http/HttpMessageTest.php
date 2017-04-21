@@ -109,6 +109,31 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
     }
 
+    public function testExceptionHandlingKeepsConnectionOpen()
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new SocketTestConnection(null);
+        $httpAdapter = $this->getHttpMessageParser(function() {throw new \Exception("TEST EXCEPTION");}, null, $testConnection);
+        try {
+            $httpAdapter->onMessage($testConnection, $message);
+        } catch (\Exception $ex) {
+
+        }
+        $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
+    }
+
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage TEST EXCEPTION
+     */
+    public function testExceptionHandling()
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new SocketTestConnection(null);
+        $httpAdapter = $this->getHttpMessageParser(function() {throw new \Exception("TEST EXCEPTION");}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
+    }
+
     public function testIfHttp11ConnectionIsClosedAfterTimeout()
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
