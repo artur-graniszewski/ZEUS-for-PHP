@@ -1,5 +1,15 @@
 # Changelog
 
+## Version 1.7.0
+- [Feature] New low level, high-speed ZEUS socket server implementation usable by any network-enabled Server Service
+- [Improvement] Removed ReactPHP library from ZEUS Web Server and replaced it with ZEUS socket server implementation
+- [Improvement] ZEUS Web Server throughput increased by 30% when serving small files (serving more than 24000 requests per second on a reference test server)
+- [Improvement] ZEUS Web Server performance increased by up to 300% for large files (now reaching transfers up to 3 Gigabytes per second)
+- [Improvement] Improved streaming support in ZEUS Web Server: memory footprint reduced considerably when handling large files
+- [Improvement] For performance reasons ZEUS Web Server will not GZIP already compressed content, nor files smaller than 4KB
+- [Improvement] ZEUS Web Server is now able to GZIP response streams of infinite size
+- [Improvement] Minor documentation and README improvements
+
 ## Version 1.6.7
 - [Fix] Documentation fix in README.md file regarding incorrect terminal command used to start Async Server Service
 - [Improvement] Minor documentation and README improvements

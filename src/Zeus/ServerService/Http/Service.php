@@ -12,10 +12,9 @@ use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
-use Zeus\ServerService\Shared\AbstractReactServerService;
-use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\ServerService\Shared\AbstractSocketServerService;
 
-class Service extends AbstractReactServerService
+class Service extends AbstractSocketServerService
 {
     /** @var Process */
     protected $process;
