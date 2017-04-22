@@ -37,8 +37,8 @@ final class SocketEventSubscriber
     public function attach(EventManagerInterface $events)
     {
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onTaskLoop']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, [$this, 'onTaskExit']);
+        $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
+        $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit']);
 
         return $this;
     }
@@ -56,9 +56,8 @@ final class SocketEventSubscriber
 
     /**
      * @param SchedulerEvent $event
-     * @return $this
      */
-    public function onTaskLoop(SchedulerEvent $event)
+    public function onProcessLoop(SchedulerEvent $event)
     {
         $exception = null;
 
@@ -73,26 +72,24 @@ final class SocketEventSubscriber
                 }
             }
 
-            if ($this->connection) {
-                if ($this->connection->isReadable()) {
-                    do {
-                    //if ($this->connection->select(1)) {
-                        $data = $this->connection->read();
-                        if ($data !== false && $data !== '') {
-                            $this->message->onMessage($this->connection, $data);
-                        }
-
-                        $this->heartBeat();
-                    } while ($data !== false && $this->connection && $this->connection->isReadable());
-                }
-
-                if (!$this->connection || !$this->connection->isReadable()) {
-                    $this->connection = null;
-                    return $this;
-                }
-
-                $this->heartBeat();
+            if (!$this->connection || !$this->connection->isReadable()) {
+                $this->connection = null;
+                return;
             }
+
+            if ($this->connection->isReadable()) {
+                do {
+                    $data = $this->connection->read();
+                    if ($data !== false && $data !== '') {
+                        $this->message->onMessage($this->connection, $data);
+                    }
+
+                    $this->onHeartBeat();
+                } while ($data !== false && $this->connection && $this->connection->isReadable());
+            }
+
+            $this->onHeartBeat();
+
         } catch (\Exception $exception) {
 
         } catch (\Throwable $exception) {
@@ -111,10 +108,10 @@ final class SocketEventSubscriber
             throw $exception;
         }
 
-        return $this;
+        return;
     }
 
-    public function onTaskExit()
+    public function onProcessExit()
     {
         if ($this->connection && $this->connection->isReadable()) {
             $this->connection->close();
@@ -127,7 +124,7 @@ final class SocketEventSubscriber
     /**
      * @return $this
      */
-    public function heartBeat()
+    public function onHeartBeat()
     {
         $now = time();
         if ($this->connection && $this->lastTickTime !== $now) {

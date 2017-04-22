@@ -121,7 +121,12 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
             throw new \LogicException("Stream is not readable");
         }
 
+        if (!$this->select(1)) {
+            return false;
+        }
+
         $error = null;
+        /*
         set_error_handler(function ($errorNumber, $errorMessage, $errorFile, $errorLine) use (&$error) {
             $error = new \ErrorException(
                 $errorMessage,
@@ -132,9 +137,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
             );
         });
 
+        */
         $data = stream_get_contents($this->stream, $this->readBufferSize);
 
-        restore_error_handler();
+        //restore_error_handler();
 
         if ($error !== null || $data === false || $this->isEof()) {
             $this->close();
@@ -211,14 +217,18 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $size = strlen($data);
         $sent = 0;
 
+        $read = $except = [];
+        $write = [$this->stream];
         while ($sent !== $size) {
+            $amount = stream_select($read, $write, $except, 1);
+            $wrote = 0;
+            if ($amount === 1) {
+                $wrote = defined("HHVM_VERSION") ? @fwrite($this->stream, $data) : @stream_socket_sendto($this->stream, $data);
+            }
 
-            $wrote = defined("HHVM_VERSION") ? @fwrite($this->stream, $data) : @stream_socket_sendto($this->stream, $data);
-            fflush($this->stream);
-            if ($wrote < 0 || false === $wrote || $this->isEof()) {
+            if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
                 $this->isWritable = false;
                 $this->isReadable = false;// remove this?
-//                throw new \LogicException("Write to stream failed");
                 $this->close();
                 break;
             }

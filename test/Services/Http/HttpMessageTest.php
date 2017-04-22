@@ -250,9 +250,9 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
         $rawResponse = Response::fromString($testConnection->getSentData());
 
-        if (strlen($responseBody) >= 8192) {
-            $this->assertEquals('deflate', $rawResponse->getHeaders()->get('Content-Encoding')->getFieldValue());
-            $this->assertLessThan(strlen($responseBody), $rawResponse->getHeaders()->get('Content-Length')->getFieldValue());
+        if (strlen($responseBody) >= 4096 && function_exists('deflate_init')) {
+            $this->assertEquals('gzip', $rawResponse->getHeaders()->get('Content-Encoding')->getFieldValue());
+            $this->assertFalse($rawResponse->getHeaders()->has('Content-Length'));
         } else {
             $this->assertFalse($rawResponse->getHeaders()->has('Content-Encoding'));
         }

@@ -119,7 +119,7 @@ final class SharedMemoryAdapter implements
         $exists = shm_has_var($this->ipc[$channelNumber], $index);
         if ($exists) {
             sem_release($this->semaphores[$channelNumber]);
-            throw new \RuntimeException(sprintf('Message queue on channel %d', $channelNumber));
+            throw new \RuntimeException(sprintf('Message queue on channel %d is full', $channelNumber));
         }
 
         function_exists('error_clear_last') ? error_clear_last() : @trigger_error("", E_USER_NOTICE);

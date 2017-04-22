@@ -6,7 +6,7 @@ use Athletic\AthleticEvent;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
-use ZeusTest\Helpers\ReactTestConnection;
+use ZeusTest\Helpers\SocketTestConnection;
 
 class HttpMessageBenchmark extends AthleticEvent
 {
@@ -30,7 +30,7 @@ class HttpMessageBenchmark extends AthleticEvent
 
     public function setUp()
     {
-        $this->connection = new ReactTestConnection();
+        $this->connection = new SocketTestConnection(null);
         $this->message = new Message(function(Request $request) {
             switch ($request->getUri()->getPath()) {
                 case '/large.txt':
