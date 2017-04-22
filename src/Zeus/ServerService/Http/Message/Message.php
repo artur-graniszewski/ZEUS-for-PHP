@@ -2,7 +2,6 @@
 
 namespace Zeus\ServerService\Http\Message;
 
-use React\Stream\Buffer;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
@@ -14,7 +13,6 @@ use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use Zeus\ServerService\Shared\Networking\ConnectionInterface;
 use Zend\Http\Header\Connection;
 use Zend\Http\Header\ContentEncoding;
-use Zend\Http\Header\ContentLength;
 use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Header\Vary;
 use Zend\Http\Response\Stream as Response;
@@ -364,7 +362,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected function sendHeaders(& $buffer)
     {
         $connection = $this->connection;
-
         $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         $response = $this->response;
         $request = $this->request;
@@ -457,12 +454,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         if (!$this->headersSent) {
             $this->sendHeaders($buffer);
-
-            if (!$this->isBodyAllowedInResponse($this->request)) {
-                $this->requestPhase = static::REQUEST_PHASE_SENDING;
-                $this->finalizeRequest();
-                return '';
-            }
         }
 
         $stream = $this->response->getStream();

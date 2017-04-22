@@ -45,23 +45,23 @@ Document Path:          /apigility-ui/img/ag-hero.png
 Document Length:        0 bytes
 
 Concurrency Level:      16
-Time taken for tests:   2.515 seconds
-Complete requests:      50000
+Time taken for tests:   20.134 seconds
+Complete requests:      500000
 Failed requests:        0
-Keep-Alive requests:    49513
-Total transferred:      6942208 bytes
+Keep-Alive requests:    495061
+Total transferred:      69420976 bytes
 HTML transferred:       0 bytes
-Requests per second:    19883.55 [#/sec] (mean)
-Time per request:       0.805 [ms] (mean)
-Time per request:       0.050 [ms] (mean, across all concurrent requests)
-Transfer rate:          2696.01 [Kbytes/sec] received
+Requests per second:    24833.87 [#/sec] (mean)
+Time per request:       0.644 [ms] (mean)
+Time per request:       0.040 [ms] (mean, across all concurrent requests)
+Transfer rate:          3367.17 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
-Connect:        0    0   0.0      0       1
-Processing:     0    1   1.2      1      70
-Waiting:        0    1   1.2      1      70
-Total:          0    1   1.2      1      70
+Connect:        0    0   0.0      0       2
+Processing:     0    1   0.8      1      34
+Waiting:        0    1   0.8      1      34
+Total:          0    1   0.8      1      34
 
 Percentage of the requests served within a certain time (ms)
   50%      1
@@ -69,13 +69,13 @@ Percentage of the requests served within a certain time (ms)
   75%      1
   80%      1
   90%      1
-  95%      2
-  98%      3
-  99%      4
- 100%     70 (longest request)
+  95%      1
+  98%      2
+  99%      3
+ 100%     34 (longest request)
 ```
 
-In this test, ZEUS Web Server served over **19883** requests per second.
+In this test, ZEUS Web Server served over **24833** requests per second.
 
 ## Bandwidth test
 
@@ -121,37 +121,37 @@ Document Path:          /test.file.txt
 Document Length:        1048576 bytes
 
 Concurrency Level:      16
-Time taken for tests:   51.878 seconds
+Time taken for tests:   16.564 seconds
 Complete requests:      50000
 Failed requests:        0
-Keep-Alive requests:    49513
-Total transferred:      52435892208 bytes
+Keep-Alive requests:    49514
+Total transferred:      52435892224 bytes
 HTML transferred:       52428800000 bytes
-Requests per second:    963.80 [#/sec] (mean)
-Time per request:       16.601 [ms] (mean)
-Time per request:       1.038 [ms] (mean, across all concurrent requests)
-Transfer rate:          987060.80 [Kbytes/sec] received
+Requests per second:    3018.60 [#/sec] (mean)
+Time per request:       5.300 [ms] (mean)
+Time per request:       0.331 [ms] (mean, across all concurrent requests)
+Transfer rate:          3091460.25 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
 Connect:        0    0   0.0      0       1
-Processing:     1   17   5.5     16     419
-Waiting:        1    5   4.9      4     403
-Total:          1   17   5.5     16     419
+Processing:     1    5  10.8      2      63
+Waiting:        0    0   0.9      0      33
+Total:          1    5  10.8      2      63
 
 Percentage of the requests served within a certain time (ms)
-  50%     16
-  66%     17
-  75%     17
-  80%     18
-  90%     20
-  95%     23
-  98%     30
-  99%     35
- 100%    419 (longest request)
+  50%      2
+  66%      2
+  75%      3
+  80%      3
+  90%      6
+  95%     40
+  98%     43
+  99%     44
+ 100%     63 (longest request)
 ```
 
-In this test setup, ZEUS Web Server sent *50* gigabytes of data, achieving a speed of around **980** megabytes, or **8085** megabits (8 Gbits) per second.
+In this test setup, ZEUS Web Server sent *50* gigabytes of data, achieving a speed of around **3** gigabytes, or **24152** megabits (23 Gbits) per second.
 
 # Athletic tests
 
