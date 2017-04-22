@@ -2,10 +2,10 @@
 
 namespace ZeusTest\Helpers;
 
-use React\Stream\WritableStreamInterface;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
+use Zeus\ServerService\Shared\Networking\ConnectionInterface;
+use Zeus\ServerService\Shared\Networking\FlushableConnectionInterface;
 
-class TestConnection implements ConnectionInterface
+class SocketTestConnection implements ConnectionInterface, FlushableConnectionInterface
 {
     protected $dataSent = null;
 
@@ -109,54 +109,9 @@ class TestConnection implements ConnectionInterface
         return $this->isConnectionClosed;
     }
 
-    public function on($event, callable $listener)
-    {
-        // TODO: Implement on() method.
-    }
-
-    public function once($event, callable $listener)
-    {
-        // TODO: Implement once() method.
-    }
-
-    public function removeListener($event, callable $listener)
-    {
-        // TODO: Implement removeListener() method.
-    }
-
-    public function removeAllListeners($event = null)
-    {
-        // TODO: Implement removeAllListeners() method.
-    }
-
-    public function listeners($event)
-    {
-        // TODO: Implement listeners() method.
-    }
-
-    public function emit($event, array $arguments = [])
-    {
-        // TODO: Implement emit() method.
-    }
-
     public function isReadable()
     {
         // TODO: Implement isReadable() method.
-    }
-
-    public function pause()
-    {
-        // TODO: Implement pause() method.
-    }
-
-    public function resume()
-    {
-        // TODO: Implement resume() method.
-    }
-
-    public function pipe(WritableStreamInterface $dest, array $options = array())
-    {
-        // TODO: Implement pipe() method.
     }
 
     public function close()
@@ -171,12 +126,36 @@ class TestConnection implements ConnectionInterface
 
     /**
      * @param bool $isConnectionWritable
-     * @return TestConnection
+     * @return ReactTestConnection
      */
     public function setIsConnectionWritable($isConnectionWritable)
     {
         $this->isConnectionWritable = $isConnectionWritable;
 
         return $this;
+    }
+
+    public function __construct($stream)
+    {
+
+    }
+
+    public function read()
+    {
+        // TODO: Implement read() method.
+    }
+
+    /**
+     * @param int $timeout
+     * @return bool
+     */
+    public function select($timeout)
+    {
+        // TODO: Implement select() method.
+    }
+
+    public function flush()
+    {
+        // TODO: Implement flush() method.
     }
 }

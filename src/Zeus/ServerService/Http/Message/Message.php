@@ -2,19 +2,17 @@
 
 namespace Zeus\ServerService\Http\Message;
 
-use React\Stream\Buffer;
-use Zend\Http\Headers;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
 use Zeus\ServerService\Http\Message\Helper\RegularEncoding;
 use Zeus\ServerService\Http\Message\Helper\FileUpload;
-use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
-use Zeus\ServerService\Shared\React\MessageComponentInterface;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
+use Zeus\ServerService\Shared\Networking\FlushableConnectionInterface;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
+use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
+use Zeus\ServerService\Shared\Networking\ConnectionInterface;
 use Zend\Http\Header\Connection;
 use Zend\Http\Header\ContentEncoding;
-use Zend\Http\Header\ContentLength;
 use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Header\Vary;
 use Zend\Http\Response\Stream as Response;
@@ -36,6 +34,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
+    const MAX_KEEP_ALIVE_REQUESTS = 100;
 
     /** @var ConnectionInterface */
     protected $connection;
@@ -44,7 +43,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $requestPhase = self::REQUEST_PHASE_IDLE;
 
     /** @var int */
-    protected $bufferSize = 16384;
+    protected $bufferSize = 8192;
 
     /** @var callable */
     protected $errorHandler;
@@ -90,6 +89,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /** @var int */
     protected $posInRequestBody = 0;
+
+    protected $compressionHandler = null;
 
     /**
      * @var callable
@@ -276,7 +277,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         ob_end_flush();
 
         if ($exception) {
-            throw $exception;
+            $this->onError($connection, $exception);
         }
 
         return $this;
@@ -294,6 +295,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->bodyReceived = false;
         $this->requestComplete = false;
         $this->posInRequestBody = 0;
+        $this->compressionHandler = null;
         $this->deleteTemporaryFiles();
 
         return $this;
@@ -360,21 +362,16 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected function sendHeaders(& $buffer)
     {
         $connection = $this->connection;
-        $isChunkedResponse = false;
-
         $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
-        $this->headersSent = true;
         $response = $this->response;
         $request = $this->request;
         $responseHeaders = $response->getHeaders();
 
-        $isChunkedResponse = !$responseHeaders->has('Content-Length');
+        $isChunkedResponse = $this->enableCompressionIfSupported($buffer) || !$responseHeaders->has('Content-Length');
 
         if ($responseHeaders->has('Transfer-Encoding')) {
             $responseHeaders->removeHeader(new TransferEncoding());
         }
-
-        $this->enableCompressionIfSupported($buffer);
 
         if ($isChunkedResponse) {
             if ($this->request->getVersion() === Request::VERSION_10) {
@@ -394,6 +391,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             "Date: " . gmdate('D, d M Y H:i:s') . " GMT\r\n" .
             "\r\n");
 
+        $this->headersSent = true;
+
         return $this;
     }
 
@@ -403,24 +402,44 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function enableCompressionIfSupported(& $buffer)
     {
-        $responseHeaders = $this->response->getHeaders();
+        $this->compressionHandler = null;
 
-        if ($this->requestPhase !== static::REQUEST_PHASE_SENDING || !isset($buffer[8192]) || !$this->isBodyAllowedInResponse($this->request)) {
+        if (!function_exists('deflate_init') || !$this->isBodyAllowedInResponse($this->request)) {
             return false;
         }
 
+        $responseHeaders = $this->response->getHeaders();
         $acceptEncoding = $this->request->getHeaderOverview('Accept-Encoding', true);
         $encodingsArray = $acceptEncoding ? explode(",", str_replace(' ', '', $acceptEncoding)) : [];
 
-        if (!in_array('deflate', $encodingsArray)) {
+        if (!in_array('gzip', $encodingsArray)) {
             return false;
         }
 
-        $buffer = gzcompress($buffer, 1);
-        $responseHeaders->addHeader(new ContentEncoding('deflate'));
+        // don't compress already compressed data...
+        $fileType = $responseHeaders->has("Content-Type") ?
+            str_replace("/", ".", $responseHeaders->get("Content-Type")->getFieldValue()) : $this->request->getUri()->getPath();
+
+        if (preg_match('~\.(?:gif|jpe?g|ico|png|exe|t?gz|zip|bz2|sit|rar|pdf)$~', $fileType)) {
+            return false;
+        }
+
+        $sizeHeader = $responseHeaders->get("Content-Length");
+        if ($sizeHeader) {
+            $size = $sizeHeader->getFieldValue();
+            if ($size < 4096) {
+                return false;
+            }
+            $responseHeaders->removeHeader($sizeHeader);
+        }
+
+        if (!$sizeHeader && !isset($buffer[4096])) {
+            return false;
+        }
+
+        $this->compressionHandler = deflate_init(ZLIB_ENCODING_GZIP);
+        $responseHeaders->addHeader(new ContentEncoding('gzip'));
         $responseHeaders->addHeader(new Vary('Accept'));
-        $responseHeaders->removeHeader(new ContentLength());
-        $responseHeaders->addHeader(new ContentLength(strlen($buffer)));
 
         return true;
     }
@@ -454,9 +473,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             while (!feof($stream)) {
                 $data = fread($stream, $this->bufferSize);
                 $this->sendBody($connection, $data);
-                /** @var Buffer $buffer */
-                //$buffer = $connection->getBuffer();
-                //$buffer->handleWrite();
             }
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
         }
@@ -480,6 +496,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
 
             if ($isChunkedResponse) {
+                if ($this->compressionHandler) {
+                    //$buffer = gzcompress($buffer, 1);
+                    $buffer = deflate_add($this->compressionHandler, $buffer, $this->requestPhase === static::REQUEST_PHASE_SENDING ? ZLIB_FINISH : ZLIB_NO_FLUSH);
+                }
+
                 $bufferSize = strlen($buffer);
                 if ($bufferSize > 0) {
                     $buffer = sprintf("%s\r\n%s\r\n", dechex($bufferSize), $buffer);
@@ -497,24 +518,29 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         if ($this->requestPhase === static::REQUEST_PHASE_SENDING) {
-            return $this->finalizeRequest($connection);
+            return $this->finalizeRequest();
         }
 
         return $this;
     }
 
     /**
-     * @param ConnectionInterface $connection
      * @return $this
      */
-    protected function finalizeRequest(ConnectionInterface $connection)
+    protected function finalizeRequest()
     {
+        $connection = $this->connection;
+
         if (is_callable($this->responseHandler)) {
             $callback = $this->responseHandler;
             $callback($this->request, $this->response);
         }
 
         $this->requestsFinished++;
+        if ($this->connection instanceof FlushableConnectionInterface) {
+            $this->connection->flush();
+        }
+
         if (!$this->request->getMetadata('isKeepAliveConnection')) {
             $this->onClose($connection);
 
@@ -553,7 +579,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function restartKeepAliveCounter()
     {
-        $this->keepAliveCount = 100;
+        $this->keepAliveCount = static::MAX_KEEP_ALIVE_REQUESTS;
         $this->restartKeepAliveTimer();
 
         return $this;

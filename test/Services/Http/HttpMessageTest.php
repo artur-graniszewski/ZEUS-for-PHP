@@ -8,10 +8,10 @@ use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
-use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
-use Zeus\ServerService\Shared\React\MessageComponentInterface;
-use ZeusTest\Helpers\TestConnection;
+use Zeus\ServerService\Shared\Networking\ConnectionInterface;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
+use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
+use ZeusTest\Helpers\SocketTestConnection;
 
 class HttpMessageTest extends PHPUnit_Framework_TestCase
 {
@@ -52,7 +52,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
     public function testIfMessageHasBeenDispatched()
     {
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $message = $this->getHttpGetRequestString("/");
         $dispatcherLaunched = false;
         /** @var Message $httpAdapter */
@@ -67,7 +67,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfHttp10ConnectionIsClosedAfterSingleRequest()
     {
         $message = $this->getHttpGetRequestString("/");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
@@ -77,7 +77,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfHttp10KeepAliveConnectionIsOpenAfterSingleRequest()
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "keep-alive"]);
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $httpAdapter = $this->getHttpMessageParser(function($request, Response\Stream $response) {
             $response->getHeaders()->addHeader(new ContentLength(2));
             echo "OK";
@@ -90,7 +90,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfHttp10KeepAliveConnectionIsClosedAfterSingleChunkedRequest()
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "keep-alive"]);
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $httpAdapter = $this->getHttpMessageParser(function() {
             echo "OK";
         }, null, $testConnection);
@@ -102,17 +102,42 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfHttp11ConnectionIsOpenAfterSingleRequest()
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
         $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
     }
 
+    public function testExceptionHandlingKeepsConnectionOpen()
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new SocketTestConnection(null);
+        $httpAdapter = $this->getHttpMessageParser(function() {throw new \Exception("TEST EXCEPTION");}, null, $testConnection);
+        try {
+            $httpAdapter->onMessage($testConnection, $message);
+        } catch (\Exception $ex) {
+
+        }
+        $this->assertFalse($testConnection->isConnectionClosed(), "HTTP 1.1 connection should be left open after request");
+    }
+
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage TEST EXCEPTION
+     */
+    public function testExceptionHandling()
+    {
+        $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
+        $testConnection = new SocketTestConnection(null);
+        $httpAdapter = $this->getHttpMessageParser(function() {throw new \Exception("TEST EXCEPTION");}, null, $testConnection);
+        $httpAdapter->onMessage($testConnection, $message);
+    }
+
     public function testIfHttp11ConnectionIsClosedAfterTimeout()
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
@@ -145,7 +170,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfResponseBodyIsCorrect($responseBody)
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
             echo $responseBody;
@@ -167,7 +192,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $this->fileHandle = fopen($this->getTmpDir() . 'test.file', 'r');
 
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function(Request $request, Response\Stream $response) {
             $response->setStream($this->fileHandle);
@@ -186,7 +211,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfChunkedResponseBodyIsCorrect($responseBody)
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function() use ($responseBody) {
             echo $responseBody;
@@ -211,7 +236,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfDeflatedResponseBodyIsCorrect($responseBody, $isChunkedEncoding)
     {
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost', 'Accept-Encoding' => 'gzip, deflate'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var HeartBeatMessageInterface|MessageComponentInterface $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function($request, $response) use ($responseBody, $isChunkedEncoding) {
             if (!$isChunkedEncoding) {
@@ -225,9 +250,9 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
         $rawResponse = Response::fromString($testConnection->getSentData());
 
-        if (strlen($responseBody) >= 8192) {
-            $this->assertEquals('deflate', $rawResponse->getHeaders()->get('Content-Encoding')->getFieldValue());
-            $this->assertLessThan(strlen($responseBody), $rawResponse->getHeaders()->get('Content-Length')->getFieldValue());
+        if (strlen($responseBody) >= 4096 && function_exists('deflate_init')) {
+            $this->assertEquals('gzip', $rawResponse->getHeaders()->get('Content-Encoding')->getFieldValue());
+            $this->assertFalse($rawResponse->getHeaders()->has('Content-Length'));
         } else {
             $this->assertFalse($rawResponse->getHeaders()->has('Content-Encoding'));
         }
@@ -238,7 +263,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfHttp11ConnectionIsClosedWithConnectionHeaderAfterSingleRequest()
     {
         $message = $this->getHttpGetRequestString("/", ["Connection" => "close", 'Host' => '127.0.0.1:80'], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $httpAdapter = $this->getHttpMessageParser(function() {}, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);
 
@@ -253,7 +278,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     public function testIfHttp11HostHeaderIsMandatory()
     {
         $message = $this->getHttpGetRequestString("/", [], "1.1");
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var Response $response */
         $response = null;
         $requestHandler = function($_request, $_response) use (&$response) {$response = $_response; };
@@ -263,7 +288,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(400, $rawResponse->getStatusCode(), "HTTP/1.1 request with missing host header should generate 400 error message");
 
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         $message = $this->getHttpGetRequestString("/", ['Host' => 'localhost'], "1.1");
         $httpAdapter->onMessage($testConnection, $message);
         $rawResponse = Response::fromString($testConnection->getSentData());
@@ -276,7 +301,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $postData = ["test1" => "test2", "test3" => "test4", "test4" => ["aaa" => "bbb"], "test5" => 12];
         $message = $this->getHttpPostRequestString("/", [], $postData);
         for($chunkSize = 1, $messageSize = strlen($message); $chunkSize < $messageSize; $chunkSize++) {
-            $testConnection = new TestConnection();
+            $testConnection = new SocketTestConnection(null);
             /** @var Request $request */
             $request = null;
 
@@ -325,7 +350,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $queryData = func_get_args();
         $queryString = http_build_query($queryData);
         $message = $this->getHttpGetRequestString("/test?" . $queryString);
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         for($chunkSize = 1, $messageSize = strlen($message); $chunkSize < $messageSize; $chunkSize++) {
             /** @var Request $request */
             $request = null;
@@ -363,7 +388,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
             $testString = "$method test string";
 
             $message = $this->getHttpCustomMethodRequestString($method, "/", []);
-            $testConnection = new TestConnection();
+            $testConnection = new SocketTestConnection(null);
             /** @var Request $request */
             $request = null;
             $requestHandler = function(Request $_request, Response $_response) use (&$request, &$response, $testString) {
@@ -385,7 +410,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
     {
         $testString = '';
         $requestHandler = function($_request) use (&$request, &$response, & $testString) {$request = $_request; echo $testString; };
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
 
         /** @var Request $request */
         $request = null;
@@ -412,7 +437,7 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase
         $message = $this->getFileUploadRequest('POST', $fileContent);
 
         for($chunkSize = 1, $messageSize = strlen($message); $chunkSize < $messageSize; $chunkSize++) {
-            $testConnection = new TestConnection();
+            $testConnection = new SocketTestConnection(null);
             /** @var Request $request */
             $request = null;
             $fileList = [];
@@ -463,7 +488,7 @@ Content-Length: 11
 
 Hello_World";
         for($chunkSize = 1, $messageSize = strlen($message); $chunkSize < $messageSize; $chunkSize++) {
-            $testConnection = new TestConnection();
+            $testConnection = new SocketTestConnection(null);
             /** @var Request $request */
             $request = null;
             $fileList = [];
@@ -513,7 +538,7 @@ World
 
 ";
         for($chunkSize = 1, $messageSize = strlen($message); $chunkSize < $messageSize; $chunkSize++) {
-            $testConnection = new TestConnection();
+            $testConnection = new SocketTestConnection(null);
             /** @var Request $request */
             $request = null;
             $fileList = [];
@@ -558,7 +583,7 @@ World
 
         $message = $this->getFileUploadRequest('POST', $fileContent);
 
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var Request $request */
         $request = null;
         $requestHandler = function($_request) use (&$request) {$request = $_request; };
@@ -593,7 +618,7 @@ World
     public function testIfMessageWithInvalidHeadersIsHandled($message)
     {
         $dispatcherLaunched = false;
-        $testConnection = new TestConnection();
+        $testConnection = new SocketTestConnection(null);
         /** @var Message $httpAdapter */
         $httpAdapter = $this->getHttpMessageParser(function() use (& $dispatcherLaunched) {$dispatcherLaunched = true;}, null, $testConnection);
         $httpAdapter->onMessage($testConnection, $message);

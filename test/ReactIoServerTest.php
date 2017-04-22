@@ -5,9 +5,9 @@ namespace ZeusTest;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Shared\React\ReactEventSubscriber;
 use Zeus\ServerService\Shared\React\ReactIoServer;
+use ZeusTest\Helpers\ReactTestMessage;
 
 class ReactIoServerTest extends ReactServerTest
 {
@@ -25,14 +25,10 @@ class ReactIoServerTest extends ReactServerTest
 
     public function testNewConnection()
     {
-        /** @var Request $request */
-        $request = null;
-        $server = new ReactIoServer(new Message(
-            function(Request $_request) use (&$request) {
-                $request = $_request;
-
-                echo "OK!";
-                return new Response();
+        $result = null;
+        $server = new ReactIoServer(new ReactTestMessage(
+            function($data) use (&$result) {
+                $result = $data;
             }),
             $this->server,
             $this->loop
@@ -46,8 +42,7 @@ class ReactIoServerTest extends ReactServerTest
         $this->loop->tick();
 
         $this->assertEquals(strlen($requestString), $size);
-        $this->assertInstanceOf(Request::class, $request);
-        $this->assertEquals('/', $request->getUri()->getPath());
+        $this->assertEquals($requestString, $result);
         fclose($client);
     }
 
@@ -59,7 +54,7 @@ class ReactIoServerTest extends ReactServerTest
     {
         /** @var Request $request */
         $request = null;
-        $server = new ReactIoServer(new Message(
+        $server = new ReactIoServer(new ReactTestMessage(
             function() {
                 throw new \RuntimeException("TEST EXCEPTION!");
             }),
@@ -83,7 +78,7 @@ class ReactIoServerTest extends ReactServerTest
 
         /** @var Request $request */
         $request = null;
-        $server = new ReactIoServer(new Message(
+        $server = new ReactIoServer(new ReactTestMessage(
             function(Request $_request) use (&$request) {
                 $request = $_request;
 

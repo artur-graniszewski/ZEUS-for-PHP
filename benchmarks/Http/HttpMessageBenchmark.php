@@ -6,7 +6,7 @@ use Athletic\AthleticEvent;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
-use ZeusTest\Helpers\TestConnection;
+use ZeusTest\Helpers\SocketTestConnection;
 
 class HttpMessageBenchmark extends AthleticEvent
 {
@@ -30,7 +30,7 @@ class HttpMessageBenchmark extends AthleticEvent
 
     public function setUp()
     {
-        $this->connection = new TestConnection();
+        $this->connection = new SocketTestConnection(null);
         $this->message = new Message(function(Request $request) {
             switch ($request->getUri()->getPath()) {
                 case '/large.txt':
@@ -44,13 +44,13 @@ class HttpMessageBenchmark extends AthleticEvent
                 case '/small.txt':
                     echo $this->smallFile;
             }
-            return new Response();
         });
         $this->message->onOpen($this->connection);
     }
 
     public function tearDown()
     {
+        $this->message->onClose($this->connection);
         unset($this->message);
         unset($this->connection);
     }
@@ -98,7 +98,7 @@ class HttpMessageBenchmark extends AthleticEvent
      */
     public function getDeflatedLargeRequest()
     {
-        $this->message->onMessage($this->connection, $this->getHttpRequestString('GET', '/large.txt', ['Accept-Encoding' => 'deflate']));
+        $this->message->onMessage($this->connection, $this->getHttpRequestString('GET', '/large.txt', ['Accept-Encoding' => 'gzip']));
     }
 
     /**
@@ -106,7 +106,7 @@ class HttpMessageBenchmark extends AthleticEvent
      */
     public function getDeflatedMediumRequest()
     {
-        $this->message->onMessage($this->connection, $this->getHttpRequestString('GET', '/medium.txt', ['Accept-Encoding' => 'deflate']));
+        $this->message->onMessage($this->connection, $this->getHttpRequestString('GET', '/medium.txt', ['Accept-Encoding' => 'gzip']));
     }
 
     /**
@@ -114,7 +114,7 @@ class HttpMessageBenchmark extends AthleticEvent
      */
     public function getDeflatedSmallRequest()
     {
-        $this->message->onMessage($this->connection, $this->getHttpRequestString('GET', '/small.txt', ['Accept-Encoding' => 'deflate']));
+        $this->message->onMessage($this->connection, $this->getHttpRequestString('GET', '/small.txt', ['Accept-Encoding' => 'gzip']));
     }
 
     /**
@@ -146,7 +146,7 @@ class HttpMessageBenchmark extends AthleticEvent
      */
     public function optionsDeflatedLargeRequest()
     {
-        $this->message->onMessage($this->connection, $this->getHttpRequestString('OPTIONS', '/large.txt', ['Accept-Encoding' => 'deflate']));
+        $this->message->onMessage($this->connection, $this->getHttpRequestString('OPTIONS', '/large.txt', ['Accept-Encoding' => 'gzip']));
     }
 
     /**
@@ -154,7 +154,7 @@ class HttpMessageBenchmark extends AthleticEvent
      */
     public function optionsDeflatedMediumRequest()
     {
-        $this->message->onMessage($this->connection, $this->getHttpRequestString('OPTIONS', '/medium.txt', ['Accept-Encoding' => 'deflate']));
+        $this->message->onMessage($this->connection, $this->getHttpRequestString('OPTIONS', '/medium.txt', ['Accept-Encoding' => 'gzip']));
     }
 
     /**
@@ -162,6 +162,6 @@ class HttpMessageBenchmark extends AthleticEvent
      */
     public function optionsDeflatedSmallRequest()
     {
-        $this->message->onMessage($this->connection, $this->getHttpRequestString('OPTIONS', '/small.txt', ['Accept-Encoding' => 'deflate']));
+        $this->message->onMessage($this->connection, $this->getHttpRequestString('OPTIONS', '/small.txt', ['Accept-Encoding' => 'gzip']));
     }
 }
