@@ -16,9 +16,17 @@ class SocketServer
 
     public function createServer()
     {
+        $opts = array(
+            'socket' => array(
+                'backlog' => 100000,
+            ),
+        );
+
+        $context = stream_context_create($opts);
+
         $uri = 'tcp://' . $this->config->getListenAddress() . ':' . $this->config->getListenPort();
 
-        $this->socket = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN);
+        $this->socket = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN, $context);
         if (false === $this->socket) {
             throw new \RuntimeException("Could not bind to $uri: $errstr", $errno);
         }

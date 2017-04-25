@@ -66,29 +66,26 @@ final class SocketEventSubscriber
                 $event->getProcess()->setWaiting();
 
                 if ($connection = $this->server->listen(1)) {
-                    $event->getProcess()->setRunning(time());
+                    $event->getProcess()->setRunning();
                     $this->message->onOpen($connection);
                     $this->connection = $connection;
                 }
             }
 
-            if (!$this->connection || !$this->connection->isReadable()) {
+            if (!$this->connection) {
                 $this->connection = null;
                 return;
             }
 
-            if ($this->connection->isReadable()) {
-                do {
-                    $data = $this->connection->read();
-                    if ($data !== false && $data !== '') {
-                        $this->message->onMessage($this->connection, $data);
-                    }
+            $data = '';
+            while ($data !== false && $this->connection->isReadable()) {
+                $data = $this->connection->read();
+                if ($data !== false && $data !== '') {
+                    $this->message->onMessage($this->connection, $data);
+                }
 
-                    $this->onHeartBeat();
-                } while ($data !== false && $this->connection && $this->connection->isReadable());
+                $this->onHeartBeat($event);
             }
-
-            $this->onHeartBeat();
 
         } catch (\Exception $exception) {
 
@@ -108,6 +105,9 @@ final class SocketEventSubscriber
             throw $exception;
         }
 
+        $this->connection->close();
+        $this->connection = null;
+
         return;
     }
 
@@ -122,14 +122,16 @@ final class SocketEventSubscriber
     }
 
     /**
+     * @param SchedulerEvent $event
      * @return $this
      */
-    public function onHeartBeat()
+    public function onHeartBeat(SchedulerEvent $event)
     {
         $now = time();
         if ($this->connection && $this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
             if ($this->message instanceof HeartBeatMessageInterface) {
+                $event->getProcess()->setRunning();
                 $this->message->onHeartBeat($this->connection, []);
             }
         }

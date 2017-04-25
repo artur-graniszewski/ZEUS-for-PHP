@@ -55,7 +55,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected $headersSent = false;
 
     /** @var int */
-    protected $keepAliveCount = 100;
+    protected $keepAliveCount;
 
     /** @var int */
     protected $keepAliveTimer = 5;

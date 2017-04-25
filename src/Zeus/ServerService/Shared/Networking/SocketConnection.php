@@ -5,7 +5,7 @@ namespace Zeus\ServerService\Shared\Networking;
 class SocketConnection implements ConnectionInterface, FlushableConnectionInterface
 {
     const DEFAULT_WRITE_BUFFER_SIZE = 65536;
-    const DEFAULT_READ_BUFFER_SIZE = 8192;
+    const DEFAULT_READ_BUFFER_SIZE = 65536;
 
     protected $isWritable = true;
 
@@ -29,7 +29,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
     {
         $this->stream = $stream;
 
-        stream_set_blocking($this->stream, 0);
+        stream_set_blocking($this->stream, false);
 
         if (function_exists('stream_set_chunk_size')) {
             stream_set_chunk_size($this->stream, 1);
@@ -65,7 +65,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function isReadable()
     {
-        return $this->isReadable;
+        return $this->isReadable && $this->stream;
     }
 
     /**
@@ -85,8 +85,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $this->isReadable = false;
         $this->isWritable = false;
 
-        stream_set_blocking($this->stream, true);
-        stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
+//        stream_set_blocking($this->stream, true);
+        if (!$this->isEof()) {
+            stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
+        }
         fclose($this->stream);
 
         $this->stream = null;
@@ -109,7 +111,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function isWritable()
     {
-        return $this->isWritable;
+        return $this->isWritable && $this->stream;
     }
 
     /**
@@ -126,21 +128,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         }
 
         $error = null;
-        /*
-        set_error_handler(function ($errorNumber, $errorMessage, $errorFile, $errorLine) use (&$error) {
-            $error = new \ErrorException(
-                $errorMessage,
-                0,
-                $errorNumber,
-                $errorFile,
-                $errorLine
-            );
-        });
-
-        */
         $data = stream_get_contents($this->stream, $this->readBufferSize);
-
-        //restore_error_handler();
 
         if ($error !== null || $data === false || $this->isEof()) {
             $this->close();
@@ -233,8 +221,8 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
                 break;
             }
 
-            $sent += $wrote;
             if ($wrote) {
+                $sent += $wrote;
                 $data = substr($data, $wrote);
             }
         };
