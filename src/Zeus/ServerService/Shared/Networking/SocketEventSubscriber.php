@@ -53,9 +53,10 @@ final class SocketEventSubscriber
         return $this;
     }
 
-
     /**
      * @param SchedulerEvent $event
+     * @throws \Throwable|\Exception
+     * @throws null
      */
     public function onProcessLoop(SchedulerEvent $event)
     {
@@ -63,18 +64,14 @@ final class SocketEventSubscriber
 
         try {
             if (!$this->connection) {
-                $event->getProcess()->setWaiting();
-
-                if ($connection = $this->server->listen(1)) {
-                    $event->getProcess()->setRunning();
-                    $this->message->onOpen($connection);
-                    $this->connection = $connection;
+                $connection = $this->server->listen(1);
+                if (!$connection) {
+                    return;
                 }
-            }
 
-            if (!$this->connection) {
-                $this->connection = null;
-                return;
+                $event->getProcess()->setRunning();
+                $this->message->onOpen($connection);
+                $this->connection = $connection;
             }
 
             $data = '';
@@ -88,44 +85,46 @@ final class SocketEventSubscriber
             }
 
         } catch (\Exception $exception) {
-
         } catch (\Throwable $exception) {
+        }
 
+        if (!$this->connection) {
+            return;
         }
 
         if ($exception) {
-            if ($this->connection) {
+            try {
                 $this->message->onError($this->connection, $exception);
-                $this->connection->close();
-                $this->connection = null;
+            } catch (\Exception $exception) {
+            } catch (\Throwable $exception) {
             }
-
-            $event->getProcess()->setWaiting();
-
-            throw $exception;
         }
 
         $this->connection->close();
         $this->connection = null;
 
-        return;
+        $event->getProcess()->setWaiting();
+
+        if ($exception) {
+            throw $exception;
+        }
     }
 
     public function onProcessExit()
     {
-        if ($this->connection && $this->connection->isReadable()) {
+        if ($this->connection) {
             $this->connection->close();
             $this->connection = null;
         }
 
-        unset($this->server);
+        $this->server = null;
     }
 
     /**
      * @param SchedulerEvent $event
      * @return $this
      */
-    public function onHeartBeat(SchedulerEvent $event)
+    protected function onHeartBeat(SchedulerEvent $event)
     {
         $now = time();
         if ($this->connection && $this->lastTickTime !== $now) {

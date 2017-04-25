@@ -2,8 +2,12 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-
-class SocketServer
+/**
+ * Class SocketServer
+ * @package Zeus\ServerService\Shared\Networking
+ * @internal
+ */
+final class SocketServer
 {
     protected $socket;
 
@@ -14,13 +18,16 @@ class SocketServer
         $this->config = $config;
     }
 
+    /**
+     * @return $this
+     */
     public function createServer()
     {
-        $opts = array(
-            'socket' => array(
+        $opts = [
+            'socket' => [
                 'backlog' => 100000,
-            ),
-        );
+            ],
+        ];
 
         $context = stream_context_create($opts);
 
@@ -32,21 +39,35 @@ class SocketServer
         }
 
         stream_set_blocking($this->socket, 0);
+
+        return $this;
     }
 
+    /**
+     * @param int $timeout
+     * @return null|SocketConnection
+     */
     public function listen($timeout)
     {
         $newSocket = @stream_socket_accept($this->socket, $timeout);
         if ($newSocket) {
             stream_set_blocking($newSocket, false);
+
             return new SocketConnection($newSocket);
         }
+
+        return null;
     }
 
+    /**
+     * @return $this
+     */
     public function stop()
     {
         stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
         fclose($this->socket);
         $this->socket = null;
+
+        return $this;
     }
 }
