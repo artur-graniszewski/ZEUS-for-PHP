@@ -53,7 +53,21 @@ final class SocketServer
         if ($newSocket) {
             stream_set_blocking($newSocket, false);
 
-            return new SocketConnection($newSocket);
+            if (function_exists('stream_set_chunk_size')) {
+                stream_set_chunk_size($newSocket, 1);
+            }
+
+            if (function_exists('stream_set_read_buffer')) {
+                stream_set_read_buffer($newSocket, 0);
+            }
+
+            if (function_exists('stream_set_write_buffer')) {
+                stream_set_write_buffer($newSocket, 0);
+            }
+
+            $connection = new SocketConnection($newSocket);
+
+            return $connection;
         }
 
         return null;

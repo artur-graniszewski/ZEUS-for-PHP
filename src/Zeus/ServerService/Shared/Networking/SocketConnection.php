@@ -40,20 +40,6 @@ final class SocketConnection implements ConnectionInterface, FlushableConnection
     {
         $this->stream = $stream;
 
-        stream_set_blocking($this->stream, false);
-
-        if (function_exists('stream_set_chunk_size')) {
-            stream_set_chunk_size($this->stream, 1);
-        }
-
-        if (function_exists('stream_set_read_buffer')) {
-            stream_set_read_buffer($this->stream, 0);
-        }
-
-        if (function_exists('stream_set_write_buffer')) {
-            stream_set_write_buffer($this->stream, 0);
-        }
-
         $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
     }
 

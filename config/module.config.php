@@ -3,12 +3,14 @@
 namespace Zeus;
 
 use Zeus\Controller\ConsoleController;
-use Zeus\Controller\Factory\ConsoleControllerFactory;
+use Zeus\Controller\Factory\ControllerFactory;
+use Zeus\Controller\ProcessController;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
@@ -38,7 +40,8 @@ return $config = [
 
         ],
         'factories' => [
-            ConsoleController::class => ConsoleControllerFactory::class,
+            ConsoleController::class => ControllerFactory::class,
+            ProcessController::class => ControllerFactory::class,
 
         ]
     ],
@@ -59,7 +62,8 @@ return $config = [
             Scheduler::class => SchedulerFactory::class,
             Process::class => ProcessFactory::class,
             Manager::class => ManagerFactory::class,
-            PosixProcess::class => PosixProcessFactory::class,
+            PosixProcess::class => MultiProcessingModuleFactory::class,
+            ProcessOpen::class => MultiProcessingModuleFactory::class,
             LruDiscipline::class => LruDisciplineFactory::class,
             MemcacheService::class => MemcacheFactory::class,
             //Service::class => ServiceFactory::class,

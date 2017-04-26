@@ -68,8 +68,7 @@ final class ManagerFactory implements FactoryInterface
                 $scheduler = $container->build(Scheduler::class, [
                     'scheduler_name' => $serviceConfig['scheduler_name'],
                     'service_name' => $serviceName,
-                    'service_logger_adapter' => $serviceLogger,
-                    'main_logger_adapter' => $mainLogger,
+                    'logger_adapter' => $serviceLogger,
                     'ipc_adapter' => $ipcAdapter
                     ]
                 );

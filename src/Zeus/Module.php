@@ -37,6 +37,14 @@ class Module implements
     }
 
     /**
+     * @return string
+     */
+    public static function getModuleDirectory()
+    {
+        return realpath('../../');
+    }
+
+    /**
      * Listen to the bootstrap event
      *
      * @param EventInterface $event
