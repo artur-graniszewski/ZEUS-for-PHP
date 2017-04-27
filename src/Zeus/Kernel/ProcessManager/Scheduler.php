@@ -186,7 +186,7 @@ final class Scheduler implements EventsCapableInterface
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, -10000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) { $this->onProcessExit($e); }, -10000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(SchedulerEvent $e) { $this->onProcessMessage($e);});
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, -10000);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, -9000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, -10000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], -10000);
 
@@ -449,6 +449,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function onShutdown(EventInterface $event)
     {
+        $this->log(\Zend\Log\Logger::DEBUG, "Shutting down");
         $exception = $event->getParam('exception', null);
 
         $this->setContinueMainLoop(false);
@@ -595,7 +596,7 @@ final class Scheduler implements EventsCapableInterface
     protected function mainLoop()
     {
         while ($this->isContinueMainLoop()) {
-//            $this->log(\Zend\Log\Logger::DEBUG, "LOOP");
+
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
             $event->setParams($this->getEventExtraData());

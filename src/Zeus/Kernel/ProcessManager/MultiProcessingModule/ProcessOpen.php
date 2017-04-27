@@ -5,12 +5,11 @@ namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
-use Zeus\Kernel\ProcessManager\EventsInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-final class ProcessOpen implements MultiProcessingModuleInterface
+final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;
@@ -87,7 +86,16 @@ final class ProcessOpen implements MultiProcessingModuleInterface
      */
     public static function isSupported($throwException = false)
     {
-        return function_exists('proc_open');
+        $isSupported = function_exists('proc_open');
+
+        if (!$isSupported && $throwException) {
+            throw new \RuntimeException(sprintf("proc_open() is required by %s but disabled in PHP",
+                    static::class
+                )
+            );
+        }
+
+        return $isSupported;
     }
 
 
@@ -143,14 +151,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface
         }
 
         $this->onProcessLoop();
-
-        if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
-            $event = $this->event;
-            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', $this->ppid);
-            $event->stopPropagation(false);
-            $this->events->triggerEvent($event);
-        }
     }
 
     public function onProcessInit()
@@ -186,23 +186,27 @@ final class ProcessOpen implements MultiProcessingModuleInterface
 
         $type = $event->getParam('server') ? 'scheduler' : 'process';
 
-        $command = sprintf("%s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getScheduler()->getConfig()->getServiceName());
+        $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getScheduler()->getConfig()->getServiceName());
 
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {
             throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
         }
 
-        return $process;
+        $status = proc_get_status($process);
+        $pid = $status['pid'];
+
+        $this->processes[$pid] = [
+            'resource' => $process,
+            'pipes' => $pipes
+        ];
+
+        return $pid;
     }
 
     public function onProcessCreate(SchedulerEvent $event)
     {
-        $process = $this->startProcess($event);
-
-        $status = proc_get_status($process);
-        $pid = $status['pid'];
-        $this->processes[$pid] = $process;
+        $pid = $this->startProcess($event);
 
         // we are the parent
         $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
@@ -233,7 +237,16 @@ final class ProcessOpen implements MultiProcessingModuleInterface
     {
         $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
 
-        proc_close($this->processes[$pid]);
+        $process = $this->processes[$pid];
+        foreach($process['pipes'] as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+
+        proc_terminate($process['resource']);
+
+        $this->processes[$pid] = null;
 
         return $this;
     }

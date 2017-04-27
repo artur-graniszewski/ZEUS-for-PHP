@@ -58,10 +58,6 @@ class ProcessController extends AbstractActionController
             ));
         }
 
-        pcntl_signal(SIGTERM, [$this, 'stopApplication']);
-        pcntl_signal(SIGINT, [$this, 'stopApplication']);
-        pcntl_signal(SIGTSTP, [$this, 'stopApplication']);
-
         /** @var \Zend\Stdlib\Parameters $params */
         $params = $request->getParams();
 
