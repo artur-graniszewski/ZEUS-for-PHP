@@ -8,7 +8,7 @@ use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Shared\Networking\SocketEventSubscriber;
-use Zeus\ServerService\Shared\Networking\SocketServer;
+use Zeus\Kernel\Networking\SocketServer;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 

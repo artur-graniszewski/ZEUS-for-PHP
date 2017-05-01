@@ -3,6 +3,8 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 /**
@@ -21,7 +23,7 @@ final class SocketEventSubscriber
     /** @var MessageComponentInterface */
     protected $message;
 
-    /** @var SocketConnection */
+    /** @var SocketStream */
     protected $connection;
 
     public function __construct(SocketServer $server, MessageComponentInterface $message)

@@ -8,7 +8,7 @@ use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
-use Zeus\ServerService\Shared\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use ZeusTest\Helpers\SocketTestConnection;

@@ -1,6 +1,7 @@
 <?php
 
-namespace Zeus\ServerService\Shared\Networking;
+namespace Zeus\Kernel\Networking;
+use Zeus\Kernel\Networking\SocketStream;
 
 /**
  * Class SocketServer
@@ -46,7 +47,7 @@ final class SocketServer
 
     /**
      * @param int $timeout
-     * @return null|SocketConnection
+     * @return null|SocketStream
      */
     public function listen($timeout)
     {
@@ -66,7 +67,7 @@ final class SocketServer
                 stream_set_write_buffer($newSocket, 0);
             }
 
-            $connection = new SocketConnection($newSocket);
+            $connection = new SocketStream($newSocket);
 
             return $connection;
         }
@@ -79,7 +80,7 @@ final class SocketServer
      */
     public function stop()
     {
-        stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
         fclose($this->socket);
         $this->socket = null;
 

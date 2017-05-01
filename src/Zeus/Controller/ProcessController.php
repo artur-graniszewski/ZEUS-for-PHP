@@ -205,8 +205,6 @@ class ProcessController extends AbstractActionController
 
                     return;
                 }
-
-                trigger_error("FORK");
             }, 2);
 
         });

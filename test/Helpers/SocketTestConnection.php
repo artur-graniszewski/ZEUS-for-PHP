@@ -2,8 +2,8 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\ServerService\Shared\Networking\ConnectionInterface;
-use Zeus\ServerService\Shared\Networking\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\FlushableConnectionInterface;
 
 class SocketTestConnection implements ConnectionInterface, FlushableConnectionInterface
 {

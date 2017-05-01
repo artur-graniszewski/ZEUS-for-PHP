@@ -4,10 +4,10 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zeus\ServerService\Async\Config;
-use Zeus\ServerService\Shared\Networking\SocketConnection;
-use Zeus\ServerService\Shared\Networking\SocketServer;
+use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\SocketServer;
 
-class SocketConnectionTest extends PHPUnit_Framework_TestCase
+class SocketStreamTest extends PHPUnit_Framework_TestCase
 {
     const TEST_TIMEOUT = 5;
 
@@ -51,7 +51,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
 
         $this->assertTrue($connection->isReadable(), 'Stream should be readable when connected');
         $this->assertTrue($connection->isWritable(), 'Stream should be writable when connected');
@@ -63,7 +63,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
 
         $this->assertEquals(stream_socket_get_name($client, false), $connection->getRemoteAddress(), 'Remote address is incorrect');
         $this->assertEquals('127.0.0.2:' . $this->port, $connection->getServerAddress(), 'Server address is incorrect');
@@ -75,7 +75,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->close();
         $read = @stream_get_contents($client);
         $eof = feof($client);
@@ -95,7 +95,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->end($dataToSend);
         $read = stream_socket_recvfrom($client, strlen($dataToSend));
         $this->assertEquals($dataToSend, $read, 'Stream should contain ending message');
@@ -111,7 +111,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
 
         $chunks = str_split($dataToSend, 8192);
         $received = '';
@@ -138,7 +138,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
         $received = '';
         $time = time();
         fwrite($client, $dataToSend);
@@ -244,7 +244,7 @@ class SocketConnectionTest extends PHPUnit_Framework_TestCase
         $client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($client, false);
         $connection = $this->server->listen(1);
-        $this->assertInstanceOf(SocketConnection::class, $connection);
+        $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->write($dataToSend);
 
         $received = stream_get_contents($client, strlen($dataToSend));

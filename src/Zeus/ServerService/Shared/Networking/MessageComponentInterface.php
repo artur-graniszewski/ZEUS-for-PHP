@@ -1,6 +1,7 @@
 <?php
 
 namespace Zeus\ServerService\Shared\Networking;
+use Zeus\Kernel\Networking\ConnectionInterface;
 
 /**
  * Interface MessageComponentInterface

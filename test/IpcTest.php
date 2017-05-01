@@ -66,6 +66,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Output queue should be empty');
 
         $ipcAdapter->useChannelNumber(0);
+
         foreach (range(1, $messagesAmount) as $index) {
             $ipcAdapter->send('Message number ' . $index);
         }
