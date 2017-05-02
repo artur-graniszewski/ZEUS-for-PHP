@@ -1,8 +1,6 @@
 <?php
 
 namespace Zeus\Kernel\Networking;
-use Zeus\Kernel\Networking\ConnectionInterface;
-use Zeus\Kernel\Networking\FlushableConnectionInterface;
 
 /**
  * Class SocketConnection
@@ -40,7 +38,7 @@ final class SocketStream extends FileStream implements ConnectionInterface, Flus
      */
     public function __construct($stream)
     {
-        $this->stream = $stream;
+        parent::__construct($stream);
 
         $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
     }

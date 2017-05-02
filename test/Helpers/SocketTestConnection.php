@@ -140,7 +140,7 @@ class SocketTestConnection implements ConnectionInterface, FlushableConnectionIn
 
     }
 
-    public function read()
+    public function read($ending = false)
     {
         // TODO: Implement read() method.
     }
@@ -157,5 +157,15 @@ class SocketTestConnection implements ConnectionInterface, FlushableConnectionIn
     public function flush()
     {
         // TODO: Implement flush() method.
+    }
+
+    public function setWriteBufferSize($size)
+    {
+        // TODO: Implement setWriteBufferSize() method.
+    }
+
+    public function setReadBufferSize($size)
+    {
+        // TODO: Implement setReadBufferSize() method.
     }
 }

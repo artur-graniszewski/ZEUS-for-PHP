@@ -55,14 +55,12 @@ class HttpServiceTest extends PHPUnit_Framework_TestCase
 
     public function testLogger()
     {
-        $request = Request::fromString("GET /test?foo=bar HTTP/1.1\r\nHost: localhost\r\n\r\n");
+        $request = Request::fromString("GET /test?foo=bar HTTP/1.1\r\nHost: localhost\r\nUser-Agent: PHPUNIT\r\nReferer: http://foo.bar\r\n\r\n");
         $response = new Response();
         $response->setVersion('1.1');
         $response->setMetadata('dataSentInBytes', 1234);
         $response->setStatusCode(201);
         $request->setMetadata('remoteAddress', '192.168.1.2');
-        $request->getHeaders()->addHeaderLine('User-Agent: PHPUNIT');
-        $request->getHeaders()->addHeaderLine('Referer: http://foo.bar');
 
         $service = $this->getService();
 

@@ -654,7 +654,7 @@ final class Scheduler implements EventsCapableInterface
             }
         }
 
-        @time_sleep_until($this->getCurrentTime() + 0.00001);
+        //@time_sleep_until($this->getCurrentTime() + 0.01);
 
         return $this;
     }

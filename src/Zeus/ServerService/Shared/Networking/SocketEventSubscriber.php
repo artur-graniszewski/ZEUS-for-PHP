@@ -72,8 +72,8 @@ final class SocketEventSubscriber
                 }
 
                 $event->getProcess()->setRunning();
-                $this->message->onOpen($connection);
                 $this->connection = $connection;
+                $this->message->onOpen($connection);
             }
 
             $data = '';
@@ -86,24 +86,26 @@ final class SocketEventSubscriber
                 $this->onHeartBeat($event);
             }
 
+            // nothing wrong happened, data was handled, resume main event
+            if ($this->connection->isReadable() && $this->connection->isWritable()) {
+                return;
+            }
         } catch (\Exception $exception) {
         } catch (\Throwable $exception) {
         }
 
-        if (!$this->connection) {
-            return;
-        }
-
-        if ($exception) {
-            try {
-                $this->message->onError($this->connection, $exception);
-            } catch (\Exception $exception) {
-            } catch (\Throwable $exception) {
+        if ($this->connection) {
+            if ($exception) {
+                try {
+                    $this->message->onError($this->connection, $exception);
+                } catch (\Exception $exception) {
+                } catch (\Throwable $exception) {
+                }
             }
-        }
 
-        $this->connection->close();
-        $this->connection = null;
+            $this->connection->close();
+            $this->connection = null;
+        }
 
         $event->getProcess()->setWaiting();
 
@@ -132,7 +134,6 @@ final class SocketEventSubscriber
         if ($this->connection && $this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
             if ($this->message instanceof HeartBeatMessageInterface) {
-                $event->getProcess()->setRunning();
                 $this->message->onHeartBeat($this->connection, []);
             }
         }

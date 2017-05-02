@@ -192,6 +192,11 @@ final class FifoAdapter implements
             throw new \RuntimeException('Channel number ' . $channelNumber . ' is already closed');
         }
 
+        if (!$this->ipc[$channelNumber]->select(1)) {
+
+            return [];
+        }
+
         $messages = [];
 
         for (;;) {

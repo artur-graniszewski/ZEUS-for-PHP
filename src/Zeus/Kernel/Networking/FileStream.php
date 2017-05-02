@@ -1,8 +1,6 @@
 <?php
 
 namespace Zeus\Kernel\Networking;
-use Zeus\Kernel\Networking\ConnectionInterface;
-use Zeus\Kernel\Networking\FlushableConnectionInterface;
 
 /**
  * Class SocketConnection
@@ -204,10 +202,14 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         $read = $except = [];
         $write = [$this->stream];
         while ($sent !== $size) {
-            $amount = @stream_select($read, $write, $except, 1);
-            $wrote = 0;
-            if ($amount === 1) {
-                $wrote = $writeMethod($this->stream, $this->data);
+            $amount = 1;
+            $wrote = $writeMethod($this->stream, $this->data);
+
+            // write failed, try to wait a bit
+            if ($wrote === 0) {
+                do {
+                    $amount = @stream_select($read, $write, $except, 1);
+                } while($amount === 0);
             }
 
             if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
@@ -241,6 +243,28 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         }
 
         $this->close();
+
+        return $this;
+    }
+
+    /**
+     * @param int $size
+     * @return $this
+     */
+    public function setWriteBufferSize($size)
+    {
+        $this->writeBufferSize = $size;
+
+        return $this;
+    }
+
+    /**
+     * @param int $size
+     * @return $this
+     */
+    public function setReadBufferSize($size)
+    {
+        $this->readBufferSize = $size;
 
         return $this;
     }

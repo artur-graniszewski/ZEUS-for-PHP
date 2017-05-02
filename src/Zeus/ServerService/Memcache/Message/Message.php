@@ -2,16 +2,15 @@
 
 namespace Zeus\ServerService\Memcache\Message;
 
-use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\AvailableSpaceCapableInterface;
 use Zend\Cache\Storage\FlushableInterface;
 use Zend\Cache\Storage\StorageInterface;
 use Zend\Cache\Storage\TotalSpaceCapableInterface;
+use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\Module;
 use Zeus\ServerService\Shared\Exception\PrerequisitesNotMetException;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
-use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
-use Zeus\ServerService\Shared\React\MessageComponentInterface;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
+use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 
 /**
  * Class Message
@@ -92,6 +91,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     {
         $this->ttl = 0;
         $this->connection = $connection;
+        $this->connection->setWriteBufferSize(0);
     }
 
     /**
@@ -122,6 +122,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     {
         $this->ttl = 0;
         $this->buffer .= $message;
+
         if ($this->lineType === static::COMMAND_LINE) {
             if (!strpos(ltrim($this->buffer), "\r\n")) {
                 return;
@@ -129,6 +130,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
             $this->parseCommand();
         }
+
 
         if ($this->lineType === static::DATA_LINE) {
             if (strlen($this->buffer) < $this->expectedPayloadSize + 2) {
@@ -350,6 +352,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
         $found = false;
         $command = ltrim($this->buffer);
+
         foreach ($commandRules as $methodName => $rules) {
             if (preg_match($rules['regexp'], $command, $matches)) {
                 $matches = array_intersect_key($matches, array_flip(array_filter(array_keys($matches), function($value) { return !is_int($value);})));
@@ -370,11 +373,11 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             }
         }
 
+        $this->buffer = substr($this->buffer, strpos($this->buffer, "\r\n") + 2);
+
         if (!$found) {
             $this->sendError();
         }
-
-        $this->buffer = substr($this->buffer, strpos($this->buffer, "\r\n") + 2);
     }
 
     /**

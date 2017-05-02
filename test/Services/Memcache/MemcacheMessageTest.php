@@ -5,11 +5,11 @@ namespace ZeusTest\Services\Memcache;
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Storage\Adapter\Filesystem;
 use Zend\Cache\Storage\Adapter\Memory;
-use Zend\Cache\Storage\StorageInterface;
+use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
 use ZeusTest\Helpers\ReactTestConnection;
+use ZeusTest\Helpers\SocketTestConnection;
 
 class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 {
@@ -49,7 +49,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
             return;
         }
-        $this->connection = new ReactTestConnection();
+        $this->connection = new SocketTestConnection(null);
         $this->memcache = new Message($cache1, $cache2);
         $this->memcache->onOpen($this->connection);
     }
