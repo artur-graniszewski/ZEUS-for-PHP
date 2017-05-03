@@ -148,13 +148,14 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         $write = $except = [];
         $read = [$this->stream];
 
-        $result = @stream_select($read, $write, $except, $timeout);
+        @trigger_error("");
+        $result = $this->doSelect($read, $write, $except, $timeout);
         if ($result !== false) {
             return $result === 1;
         }
 
         $this->isReadable = false;
-        throw new \RuntimeException("Stream select failed");
+        throw new \RuntimeException("Stream select failed:" . error_get_last()['message']);
     }
 
     /**
@@ -208,7 +209,7 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
             // write failed, try to wait a bit
             if ($wrote === 0) {
                 do {
-                    $amount = @stream_select($read, $write, $except, 1);
+                    $amount = $this->doSelect($read, $write, $except, 1);
                 } while($amount === 0);
             }
 
@@ -229,6 +230,22 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         $this->data = '';
 
         return $this;
+    }
+
+    protected function doSelect(& $read, & $write, & $except, $timeout)
+    {
+        @trigger_error("");
+        $result = @stream_select($read, $write, $except, $timeout);
+        if ($result !== false) {
+            return $result;
+        }
+
+        $error = error_get_last();
+        if ($result === false && strstr($error['message'], 'Interrupted system call')) {
+            return 0;
+        }
+
+        return false;
     }
 
     /**
