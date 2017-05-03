@@ -5,7 +5,6 @@ namespace ZeusBench\Memcached;
 use Athletic\AthleticEvent;
 use Zend\Cache\Storage\Adapter\Memory;
 use Zeus\ServerService\Memcache\Message\Message;
-use ZeusTest\Helpers\ReactTestConnection;
 use ZeusTest\Helpers\SocketTestConnection;
 
 class MemcachedMessageBenchmark extends AthleticEvent
