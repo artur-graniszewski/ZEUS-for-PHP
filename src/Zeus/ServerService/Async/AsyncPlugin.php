@@ -4,10 +4,14 @@ namespace Zeus\ServerService\Async;
 
 use Opis\Closure\SerializableClosure;
 use Zend\Mvc\Controller\Plugin\AbstractPlugin;
+use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\SocketStream;
 
 // Plugin class
 class AsyncPlugin extends AbstractPlugin
 {
+    /** @var ConnectionInterface[] */
     protected $handles = [];
 
     /** @var Config */
@@ -25,17 +29,21 @@ class AsyncPlugin extends AbstractPlugin
     }
 
     /**
-     * @return resource
+     * @return SocketStream
      */
     protected function getSocket()
     {
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        $result = @socket_connect($socket, $this->config->getListenAddress(), $this->config->getListenPort());
+        $result = @stream_socket_client(sprintf('tcp://%s:%d', $this->config->getListenAddress(), $this->config->getListenPort()));
         if (!$result) {
             throw new \RuntimeException("Async call failed: async server is offline");
         }
 
-        return $socket;
+        $stream = new SocketStream($result);
+        if ($stream instanceof FlushableConnectionInterface) {
+            $stream->setWriteBufferSize(0);
+        }
+
+        return $stream;
     }
 
     /**
@@ -53,18 +61,22 @@ class AsyncPlugin extends AbstractPlugin
 
         $socket = $this->getSocket();
 
-        $messageSize = strlen($message);
-        $sent = @socket_write($socket, $message, $messageSize);
+        $exception = null;
+        try {
+            $socket->write($message);
+        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
+        }
 
-        if ($messageSize !== $sent) {
-            socket_close($socket);
+        if ($exception) {
+            $socket->close();
             throw new \RuntimeException("Async call failed: unable to issue async call");
         }
 
-        $read = @socket_recv($socket, $out, 11, MSG_PEEK);
-        if (!$read || substr($out, 0, 11) !== "PROCESSING\n" || @socket_recv($socket, $out, 11, MSG_DONTWAIT) != 11) {
-            socket_close($socket);
-            throw new \RuntimeException("Async call failed, server response: " . rtrim($out));
+        $response = $socket->read("\n");
+        if (!$response || $response !== "PROCESSING") {
+            $socket->close();
+            throw new \RuntimeException("Async call failed, server response: " . rtrim($response));
         }
 
         $this->handles[] = $socket;
@@ -82,7 +94,6 @@ class AsyncPlugin extends AbstractPlugin
 
         $results = [];
         $read = [];
-        $write = $except = [];
 
         foreach ($callIds as $id) {
             if (!isset($this->handles[$id])) {
@@ -92,25 +103,25 @@ class AsyncPlugin extends AbstractPlugin
             unset($this->handles[$id]);
         }
 
-        $sockets = $read;
         $this->time = time();
         while ($read) {
-            $amount = @socket_select($read, $write, $except, 1);
-
-            if (!$amount) {
-                $this->onSelectTimeout();
-            }
-
-            if ($amount) {
-                foreach($read as $socket) {
-                    $index = array_search($socket, $sockets);
-                    $result = $this->doJoin($socket);
-                    $results[$index] = $result;
-                    unset($sockets[$index]);
+            foreach($read as $index => $socket) {
+                if (!$socket->isReadable()) {
+                    throw new \RuntimeException("Async call failed: server connection lost", 1);
                 }
+
+                if (!$socket->select(0)) {
+                    continue;
+                }
+
+                $result = $this->doJoin($socket);
+                $results[$index] = $result;
+                unset($read[$index]);
             }
 
-            $read = $sockets;
+            if ($read) {
+                usleep(1000);
+            }
         };
 
         if (is_array($callId)) {
@@ -131,29 +142,27 @@ class AsyncPlugin extends AbstractPlugin
             throw new \LogicException(sprintf("Invalid callback ID: %s", $callId));
         }
 
-        $read = [$this->handles[$callId]];
-        $write = $except = [];
+        $result = $this->handles[$callId]->select(0);
 
-        $result = @socket_select($read, $write, $except, 0);
-
-        return $result === false ? false : true;
+        // report as working if no data is readable yet
+        return $result === false;
     }
 
-    protected function doJoin($socket)
+    protected function doJoin(ConnectionInterface $socket)
     {
-        $success = @socket_recv($socket, $result, 17, MSG_PEEK);
-        if ($success === false) {
+        $result = $socket->read();
+        if ($result === false) {
             throw new \RuntimeException("Async call failed: server connection lost", 1);
         }
 
-        if ($result === "CORRUPTED_REQUEST") {
+        if ($result === "CORRUPTED_REQUEST\n") {
             throw new \RuntimeException("Async call failed: request was corrupted");
         }
 
         $pos = strpos($result, ':');
 
         if (false === $pos) {
-            throw new \RuntimeException("Async call failed: response is corrupted");
+            throw new \RuntimeException("Async call failed: response is corrupted: $result");
         }
 
         /** @var int $size */
@@ -163,24 +172,27 @@ class AsyncPlugin extends AbstractPlugin
             throw new \RuntimeException("Async call failed: response size is invalid");
         }
 
-        $success = @socket_recv($socket, $out, $size + $pos + 2, MSG_WAITALL);
-        if ($success === false) {
+        $data = substr($result, $pos + 1);
+        $read = true;
+
+        while ($read !== false && $socket->isReadable() && strlen($data) < $size) {
+            $read = $socket->read();
+            $data .= $read;
+        }
+
+        if (strlen($data) !== $size + 1) {
             throw new \RuntimeException("Async call failed: server connection lost", 2);
         }
 
-        $end = substr($out, -1, 1);
-        $result = substr($out, $pos + 1, -1);
+        $end = substr($data, -1, 1);
+        $result = substr($data, 0, -1);
 
         if ($end !== "\n") {
             throw new \RuntimeException("Async call failed: callback result is corrupted");
         }
 
-        if (strlen($result) != $size) {
-            throw new \RuntimeException("Async call failed: response size is invalid");
-        }
-
         $result = unserialize($result);
-        socket_close($socket);
+        $socket->close();
 
         return $result;
     }
