@@ -2,10 +2,11 @@
 
 namespace Zeus\ServerService\Async\Message;
 
+use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\FlushableConnectionInterface;
 use Zeus\ServerService\Async\UnserializeException;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
-use Zeus\ServerService\Shared\React\HeartBeatMessageInterface;
-use Zeus\ServerService\Shared\React\MessageComponentInterface;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
+use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 
 /**
  * Class Message
@@ -32,35 +33,6 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     public function onHeartBeat(ConnectionInterface $connection, $data = null)
     {
-        if ($this->callback) {
-            $result = null;
-            $exception = null;
-            try {
-                $result = $this->run(substr($this->callback, 0, -1));
-            } catch (\Exception $exception) {
-
-            } catch (\Throwable $exception) {
-
-            }
-
-            if ($connection->isWritable()) {
-                if ($exception instanceof UnserializeException) {
-                    $connection->write("CORRUPTED_REQUEST\n");
-                    $connection->end();
-
-                    return;
-                }
-                $result = serialize($exception ? $exception : $result);
-                $size = strlen($result);
-                $connection->write("$size:$result\n");
-                $connection->end();
-
-                return;
-            }
-        }
-
-        $this->ttl++;
-
         if ($this->ttl > 500000) {
             $connection->end();
         }
@@ -104,6 +76,10 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onMessage(ConnectionInterface $connection, $message)
     {
+        if ($connection instanceof FlushableConnectionInterface) {
+            $connection->setWriteBufferSize(0);
+        }
+
         $this->message .= $message;
 
         if (!$this->expectedPayloadSize) {
@@ -143,6 +119,37 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
                 $this->callback = $this->message;
             }
         }
+
+        if (!$this->callback) {
+            return;
+        }
+
+        $result = null;
+        $exception = null;
+        try {
+            $result = $this->run(substr($this->callback, 0, -1));
+        } catch (\Exception $exception) {
+
+        } catch (\Throwable $exception) {
+
+        }
+
+        if ($connection->isWritable()) {
+            if ($exception instanceof UnserializeException) {
+                $connection->write("CORRUPTED_REQUEST\n");
+                $connection->end();
+
+                return;
+            }
+            $result = serialize($exception ? $exception : $result);
+            $size = strlen($result);
+            $connection->write("$size:$result\n");
+            $connection->end();
+
+            return;
+        }
+
+        $this->ttl++;
     }
 
     protected function run($message)

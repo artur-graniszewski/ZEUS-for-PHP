@@ -5,11 +5,10 @@ namespace ZeusTest\Services\Memcache;
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Storage\Adapter\Filesystem;
 use Zend\Cache\Storage\Adapter\Memory;
-use Zend\Cache\Storage\StorageInterface;
+use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
-use ZeusTest\Helpers\ReactTestConnection;
+use ZeusTest\Helpers\SocketTestConnection;
 
 class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 {
@@ -49,7 +48,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
             return;
         }
-        $this->connection = new ReactTestConnection();
+        $this->connection = new SocketTestConnection(null);
         $this->memcache = new Message($cache1, $cache2);
         $this->memcache->onOpen($this->connection);
     }
@@ -87,7 +86,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
      */
     public function testSetCommand($noReplyParam, $expectedStatus)
     {
-        $testConnection = new ReactTestConnection();
+        $testConnection = new SocketTestConnection(null);
         $ttl = time() + 5;
         $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
@@ -111,7 +110,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
      */
     public function testAddCommand($noReplyParam, $expectedStatus)
     {
-        $testConnection = new ReactTestConnection();
+        $testConnection = new SocketTestConnection(null);
         $ttl = time() + 5;
         $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
@@ -138,7 +137,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
      */
     public function testReplaceCommand($noReplyParam, $expectedStatus)
     {
-        $testConnection = new ReactTestConnection();
+        $testConnection = new SocketTestConnection(null);
         $ttl = time() + 5;
         $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
         $length = strlen($value);

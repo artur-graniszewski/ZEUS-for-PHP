@@ -10,7 +10,7 @@ use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\Scheduler;
 
-class PosixProcessFactory implements FactoryInterface
+class MultiProcessingModuleFactory implements FactoryInterface
 {
 
     /**

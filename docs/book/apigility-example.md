@@ -43,49 +43,10 @@ Installing Zend\Log from package zendframework/zend-log
   - Installing evenement/evenement (v2.0.0)
     Loading from cache
 
-  - Installing react/stream (v0.4.6)
-    Loading from cache
-
-  - Installing react/promise (v2.5.0)
-    Loading from cache
-
-  - Installing react/event-loop (v0.4.2)
-    Loading from cache
-
-  - Installing react/socket (v0.4.6)
-    Loading from cache
-
-  - Installing react/promise-timer (v1.1.1)
-    Downloading: 100%         
-
-  - Installing react/cache (v0.4.1)
-    Loading from cache
-
-  - Installing react/dns (v0.4.6)
-    Downloading: 100%         
-
-  - Installing react/socket-client (v0.4.6)
-    Loading from cache
-
   - Installing psr/http-message (1.0.1)
     Loading from cache
 
   - Installing ringcentral/psr7 (1.2.1)
-    Loading from cache
-
-  - Installing react/http (v0.4.4)
-    Loading from cache
-
-  - Installing guzzlehttp/psr7 (1.4.1)
-    Downloading: 100%         
-
-  - Installing react/http-client (v0.4.16)
-    Downloading: 100%         
-
-  - Installing react/child-process (v0.4.3)
-    Downloading: 100%         
-
-  - Installing react/react (v0.4.2)
     Loading from cache
 
   - Installing zendframework/zend-text (2.6.0)
@@ -101,12 +62,6 @@ Installing Zend\Mvc\Console from package zendframework/zend-mvc-console
 zendframework/zend-log suggests installing ext-mongo (mongo extension to use Mongo writer)
 zendframework/zend-log suggests installing ext-mongodb (mongodb extension to use MongoDB writer)
 zendframework/zend-log suggests installing zendframework/zend-mail (Zend\Mail component to use the email log writer)
-react/event-loop suggests installing ext-libevent (>=0.1.0)
-react/event-loop suggests installing ext-event (~1.0)
-react/event-loop suggests installing ext-libev (*)
-react/react suggests installing ext-libevent (Allows for use of a more performant event-loop implementation.)
-react/react suggests installing ext-libev (Allows for use of a more performant event-loop implementation.)
-react/react suggests installing ext-event (Allows for use of a more performant event-loop implementation.)
 Writing lock file
 Generating autoload files
 ```

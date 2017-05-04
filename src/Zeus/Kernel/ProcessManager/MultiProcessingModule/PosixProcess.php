@@ -5,12 +5,11 @@ namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
-use Zeus\Kernel\ProcessManager\EventsInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-final class PosixProcess implements MultiProcessingModuleInterface
+final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;

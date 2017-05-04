@@ -186,8 +186,9 @@ final class Scheduler implements EventsCapableInterface
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, -10000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) { $this->onProcessExit($e); }, -10000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(SchedulerEvent $e) { $this->onProcessMessage($e);});
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);});
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, -9000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, -10000);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], -10000);
 
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
@@ -328,7 +329,13 @@ final class Scheduler implements EventsCapableInterface
         $this->collectCycles();
 
         $events = $this->getEventManager();
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], 0);
+        $this->attach();
+        $this->setId(getmypid());
+        $this->log(\Zend\Log\Logger::INFO, "Establishing IPC");
+        if (!$this->ipcAdapter->isConnected()) {
+            $this->ipcAdapter->connect();
+        }
+
         $schedulerEvent = $this->event;
         $processEvent = $this->event;
 
@@ -345,7 +352,7 @@ final class Scheduler implements EventsCapableInterface
                     $e->stopPropagation(true);
                     $this->getEventManager()->trigger(SchedulerEvent::EVENT_SCHEDULER_START, $this, $this->getEventExtraData());
                 }
-            }, 100000);
+            }, 10000);
 
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
                 function (SchedulerEvent $event) {
@@ -362,7 +369,7 @@ final class Scheduler implements EventsCapableInterface
 
                     $event->stopPropagation(true);
                 }
-                , -10000
+                , -8000
             );
 
             $processEvent->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
@@ -404,13 +411,6 @@ final class Scheduler implements EventsCapableInterface
      */
     public function onSchedulerStart()
     {
-        $this->setId(getmypid());
-        $this->attach();
-        $this->log(\Zend\Log\Logger::INFO, "Establishing IPC");
-        if (!$this->ipcAdapter->isConnected()) {
-            $this->ipcAdapter->connect();
-        }
-
         $this->log(\Zend\Log\Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
 
@@ -449,6 +449,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function onShutdown(EventInterface $event)
     {
+        $this->log(\Zend\Log\Logger::DEBUG, "Shutting down");
         $exception = $event->getParam('exception', null);
 
         $this->setContinueMainLoop(false);
@@ -595,6 +596,7 @@ final class Scheduler implements EventsCapableInterface
     protected function mainLoop()
     {
         while ($this->isContinueMainLoop()) {
+
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
             $event->setParams($this->getEventExtraData());
@@ -652,7 +654,7 @@ final class Scheduler implements EventsCapableInterface
             }
         }
 
-        @time_sleep_until($this->getCurrentTime() + 0.00001);
+        //@time_sleep_until($this->getCurrentTime() + 0.01);
 
         return $this;
     }

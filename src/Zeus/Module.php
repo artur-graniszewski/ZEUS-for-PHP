@@ -22,7 +22,7 @@ class Module implements
     ConsoleUsageProviderInterface,
     ConsoleBannerProviderInterface
 {
-    const MODULE_VERSION = "1.7.0";
+    const MODULE_VERSION = "1.7.1";
 
     protected static $overrideConfig = [];
 
@@ -34,6 +34,14 @@ class Module implements
     public static function getOverrideConfig()
     {
         return static::$overrideConfig;
+    }
+
+    /**
+     * @return string
+     */
+    public static function getModuleDirectory()
+    {
+        return realpath('../../');
     }
 
     /**

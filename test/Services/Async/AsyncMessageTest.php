@@ -4,9 +4,9 @@ namespace ZeusTest\Services\Async;
 
 use Opis\Closure\SerializableClosure;
 use PHPUnit_Framework_TestCase;
+use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\ServerService\Async\Message\Message;
-use Zeus\ServerService\Shared\React\ConnectionInterface;
-use ZeusTest\Helpers\ReactTestConnection;
+use ZeusTest\Helpers\SocketTestConnection;
 
 class AsyncMessageTest extends PHPUnit_Framework_TestCase
 {
@@ -18,9 +18,10 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->connection = new ReactTestConnection();
+        $this->connection = new SocketTestConnection(null);
         $this->async = new Message();
         $this->async->onOpen($this->connection);
+        $this->connection->setWriteBufferSize(0);
     }
 
     public function tearDown()
@@ -47,12 +48,9 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
     public function testUnSerializationFailure()
     {
         $result = $this->send("3:aaa\n", true);
-        $this->assertEquals("PROCESSING\n", $result);
+        $this->assertEquals("PROCESSING\nCORRUPTED_REQUEST\n", $result);
 
-        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be open if no error");
-        $this->async->onHeartBeat($this->connection);
-        $result = $this->connection->getSentData();
-        $this->assertEquals("CORRUPTED_REQUEST\n", $result);
+        $this->assertTrue($this->connection->isConnectionClosed(), "Connection should be closed on error");
     }
 
     public function testResultOfValidCallback()
@@ -61,12 +59,12 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $message = serialize($callback);
         $size = strlen($message);
         $result = $this->send("$size:$message\n", true);
-        $this->assertEquals("PROCESSING\n", $result);
+        $result = explode("\n", $result);
+        $this->assertEquals("PROCESSING", $result[0]);
         $this->async->onHeartBeat($this->connection);
-        $result = $this->connection->getSentData();
-        $this->assertStringMatchesFormat("%d:%s", $result);
-        $pos = strpos($result, ":");
-        $result = unserialize(substr($result, $pos +1));
+        $this->assertStringMatchesFormat("%d:%s", $result[1]);
+        $pos = strpos($result[1], ":");
+        $result = unserialize(substr($result[1], $pos +1));
         $this->assertEquals(4, $result);
     }
 
@@ -76,14 +74,6 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("CORRUPTED_REQUEST\n", $result);
 
         $this->assertTrue($this->connection->isConnectionClosed(), "Connection should be closed on error");
-    }
-
-    public function testStartsProcessing()
-    {
-        $result = $this->send("3:aaa\n", true);
-        $this->assertEquals("PROCESSING\n", $result);
-
-        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be open if no error");
     }
 
     protected function send($message, $useExactMessage)

@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\ServerService\Shared\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 
@@ -21,7 +21,7 @@ class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageIn
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param \Zeus\Kernel\Networking\ConnectionInterface $connection
      * @throws \Exception
      */
     function onOpen(ConnectionInterface $connection)
@@ -30,7 +30,7 @@ class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageIn
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param \Zeus\Kernel\Networking\ConnectionInterface $connection
      * @throws \Exception
      */
     function onClose(ConnectionInterface $connection)

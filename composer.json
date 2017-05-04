@@ -42,7 +42,6 @@
     "zendframework/zend-console": "^2.6",
     "zendframework/zend-config": "^2.6",
     "zendframework/zend-mvc-console": "^1.1",
-    "react/react": "^0.4.2",
     "zendframework/zend-log": "^2.9",
     "opis/closure": "^2.4.0"
   },
