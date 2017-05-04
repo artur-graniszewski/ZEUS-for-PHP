@@ -12,8 +12,6 @@ use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 
 class AsyncPluginTest extends PHPUnit_Framework_TestCase
 {
-    const TEST_PORT = 9999;
-
     /** @var SocketServer */
     protected $server;
     protected $port;
@@ -22,7 +20,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         $config = new Config();
-        $this->port = 7777;
+        $this->port = 9999;
         $config->setListenPort($this->port);
         $config->setListenAddress('0.0.0.0');
         $this->server = new SocketServer($config);
@@ -57,7 +55,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
                         'scheduler_name' => 'zeus_web_scheduler',
                         'service_adapter' => \Zeus\ServerService\Async\Service::class,
                         'service_settings' => [
-                            'listen_port' => static::TEST_PORT,
+                            'listen_port' => $this->port,
                             'listen_address' => '127.0.0.1',
                         ],
                     ]
@@ -86,7 +84,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
 
     /**
      * @expectedException \RuntimeException
-     * @expectedExceptionMessage Async call failed, server response: BAD_REQUEST
+     * @expectedExceptionMessage Async call failed, server response: "BAD_REQUEST"
      */
     public function testErrorHandlingOnRun()
     {
@@ -146,6 +144,18 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin->run(function() { return "ok"; });
     }
 
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed, no response from server
+     */
+    public function testOperationOnRealNotConnectedSocket()
+    {
+        $this->server->listen(1);
+        $plugin = $this->getPlugin(false);
+
+        $plugin->run(function() { return "ok"; });
+    }
+
     public function testIsWorkingWhenNoDataOnStream()
     {
         fwrite($this->client, "PROCESSING\n");
@@ -190,6 +200,26 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $id = $plugin->run(function() { return "ok"; });
         $result = $message = $plugin->join($id);
         $this->assertEquals($data, $result);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Join timeout encountered
+     */
+    public function testResultOnJoinTimeout()
+    {
+        fwrite($this->client, "PROCESSING\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->server->listen(1));
+
+        $this->assertGreaterThan(1, $plugin->getJoinTimeout());
+        $plugin->setJoinTimeout(1);
+        $this->assertEquals(1, $plugin->getJoinTimeout());
+        $id = $plugin->run(function() { return "ok"; });
+        $plugin->join($id);
     }
 
     public function testResultOnArrayJoin()

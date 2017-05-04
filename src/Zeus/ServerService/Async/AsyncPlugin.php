@@ -19,6 +19,9 @@ class AsyncPlugin extends AbstractPlugin
 
     protected $time;
 
+    /** @var int */
+    protected $joinTimeout = 30;
+
     /**
      * AsyncPlugin constructor.
      * @param Config $config
@@ -44,6 +47,25 @@ class AsyncPlugin extends AbstractPlugin
         }
 
         return $stream;
+    }
+
+    /**
+     * @param int $timeout Timeout in seconds
+     * @return $this
+     */
+    public function setJoinTimeout($timeout)
+    {
+        $this->joinTimeout = $timeout;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getJoinTimeout()
+    {
+        return $this->joinTimeout;
     }
 
     /**
@@ -76,7 +98,7 @@ class AsyncPlugin extends AbstractPlugin
         $response = $socket->read("\n");
         if (!$response || $response !== "PROCESSING") {
             $socket->close();
-            throw new \RuntimeException("Async call failed, server response: " . rtrim($response));
+            throw new \RuntimeException(sprintf("Async call failed, %s", false === $response ? "no response from server" : "server response: " . json_encode($response)));
         }
 
         $this->handles[] = $socket;
@@ -122,6 +144,8 @@ class AsyncPlugin extends AbstractPlugin
             if ($read) {
                 usleep(1000);
             }
+
+            $this->checkSelectTimeout();
         };
 
         if (is_array($callId)) {
@@ -197,9 +221,9 @@ class AsyncPlugin extends AbstractPlugin
         return $result;
     }
 
-    protected function onSelectTimeout()
+    protected function checkSelectTimeout()
     {
-        if (time() - $this->time > 30) {
+        if ($this->joinTimeout > 0 && time() - $this->time > $this->joinTimeout) {
             throw new \RuntimeException("Join timeout encountered");
         }
     }
