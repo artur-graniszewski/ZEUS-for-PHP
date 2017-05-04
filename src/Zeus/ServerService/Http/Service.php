@@ -74,7 +74,6 @@ class Service extends AbstractSocketServerService
         //$defaultPorts = ['http' => 80, 'https' => 443];
         //$port = isset($defaultPorts[$uri->getScheme()]) && $defaultPorts[$uri->getScheme()] == $uri->getPort() ? '' : ':' . $uri->getPort();
         //$hostString = sprintf("%s%s", $uri->getHost(), $port);
-        $referrer = $httpRequest->getHeaders()->has('Referer') ? $httpRequest->getHeaders()->get('Referer')->getFieldValue() : '-';
 
         $this->logger->$priority(sprintf('%s - - "%s %s HTTP/%s" %d %d "%s" "%s"',
             $httpRequest->getMetadata('remoteAddress'),
@@ -83,9 +82,25 @@ class Service extends AbstractSocketServerService
             $httpRequest->getVersion(),
             $httpResponse->getStatusCode(),
             $responseSize,
-            $referrer, //$hostString,
-            $httpRequest->getHeaders()->has('User-Agent') ? $httpRequest->getHeaders()->get('User-Agent')->getFieldValue() : '-'
+            $this->getHeader($httpRequest, 'Referer', '-'),
+            $this->getHeader($httpRequest, 'User-Agent', '-')
             )
         );
+    }
+
+    /**
+     * @param RequestInterface|Request $request
+     * @param $headerName
+     * @param null|string $defaultValue
+     * @return null|string
+     */
+    protected function getHeader(RequestInterface $request, $headerName, $defaultValue = null)
+    {
+        if ($request instanceof \Zeus\ServerService\Http\Message\Request) {
+            $value = $request->getHeaderOverview($headerName, false);
+            return $value ? $value : $defaultValue;
+        }
+
+        return $request->getHeaders()->has($headerName) ? $request->getHeaders()->get($headerName)->getFieldValue() : $defaultValue;
     }
 }

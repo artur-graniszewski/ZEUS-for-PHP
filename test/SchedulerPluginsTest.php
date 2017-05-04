@@ -82,6 +82,25 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
+    public function testSchedulerDestructor()
+    {
+        $event = new SchedulerEvent();
+        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+
+        $plugin = $this->getDropPrivilegesMock();
+        $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
+        $plugin->expects($this->any())->method("posixSetEuid")->will($this->returnValue(true));
+        $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(true));
+        $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
+        $scheduler = $this->getSchedulerWithPlugin([$plugin]);
+        $event->setScheduler($scheduler);
+        $plugin->__construct(['user' => 'root', 'group' => 'root']);
+        $scheduler->getEventManager()->triggerEvent($event);
+        $this->assertEquals(2, count($scheduler->getPluginRegistry()), 'Two plugisn should be registered');
+        $scheduler->__destruct();
+        $this->assertEquals(1, count($scheduler->getPluginRegistry()), 'No plugin should be registered after Scheduler destruction');
+    }
+
     /**
      * @expectedException \RuntimeException
      * @expectedExceptionMessageRegExp ~Failed to switch to the group ID~

@@ -3,11 +3,12 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 /**
- * Class ReactEventSubscriber
- * @package Zeus\ServerService\Shared\React
+ * Class SocketEventSubscriber
  * @internal
  */
 final class SocketEventSubscriber
@@ -21,7 +22,7 @@ final class SocketEventSubscriber
     /** @var MessageComponentInterface */
     protected $message;
 
-    /** @var SocketConnection */
+    /** @var SocketStream */
     protected $connection;
 
     public function __construct(SocketServer $server, MessageComponentInterface $message)
@@ -53,9 +54,10 @@ final class SocketEventSubscriber
         return $this;
     }
 
-
     /**
      * @param SchedulerEvent $event
+     * @throws \Throwable|\Exception
+     * @throws null
      */
     public function onProcessLoop(SchedulerEvent $event)
     {
@@ -63,68 +65,69 @@ final class SocketEventSubscriber
 
         try {
             if (!$this->connection) {
-                $event->getProcess()->setWaiting();
+                $connection = $this->server->listen(1);
+                if (!$connection) {
+                    return;
+                }
 
-                if ($connection = $this->server->listen(1)) {
-                    $event->getProcess()->setRunning(time());
-                    $this->message->onOpen($connection);
-                    $this->connection = $connection;
+                $event->getProcess()->setRunning();
+                $this->connection = $connection;
+                $this->message->onOpen($connection);
+            }
+
+            $data = '';
+            while ($data !== false && $this->connection->isReadable()) {
+                $data = $this->connection->read();
+                if ($data !== false && $data !== '') {
+                    $this->message->onMessage($this->connection, $data);
+                }
+
+                $this->onHeartBeat($event);
+            }
+
+            // nothing wrong happened, data was handled, resume main event
+            if ($this->connection->isReadable() && $this->connection->isWritable()) {
+                return;
+            }
+        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
+        }
+
+        if ($this->connection) {
+            if ($exception) {
+                try {
+                    $this->message->onError($this->connection, $exception);
+                } catch (\Exception $exception) {
+                } catch (\Throwable $exception) {
                 }
             }
 
-            if (!$this->connection || !$this->connection->isReadable()) {
-                $this->connection = null;
-                return;
-            }
-
-            if ($this->connection->isReadable()) {
-                do {
-                    $data = $this->connection->read();
-                    if ($data !== false && $data !== '') {
-                        $this->message->onMessage($this->connection, $data);
-                    }
-
-                    $this->onHeartBeat();
-                } while ($data !== false && $this->connection && $this->connection->isReadable());
-            }
-
-            $this->onHeartBeat();
-
-        } catch (\Exception $exception) {
-
-        } catch (\Throwable $exception) {
-
-        }
-
-        if ($exception) {
-            if ($this->connection) {
-                $this->message->onError($this->connection, $exception);
-                $this->connection->close();
-                $this->connection = null;
-            }
-
-            $event->getProcess()->setWaiting();
-
-            throw $exception;
-        }
-
-        return;
-    }
-
-    public function onProcessExit()
-    {
-        if ($this->connection && $this->connection->isReadable()) {
             $this->connection->close();
             $this->connection = null;
         }
 
-        unset($this->server);
+        $event->getProcess()->setWaiting();
+
+        if ($exception) {
+            throw $exception;
+        }
+    }
+
+    public function onProcessExit()
+    {
+        if ($this->connection) {
+            $this->connection->close();
+            $this->connection = null;
+        }
+
+        $this->server = null;
     }
 
     /**
+     * @param SchedulerEvent $event
      * @return $this
      */
-    public function onHeartBeat()
+    protected function onHeartBeat(SchedulerEvent $event)
     {
         $now = time();
         if ($this->connection && $this->lastTickTime !== $now) {

@@ -5,6 +5,8 @@ namespace Zeus\Kernel\IpcServer\Adapter;
 use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
 use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
+use Zeus\Kernel\Networking\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\FileStream;
 
 /**
  * Class FifoAdapter
@@ -18,7 +20,7 @@ final class FifoAdapter implements
 {
     use MessagePackager;
 
-    /** @var resource[] sockets */
+    /** @var FileStream[] sockets */
     protected $ipc = [];
 
     /** @var string */
@@ -76,10 +78,12 @@ final class FifoAdapter implements
         posix_mkfifo($fileName1, 0600);
         posix_mkfifo($fileName2, 0600);
 
-        $this->ipc[0] = fopen($fileName1, "r+"); // ensures at least one writer (us) so will be non-blocking
-        $this->ipc[1] = fopen($fileName2, "r+"); // ensures at least one writer (us) so will be non-blocking
-        stream_set_blocking($this->ipc[0], false); // prevent fread / fwrite blocking
-        stream_set_blocking($this->ipc[1], false); // prevent fread / fwrite blocking
+        $ipc[0] = fopen($fileName1, "r+"); // ensures at least one writer (us) so will be non-blocking
+        $ipc[1] = fopen($fileName2, "r+"); // ensures at least one writer (us) so will be non-blocking
+        stream_set_blocking($ipc[0], false); // prevent fread / fwrite blocking
+        stream_set_blocking($ipc[1], false); // prevent fread / fwrite blocking
+        $this->ipc[0] = new FileStream($ipc[0]);
+        $this->ipc[1] = new FileStream($ipc[1]);
         $this->getMessageSizeLimit();
 
         $this->connected = true;
@@ -128,6 +132,9 @@ final class FifoAdapter implements
     public function send($message)
     {
         $channelNumber = $this->channelNumber;
+
+        $channelNumber = $channelNumber == 0 ? 1 : 0;
+
         $this->checkChannelAvailability($channelNumber);
 
         $message = $this->packMessage($message);
@@ -135,7 +142,10 @@ final class FifoAdapter implements
             throw new \RuntimeException(sprintf("Message length exceeds max packet size of %d bytes",  $this->getMessageSizeLimit()));
         }
 
-        fwrite($this->ipc[$channelNumber], $message . "\0");
+        $this->ipc[$channelNumber]->write($message . "\0");
+        if ($this->ipc[$channelNumber] instanceof FlushableConnectionInterface) {
+            $this->ipc[$channelNumber]->flush();
+        }
 
         return $this;
     }
@@ -151,24 +161,16 @@ final class FifoAdapter implements
         $success = false;
         $channelNumber = $this->channelNumber;
 
-        $channelNumber == 0 ?
-            $channelNumber = 1
-            :
-            $channelNumber = 0;
-
         $this->checkChannelAvailability($channelNumber);
 
-        $readSocket = [$this->ipc[$channelNumber]];
-        $writeSocket = $except = [];
-
-        if (!@stream_select($readSocket, $writeSocket, $except, 0, 10)) {
+        if (!$this->ipc[$channelNumber]->select(0)) {
 
             return null;
         }
 
-        $message = stream_get_line($readSocket[0], $this->getMessageSizeLimit(), "\0");
+        $message = $this->ipc[$channelNumber]->read("\0");
 
-        if (is_string($message) && $message !== "") {
+        if (is_string($message) && $message !== false) {
             $message = $this->unpackMessage($message);
             $success = true;
             return $message;
@@ -184,30 +186,27 @@ final class FifoAdapter implements
     {
         $channelNumber = $this->channelNumber;
 
-        $channelNumber == 0 ?
-            $channelNumber = 1
-            :
-            $channelNumber = 0;
-
         $this->checkChannelAvailability($channelNumber);
 
         if (!isset($this->ipc[$channelNumber])) {
             throw new \RuntimeException('Channel number ' . $channelNumber . ' is already closed');
         }
-        $readSocket = [$this->ipc[$channelNumber]];
-        $writeSocket = $except = [];
+
+        if (!$this->ipc[$channelNumber]->select(1)) {
+
+            return [];
+        }
+
         $messages = [];
 
-        if (@stream_select($readSocket, $writeSocket, $except, 1)) {
-            for (;;) {
-                $message = $this->receive($success);
-                if (!$success) {
+        for (;;) {
+            $message = $this->receive($success);
+            if (!$success) {
 
-                    break;
-                }
-
-                $messages[] = $message;
+                break;
             }
+
+            $messages[] = $message;
         }
 
         return $messages;
@@ -222,7 +221,7 @@ final class FifoAdapter implements
         if ($channelNumber !== -1) {
             $this->checkChannelAvailability($channelNumber);
 
-            fclose($this->ipc[$channelNumber]);
+            $this->ipc[$channelNumber]->close();
             $this->ipc[$channelNumber] = null;
             $this->activeChannels[$channelNumber] = false;
 
@@ -233,7 +232,7 @@ final class FifoAdapter implements
             if (!$stream) {
                 continue;
             }
-            fclose($stream);
+            $stream->close();
             unlink($this->getFilename($channelNumber));
             $this->ipc[$channelNumber] = null;
         }

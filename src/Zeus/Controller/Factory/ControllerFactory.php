@@ -11,7 +11,7 @@ use Zeus\Controller\ConsoleController;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 
-class ConsoleControllerFactory implements FactoryInterface
+class ControllerFactory implements FactoryInterface
 {
     /**
      * Create an object

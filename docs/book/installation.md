@@ -13,7 +13,6 @@
 ### Library requirements
 - Zend Framework 3+ application (with the following modules installed: `zend-mvc`, `zend-mvc-console`, `zend-console`, `zend-log`, `zend-config`)
 - Opis library (`opis/closure`)
-- ReactPHP library
 
 # Installation
 
