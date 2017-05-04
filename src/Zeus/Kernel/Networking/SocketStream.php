@@ -44,22 +44,6 @@ final class SocketStream extends FileStream implements ConnectionInterface, Flus
     }
 
     /**
-     * @return string|null Server address (IP) or null if unknown
-     */
-    public function getServerAddress()
-    {
-        return @stream_socket_get_name($this->stream, false);
-    }
-
-    /**
-     * @return string|null Remote address (client IP) or null if unknown
-     */
-    public function getRemoteAddress()
-    {
-        return @stream_socket_get_name($this->stream, true);
-    }
-
-    /**
      * @return bool
      */
     public function isReadable()
@@ -91,16 +75,6 @@ final class SocketStream extends FileStream implements ConnectionInterface, Flus
         $this->stream = null;
 
         return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    protected function isEof()
-    {
-        $info = @stream_get_meta_data($this->stream);
-
-        return $info['eof'] || $info['timed_out'];
     }
 
     /**

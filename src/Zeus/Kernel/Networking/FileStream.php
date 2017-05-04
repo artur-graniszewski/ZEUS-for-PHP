@@ -92,6 +92,10 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
      */
     protected function isEof()
     {
+        // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
+        if (feof($this->stream)) {
+            return true;
+        }
         $info = @stream_get_meta_data($this->stream);
 
         return $info['eof'] || $info['timed_out'];
@@ -155,7 +159,8 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         }
 
         $this->isReadable = false;
-        throw new \RuntimeException("Stream select failed:" . error_get_last()['message']);
+        $error = error_get_last();
+        throw new \RuntimeException("Stream select failed: " . $error['message']);
     }
 
     /**
