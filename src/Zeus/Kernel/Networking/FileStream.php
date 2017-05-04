@@ -1,11 +1,16 @@
 <?php
 
-namespace Zeus\ServerService\Shared\Networking;
+namespace Zeus\Kernel\Networking;
 
-class SocketConnection implements ConnectionInterface, FlushableConnectionInterface
+/**
+ * Class SocketConnection
+ * @package Zeus\ServerService\Shared\Networking
+ * @internal
+ */
+class FileStream implements ConnectionInterface, FlushableConnectionInterface
 {
     const DEFAULT_WRITE_BUFFER_SIZE = 65536;
-    const DEFAULT_READ_BUFFER_SIZE = 8192;
+    const DEFAULT_READ_BUFFER_SIZE = 65536;
 
     protected $isWritable = true;
 
@@ -21,6 +26,12 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
 
     protected $readBufferSize = self::DEFAULT_READ_BUFFER_SIZE;
 
+    protected $dataSent = 0;
+
+    protected $dataReceived = 0;
+
+    protected $writeCallback = 'fwrite';
+
     /**
      * SocketConnection constructor.
      * @param resource $stream
@@ -28,20 +39,6 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
     public function __construct($stream)
     {
         $this->stream = $stream;
-
-        stream_set_blocking($this->stream, 0);
-
-        if (function_exists('stream_set_chunk_size')) {
-            stream_set_chunk_size($this->stream, 1);
-        }
-
-        if (function_exists('stream_set_read_buffer')) {
-            stream_set_read_buffer($this->stream, 0);
-        }
-
-        if (function_exists('stream_set_write_buffer')) {
-            stream_set_write_buffer($this->stream, 0);
-        }
     }
 
     /**
@@ -65,7 +62,7 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function isReadable()
     {
-        return $this->isReadable;
+        return $this->isReadable && $this->stream;
     }
 
     /**
@@ -77,16 +74,22 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
             return $this;
         }
 
-        if ($this->isWritable()) {
-            $this->flush();
-        }
+        $this->flush();
 
+        $this->doClose();
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function doClose()
+    {
         $this->isClosing = true;
         $this->isReadable = false;
         $this->isWritable = false;
 
-        stream_set_blocking($this->stream, true);
-        stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
         fclose($this->stream);
 
         $this->stream = null;
@@ -99,6 +102,10 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     protected function isEof()
     {
+        // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
+        if (feof($this->stream)) {
+            return true;
+        }
         $info = @stream_get_meta_data($this->stream);
 
         return $info['eof'] || $info['timed_out'];
@@ -109,13 +116,14 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function isWritable()
     {
-        return $this->isWritable;
+        return $this->isWritable && $this->stream;
     }
 
     /**
+     * @param null|string $ending
      * @return bool|string
      */
-    public function read()
+    public function read($ending = false)
     {
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
@@ -125,28 +133,18 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
             return false;
         }
 
-        $error = null;
-        /*
-        set_error_handler(function ($errorNumber, $errorMessage, $errorFile, $errorLine) use (&$error) {
-            $error = new \ErrorException(
-                $errorMessage,
-                0,
-                $errorNumber,
-                $errorFile,
-                $errorLine
-            );
-        });
-
-        */
-        $data = stream_get_contents($this->stream, $this->readBufferSize);
-
-        //restore_error_handler();
-
-        if ($error !== null || $data === false || $this->isEof()) {
-            $this->close();
-
-            return false;
+        if ($ending !== false) {
+            $data = @stream_get_line($this->stream, $this->readBufferSize, $ending);
+        } else {
+            $data = @stream_get_contents($this->stream, $this->readBufferSize);
         }
+
+        if ($data === false || $this->isEof()) {
+            $this->isReadable = false;
+            $this->close();
+        }
+
+        $this->dataReceived += strlen($data);
 
         return $data;
     }
@@ -164,13 +162,15 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         $write = $except = [];
         $read = [$this->stream];
 
-        $result = @stream_select($read, $write, $except, $timeout);
-        if ($result === false) {
-            $this->isReadable = false;
-            throw new \RuntimeException("Stream select failed");
+        @trigger_error("");
+        $result = $this->doSelect($read, $write, $except, $timeout);
+        if ($result !== false) {
+            return $result === 1;
         }
 
-        return $result === 1;
+        $this->isReadable = false;
+        $error = error_get_last();
+        throw new \RuntimeException("Stream select failed: " . $error['message']);
     }
 
     /**
@@ -179,11 +179,11 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function write($data)
     {
-        if (!$this->isClosing) {
+        if ($this->isWritable()) {
             $this->data .= $data;
 
             if (isset($this->data[$this->writeBufferSize])) {
-                $this->doWrite();
+                $this->doWrite($this->writeCallback);
             }
         }
 
@@ -195,35 +195,37 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
      */
     public function flush()
     {
-        if (!$this->isClosing) {
-            $this->doWrite();
-        }
+        $this->doWrite($this->writeCallback);
 
         return $this;
     }
 
     /**
+     * @param callback $writeMethod
      * @return $this
      */
-    protected function doWrite()
+    protected function doWrite($writeMethod)
     {
-        $data = $this->data;
-
         if (!$this->isWritable()) {
             $this->data = '';
+
             return $this;
         }
 
-        $size = strlen($data);
+        $size = strlen($this->data);
         $sent = 0;
 
         $read = $except = [];
         $write = [$this->stream];
         while ($sent !== $size) {
-            $amount = stream_select($read, $write, $except, 1);
-            $wrote = 0;
-            if ($amount === 1) {
-                $wrote = defined("HHVM_VERSION") ? @fwrite($this->stream, $data) : @stream_socket_sendto($this->stream, $data);
+            $amount = 1;
+            $wrote = $writeMethod($this->stream, $this->data);
+
+            // write failed, try to wait a bit
+            if ($wrote === 0) {
+                do {
+                    $amount = $this->doSelect($read, $write, $except, 1);
+                } while($amount === 0);
             }
 
             if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
@@ -233,15 +235,32 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
                 break;
             }
 
-            $sent += $wrote;
             if ($wrote) {
-                $data = substr($data, $wrote);
+                $sent += $wrote;
+                $this->data = substr($this->data, $wrote);
             }
         };
 
+        $this->dataSent += $sent;
         $this->data = '';
 
         return $this;
+    }
+
+    protected function doSelect(& $read, & $write, & $except, $timeout)
+    {
+        @trigger_error("");
+        $result = @stream_select($read, $write, $except, $timeout);
+        if ($result !== false) {
+            return $result;
+        }
+
+        $error = error_get_last();
+        if ($result === false && strstr($error['message'], 'Interrupted system call')) {
+            return 0;
+        }
+
+        return false;
     }
 
     /**
@@ -256,6 +275,28 @@ class SocketConnection implements ConnectionInterface, FlushableConnectionInterf
         }
 
         $this->close();
+
+        return $this;
+    }
+
+    /**
+     * @param int $size
+     * @return $this
+     */
+    public function setWriteBufferSize($size)
+    {
+        $this->writeBufferSize = $size;
+
+        return $this;
+    }
+
+    /**
+     * @param int $size
+     * @return $this
+     */
+    public function setReadBufferSize($size)
+    {
+        $this->readBufferSize = $size;
 
         return $this;
     }

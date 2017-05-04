@@ -5,9 +5,9 @@ namespace Zeus\ServerService\Async;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Message\Message;
-use Zeus\ServerService\Shared\AbstractReactServerService;
+use Zeus\ServerService\Shared\AbstractSocketServerService;
 
-class Service extends AbstractReactServerService
+class Service extends AbstractSocketServerService
 {
     /** @var Process */
     protected $process;
@@ -25,8 +25,7 @@ class Service extends AbstractReactServerService
         $this->config['logger'] = get_class();
 
         $config = new Config($this->getConfig());
-        $server = $this->getServer(new Message(), $config);
-        $server->setHeartBeatInterval(0.00001);
+        $this->getServer(new Message(), $config);
         parent::start();
 
         return $this;

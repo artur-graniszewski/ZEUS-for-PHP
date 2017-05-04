@@ -1,6 +1,7 @@
 <?php
 
 use Zeus\Controller\ConsoleController;
+use Zeus\Controller\ProcessController;
 
 return [
     'routes' => [
@@ -11,6 +12,6 @@ return [
                     'controller' => ConsoleController::class
                 ]
             ]
-        ]
+        ],
     ]
 ];

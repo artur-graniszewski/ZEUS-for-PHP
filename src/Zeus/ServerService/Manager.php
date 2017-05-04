@@ -126,7 +126,7 @@ final class Manager
 
     /**
      * @param string $serviceName
-     * @param ServerServiceInterface|Closure $service
+     * @param ServerServiceInterface|\Closure $service
      * @param bool $autoStart
      * @return $this
      */
@@ -179,6 +179,13 @@ final class Manager
     protected function doStartService($serviceName)
     {
         $service = $this->getService($serviceName);
+
+        $event = $this->getEvent();
+        $event->setName(ManagerEvent::EVENT_SERVICE_START);
+        $event->setError(null);
+        $event->setService($service);
+        $event->stopPropagation(false);
+
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
                 $this->onServiceStop($service);
@@ -186,6 +193,8 @@ final class Manager
 
         $exception = null;
         try {
+            $this->getEventManager()->triggerEvent($event);
+
             $service->start();
             $schedulerPid = $service->getScheduler()->getId();
             $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
@@ -200,13 +209,6 @@ final class Manager
 
             return $this;
         }
-
-        $event = $this->getEvent();
-        $event->setName(ManagerEvent::EVENT_SERVICE_START);
-        $event->setError(null);
-        $event->setService($service);
-        $event->stopPropagation(false);
-        $this->getEventManager()->triggerEvent($event);
 
         return $this;
     }
@@ -249,7 +251,7 @@ final class Manager
         }
 
         // @todo: get rid of this loop!!
-        while ($this->servicesRunning > 0) {
+        while ($this->servicesRunning > 0 && !$event->propagationIsStopped()) {
             $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
             $event->setError(null);
             $event->stopPropagation(false);

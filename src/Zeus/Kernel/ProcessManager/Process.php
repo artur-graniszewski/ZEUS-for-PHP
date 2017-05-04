@@ -124,9 +124,12 @@ final class Process
     public function setRunning($statusDescription = null)
     {
         if ($this->status->getCode() === ProcessState::RUNNING) {
-            if ($statusDescription === $this->status->getStatusDescription()) {
+            $now = time();
+            if ($statusDescription === $this->status->getStatusDescription() && $this->status->getTime() === $now) {
                 return $this;
             }
+
+            $this->status->setTime($now);
         } else {
             $this->getStatus()->incrementNumberOfFinishedTasks(1);
         }

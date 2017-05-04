@@ -10,7 +10,7 @@ use Zend\Mvc\Service\ServiceListenerFactory;
 use Zend\Mvc\Service\ServiceManagerConfig;
 use Zend\ServiceManager\ServiceManager;
 use Zend\Stdlib\ArrayUtils;
-use Zeus\Controller\Factory\ConsoleControllerFactory;
+use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Controller\ConsoleController;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
@@ -48,8 +48,8 @@ trait ZeusFactories
         $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
         $sm->setFactory(IpcLoggerInterface::class, IpcLoggerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
-        $sm->setFactory(ConsoleControllerMock::class, ConsoleControllerFactory::class);
-        $sm->setFactory(ConsoleController::class, ConsoleControllerFactory::class);
+        $sm->setFactory(ConsoleControllerMock::class, ControllerFactory::class);
+        $sm->setFactory(ConsoleController::class, ControllerFactory::class);
         $sm->setFactory(Manager::class, ManagerFactory::class);
         $sm->setFactory(LruDiscipline::class, LruDisciplineFactory::class);
         $sm->setFactory('ServiceListener', ServiceListenerFactory::class);
@@ -152,8 +152,7 @@ trait ZeusFactories
             'ipc_adapter' => $ipcAdapter,
             'service_name' => 'test-service',
             'scheduler_name' => 'test-scheduler',
-            'service_logger_adapter' => $logger,
-            'main_logger_adapter' => $logger,
+            'logger_adapter' => $logger,
         ]);
 
         if ($mainLoopIterations > 0) {

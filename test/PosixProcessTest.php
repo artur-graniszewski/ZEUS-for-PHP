@@ -5,7 +5,7 @@ namespace ZeusTest;
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManager;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -55,7 +55,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
         $sm = $this->getServiceManager();
         $scheduler = $this->getScheduler(0);
-        $sm->setFactory(PosixProcess::class, PosixProcessFactory::class);
+        $sm->setFactory(PosixProcess::class, MultiProcessingModuleFactory::class);
         /** @var PosixProcess $service */
         $service = $sm->build(PosixProcess::class, ['scheduler' => $scheduler, 'scheduler_event' => new SchedulerEvent()]);
         $this->assertInstanceOf(PosixProcess::class, $service);

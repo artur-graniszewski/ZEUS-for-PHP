@@ -4,32 +4,38 @@ namespace ZeusTest\Services\Async;
 
 use PHPUnit_Framework_TestCase;
 use Zend\ServiceManager\ServiceManager;
+use Zeus\Kernel\Networking\SocketServer;
+use Zeus\Kernel\Networking\SocketStream;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 
 class AsyncPluginTest extends PHPUnit_Framework_TestCase
 {
-    const TEST_PORT = 9999;
-
-    protected $sockets;
+    /** @var SocketServer */
+    protected $server;
+    protected $port;
+    protected $client;
 
     public function setUp()
     {
-        $domain = (strtoupper(substr(PHP_OS, 0, 3)) == 'WIN' ? AF_INET : AF_UNIX);
-        socket_create_pair($domain, SOCK_STREAM, 0, $this->sockets);
-        socket_set_nonblock($this->sockets[1]);
-        //$this->client = socket_accept($sock);
+        $config = new Config();
+        $this->port = 9999;
+        $config->setListenPort($this->port);
+        $config->setListenAddress('0.0.0.0');
+        $this->server = new SocketServer($config);
+        $this->server->createServer();
+
+        $this->client = stream_socket_client('tcp://localhost:' . $this->port);
+        stream_set_blocking($this->client, false);
     }
 
     public function tearDown()
     {
-        if (is_resource($this->sockets[0])) {
-            socket_close($this->sockets[0]);
+        if ($this->server) {
+            $this->server->stop();
         }
-        if (is_resource($this->sockets[1])) {
-            socket_close($this->sockets[1]);
-        }
+        fclose($this->client);
     }
 
     /**
@@ -49,7 +55,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
                         'scheduler_name' => 'zeus_web_scheduler',
                         'service_adapter' => \Zeus\ServerService\Async\Service::class,
                         'service_settings' => [
-                            'listen_port' => static::TEST_PORT,
+                            'listen_port' => $this->port,
                             'listen_address' => '127.0.0.1',
                         ],
                     ]
@@ -78,16 +84,16 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
 
     /**
      * @expectedException \RuntimeException
-     * @expectedExceptionMessage Async call failed, server response: BAD_REQUEST
+     * @expectedExceptionMessage Async call failed, server response: "BAD_REQUEST"
      */
     public function testErrorHandlingOnRun()
     {
-        socket_write($this->sockets[1], "BAD_REQUEST\n");
+        fwrite($this->client, "BAD_REQUEST\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $plugin->run(function() { return "ok"; });
     }
@@ -99,25 +105,27 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
     public function testErrorHandlingOnRunWhenOffline()
     {
         $plugin = $this->getPlugin(false);
+        $this->server->stop();
+        $this->server = null;
 
         $plugin->run(function() { return "ok"; });
     }
 
     public function testSocketIsClosedOnError()
     {
-        socket_write($this->sockets[1], "BAD_REQUEST\n");
+        fwrite($this->client, "BAD_REQUEST\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($stream = $this->server->listen(1));
 
         try {
             $plugin->run(function () {
                 return "ok";
             });
         } catch (\Exception $e) {
-            $this->assertFalse(is_resource($this->sockets[0]), "Socket should be closed after error");
+            $this->assertFalse($stream->isReadable(), "Socket should be closed after error");
             return;
         }
 
@@ -126,28 +134,55 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
 
     public function testProcessingOnRun()
     {
-        socket_write($this->sockets[1], "PROCESSING\n");
+        fwrite($this->client, "PROCESSING\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $plugin->run(function() { return "ok"; });
     }
 
-    public function testIsWorking()
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Async call failed, no response from server
+     */
+    public function testOperationOnRealNotConnectedSocket()
     {
-        socket_write($this->sockets[1], "PROCESSING\n");
+        $this->server->listen(1);
+        $plugin = $this->getPlugin(false);
+
+        $plugin->run(function() { return "ok"; });
+    }
+
+    public function testIsWorkingWhenNoDataOnStream()
+    {
+        fwrite($this->client, "PROCESSING\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
         $isWorking = $plugin->isWorking($id);
         $this->assertTrue($isWorking, 'Callback should be reported as working');
+    }
+
+    public function testIsWorkingWhenDataOnStream()
+    {
+        fwrite($this->client, "PROCESSING\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->server->listen(1));
+
+        $id = $plugin->run(function() { return "ok"; });
+        fwrite($this->client, "SOME DATA\n");
+        $isWorking = $plugin->isWorking($id);
+        $this->assertFalse($isWorking, 'Callback should be reported as not working anymore');
     }
 
     public function testResultOnJoin()
@@ -155,16 +190,36 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $data = "OK! " . microtime(true);
         $message = serialize($data);
         $size = strlen($message);
-        socket_write($this->sockets[1], "PROCESSING\n$size:$message\n");
+        fwrite($this->client, "PROCESSING\n$size:$message\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
         $result = $message = $plugin->join($id);
         $this->assertEquals($data, $result);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage Join timeout encountered
+     */
+    public function testResultOnJoinTimeout()
+    {
+        fwrite($this->client, "PROCESSING\n");
+        $plugin = $this->getPlugin(true);
+        $plugin
+            ->expects($this->any())
+            ->method('getSocket')
+            ->willReturn($this->server->listen(1));
+
+        $this->assertGreaterThan(1, $plugin->getJoinTimeout());
+        $plugin->setJoinTimeout(1);
+        $this->assertEquals(1, $plugin->getJoinTimeout());
+        $id = $plugin->run(function() { return "ok"; });
+        $plugin->join($id);
     }
 
     public function testResultOnArrayJoin()
@@ -172,12 +227,12 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $data = "OK! " . microtime(true);
         $message = serialize($data);
         $size = strlen($message);
-        socket_write($this->sockets[1], "PROCESSING\n$size:$message\n");
+        fwrite($this->client, "PROCESSING\n$size:$message\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
         $result = $message = $plugin->join([$id]);
@@ -190,12 +245,12 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
      */
     public function testSerializationErrorOnJoin()
     {
-        socket_write($this->sockets[1], "PROCESSING\nCORRUPTED_REQUEST\n");
+        fwrite($this->client, "PROCESSING\nCORRUPTED_REQUEST\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
         $plugin->join($id);
@@ -207,15 +262,15 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
      */
     public function testTimeoutOnJoin()
     {
-        socket_write($this->sockets[1], "PROCESSING\n");
+        fwrite($this->client, "PROCESSING\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($stream = $this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
-        socket_close($this->sockets[1]);
+        $stream->close();
         $plugin->join($id);
     }
 
@@ -225,12 +280,12 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
      */
     public function testCorruptedResultOnJoin()
     {
-        socket_write($this->sockets[1], "PROCESSING\naaaa\n");
+        fwrite($this->client, "PROCESSING\naaaa\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($stream = $this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
         $plugin->join($id);
@@ -242,12 +297,12 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
      */
     public function testCorruptedResultSizeOnJoin()
     {
-        socket_write($this->sockets[1], "PROCESSING\naaaa12:aaa\n");
+        fwrite($this->client, "PROCESSING\naaaa12:aaa\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->sockets[0]);
+            ->willReturn($this->server->listen(1));
 
         $id = $plugin->run(function() { return "ok"; });
         $plugin->join($id);

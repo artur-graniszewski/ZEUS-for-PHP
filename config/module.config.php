@@ -3,11 +3,11 @@
 namespace Zeus;
 
 use Zeus\Controller\ConsoleController;
-use Zeus\Controller\Factory\ConsoleControllerFactory;
+use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\PosixProcessFactory;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
@@ -20,7 +20,6 @@ use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
-use Zeus\ServerService\Http\Factory\RequestFactory;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
@@ -38,7 +37,7 @@ return $config = [
 
         ],
         'factories' => [
-            ConsoleController::class => ConsoleControllerFactory::class,
+            ConsoleController::class => ControllerFactory::class,
 
         ]
     ],
@@ -59,10 +58,9 @@ return $config = [
             Scheduler::class => SchedulerFactory::class,
             Process::class => ProcessFactory::class,
             Manager::class => ManagerFactory::class,
-            PosixProcess::class => PosixProcessFactory::class,
+            PosixProcess::class => MultiProcessingModuleFactory::class,
             LruDiscipline::class => LruDisciplineFactory::class,
             MemcacheService::class => MemcacheFactory::class,
-            //Service::class => ServiceFactory::class,
         ],
         'abstract_factories' => [
             IpcAdapterAbstractFactory::class,

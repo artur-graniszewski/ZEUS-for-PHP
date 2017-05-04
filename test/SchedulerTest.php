@@ -51,10 +51,10 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
     public function testApplicationInit()
     {
-        $scheduler = $this->getScheduler();
+        $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
         $scheduler->setContinueMainLoop(false);
-        $scheduler->onSchedulerStart(new SchedulerEvent());
+        $scheduler->start(false);
         $this->assertEquals(getmypid(), $scheduler->getId());
     }
 
@@ -96,7 +96,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $this->assertInstanceOf(Scheduler::class, $scheduler);
 
-        $scheduler->onSchedulerStart(new SchedulerEvent());
+        $scheduler->start(false);
         $ipc->useChannelNumber(1);
         $this->assertEquals(0, count($ipc->receiveAll()), "No messages should be left on IPC");
         $ipc->useChannelNumber(0);
@@ -154,7 +154,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $e->getProcess()->getStatus()->incrementNumberOfFinishedTasks(100);
             }
         );
-        $scheduler->onSchedulerStart(new SchedulerEvent());
+        $scheduler->start(false);
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
         $this->assertEquals($processesCreated, $processesInitialized, "Scheduler should have initialized all requested processes");
@@ -189,7 +189,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }
         );
 
-        $scheduler->onSchedulerStart();
+        $scheduler->start(false);
 
         $this->assertEquals(11, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on startup and 3 additional one if all the previous were busy");
     }
@@ -240,7 +240,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $e->getProcess()->getStatus()->incrementNumberOfFinishedTasks(100);
             }
         );
-        $scheduler->onSchedulerStart(new SchedulerEvent());
+        $scheduler->start(false);
 
         $this->assertEquals(4, $amountOfTerminateCommands, "Scheduler should try to reduce number of processes to 4 if too many of them is waiting");
     }
@@ -325,7 +325,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler->setLogger($logger);
         $scheduler->getLogger()->addWriter($mockWriter);
         $mockWriter->setFormatter(new ConsoleLogFormatter(Console::getInstance()));
-        $scheduler->onSchedulerStart(new SchedulerEvent());
+        $scheduler->start(false);
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
         $this->assertEquals($processesCreated, $processesInitialized, "Scheduler should have initialized all requested processes");
@@ -397,15 +397,16 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
 
         $event = new SchedulerEvent();
-        $scheduler->onSchedulerStart($event);
+        $scheduler->start(false);
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
+        $this->assertEquals(8, count($processesCreated), '8 processes should have been created');
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $scheduler->getEventManager()->triggerEvent($event);
 
-        $this->assertEquals(0, count($processesCreated), 'All processes should have been planned to be terminated on scheduler shutdown');
         $this->assertEquals(0, count($unknownProcesses), 'No unknown processes should have been terminated');
+        $this->assertEquals(0, count($processesCreated), 'All processes should have been planned to be terminated on scheduler shutdown');
     }
 
     public function testSchedulerIsTerminatingIfPidFileIsInvalid()

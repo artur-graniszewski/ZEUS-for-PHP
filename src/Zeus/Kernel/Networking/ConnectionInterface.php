@@ -1,7 +1,12 @@
 <?php
 
-namespace Zeus\ServerService\Shared\Networking;
+namespace Zeus\Kernel\Networking;
 
+/**
+ * Interface ConnectionInterface
+ * @package Zeus\Kernel\Networking
+ * @internal
+ */
 interface ConnectionInterface
 {
     public function __construct($stream);
@@ -19,7 +24,7 @@ interface ConnectionInterface
 
     public function isWritable();
 
-    public function read();
+    public function read($ending = false);
 
     public function isReadable();
 

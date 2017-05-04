@@ -2,7 +2,7 @@
 
 namespace Zeus\ServerService\Shared;
 
-use Zeus\ServerService\Shared\Networking\SocketServer;
+use Zeus\Kernel\Networking\SocketServer;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use Zeus\ServerService\Shared\Networking\SocketEventSubscriber;
 
