@@ -20,7 +20,6 @@ use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
-use Zeus\ServerService\Http\Factory\RequestFactory;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
@@ -62,7 +61,6 @@ return $config = [
             PosixProcess::class => MultiProcessingModuleFactory::class,
             LruDiscipline::class => LruDisciplineFactory::class,
             MemcacheService::class => MemcacheFactory::class,
-            //Service::class => ServiceFactory::class,
         ],
         'abstract_factories' => [
             IpcAdapterAbstractFactory::class,

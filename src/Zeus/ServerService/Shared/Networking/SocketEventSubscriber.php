@@ -8,8 +8,7 @@ use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 /**
- * Class ReactEventSubscriber
- * @package Zeus\ServerService\Shared\React
+ * Class SocketEventSubscriber
  * @internal
  */
 final class SocketEventSubscriber

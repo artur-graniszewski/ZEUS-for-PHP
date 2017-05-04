@@ -126,7 +126,7 @@ class SocketTestConnection implements ConnectionInterface, FlushableConnectionIn
 
     /**
      * @param bool $isConnectionWritable
-     * @return ReactTestConnection
+     * @return $this
      */
     public function setIsConnectionWritable($isConnectionWritable)
     {

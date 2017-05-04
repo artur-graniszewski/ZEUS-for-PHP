@@ -80,7 +80,7 @@ Output:
 2017-04-15 14:10:48.772    INFO 24904 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : Using Zeus\Kernel\IpcServer\Adapter\FifoAdapter for zeus_httpd IPC
 2017-04-15 14:10:48.773    INFO 24904 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : Enumerating IPC capabilities:
 2017-04-15 14:10:48.773    INFO 24904 --- [           main] ernel\IpcServer\Factory\IpcServerFactory : IPC message size limit: 65536 bytes
-2017-04-15 14:10:48.783    INFO 24904 --- [     zeus_httpd] ervice\Shared\AbstractReactServerService : Launching server on 0.0.0.0:7070
+2017-04-15 14:10:48.783    INFO 24904 --- [     zeus_httpd] rvice\Shared\AbstractSocketServerService : Launching server on 0.0.0.0:7070
 2017-04-15 14:10:48.786    INFO 24904 --- [     zeus_httpd] Zeus\Kernel\ProcessManager\Scheduler     : Starting Scheduler with 1 plugin
 2017-04-15 14:10:48.795    INFO 24905 --- [     zeus_httpd] Zeus\Kernel\ProcessManager\Scheduler     : Establishing IPC
 2017-04-15 14:10:48.795    INFO 24905 --- [     zeus_httpd] Zeus\Kernel\ProcessManager\Scheduler     : Scheduler started
@@ -337,7 +337,6 @@ Percentage of the requests served within a certain time (ms)
 ## Library requirements
 - Zend Framework 3+ application (with the following modules installed: `zend-mvc`, `zend-mvc-console`, `zend-console`, `zend-log`, `zend-config`)
 - Opis library (`opis/closure`)
-- ReactPHP library
 
 # Installation
 
@@ -396,7 +395,7 @@ user@host:/var/www/zf-application/public$ php index.php zeus status zeus_httpd
 ### Web Server
 - Code refactor and HTTP performance improvements
 - Performance improvements in Application dispatcher when handling Zend Framework applications
-- Removing dependency on ReactPHP
+- (implemented) ~~Removing dependency on ReactPHP~~
 - More configuration options
 
 ### Inter-Process Communication

@@ -8,7 +8,6 @@ use Zend\Cache\Storage\Adapter\Memory;
 use Zeus\Kernel\Networking\ConnectionInterface;
 use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
-use ZeusTest\Helpers\ReactTestConnection;
 use ZeusTest\Helpers\SocketTestConnection;
 
 class MemcacheMessageTest extends PHPUnit_Framework_TestCase
@@ -87,7 +86,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
      */
     public function testSetCommand($noReplyParam, $expectedStatus)
     {
-        $testConnection = new ReactTestConnection();
+        $testConnection = new SocketTestConnection(null);
         $ttl = time() + 5;
         $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
@@ -111,7 +110,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
      */
     public function testAddCommand($noReplyParam, $expectedStatus)
     {
-        $testConnection = new ReactTestConnection();
+        $testConnection = new SocketTestConnection(null);
         $ttl = time() + 5;
         $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
         $length = strlen($value);
@@ -138,7 +137,7 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
      */
     public function testReplaceCommand($noReplyParam, $expectedStatus)
     {
-        $testConnection = new ReactTestConnection();
+        $testConnection = new SocketTestConnection(null);
         $ttl = time() + 5;
         $value = str_pad('!', rand(3, 5), 'A', STR_PAD_RIGHT) . '#';
         $length = strlen($value);

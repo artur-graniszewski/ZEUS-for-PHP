@@ -3,7 +3,7 @@
 ## Version 1.7.1
 - [Improvement] Removed ReactPHP library from ZEUS Memcached Server and replaced it with ZEUS socket server implementation
 - [Improvement] Removed ReactPHP library from ZEUS Async Server and replaced it with ZEUS socket server implementation
-- [Improvement] Made ReactPHP library optional in composer configuration (required only in dev configuration for unit test purposes)
+- [Improvement] Removed ReactPHP library from required packages in Composer configuration
 - [Improvement] Various stability and performance improvements in Fifo IPC Adapter (now using ZEUS socket implementation)
 - [Improvement] Moved ZEUS socket code to Kernel namespace (as a new Networking layer)
 

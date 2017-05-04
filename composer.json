@@ -46,15 +46,13 @@
     "opis/closure": "^2.4.0"
   },
   "suggest": {
-    "zendframework/zend-cache": "^2.7, to use Memcached Server Service",
-    "react/react": "^0.4.2, to use React as alternative Networking Layer"
+    "zendframework/zend-cache": "^2.7, to use Memcached Server Service"
   },
   "require-dev": {
     "phpunit/phpunit": "^4.8 || ^5.7",
     "squizlabs/php_codesniffer": "^2.7",
     "zendframework/zend-cache": "^2.7",
-    "athletic/athletic": "^0.1",
-    "react/react": "^0.4.2"
+    "athletic/athletic": "^0.1"
   },
   "autoload": {
     "psr-4": {
