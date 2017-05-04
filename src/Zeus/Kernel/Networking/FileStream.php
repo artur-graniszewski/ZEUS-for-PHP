@@ -76,6 +76,16 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
 
         $this->flush();
 
+        $this->doClose();
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function doClose()
+    {
         $this->isClosing = true;
         $this->isReadable = false;
         $this->isWritable = false;
