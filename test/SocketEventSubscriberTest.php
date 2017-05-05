@@ -38,10 +38,11 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
     {
         $events = new EventManager();
         $event = new SchedulerEvent();
+        $event->setScheduler($this->getScheduler(0));
         $process = new Process($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
         $event->setProcess($process);
-        $process->setEventManager($events);
+        $process->attach($events);
 
         $received = null;
         $steps = 0;
@@ -58,7 +59,18 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $eventSubscriber = new SocketEventSubscriber($this->server, $message);
         $eventSubscriber->attach($events);
 
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        
+        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) use (& $schedulerStarted) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $events->triggerEvent($event);
+
+        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
         $events->triggerEvent($event);
 
         $client = stream_socket_client('tcp://localhost:' . $this->port);
@@ -85,10 +97,11 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
     {
         $events = new EventManager();
         $event = new SchedulerEvent();
+        $event->setScheduler($this->getScheduler(0));
         $process = new Process($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
         $event->setProcess($process);
-        $process->setEventManager($events);
+        $process->attach($events);
 
         $received = null;
         $message = new SocketTestMessage(function($connection, $data) use (&$received) {
@@ -97,7 +110,19 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $eventSubscriber = new SocketEventSubscriber($this->server, $message);
         $eventSubscriber->attach($events);
 
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) use (& $schedulerStarted) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $events->triggerEvent($event);
+
+        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+
         $events->triggerEvent($event);
 
         $client = stream_socket_client('tcp://localhost:' . $this->port);

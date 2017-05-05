@@ -32,8 +32,6 @@ class SchedulerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        $schedulerEvent = new SchedulerEvent();
-
         $schedulerConfig = $this->getSchedulerConfig($container, $options['scheduler_name']);
         $schedulerConfig['service_name'] = $options['service_name'];
 
@@ -41,10 +39,10 @@ class SchedulerFactory implements FactoryInterface
         $schedulerDiscipline =
             isset($schedulerConfig['scheduler_discipline']) ? $container->get($schedulerConfig['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        $processService = $container->build(Process::class, ['logger_adapter' => $mainLoggerAdapter, 'process_event' => $schedulerEvent]);
+        $processService = $container->build(Process::class, ['logger_adapter' => $mainLoggerAdapter]);
 
-        $scheduler = new Scheduler($schedulerConfig, $processService, $mainLoggerAdapter, $options['ipc_adapter'], $schedulerEvent, $schedulerDiscipline);
-        $container->build($schedulerConfig['multiprocessing_module'], ['scheduler' => $scheduler, 'scheduler_event' => $schedulerEvent]);
+        $scheduler = new Scheduler($schedulerConfig, $processService, $mainLoggerAdapter, $options['ipc_adapter'], $schedulerDiscipline);
+        $container->build($schedulerConfig['multiprocessing_module'], ['scheduler' => $scheduler]);
         $this->startPlugins($container, $scheduler, isset($schedulerConfig['plugins']) ? $schedulerConfig['plugins'] : []);
 
         return $scheduler;

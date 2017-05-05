@@ -29,7 +29,7 @@ class MultiProcessingModuleFactory implements FactoryInterface
     {
         /** @var Scheduler $scheduler */
         $scheduler = $options['scheduler'];
-        $driver = new $requestedName($options['scheduler_event']);
+        $driver = new $requestedName();
         $driver->attach($scheduler->getEventManager());
 
         return $driver;
