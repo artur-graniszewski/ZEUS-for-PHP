@@ -60,7 +60,7 @@ class Request extends ZendRequest
             ? '[\w-]+'
             : 'OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH';
 
-        $regex = '#^(?P<method>' . $methods . ')\s(?P<uri>[^ ]*)(?:\sHTTP\/(?P<version>\d+\.\d+)){1}' . "\r\n#sS";
+        $regex = '#^(?P<method>' . $methods . ')\s(?P<uri>[^ ]*)(?:\sHTTP\/(?P<version>\d+\.\d+)){1}\r\n#S';
         if (!preg_match($regex, $buffer, $matches)) {
             throw new \InvalidArgumentException(
                 'A valid request line was not found in the provided string '
@@ -69,6 +69,7 @@ class Request extends ZendRequest
 
         $request->setMethod($matches['method']);
         $request->setUri($matches['uri']);
+        $request->setVersion($matches['version']);
 
         $parsedUri = parse_url($matches['uri']);
         if (isset($parsedUri['query'])) {
@@ -76,8 +77,6 @@ class Request extends ZendRequest
             parse_str($parsedUri['query'], $parsedQuery);
             $request->setQuery(new Parameters($parsedQuery));
         }
-
-        $request->setVersion($matches['version']);
 
         // remove first line
         $buffer = substr($buffer, strlen($matches[0]));
@@ -89,7 +88,7 @@ class Request extends ZendRequest
 
         $request->headers = $buffer;
 
-        if (preg_match_all('/(?P<name>[^()><@,;:\"\\/\[\]?=}{ \t]+):[\s]*(?P<value>[^\r\n]*)' . "[\s]*\r\n/sS", $buffer, $matches, PREG_SET_ORDER)) {
+        if (preg_match_all('/(?P<name>[^()><@,;:\"\\/\[\]?=}{ \t]+):[\s]*(?P<value>[^\r\n]*)\r\n/S', $buffer, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $request->headersOverview[strtolower($match['name'])][] = $match['value'];
             }
@@ -110,11 +109,11 @@ class Request extends ZendRequest
             return null;
         }
 
-        if (isset($this->headersOverview[$name][1])) {
-            return $toLower ? strtolower($this->headersOverview[$name]) : $this->headersOverview[$name];
+        if (false === isset($this->headersOverview[$name][1])) {
+            return $toLower ? strtolower($this->headersOverview[$name][0]) : $this->headersOverview[$name][0];
         }
 
-        return $toLower ? strtolower($this->headersOverview[$name][0]) : $this->headersOverview[$name][0];
+        return $this->headersOverview[$name];
     }
 
     /**

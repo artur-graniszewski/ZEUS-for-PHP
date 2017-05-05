@@ -465,8 +465,6 @@ final class Scheduler implements EventsCapableInterface
             return $this;
         }
 
-        $this->setCurrentTime(microtime(true));
-
         for ($i = 0; $i < $count; ++$i) {
             $this->triggerEvent(SchedulerEvent::EVENT_PROCESS_CREATE);
         }
