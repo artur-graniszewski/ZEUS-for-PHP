@@ -33,9 +33,6 @@ final class Scheduler implements EventsCapableInterface
     /** @var Config */
     protected $config;
 
-    /** @var float */
-    protected $currentTime;
-
     /** @var bool */
     protected $continueMainLoop = true;
 
@@ -85,25 +82,6 @@ final class Scheduler implements EventsCapableInterface
     public function setId($schedulerId)
     {
         $this->schedulerId = $schedulerId;
-
-        return $this;
-    }
-
-    /**
-     * @return float
-     */
-    public function getCurrentTime()
-    {
-        return $this->currentTime;
-    }
-
-    /**
-     * @param float $currentTime
-     * @return $this
-     */
-    public function setCurrentTime($currentTime)
-    {
-        $this->currentTime = $currentTime;
 
         return $this;
     }
@@ -476,7 +454,7 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * Forks children
+     * Create processes
      *
      * @param int $count Number of processes to create.
      * @return $this
@@ -510,7 +488,7 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @param EventInterface $event
+     * @param SchedulerEvent $event
      */
     protected function addNewProcess(SchedulerEvent $event)
     {
@@ -598,7 +576,7 @@ final class Scheduler implements EventsCapableInterface
         $this->ipcAdapter->useChannelNumber(0);
 
         $messages = $this->ipcAdapter->receiveAll();
-        $this->setCurrentTime(microtime(true));
+        $time = microtime(true);
 
         foreach ($messages as $message) {
             switch ($message['type']) {
@@ -608,7 +586,7 @@ final class Scheduler implements EventsCapableInterface
 
                     /** @var ProcessState $processStatus */
                     $processStatus = $message['extra']['status'];
-                    $processStatus['time'] = $this->getCurrentTime();
+                    $processStatus['time'] = $time;
 
                     if ($processStatus['code'] === ProcessState::RUNNING) {
                         $this->schedulerStatus->incrementNumberOfFinishedTasks();
