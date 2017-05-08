@@ -4,11 +4,13 @@ namespace Zeus;
 
 use Zeus\Controller\ConsoleController;
 use Zeus\Controller\Factory\ControllerFactory;
+use Zeus\Controller\ProcessController;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
@@ -38,6 +40,7 @@ return $config = [
         ],
         'factories' => [
             ConsoleController::class => ControllerFactory::class,
+            ProcessController::class => ControllerFactory::class,
 
         ]
     ],
@@ -59,6 +62,7 @@ return $config = [
             Process::class => ProcessFactory::class,
             Manager::class => ManagerFactory::class,
             PosixProcess::class => MultiProcessingModuleFactory::class,
+            ProcessOpen::class => MultiProcessingModuleFactory::class,
             LruDiscipline::class => LruDisciplineFactory::class,
             MemcacheService::class => MemcacheFactory::class,
         ],
@@ -94,7 +98,7 @@ return $config = [
         'schedulers' => [
             'zeus_web_scheduler_1' => [
                 'scheduler_name' => 'zeus_web_scheduler',
-                'multiprocessing_module' => PosixProcess::class,
+                'multiprocessing_module' => ProcessOpen::class,
                 'scheduler_discipline' => LruDiscipline::class,
                 'max_processes' => 32,
                 'max_process_tasks' => 100,

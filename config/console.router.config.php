@@ -13,5 +13,14 @@ return [
                 ]
             ]
         ],
+
+        'zeus-process' => [
+            'options' => [
+                'route' => 'zeus (scheduler|process) [<service>]',
+                'defaults' => [
+                    'controller' => ProcessController::class
+                ]
+            ]
+        ]
     ]
 ];
