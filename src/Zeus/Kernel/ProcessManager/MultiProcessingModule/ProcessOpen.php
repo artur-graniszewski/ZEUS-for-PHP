@@ -7,6 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
+use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -31,9 +32,8 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     /**
      * PosixDriver constructor.
      */
-    public function __construct($schedulerEvent)
+    public function __construct()
     {
-        $this->event = $schedulerEvent;
         $this->ppid = getmypid();
     }
 
@@ -139,11 +139,10 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->onProcessLoop();
     }
 
-    public function onSchedulerLoop()
+    public function onSchedulerLoop(SchedulerEvent $event)
     {
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
             $event->setParam('uid', $pid);
             $event->stopPropagation(false);
@@ -216,8 +215,9 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->events->triggerEvent($event);
     }
 
-    public function onSchedulerInit()
+    public function onSchedulerInit(SchedulerEvent $event)
     {
+        $this->event = $event;
         $pcntl = $this->getPcntlBridge();
         $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
         //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);

@@ -6,6 +6,8 @@ use PHPUnit_Framework_TestCase;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
 use Zend\Http\Response;
 use Zend\ServiceManager\ServiceManager;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use ZeusTest\Helpers\ZeusFactories;
@@ -27,6 +29,14 @@ class AsyncServiceTest extends PHPUnit_Framework_TestCase
         $sm->setFactory(Service::class, AbstractServerServiceFactory::class);
         $scheduler = $this->getScheduler();
         $logger = $scheduler->getLogger();
+        $events = $scheduler->getEventManager();
+        $events->attach(
+            SchedulerEvent::EVENT_PROCESS_CREATE, function (SchedulerEvent $event) use ($events) {
+                $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+                $event->setParam("uid", 123456789);
+                $events->triggerEvent($event);
+            }
+        );
 
         $service = $sm->build(Service::class,
             [
@@ -36,7 +46,7 @@ class AsyncServiceTest extends PHPUnit_Framework_TestCase
                 'config' =>
                 [
                     'service_settings' => [
-                        'listen_port' => 9999,
+                        'listen_port' => 0,
                         'listen_address' => '127.0.0.1',
                 ]
             ]

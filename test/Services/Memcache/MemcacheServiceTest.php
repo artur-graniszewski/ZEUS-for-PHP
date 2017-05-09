@@ -11,6 +11,8 @@ use Zend\Cache\Storage\AdapterPluginManager;
 use Zend\Cache\Storage\PluginManager;
 use Zend\Http\Response;
 use Zend\ServiceManager\ServiceManager;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;
 use ZeusTest\Helpers\ZeusFactories;
@@ -31,13 +33,13 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
             'caches' => [
             'zeus_server_cache' => [
                 'adapter' => [
-                    'name'    => 'apcu',
+                    'name'    => 'memory',
                     //'options' => ['ttl' => 3600],
                 ],
             ],
             'zeus_client_cache' => [
                 'adapter' => [
-                    'name'    => 'apcu',
+                    'name'    => 'memory',
                     //'options' => ['ttl' => 3600],
                 ],
             ]
@@ -48,6 +50,14 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
         $sm->setFactory(Service::class, MemcacheFactory::class);
         $sm->setFactory(PluginManager::class, StoragePluginManagerFactory::class);
         $scheduler = $this->getScheduler();
+        $events = $scheduler->getEventManager();
+        $events->attach(
+            SchedulerEvent::EVENT_PROCESS_CREATE, function (SchedulerEvent $event) use ($events) {
+            $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+            $event->setParam("uid", 123456789);
+            $events->triggerEvent($event);
+        }
+        );
         $logger = $scheduler->getLogger();
 
         $service = $sm->build(Service::class,
@@ -58,7 +68,7 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
                 'config' =>
                 [
                     'service_settings' => [
-                        'listen_port' => 7071,
+                        'listen_port' => 0,
                         'listen_address' => '0.0.0.0',
                         'server_cache' => 'zeus_server_cache',
                         'client_cache' => 'zeus_client_cache',

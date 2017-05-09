@@ -428,6 +428,13 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $exitDetected = false;
         $exception = null;
 
+        $em->attach(
+            SchedulerEvent::EVENT_PROCESS_CREATE, function (SchedulerEvent $event) use ($em) {
+            $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+            $event->setParam("uid", 123456789);
+            $em->triggerEvent($event);
+        }
+        );
         $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
         $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function(SchedulerEvent $e) use (&$exitDetected, &$exception) {

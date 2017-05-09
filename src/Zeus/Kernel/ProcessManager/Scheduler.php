@@ -237,7 +237,7 @@ final class Scheduler implements EventsCapableInterface
             }
         }
 
-        throw new ProcessManagerException("Server not running", ProcessManagerException::SERVER_NOT_RUNNING);
+        throw new ProcessManagerException("Server not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
     }
 
     /**
@@ -333,7 +333,7 @@ final class Scheduler implements EventsCapableInterface
                 }
             }, 10000);
 
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
                 function (SchedulerEvent $event) {
                     $pid = $event->getParam('uid');
                     $this->setId($pid);
@@ -346,7 +346,7 @@ final class Scheduler implements EventsCapableInterface
                         throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
-                    $event->stopPropagation(true);
+                    //$event->stopPropagation(true);
                 }
                 , -8000
             );

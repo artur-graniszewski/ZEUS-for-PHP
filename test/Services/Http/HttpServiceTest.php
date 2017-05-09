@@ -7,6 +7,8 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -22,6 +24,14 @@ class HttpServiceTest extends PHPUnit_Framework_TestCase
         $sm = $this->getServiceManager();
         $scheduler = $this->getScheduler();
         $logger = $scheduler->getLogger();
+        $events = $scheduler->getEventManager();
+        $events->attach(
+            SchedulerEvent::EVENT_PROCESS_CREATE, function (SchedulerEvent $event) use ($events) {
+            $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+            $event->setParam("uid", 123456789);
+            $events->triggerEvent($event);
+        }
+        );
 
         $service = $sm->build(Service::class,
             [
@@ -30,7 +40,7 @@ class HttpServiceTest extends PHPUnit_Framework_TestCase
                 'config' =>
                 [
                     'service_settings' => [
-                    'listen_port' => 7070,
+                    'listen_port' => 0,
                     'listen_address' => '0.0.0.0',
                     'keep_alive_enabled' => true,
                     'keep_alive_timeout' => 5,

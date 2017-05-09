@@ -252,6 +252,7 @@ final class Manager
 
         // @todo: get rid of this loop!!
         while ($this->servicesRunning > 0 && !$event->propagationIsStopped()) {
+            $this->logger->debug("LOOP");
             $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
             $event->setError(null);
             $event->stopPropagation(false);
