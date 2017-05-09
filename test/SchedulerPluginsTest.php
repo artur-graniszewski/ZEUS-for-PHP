@@ -79,6 +79,9 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setScheduler($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+            $event->stopPropagation(true); // block process main loop
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
@@ -95,8 +98,12 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setScheduler($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+            $event->stopPropagation(true); // block process main loop
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
         $scheduler->getEventManager()->triggerEvent($event);
-        $this->assertEquals(2, count($scheduler->getPluginRegistry()), 'Two plugisn should be registered');
+        $this->assertEquals(2, count($scheduler->getPluginRegistry()), 'Two plugins should be registered');
         $scheduler->__destruct();
         $this->assertEquals(1, count($scheduler->getPluginRegistry()), 'No plugin should be registered after Scheduler destruction');
     }

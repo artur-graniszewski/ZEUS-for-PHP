@@ -8,6 +8,10 @@ use Zend\EventManager\Event;
  */
 class SchedulerEvent extends Event
 {
+    const PRIORITY_FINALIZE = -100000;
+    const PRIORITY_INITIALIZE = 50000;
+    const PRIORITY_REGULAR = 0;
+
     const EVENT_PROCESS_CREATE = 'processCreate';
     const EVENT_PROCESS_CREATED = 'processCreated';
 

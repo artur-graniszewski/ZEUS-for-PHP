@@ -81,7 +81,7 @@ final class ManagerFactory implements FactoryInterface
                     'scheduler_adapter' => $scheduler,
                     'config' => $serviceConfig,
                     'logger_adapter' => $serviceLogger,
-                    'ipc_adapter' => $scheduler->getIpcAdapter(),
+                    'ipc_adapter' => $ipcAdapter,
                     'service_name' => $serviceName
                 ]);
 
