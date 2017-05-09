@@ -59,10 +59,21 @@ final class Process
      * @param EventManagerInterface $eventManager
      * @return $this
      */
-    public function setEventManager(EventManagerInterface $eventManager)
+    public function attach(EventManagerInterface $eventManager)
     {
         $this->events = $eventManager;
+        $this->events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+            $config = $event->getScheduler()->getConfig();
+            $event->setProcess($this);
+            $this->setId($event->getParam('uid'));
+            $this->setConfig($config);
+            $this->status = new ProcessState($config->getServiceName());
+            $this->event = $event;
+        }, SchedulerEvent::PRIORITY_INITIALIZE);
 
+        $this->events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+            $this->mainLoop();
+        }, SchedulerEvent::PRIORITY_FINALIZE);
         return $this;
     }
 
@@ -74,19 +85,15 @@ final class Process
     {
         // set time to live counter
         $this->ttl = $config->getMaxProcessTasks();
-        $this->status = new ProcessState($config->getServiceName());
 
         return $this;
     }
 
     /**
      * Process constructor.
-     * @param \Zeus\Kernel\ProcessManager\SchedulerEvent $event
      */
-    public function __construct(SchedulerEvent $event)
+    public function __construct()
     {
-        $this->event = $event;
-        $event->setProcess($this);
         set_exception_handler([$this, 'terminateProcess']);
     }
 
@@ -189,8 +196,7 @@ final class Process
      */
     protected function terminateProcess($exception = null)
     {
-        // child is dying, time to live equals zero
-        // wake up the ServerDaemon to inform him that this child is dying
+        // process is terminating, time to live equals zero
         $this->logger->debug(sprintf("Shutting down after finishing %d tasks", $this->status->getNumberOfFinishedTasks()));
 
         $this->ttl = 0;

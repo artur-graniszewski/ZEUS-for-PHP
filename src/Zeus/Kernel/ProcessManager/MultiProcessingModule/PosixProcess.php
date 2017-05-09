@@ -29,9 +29,8 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
     /**
      * PosixDriver constructor.
      */
-    public function __construct($schedulerEvent)
+    public function __construct()
     {
-        $this->event = $schedulerEvent;
         $this->ppid = getmypid();
     }
 
@@ -202,8 +201,9 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         $this->events->triggerEvent($event);
     }
 
-    public function onSchedulerInit()
+    public function onSchedulerInit(SchedulerEvent $event)
     {
+        $this->event = $event;
         $pcntl = $this->getPcntlBridge();
         $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
         //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);
