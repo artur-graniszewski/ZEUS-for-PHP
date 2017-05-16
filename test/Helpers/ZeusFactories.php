@@ -155,8 +155,8 @@ trait ZeusFactories
             'logger_adapter' => $logger,
         ]);
 
+        $events = $scheduler->getEventManager();
         if ($mainLoopIterations > 0) {
-            $events = $scheduler->getEventManager();
             $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
                 $mainLoopIterations--;
 
@@ -169,6 +169,11 @@ trait ZeusFactories
                 }
             });
         }
+
+        $events->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
+            $e->getScheduler()->setContinueMainLoop(false);
+            $e->stopPropagation(true);
+        }, 10000000);
 
         return $scheduler;
     }

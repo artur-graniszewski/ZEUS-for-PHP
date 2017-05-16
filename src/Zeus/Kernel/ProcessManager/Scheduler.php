@@ -301,7 +301,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                         throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
-                    //$event->stopPropagation(true);
+                    $this->kernelLoop();
                 }
                 , -8000
             );
@@ -511,6 +511,16 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         while ($this->isContinueMainLoop()) {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+        }
+
+        return $this;
+    }
+
+    public function kernelLoop()
+    {
+        while ($this->isContinueMainLoop()) {
+            $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
+            usleep(1000);
         }
 
         return $this;

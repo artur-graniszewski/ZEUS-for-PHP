@@ -6,6 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
+use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class Manager
@@ -194,6 +195,19 @@ final class Manager
                 $this->onServiceStop($service);
             }, -10000);
 
+
+        $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_KERNEL_LOOP,
+            function (SchedulerEvent $schedulerEvent) use ($service, $event) {
+                if(!$event->propagationIsStopped()) {
+                    pcntl_signal_dispatch();
+                    $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
+                    $event->stopPropagation(false);
+                    $this->getEventManager()->triggerEvent($event);
+                } else {
+                    $schedulerEvent->getScheduler()->setContinueMainLoop(false);
+                }
+            }, -10000);
+
         $exception = null;
         try {
             $this->getEventManager()->triggerEvent($event);
@@ -251,14 +265,6 @@ final class Manager
             $this->logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
 
             return $this;
-        }
-
-        // @todo: get rid of this loop!!
-        while ($this->servicesRunning > 0 && !$event->propagationIsStopped()) {
-            $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
-            $event->setError(null);
-            $event->stopPropagation(false);
-            $this->getEventManager()->triggerEvent($event);
         }
 
         return $this;

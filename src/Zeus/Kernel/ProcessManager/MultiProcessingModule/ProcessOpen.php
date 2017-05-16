@@ -73,6 +73,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
+        $events->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
 
         $this->events = $events;
 
@@ -139,8 +140,14 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->onProcessLoop();
     }
 
+    public function onKernelLoop()
+    {
+        $this->readPipes();
+    }
+
     public function onSchedulerLoop(SchedulerEvent $event)
     {
+        $this->readPipes();
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
@@ -150,6 +157,26 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         }
 
         $this->onProcessLoop();
+    }
+
+    protected function readPipes()
+    {
+        $stdin = $stderr = [];
+        foreach ($this->processes as $process) {
+            if (isset($process['pipes'][1])) {
+                $stdin[] = $process['pipes'][1];
+                $stderr[] = $process['pipes'][2];
+            }
+        }
+
+        $streams = array_merge($stdin, $stderr);
+        if (stream_select($streams, $null, $null, 0)) {
+            foreach ($streams as $stream) {
+                fpassthru($stream);
+            }
+        }
+
+        return $this;
     }
 
     public function onProcessInit()
@@ -172,9 +199,9 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     protected function startProcess(SchedulerEvent $event)
     {
         $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['file', '/tmp/out.log', 'w'],
-            2 => ['file', '/tmp/error.log', 'w'],
+            0 => ['pipe', 'r'], // stdin
+            1 => ['pipe', 'w'], // stdout
+            2 => ['pipe', 'w'], // stderr
         ];
 
         $pipes = [];
@@ -195,6 +222,9 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $status = proc_get_status($process);
         $pid = $status['pid'];
 
+        stream_set_blocking($pipes[0], false);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
         $this->processes[$pid] = [
             'resource' => $process,
             'pipes' => $pipes
@@ -238,6 +268,12 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
 
         $process = $this->processes[$pid];
+
+        // @todo: This should NOT be necessary!
+        if (!$process) {
+            return $this;
+        }
+
         foreach($process['pipes'] as $pipe) {
             if (is_resource($pipe)) {
                 fclose($pipe);

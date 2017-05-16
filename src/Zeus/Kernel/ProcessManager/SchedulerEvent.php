@@ -30,6 +30,7 @@ class SchedulerEvent extends Event
     const EVENT_SCHEDULER_START = 'schedulerStart';
     const EVENT_SCHEDULER_STOP = 'schedulerStop';
     const EVENT_SCHEDULER_LOOP = 'schedulerLoop';
+    const EVENT_KERNEL_LOOP = 'serverLoop';
 
     // WARNING: the following INTERNAL_* events should not be used in custom projects
     // and if used - are subjects to change and BC breaks.

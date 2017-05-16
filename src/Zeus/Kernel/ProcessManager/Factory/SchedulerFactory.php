@@ -36,14 +36,14 @@ class SchedulerFactory implements FactoryInterface
         $schedulerConfig = $this->getSchedulerConfig($container, $options['scheduler_name']);
         $schedulerConfig['service_name'] = $options['service_name'];
 
-        $mainLoggerAdapter = $options['logger_adapter'];
+        $logger = $options['logger_adapter'];
         $schedulerDiscipline =
             isset($schedulerConfig['scheduler_discipline']) ? $container->get($schedulerConfig['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        $processService = $container->build(Process::class, ['logger_adapter' => $mainLoggerAdapter]);
+        $processService = $container->build(Process::class, ['logger_adapter' => $logger]);
 
         $scheduler = new Scheduler(new Config($schedulerConfig), $processService, $options['ipc_adapter'], $schedulerDiscipline);
-        $scheduler->setLogger($mainLoggerAdapter);
+        $scheduler->setLogger($logger);
         $container->build($schedulerConfig['multiprocessing_module'], ['scheduler' => $scheduler]);
         $this->startPlugins($container, $scheduler, isset($schedulerConfig['plugins']) ? $schedulerConfig['plugins'] : []);
 
