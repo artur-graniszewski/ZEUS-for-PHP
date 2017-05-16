@@ -26,6 +26,11 @@ interface ProcessInterface
     public function setLogger(LoggerInterface $logger);
 
     /**
+     * @return \Zend\Log\LoggerInterface
+     */
+    public function getLogger();
+
+    /**
      * @param EventManagerInterface $eventManager
      * @return $this
      */

@@ -56,6 +56,14 @@ abstract class AbstractProcess implements ProcessInterface
     }
 
     /**
+     * @return \Zend\Log\LoggerInterface
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+
+    /**
      * @return int
      */
     public function getId()
