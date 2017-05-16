@@ -3,9 +3,9 @@
 namespace Zeus\Kernel\ProcessManager;
 
 use Zend\EventManager\EventInterface;
+use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
-use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\Helper\Logger as LoggerHelper;
@@ -14,17 +14,15 @@ use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\Helper\EventManager;
 
 /**
  * Class Scheduler
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-final class Scheduler implements EventsCapableInterface
+final class Scheduler extends AbstractProcess implements EventsCapableInterface, ProcessInterface
 {
     use LoggerHelper;
-    use EventManager;
     use PluginRegistry;
 
     /** @var ProcessState[]|ProcessCollection */
@@ -36,9 +34,6 @@ final class Scheduler implements EventsCapableInterface
     /** @var bool */
     protected $continueMainLoop = true;
 
-    /** @var int */
-    protected $schedulerId;
-
     /** @var ProcessState */
     protected $schedulerStatus;
 
@@ -46,7 +41,7 @@ final class Scheduler implements EventsCapableInterface
     protected $processService;
 
     /** @var IpcAdapterInterface */
-    protected $ipcAdapter;
+    protected $ipc;
 
     /** @var float */
     protected $startTime;
@@ -58,33 +53,6 @@ final class Scheduler implements EventsCapableInterface
 
     /** @var mixed[] */
     protected $eventHandles;
-
-    /**
-     * @return Config
-     */
-    public function getConfig()
-    {
-        return $this->config;
-    }
-
-    /**
-     * @return int
-     */
-    public function getId()
-    {
-        return $this->schedulerId;
-    }
-
-    /**
-     * @param int $schedulerId
-     * @return $this
-     */
-    public function setId($schedulerId)
-    {
-        $this->schedulerId = $schedulerId;
-
-        return $this;
-    }
 
     /**
      * @return bool
@@ -107,23 +75,21 @@ final class Scheduler implements EventsCapableInterface
 
     /**
      * Scheduler constructor.
-     * @param mixed[] $config
+     * @param ConfigInterface $config
      * @param Process $processService
-     * @param LoggerInterface $logger
      * @param IpcAdapterInterface $ipcAdapter
      * @param DisciplineInterface $discipline
      */
-    public function __construct($config, Process $processService, LoggerInterface $logger, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, Process $processService, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
     {
         $this->discipline = $discipline;
-        $this->config = new Config($config);
-        $this->ipcAdapter = $ipcAdapter;
+        $this->config = $config;
+        $this->ipc = $ipcAdapter;
         $this->processService = $processService;
-        $this->schedulerStatus = new ProcessState($this->config->getServiceName());
-        $this->setLogger($logger);
+        $this->schedulerStatus = new ProcessState($this->getConfig()->getServiceName());
 
-        $this->processes = new ProcessCollection($this->config->getMaxProcesses());
-        $this->setLoggerExtraDetails(['service' => $this->config->getServiceName()]);
+        $this->processes = new ProcessCollection($this->getConfig()->getMaxProcesses());
+        $this->setLoggerExtraDetails(['service' => $this->getConfig()->getServiceName()]);
 
         $this->event = new SchedulerEvent();
         $this->event->setScheduler($this);
@@ -145,20 +111,11 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @return IpcAdapterInterface
-     */
-    public function getIpcAdapter()
-    {
-        return $this->ipcAdapter;
-    }
-
-    /**
+     * @param EventManagerInterface $events
      * @return $this
      */
-    protected function attach()
+    public function attach(EventManagerInterface $events)
     {
-        $events = $this->getEventManager();
-
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
@@ -166,7 +123,7 @@ final class Scheduler implements EventsCapableInterface
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(SchedulerEvent $e) { $this->onProcessMessage($e);});
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
@@ -182,7 +139,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function onProcessMessage(EventInterface $event)
     {
-        $this->ipcAdapter->send($event->getParams());
+        $this->ipc->send($event->getParams());
     }
 
     /**
@@ -256,21 +213,21 @@ final class Scheduler implements EventsCapableInterface
             ]
         ];
 
-        if (!$this->ipcAdapter->isConnected()) {
-            $this->ipcAdapter->connect();
+        if (!$this->ipc->isConnected()) {
+            $this->ipc->connect();
         }
-        $this->ipcAdapter->useChannelNumber(1);
-        $this->ipcAdapter->send($payload);
+        $this->ipc->useChannelNumber(1);
+        $this->ipc->send($payload);
 
         $timeout = 5;
         $result = null;
         do {
-            $result = $this->ipcAdapter->receive();
+            $result = $this->ipc->receive();
             usleep(1000);
             $timeout--;
         } while (!$result && $timeout >= 0);
 
-        $this->ipcAdapter->useChannelNumber(0);
+        $this->ipc->useChannelNumber(0);
 
         if ($result) {
             return $result['extra'];
@@ -286,7 +243,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function triggerEvent($eventName, $extraData = [])
     {
-        $extraData = array_merge($this->schedulerStatus->toArray(), $extraData, ['service_name' => $this->config->getServiceName()]);
+        $extraData = array_merge($this->schedulerStatus->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
         $event = $this->event;
         $event->setParams($extraData);
@@ -311,10 +268,10 @@ final class Scheduler implements EventsCapableInterface
         $this->collectCycles();
 
         $events = $this->getEventManager();
-        $this->attach();
+        $this->attach($events);
         $this->log(Logger::INFO, "Establishing IPC");
-        if (!$this->ipcAdapter->isConnected()) {
-            $this->ipcAdapter->connect();
+        if (!$this->ipc->isConnected()) {
+            $this->ipc->connect();
         }
 
         try {
@@ -342,7 +299,7 @@ final class Scheduler implements EventsCapableInterface
                         return;
                     }
 
-                    if (!@file_put_contents(sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->config->getServiceName()), $pid)) {
+                    if (!@file_put_contents(sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName()), $pid)) {
                         throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
@@ -366,7 +323,7 @@ final class Scheduler implements EventsCapableInterface
      * @param \Throwable|\Exception $exception
      * @return $this
      */
-    private function handleException($exception)
+    protected function handleException($exception)
     {
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
 
@@ -376,7 +333,7 @@ final class Scheduler implements EventsCapableInterface
     /**
      * @return $this
      */
-    public function onSchedulerStart()
+    protected function onSchedulerStart()
     {
         $this->log(Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
@@ -450,7 +407,7 @@ final class Scheduler implements EventsCapableInterface
         $this->log(Logger::INFO, "Scheduler terminated");
 
         $this->log(Logger::INFO, "Stopping IPC");
-        $this->ipcAdapter->disconnect();
+        $this->ipc->disconnect();
     }
 
     /**
@@ -480,7 +437,7 @@ final class Scheduler implements EventsCapableInterface
         unset($this->processes);
         $this->collectCycles();
         $this->setContinueMainLoop(false);
-        $this->ipcAdapter->useChannelNumber(1);
+        $this->ipc->useChannelNumber(1);
 
         $event->setProcess($this->processService);
     }
@@ -496,7 +453,7 @@ final class Scheduler implements EventsCapableInterface
             'code' => ProcessState::WAITING,
             'uid' => $pid,
             'time' => microtime(true),
-            'service_name' => $this->config->getServiceName(),
+            'service_name' => $this->getConfig()->getServiceName(),
             'requests_finished' => 0,
             'requests_per_second' => 0,
             'cpu_usage' => 0,
@@ -512,7 +469,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function manageProcesses(DisciplineInterface $discipline)
     {
-        $operations = $discipline->manage($this->config, $this->processes);
+        $operations = $discipline->manage($this->getConfig(), $this->processes);
 
         $toTerminate = $operations['terminate'];
         $toSoftTerminate = $operations['soft_terminate'];
@@ -571,9 +528,9 @@ final class Scheduler implements EventsCapableInterface
         $this->schedulerStatus->updateStatus();
 
         /** @var Message[] $messages */
-        $this->ipcAdapter->useChannelNumber(0);
+        $this->ipc->useChannelNumber(0);
 
-        $messages = $this->ipcAdapter->receiveAll();
+        $messages = $this->ipc->receiveAll();
         $time = microtime(true);
 
         foreach ($messages as $message) {
@@ -599,7 +556,7 @@ final class Scheduler implements EventsCapableInterface
 
                 case Message::IS_STATUS_REQUEST:
                     $this->logger->debug('Status request detected');
-                    $this->sendSchedulerStatus($this->ipcAdapter);
+                    $this->sendSchedulerStatus($this->ipc);
                     break;
 
                 default:

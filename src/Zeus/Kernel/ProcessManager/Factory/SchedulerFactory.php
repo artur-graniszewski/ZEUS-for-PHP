@@ -7,6 +7,7 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
+use Zeus\Kernel\ProcessManager\Config;
 use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
@@ -41,7 +42,8 @@ class SchedulerFactory implements FactoryInterface
 
         $processService = $container->build(Process::class, ['logger_adapter' => $mainLoggerAdapter]);
 
-        $scheduler = new Scheduler($schedulerConfig, $processService, $mainLoggerAdapter, $options['ipc_adapter'], $schedulerDiscipline);
+        $scheduler = new Scheduler(new Config($schedulerConfig), $processService, $options['ipc_adapter'], $schedulerDiscipline);
+        $scheduler->setLogger($mainLoggerAdapter);
         $container->build($schedulerConfig['multiprocessing_module'], ['scheduler' => $scheduler]);
         $this->startPlugins($container, $scheduler, isset($schedulerConfig['plugins']) ? $schedulerConfig['plugins'] : []);
 

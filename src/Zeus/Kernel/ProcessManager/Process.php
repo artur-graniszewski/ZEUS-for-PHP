@@ -13,46 +13,20 @@ use Zeus\Kernel\ProcessManager\Status\ProcessState;
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-final class Process
+final class Process extends AbstractProcess
 {
     /** @var int Time to live before terminating (# of requests left till the auto-shutdown) */
     protected $ttl;
-
-    /** @var ProcessState */
-    protected $status;
-
-    /** @var string */
-    protected $processId;
-
-    /** @var EventManagerInterface */
-    protected $events;
-
-    /** @var LoggerInterface */
-    protected $logger;
 
     /** @var SchedulerEvent */
     protected $event;
 
     /**
-     * @param string $processId
-     * @return $this
+     * Process constructor.
      */
-    public function setId($processId)
+    public function __construct()
     {
-        $this->processId = $processId;
-
-        return $this;
-    }
-
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-
-        return $this;
+        set_exception_handler([$this, 'terminateProcess']);
     }
 
     /**
@@ -87,14 +61,6 @@ final class Process
         $this->ttl = $config->getMaxProcessTasks();
 
         return $this;
-    }
-
-    /**
-     * Process constructor.
-     */
-    public function __construct()
-    {
-        set_exception_handler([$this, 'terminateProcess']);
     }
 
     /**
@@ -221,7 +187,7 @@ final class Process
      *
      * @return $this
      */
-    public function mainLoop()
+    protected function mainLoop()
     {
         $this->events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, function(EventInterface $event) {
             $this->sendStatus($this->status->getCode());
@@ -250,14 +216,6 @@ final class Process
     }
 
     /**
-     * @return int
-     */
-    public function getId()
-    {
-        return $this->processId;
-    }
-
-    /**
      * @param int $statusCode
      * @param string $statusDescription
      * @return $this
@@ -274,21 +232,5 @@ final class Process
         }
 
         return $this;
-    }
-
-    /**
-     * @return EventManagerInterface
-     */
-    public function getEventManager()
-    {
-        return $this->events;
-    }
-
-    /**
-     * @return ProcessState
-     */
-    public function getStatus()
-    {
-        return $this->status;
     }
 }

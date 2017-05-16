@@ -60,7 +60,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
     public function testMainLoopIteration()
     {
-        $scheduler = $this->getScheduler();
+        $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
 
         $events = $scheduler->getEventManager();
@@ -70,7 +70,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             $counter++;
         });
 
-        $scheduler->onSchedulerStart(new SchedulerEvent());
+        $scheduler->start(false);
         $this->assertEquals(1, $counter, 'Loop should have been executed only once');
     }
 
@@ -78,7 +78,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     {
         $scheduler = $this->getScheduler(1);
         $logger = $scheduler->getLogger();
-        $ipc = $scheduler->getIpcAdapter();
+        $ipc = $scheduler->getIpc();
 
         $messages = [];
         foreach (["debug", "warn", "err", "alert", "info", "crit", "notice", "emerg"] as $severity) {

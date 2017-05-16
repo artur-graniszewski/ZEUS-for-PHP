@@ -2,14 +2,14 @@
 
 namespace Zeus\ServerService;
 
+use Zend\EventManager\EventManager;
+use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\ProcessManager\Helper\EventManager;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class Manager
 {
-    use EventManager;
     use PluginRegistry;
 
     /** @var ServerServiceInterface[] */
@@ -31,6 +31,9 @@ final class Manager
 
     /** @var ServerServiceInterface[] */
     protected $pidToServiceMap = [];
+
+    /** @var EventManagerInterface */
+    protected $events;
 
     public function __construct(array $services)
     {
@@ -252,7 +255,6 @@ final class Manager
 
         // @todo: get rid of this loop!!
         while ($this->servicesRunning > 0 && !$event->propagationIsStopped()) {
-            $this->logger->debug("LOOP");
             $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
             $event->setError(null);
             $event->stopPropagation(false);
@@ -394,5 +396,32 @@ final class Manager
         $this->logger = $logger;
 
         return $this;
+    }
+
+    /**
+     * @param EventManagerInterface $events
+     * @return $this
+     */
+    public function setEventManager(EventManagerInterface $events)
+    {
+        $events->setIdentifiers(array(
+            __CLASS__,
+            get_called_class(),
+        ));
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * @return EventManagerInterface
+     */
+    public function getEventManager()
+    {
+        if (null === $this->events) {
+            $this->setEventManager(new EventManager());
+        }
+
+        return $this->events;
     }
 }
