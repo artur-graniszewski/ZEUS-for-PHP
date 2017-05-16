@@ -8,7 +8,6 @@ use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
-use Zeus\Kernel\ProcessManager\Helper\Logger as LoggerHelper;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
@@ -22,7 +21,6 @@ use Zeus\Kernel\IpcServer\Message;
  */
 final class Scheduler extends AbstractProcess implements EventsCapableInterface, ProcessInterface
 {
-    use LoggerHelper;
     use PluginRegistry;
 
     /** @var ProcessState[]|ProcessCollection */
@@ -587,5 +585,41 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $payload['extra']['scheduler_status']['start_timestamp'] = $this->startTime;
 
         $ipcAdapter->send($payload);
+    }
+
+    /**
+     * Logs server messages.
+     *
+     * @param Message $message
+     * @return $this
+     */
+    protected function logMessage($message)
+    {
+        $extra = $message['extra'];
+        $extra['service_name'] = sprintf("%s-%d", $this->getConfig()->getServiceName(), $extra['uid']);
+        $this->log($message['priority'], $message['message'], $extra);
+
+        return $this;
+    }
+
+    /**
+     * @param int $priority
+     * @param string $message
+     * @param mixed[] $extra
+     * @return $this
+     */
+    protected function log($priority, $message, $extra = [])
+    {
+        if (!isset($extra['service_name'])) {
+            $extra['service_name'] = $this->getConfig()->getServiceName();
+        }
+
+        if (!isset($extra['logger'])) {
+            $extra['logger'] = __CLASS__;
+        }
+
+        $this->getLogger()->log($priority, $message, $extra);
+
+        return $this;
     }
 }
