@@ -87,7 +87,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->schedulerStatus = new ProcessState($this->getConfig()->getServiceName());
 
         $this->processes = new ProcessCollection($this->getConfig()->getMaxProcesses());
-        $this->setLoggerExtraDetails(['service' => $this->getConfig()->getServiceName()]);
 
         $this->event = new SchedulerEvent();
         $this->event->setScheduler($this);
