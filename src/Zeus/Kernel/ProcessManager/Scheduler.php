@@ -91,7 +91,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         $this->event = new SchedulerEvent();
         $this->event->setScheduler($this);
-        $this->processService->attach($this->getEventManager());
     }
 
     public function __destruct()

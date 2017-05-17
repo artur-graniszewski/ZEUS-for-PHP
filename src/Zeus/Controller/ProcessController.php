@@ -3,7 +3,10 @@
 namespace Zeus\Controller;
 
 use Zend\Console\Console;
+use Zend\Log\Filter\SuppressFilter;
+use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
+use Zend\Log\Writer\WriterInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
@@ -13,6 +16,7 @@ use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
 use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\ServerServiceInterface;
+use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 
 class ProcessController extends AbstractActionController
 {
@@ -34,14 +38,24 @@ class ProcessController extends AbstractActionController
     /**
      * ZeusController constructor.
      * @param mixed[] $config
-     * @param Manager $manager
      * @param LoggerInterface $logger
      */
-    public function __construct(array $config, Manager $manager, LoggerInterface $logger)
+    public function __construct(array $config, LoggerInterface $logger)
     {
         $this->config = $config;
-        $this->manager = $manager;
         $this->logger = $logger;
+        DynamicPriorityFilter::overridePriority(Logger::ERR);
+    }
+
+    /**
+     * @param Manager $manager
+     * @return $this
+     */
+    public function setManager(Manager $manager)
+    {
+        $this->manager = $manager;
+
+        return $this;
     }
 
     /**
@@ -139,6 +153,14 @@ class ProcessController extends AbstractActionController
      */
     protected function starProcessForService($serviceName)
     {
+        // enable logs
+        $logger = $this->getLogger();
+        foreach ($logger->getWriters() as $writer) {
+            /** @var WriterInterface $writer */
+            $writer->addFilter(new SuppressFilter());
+            //trigger_add
+        }
+
         $schedulerEvent = null;
         $schedulerEventManager = null;
 
@@ -161,6 +183,8 @@ class ProcessController extends AbstractActionController
                 $_schedulerEvent->stopPropagation(true);
                 $schedulerEvent = $_schedulerEvent;
                 $schedulerEventManager = $_schedulerEvent->getScheduler()->getEventManager();
+                DynamicPriorityFilter::resetPriority();
+
             }, 2);
 
         });
@@ -240,7 +264,7 @@ class ProcessController extends AbstractActionController
     }
 
     /**
-     * @return LoggerInterface
+     * @return LoggerInterface|Logger
      */
     public function getLogger()
     {

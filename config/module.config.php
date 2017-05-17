@@ -2,6 +2,7 @@
 
 namespace Zeus;
 
+use Zend\Mvc\Service\EventManagerFactory;
 use Zeus\Controller\ConsoleController;
 use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Controller\ProcessController;
@@ -55,6 +56,7 @@ return $config = [
 
     'service_manager' => [
         'factories' => [
+            'zeus-event-manager' => EventManagerFactory::class,
             IpcLoggerInterface::class => IpcLoggerFactory::class,
             IpcAdapterInterface::class => IpcServerFactory::class,
             LoggerInterface::class => LoggerFactory::class,

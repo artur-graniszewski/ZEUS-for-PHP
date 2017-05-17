@@ -26,9 +26,12 @@ class ProcessFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        $task = new Process();
-        $task->setLogger($options['logger_adapter']);
+        $process = new Process();
+        $eventManager = $container->get('zeus-event-manager');
+        $process->setLogger($options['logger_adapter']);
+        $process->setEventManager($eventManager);
+        $process->attach($eventManager);
 
-        return $task;
+        return $process;
     }
 }

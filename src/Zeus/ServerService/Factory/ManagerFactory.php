@@ -38,6 +38,7 @@ final class ManagerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
+        $eventManager = $container->get('zeus-event-manager');
         $config = $container->get('configuration');
         $mainLogger = $container->build(LoggerInterface::class, ['service_name' => 'main']);
 
@@ -47,6 +48,7 @@ final class ManagerFactory implements FactoryInterface
         $mainLogger->info("Scanning configuration for services...");
         $manager = new $requestedName($options ? $options : []);
         $manager->setLogger($mainLogger);
+        $manager->setEventManager($eventManager);
         $this->startPlugins($container, $manager, isset($config['zeus_process_manager']['manager']['plugins']) ? $config['zeus_process_manager']['manager']['plugins'] : []);
 
         foreach ($configs as $serviceConfig) {

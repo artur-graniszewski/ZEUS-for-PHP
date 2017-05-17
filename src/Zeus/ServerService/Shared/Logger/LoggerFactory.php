@@ -4,7 +4,6 @@ namespace Zeus\ServerService\Shared\Logger;
 
 use Interop\Container\ContainerInterface;
 use Interop\Container\Exception\ContainerException;
-use Zend\Log\Filter\Priority;
 use Zend\ModuleManager\ModuleManagerInterface;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
@@ -60,7 +59,7 @@ class LoggerFactory implements FactoryInterface
             new StreamLogFormatter();
 
         $writer = new Writer\Stream($output);
-        $writer->addFilter(new Priority($severity));
+        $writer->addFilter(new DynamicPriorityFilter($severity));
         $loggerInstance->addWriter($writer);
         $writer->setFormatter($formatter);
         if ($showBanner && $banner) {

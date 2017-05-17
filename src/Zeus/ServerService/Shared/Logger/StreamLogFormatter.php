@@ -36,10 +36,26 @@ class StreamLogFormatter implements FormatterInterface
         $severity = str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT);
         $pid = $event['extra']['uid'];
         $serviceName = sprintf("--- [%s]", str_pad(substr($serviceName,0, 15), 15, " ", STR_PAD_LEFT));
-        $loggerName = str_pad(isset($event['extra']['logger']) ? substr($event['extra']['logger'], -40) : '<unknown>', 40, " ", STR_PAD_RIGHT);
+        $loggerName = str_pad(isset($event['extra']['logger']) ? substr($this->getShortLoggerName($event['extra']['logger']), -40) : '<unknown>', 40, " ", STR_PAD_RIGHT);
         $message = ": " . $event['message'];
 
         $eventText = "$dateTime $severity $pid $serviceName $loggerName $message";
         return $eventText;
+    }
+
+    protected function getShortLoggerName($loggerName)
+    {
+        if (!isset($loggerName[40])) {
+            return $loggerName;
+        }
+
+        $parts = explode("\\", $loggerName);
+        $loggerName = '';
+        $className = array_pop($parts);
+        foreach ($parts as $part) {
+            $loggerName .= $part[0] . '\\';
+        }
+
+        return $loggerName . $className;
     }
 }
