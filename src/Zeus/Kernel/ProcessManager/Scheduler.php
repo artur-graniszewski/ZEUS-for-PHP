@@ -277,6 +277,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 $this->setId(getmypid());
                 $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
+                $this->kernelLoop();
 
                 return $this;
             }

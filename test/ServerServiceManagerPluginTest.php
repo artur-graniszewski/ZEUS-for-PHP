@@ -67,12 +67,11 @@ class ServerServiceManagerPluginTest extends PHPUnit_Framework_TestCase
     {
         $plugin = new ServerServiceManagerPlugin();
         $manager = $this->getManagerWithPlugin([$plugin]);
-        $service = new DummyServerService(['hang' => true], $this->getScheduler(), $manager->getLogger());
+        $service = new DummyServerService(['hang' => false], $this->getScheduler(1), $manager->getLogger());
         $manager->registerService('test-service', $service, true);
         $manager->startServices(['test-service']);
 
         $this->assertContains(ManagerEvent::EVENT_MANAGER_INIT, $plugin->getTriggeredEvents());
-        $this->assertContains(ManagerEvent::EVENT_MANAGER_LOOP, $plugin->getTriggeredEvents());
         $this->assertContains(ManagerEvent::EVENT_SERVICE_START, $plugin->getTriggeredEvents());
         $this->assertContains(ManagerEvent::EVENT_SERVICE_STOP, $plugin->getTriggeredEvents());
     }

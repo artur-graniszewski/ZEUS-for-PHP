@@ -91,7 +91,7 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         $this->assertContains(ManagerEvent::EVENT_MANAGER_INIT, $eventsFlow);
     }
 
-    public function testManagerSignalHandling()
+    public function testManagerEventsFlow()
     {
         $eventsFlow = [];
         $eventHandler = function(ManagerEvent $e) use (& $eventsFlow) {
@@ -100,14 +100,14 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         };
 
         $manager = $this->getManager();
-        $manager->getEventManager()->attach('*', $eventHandler);
+        $manager->getEventManager()->attach('*', $eventHandler, -1000000);
 
-        $service = new DummyServerService(['hang' => true], $this->getScheduler(1), $manager->getLogger());
+        $service = new DummyServerService(['hang' => false], $this->getScheduler(1), $manager->getLogger());
         $manager->registerService('test-service', $service, true);
         $manager->startServices(['test-service']);
 
         $this->assertContains(ManagerEvent::EVENT_SERVICE_START, $eventsFlow);
-        $this->assertContains(ManagerEvent::EVENT_SERVICE_STOP, $eventsFlow);
+        $this->assertContains(ManagerEvent::EVENT_SERVICE_STOP, $eventsFlow, json_encode($eventsFlow));
     }
 
     public function testThatDestructorDetachesEvents()

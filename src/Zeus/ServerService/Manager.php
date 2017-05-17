@@ -199,7 +199,7 @@ final class Manager
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_KERNEL_LOOP,
             function (SchedulerEvent $schedulerEvent) use ($service, $event) {
                 if(!$event->propagationIsStopped()) {
-                    pcntl_signal_dispatch();
+                    pcntl_signal_dispatch(); //@todo: REPLACE me with something more platform agnostic!
                     $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
                     $event->stopPropagation(false);
                     $this->getEventManager()->triggerEvent($event);
