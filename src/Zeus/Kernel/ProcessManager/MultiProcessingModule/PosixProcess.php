@@ -9,7 +9,7 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
+final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;

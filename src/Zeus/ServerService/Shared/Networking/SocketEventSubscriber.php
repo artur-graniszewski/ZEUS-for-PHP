@@ -7,6 +7,7 @@ use Zeus\Kernel\Networking\SocketStream;
 use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SeparateAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedInitialAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 /**
@@ -42,7 +43,7 @@ final class SocketEventSubscriber
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onServerStart']);
         $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, [$this, 'onServerStart']);
         $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit']);
+        $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit'], 1000);
 
         return $this;
     }
@@ -52,11 +53,16 @@ final class SocketEventSubscriber
      */
     public function onServerStart(SchedulerEvent $event)
     {
-        if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START && $event->getScheduler() instanceof SharedAddressSpaceInterface) {
+        if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START
+            //&&
+            //($event->getScheduler() instanceof SharedAddressSpaceInterface || $event->getScheduler() instanceof SharedInitialAddressSpaceInterface)) {
+        ) {
             $this->server->createServer();
-        }
 
-        if ($event->getName() === SchedulerEvent::EVENT_PROCESS_INIT && !$event->getScheduler() instanceof SeparateAddressSpaceInterface) {
+            return $this;
+        };
+
+        if ($event->getName() === SchedulerEvent::EVENT_PROCESS_INIT && $event->getScheduler() instanceof SeparateAddressSpaceInterface) {
             $this->server->createServer();
         }
 

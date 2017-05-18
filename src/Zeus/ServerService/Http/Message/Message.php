@@ -92,6 +92,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     protected $compressionHandler = null;
 
+    protected $remoteAddress = '';
+
     /**
      * @var callable
      */
@@ -137,6 +139,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->restartKeepAliveCounter();
         $this->connection = $connection;
         $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
+        $this->remoteAddress = $connection->getRemoteAddress();
     }
 
     /**
@@ -221,8 +224,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
                 return;
             }
 
+            $request->setMetadata('remoteAddress', $this->remoteAddress);
             $this->request = $request;
-            $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
             $this->response->setVersion($this->request->getVersion());
             $this->headersReceived = true;
             $this->validateRequestHeaders($connection);

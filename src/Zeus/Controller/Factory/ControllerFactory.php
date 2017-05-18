@@ -28,7 +28,6 @@ class ControllerFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $config = $container->get('configuration');
-        $logger = $container->build(LoggerInterface::class, ['service_name' => 'main']);
 
         $dummyConfig =
             ['services' =>
@@ -37,9 +36,11 @@ class ControllerFactory implements FactoryInterface
             ];
 
         $controller = new $requestedName(
-            isset($config['zeus_process_manager']['services']) ? $config['zeus_process_manager'] : $dummyConfig,
-            $logger
+            isset($config['zeus_process_manager']['services']) ? $config['zeus_process_manager'] : $dummyConfig
         );
+
+        $logger = $container->build(LoggerInterface::class, ['service_name' => 'main']);
+        $controller->setLogger($logger);
 
         $controller->setManager($container->get(Manager::class));
 

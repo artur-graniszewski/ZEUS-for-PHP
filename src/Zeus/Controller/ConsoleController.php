@@ -32,12 +32,10 @@ class ConsoleController extends AbstractActionController
     /**
      * ZeusController constructor.
      * @param mixed[] $config
-     * @param LoggerInterface $logger
      */
-    public function __construct(array $config, LoggerInterface $logger)
+    public function __construct(array $config)
     {
         $this->config = $config;
-        $this->logger = $logger;
     }
 
     /**

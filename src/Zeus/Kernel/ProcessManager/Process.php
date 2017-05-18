@@ -209,7 +209,6 @@ final class Process extends AbstractProcess
             } catch (\Throwable $exception) {
                 $this->reportException($exception);
             }
-            $this->setWaiting($this->getStatus()->getStatusDescription());
         }
 
         $this->terminateProcess();

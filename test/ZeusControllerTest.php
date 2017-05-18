@@ -10,6 +10,7 @@ use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 use Zeus\Controller\ConsoleController;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
@@ -49,6 +50,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
         $sm = $this->getServiceManager();
         $sm->setFactory(LoggerInterface::class, LoggerFactory::class);
         $sm->setFactory(PosixProcess::class, DummyServiceFactory::class);
+        $sm->setFactory(ProcessOpen::class, DummyServiceFactory::class);
         $controller = $sm->get($useOriginalClass ? ConsoleController::class : ConsoleControllerMock::class);
 
         return $controller;
@@ -96,6 +98,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
             '[listen_port] => 7070',
             '[listen_address] => 0.0.0.0'
         ];
+
         foreach ($sentences as $sentence) {
             $this->assertGreaterThan(0, strpos($logEntries, $sentence));
         }

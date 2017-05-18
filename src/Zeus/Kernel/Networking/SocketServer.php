@@ -26,8 +26,8 @@ final class SocketServer
     {
         $opts = [
             'socket' => [
-                'backlog' => 100000,
-                'so_reuseport' => true,
+                'backlog' => 1000,
+                //'so_reuseport' => true,
             ],
         ];
 
@@ -51,7 +51,7 @@ final class SocketServer
      */
     public function listen($timeout)
     {
-        $newSocket = @stream_socket_accept($this->socket, $timeout);
+        $newSocket = @stream_socket_accept($this->socket, $timeout, $peerName);
         if ($newSocket) {
             stream_set_blocking($newSocket, false);
 
@@ -67,7 +67,7 @@ final class SocketServer
                 stream_set_write_buffer($newSocket, 0);
             }
 
-            $connection = new SocketStream($newSocket);
+            $connection = new SocketStream($newSocket, $peerName);
 
             return $connection;
         }

@@ -38,12 +38,10 @@ class ProcessController extends AbstractActionController
     /**
      * ZeusController constructor.
      * @param mixed[] $config
-     * @param LoggerInterface $logger
      */
-    public function __construct(array $config, LoggerInterface $logger)
+    public function __construct(array $config)
     {
         $this->config = $config;
-        $this->logger = $logger;
         DynamicPriorityFilter::overridePriority(Logger::ERR);
     }
 
@@ -183,10 +181,11 @@ class ProcessController extends AbstractActionController
                 $_schedulerEvent->stopPropagation(true);
                 $schedulerEvent = $_schedulerEvent;
                 $schedulerEventManager = $_schedulerEvent->getScheduler()->getEventManager();
-                DynamicPriorityFilter::resetPriority();
-
             }, 2);
 
+            $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $_schedulerEvent) {
+                DynamicPriorityFilter::resetPriority();
+            });
         });
 
         $this->manager->startService($serviceName);

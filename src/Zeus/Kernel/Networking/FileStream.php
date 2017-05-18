@@ -32,13 +32,17 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
 
     protected $writeCallback = 'fwrite';
 
+    protected $peerName;
+
     /**
      * SocketConnection constructor.
      * @param resource $stream
+     * @param string $peerName
      */
-    public function __construct($stream)
+    public function __construct($stream, $peerName = null)
     {
         $this->stream = $stream;
+        $this->peerName = $peerName;
     }
 
     /**
@@ -54,7 +58,7 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
      */
     public function getRemoteAddress()
     {
-        return @stream_socket_get_name($this->stream, true);
+        return $this->peerName ? $this->peerName : @stream_socket_get_name($this->stream, true);
     }
 
     /**

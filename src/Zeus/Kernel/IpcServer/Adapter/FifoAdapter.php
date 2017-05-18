@@ -233,6 +233,8 @@ final class FifoAdapter implements
                 continue;
             }
             $stream->close();
+
+            $fileName = $this->getFilename($channelNumber);
             unlink($this->getFilename($channelNumber));
             $this->ipc[$channelNumber] = null;
         }
@@ -256,10 +258,10 @@ final class FifoAdapter implements
     public function getMessageSizeLimit()
     {
         if (!static::$maxPipeCapacity) {
-            $fileName = $this->getFilename(2);
+            $fileName = $this->getFilename(2) . '-' . getmypid();
             posix_mkfifo($fileName, 0600);
 
-            $ipc = fopen($fileName, "r+"); // ensures at least one writer (us) so will be non-blocking
+            $ipc = fopen($fileName, "r+"); // ensures at least one writer so it will be non-blocking
             stream_set_blocking($ipc, false);
 
             $wrote = 1;
@@ -276,7 +278,7 @@ final class FifoAdapter implements
             }
 
             fclose($ipc);
-            unlink($fileName);
+            @unlink($fileName);
 
             static::$maxPipeCapacity = $size;
         }

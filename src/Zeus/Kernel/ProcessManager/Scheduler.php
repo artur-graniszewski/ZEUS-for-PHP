@@ -383,16 +383,19 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function onShutdown(EventInterface $event)
     {
-        $this->log(Logger::DEBUG, "Shutting down");
         $exception = $event->getParam('exception', null);
+
+        $this->log(Logger::DEBUG, "Shutting down" . ($exception ? ' with exception: ' . $exception->getMessage() : ''));
 
         $this->setContinueMainLoop(false);
 
         $this->log(Logger::INFO, "Terminating scheduler");
 
-        foreach (array_keys($this->processes->toArray()) as $pid) {
-            $this->log(Logger::DEBUG, "Terminating process $pid");
-            $this->stopProcess($pid, false);
+        if ($this->processes) {
+            foreach (array_keys($this->processes->toArray()) as $pid) {
+                $this->log(Logger::DEBUG, "Terminating process $pid");
+                $this->stopProcess($pid, false);
+            }
         }
 
         $this->handleMessages();
@@ -432,7 +435,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function onProcessInit(SchedulerEvent $event)
     {
-        unset($this->processes);
+        $this->processes = [];
         $this->collectCycles();
         $this->setContinueMainLoop(false);
         $this->ipc->useChannelNumber(1);
