@@ -55,6 +55,7 @@ trait ZeusFactories
         $sm->setFactory('ServiceListener', ServiceListenerFactory::class);
         $sm->setFactory('EventManager', EventManagerFactory::class);
         $sm->setFactory('ModuleManager', ModuleManagerFactory::class);
+        $sm->setFactory('zeus-event-manager', EventManagerFactory::class);
 
         $serviceListener = new ServiceListenerFactory();
         $r = new ReflectionProperty($serviceListener, 'defaultServiceConfig');

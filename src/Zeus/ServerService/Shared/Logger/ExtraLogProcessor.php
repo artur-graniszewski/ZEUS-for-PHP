@@ -54,7 +54,7 @@ class ExtraLogProcessor implements ProcessorInterface
 
     protected function detectLogger()
     {
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $this->backTraceLevel ? $this->backTraceLevel + 1: 100);
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS | DEBUG_BACKTRACE_PROVIDE_OBJECT, $this->backTraceLevel ? $this->backTraceLevel + 1: 100);
         if (!$this->backTraceLevel) {
             foreach ($trace as $level => $step) {
                 if (preg_match('~^(Zend\\\Log\\\Logger|Zeus\\\ServerService\\\Shared\\\Logger\\\ExtraLogProcessor)~', $step['class'])) {
