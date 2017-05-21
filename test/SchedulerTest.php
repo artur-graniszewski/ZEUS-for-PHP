@@ -4,7 +4,6 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zend\Console\Console;
-use Zend\EventManager\Event;
 use Zend\EventManager\EventInterface;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
@@ -183,7 +182,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
                 $process->attach($em);
                 $em->triggerEvent($event);
-                $event->stopPropagation(false);
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $process->setId($uid);

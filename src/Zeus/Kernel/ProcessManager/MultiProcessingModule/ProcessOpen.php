@@ -120,7 +120,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $event = $this->event;
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
-        $event->stopPropagation(false);
         $this->events->triggerEvent($event);
     }
 
@@ -152,7 +151,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
             $event->setParam('uid', $pid);
-            $event->stopPropagation(false);
             $this->events->triggerEvent($event);
         }
 
@@ -241,7 +239,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
         $event->setParam('uid', $pid);
         $event->setName($eventName);
-        $event->stopPropagation(false);
         $this->events->triggerEvent($event);
     }
 

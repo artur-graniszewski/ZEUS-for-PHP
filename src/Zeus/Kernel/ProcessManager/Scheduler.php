@@ -6,7 +6,6 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
-use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
@@ -136,7 +135,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function onProcessMessage(EventInterface $event)
     {
-        $this->ipc->send($event->getParams());
+        $this->getIpc()->send($event->getParams());
     }
 
     /**
@@ -199,6 +198,8 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     public function getStatus()
     {
+        $ipc = $this->getIpc();
+
         $payload = [
             'isEvent' => false,
             'type' => Message::IS_STATUS_REQUEST,
@@ -210,21 +211,21 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             ]
         ];
 
-        if (!$this->ipc->isConnected()) {
-            $this->ipc->connect();
+        if (!$ipc->isConnected()) {
+            $ipc->connect();
         }
-        $this->ipc->useChannelNumber(1);
-        $this->ipc->send($payload);
+        $ipc->useChannelNumber(1);
+        $ipc->send($payload);
 
         $timeout = 5;
         $result = null;
         do {
-            $result = $this->ipc->receive();
+            $result = $ipc->receive();
             usleep(1000);
             $timeout--;
         } while (!$result && $timeout >= 0);
 
-        $this->ipc->useChannelNumber(0);
+        $ipc->useChannelNumber(0);
 
         if ($result) {
             return $result['extra'];
@@ -245,7 +246,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $event = $this->event;
         $event->setParams($extraData);
         $event->setName($eventName);
-        $event->stopPropagation(false);
         $events->triggerEvent($event);
 
         return $this;
@@ -267,8 +267,8 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $events = $this->getEventManager();
         $this->attach($events);
         $this->log(Logger::INFO, "Establishing IPC");
-        if (!$this->ipc->isConnected()) {
-            $this->ipc->connect();
+        if (!$this->getIpc()->isConnected()) {
+            $this->getIpc()->connect();
         }
 
         try {
@@ -408,7 +408,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->log(Logger::INFO, "Scheduler terminated");
 
         $this->log(Logger::INFO, "Stopping IPC");
-        $this->ipc->disconnect();
+        $this->getIpc()->disconnect();
     }
 
     /**
@@ -438,7 +438,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->processes = [];
         $this->collectCycles();
         $this->setContinueMainLoop(false);
-        $this->ipc->useChannelNumber(1);
+        $this->getIpc()->useChannelNumber(1);
 
         $event->setProcess($this->processService);
     }
@@ -541,7 +541,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         /** @var Message[] $messages */
         $this->ipc->useChannelNumber(0);
 
-        $messages = $this->ipc->receiveAll();
+        $messages = $this->getIpc()->receiveAll();
         $time = microtime(true);
 
         foreach ($messages as $message) {
@@ -566,8 +566,8 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                     break;
 
                 case Message::IS_STATUS_REQUEST:
-                    $this->logger->debug('Status request detected');
-                    $this->sendSchedulerStatus($this->ipc);
+                    $this->getLogger()->debug('Status request detected');
+                    $this->sendSchedulerStatus($this->getIpc());
                     break;
 
                 default:
@@ -584,7 +584,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $payload = [
             'isEvent' => false,
             'type' => Message::IS_STATUS,
-            'priority' => '',
+            'priority' => Message::IS_STATUS,
             'message' => 'statusSent',
             'extra' => [
                 'uid' => $this->getId(),

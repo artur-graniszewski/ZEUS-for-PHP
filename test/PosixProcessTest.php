@@ -3,7 +3,6 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManager;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;

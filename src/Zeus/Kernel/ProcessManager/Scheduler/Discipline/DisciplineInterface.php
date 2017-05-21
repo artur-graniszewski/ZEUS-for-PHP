@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\ProcessManager\Scheduler\Discipline;
 
-
 use Zeus\Kernel\ProcessManager\Config;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
 

@@ -120,7 +120,6 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         $event = $this->event;
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
-        $event->stopPropagation(false);
         $this->events->triggerEvent($event);
     }
 
@@ -147,7 +146,6 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
             $event->setParam('uid', $pid);
-            $event->stopPropagation(false);
             $this->events->triggerEvent($event);
         }
 
@@ -157,7 +155,6 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
             $event = $this->event;
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $event->setParam('uid', $this->ppid);
-            $event->stopPropagation(false);
             $this->events->triggerEvent($event);
         }
     }
@@ -197,7 +194,6 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
 
         $event->setParam('uid', $pid);
         $event->setName($eventName);
-        $event->stopPropagation(false);
         $this->events->triggerEvent($event);
     }
 

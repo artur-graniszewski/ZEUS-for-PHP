@@ -3,10 +3,8 @@
 namespace Zeus\Controller;
 
 use Zend\Console\Console;
-use Zend\Log\Filter\SuppressFilter;
 use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
-use Zend\Log\Writer\WriterInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
@@ -151,14 +149,6 @@ class ProcessController extends AbstractActionController
      */
     protected function starProcessForService($serviceName)
     {
-        // enable logs
-        $logger = $this->getLogger();
-        foreach ($logger->getWriters() as $writer) {
-            /** @var WriterInterface $writer */
-            $writer->addFilter(new SuppressFilter());
-            //trigger_add
-        }
-
         $schedulerEvent = null;
         $schedulerEventManager = null;
 

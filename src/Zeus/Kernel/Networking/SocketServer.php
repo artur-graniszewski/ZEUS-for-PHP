@@ -26,7 +26,7 @@ final class SocketServer
     {
         $opts = [
             'socket' => [
-                'backlog' => 1000,
+                //'backlog' => 1,
                 //'so_reuseport' => true,
             ],
         ];

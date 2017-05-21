@@ -188,7 +188,6 @@ final class Manager
         $event->setName(ManagerEvent::EVENT_SERVICE_START);
         $event->setError(null);
         $event->setService($service);
-        $event->stopPropagation(false);
 
         $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
@@ -201,7 +200,6 @@ final class Manager
                 if(!$event->propagationIsStopped()) {
                     pcntl_signal_dispatch(); //@todo: REPLACE me with something more platform agnostic!
                     $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
-                    $event->stopPropagation(false);
                     $this->getEventManager()->triggerEvent($event);
                 } else {
                     $schedulerEvent->getScheduler()->setContinueMainLoop(false);
@@ -335,7 +333,6 @@ final class Manager
         $event->setName(ManagerEvent::EVENT_SERVICE_STOP);
         $event->setError(null);
         $event->setService($service);
-        $event->stopPropagation(false);
         $this->getEventManager()->triggerEvent($event);
 
         if ($this->servicesRunning === 0) {
