@@ -7,6 +7,7 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
+use Zeus\Kernel\IpcServer\Server;
 use Zeus\Kernel\ProcessManager\Config;
 use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -34,21 +35,27 @@ class SchedulerFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $eventManager = $container->get('zeus-event-manager');
-        $schedulerConfig = $this->getSchedulerConfig($container, $options['scheduler_name']);
-        $schedulerConfig['service_name'] = $options['service_name'];
+        $config = $this->getSchedulerConfig($container, $options['scheduler_name']);
+        $config['service_name'] = $options['service_name'];
+        $configObject = new Config($config);
 
         $logger = $options['logger_adapter'];
         $schedulerDiscipline =
-            isset($schedulerConfig['scheduler_discipline']) ? $container->get($schedulerConfig['scheduler_discipline']) : $container->get(LruDiscipline::class);
+            isset($config['scheduler_discipline']) ? $container->get($config['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        $processService = $container->build(Process::class, ['logger_adapter' => $logger]);
+        $processService = $container->build(Process::class, ['logger_adapter' => $logger, 'scheduler_config' => $configObject]);
 
-        $scheduler = new Scheduler(new Config($schedulerConfig), $processService, $options['ipc_adapter'], $schedulerDiscipline);
+        $scheduler = new Scheduler($configObject, $processService, $options['ipc_adapter'], $schedulerDiscipline);
         $scheduler->setLogger($logger);
         $scheduler->setEventManager($eventManager);
 
-        $container->build($schedulerConfig['multiprocessing_module'], ['scheduler' => $scheduler]);
-        $this->startPlugins($container, $scheduler, isset($schedulerConfig['plugins']) ? $schedulerConfig['plugins'] : []);
+        $ipcServer = new Server();
+        $ipcServer->setIpc($options['ipc_adapter']);
+        $ipcServer->setEventManager($eventManager);
+        $ipcServer->attach($eventManager);
+
+        $container->build($config['multiprocessing_module'], ['scheduler' => $scheduler]);
+        $this->startPlugins($container, $scheduler, isset($config['plugins']) ? $config['plugins'] : []);
 
         return $scheduler;
     }

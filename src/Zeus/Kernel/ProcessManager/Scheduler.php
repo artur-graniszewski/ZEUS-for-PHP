@@ -7,6 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
@@ -116,7 +117,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(SchedulerEvent $e) { $this->onProcessMessage($e);});
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -133,9 +134,41 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * @param EventInterface $event
      */
-    protected function onProcessMessage(EventInterface $event)
+    protected function onProcessMessage(IpcEvent $event)
     {
-        $this->getIpc()->send($event->getParams());
+        trigger_error("MESSAGE: " . json_encode($event->getParams()));
+        $message = $event->getParams();
+        $time = microtime(true);
+
+        switch ($message['type']) {
+            case Message::IS_STATUS:
+                $details = $message['extra'];
+                $pid = $details['uid'];
+
+                /** @var ProcessState $processStatus */
+                $processStatus = $message['extra']['status'];
+                $processStatus['time'] = $time;
+
+                if ($processStatus['code'] === ProcessState::RUNNING) {
+                    $this->schedulerStatus->incrementNumberOfFinishedTasks();
+                }
+
+                // child status changed, update this information server-side
+                if (isset($this->processes[$pid])) {
+                    $this->processes[$pid] = $processStatus;
+                }
+
+                break;
+
+            case Message::IS_STATUS_REQUEST:
+                $this->getLogger()->debug('Status request detected');
+                $this->sendSchedulerStatus($this->getIpc());
+                break;
+
+            default:
+                $this->logMessage($message);
+                break;
+        }
     }
 
     /**
@@ -257,7 +290,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      * @param bool $launchAsDaemon Run this server as a daemon?
      * @return $this
      */
-    public function start($launchAsDaemon)
+    public function start($launchAsDaemon = null)
     {
         $this->startTime = microtime(true);
         $plugins = $this->getPluginRegistry()->count();
@@ -306,7 +339,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 , -8000
             );
 
-            $this->triggerEvent(SchedulerEvent::EVENT_PROCESS_CREATE, ['server' => true]);
+            $this->processService->start(['server' => true]);
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
         } catch (\Throwable $exception) {
             $this->handleException($exception);
@@ -424,7 +457,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         }
 
         for ($i = 0; $i < $count; ++$i) {
-            $this->triggerEvent(SchedulerEvent::EVENT_PROCESS_CREATE);
+            $this->processService->start();
         }
 
         return $this;
@@ -537,44 +570,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     protected function handleMessages()
     {
         $this->schedulerStatus->updateStatus();
-
-        /** @var Message[] $messages */
-        $this->ipc->useChannelNumber(0);
-
-        $messages = $this->getIpc()->receiveAll();
-        $time = microtime(true);
-
-        foreach ($messages as $message) {
-            switch ($message['type']) {
-                case Message::IS_STATUS:
-                    $details = $message['extra'];
-                    $pid = $details['uid'];
-
-                    /** @var ProcessState $processStatus */
-                    $processStatus = $message['extra']['status'];
-                    $processStatus['time'] = $time;
-
-                    if ($processStatus['code'] === ProcessState::RUNNING) {
-                        $this->schedulerStatus->incrementNumberOfFinishedTasks();
-                    }
-
-                    // child status changed, update this information server-side
-                    if (isset($this->processes[$pid])) {
-                        $this->processes[$pid] = $processStatus;
-                    }
-
-                    break;
-
-                case Message::IS_STATUS_REQUEST:
-                    $this->getLogger()->debug('Status request detected');
-                    $this->sendSchedulerStatus($this->getIpc());
-                    break;
-
-                default:
-                    $this->logMessage($message);
-                    break;
-            }
-        }
 
         return $this;
     }

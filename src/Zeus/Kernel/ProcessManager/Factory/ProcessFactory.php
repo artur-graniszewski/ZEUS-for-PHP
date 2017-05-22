@@ -26,11 +26,13 @@ class ProcessFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
+        $schedulerConfig = $options['scheduler_config'];
         $process = new Process();
         $eventManager = $container->get('zeus-event-manager');
         $process->setLogger($options['logger_adapter']);
         $process->setEventManager($eventManager);
         $process->attach($eventManager);
+        $process->setConfig($schedulerConfig);
 
         return $process;
     }

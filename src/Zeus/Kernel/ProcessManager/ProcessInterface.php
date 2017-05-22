@@ -28,4 +28,9 @@ interface ProcessInterface
      */
     public function setIpc($ipcAdapter);
 
+    /**
+     * @return $this
+     */
+    public function start();
+
 }

@@ -14,8 +14,8 @@ use Zeus\Kernel\ProcessManager\Status\ProcessState;
  */
 final class Process extends AbstractProcess
 {
-    /** @var int Time to live before terminating (# of requests left till the auto-shutdown) */
-    protected $ttl;
+    /** @var ConfigInterface */
+    protected $config;
 
     /** @var SchedulerEvent */
     protected $event;
@@ -36,10 +36,9 @@ final class Process extends AbstractProcess
     {
         $this->setEventManager($eventManager);
         $this->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
-            $config = $event->getScheduler()->getConfig();
+            $config = $this->getConfig();
             $event->setProcess($this);
             $this->setId($event->getParam('uid'));
-            $this->setConfig($config);
             $this->status = new ProcessState($config->getServiceName());
             $this->event = $event;
         }, SchedulerEvent::PRIORITY_INITIALIZE);
@@ -57,7 +56,7 @@ final class Process extends AbstractProcess
     public function setConfig(ConfigInterface $config)
     {
         // set time to live counter
-        $this->ttl = $config->getMaxProcessTasks();
+        $this->config = $config;
 
         return $this;
     }
@@ -179,7 +178,7 @@ final class Process extends AbstractProcess
         $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
-        while ($this->ttl - $status->getNumberOfFinishedTasks() > 0) {
+        while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
             $exception = null;
             try {
                 $event = $this->event;
@@ -216,10 +215,7 @@ final class Process extends AbstractProcess
             ]
         ];
 
-        $event = $this->event;
-        $event->setParams($payload);
-        $event->setName(SchedulerEvent::EVENT_PROCESS_MESSAGE);
-        $this->getEventManager()->triggerEvent($event);
+        $this->getIpc()->send($payload);
 
         return $this;
     }

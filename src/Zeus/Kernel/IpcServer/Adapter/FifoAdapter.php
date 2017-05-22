@@ -257,6 +257,10 @@ final class FifoAdapter implements
      */
     public function getMessageSizeLimit()
     {
+        if (!$this->isSupported()) {
+            throw new \RuntimeException("Adapter not supported by the PHP configuration");
+        }
+
         if (!static::$maxPipeCapacity) {
             $fileName = $this->getFilename(2) . '-' . getmypid();
             posix_mkfifo($fileName, 0600);

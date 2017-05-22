@@ -75,7 +75,7 @@ class SchedulerEvent extends Event
      * @param Process $process
      * @return $this
      */
-    public function setProcess(Process $process)
+    public function setProcess(ProcessInterface $process)
     {
         $this->process = $process;
         $this->setParam('process', $process);
