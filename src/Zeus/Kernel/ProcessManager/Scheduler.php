@@ -136,7 +136,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function onProcessMessage(IpcEvent $event)
     {
-        trigger_error("MESSAGE: " . json_encode($event->getParams()));
         $message = $event->getParams();
         $time = microtime(true);
 

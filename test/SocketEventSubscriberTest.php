@@ -41,6 +41,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $event->setScheduler($this->getScheduler(0));
         $process = new Process($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
+        $process->setIpc($event->getScheduler()->getIpc());
         $event->setProcess($process);
         $process->attach($events);
 
@@ -100,6 +101,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $event->setScheduler($this->getScheduler(0));
         $process = new Process($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
+        $process->setIpc($event->getScheduler()->getIpc());
         $event->setProcess($process);
         $process->attach($events);
 
