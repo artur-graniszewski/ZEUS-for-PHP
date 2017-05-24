@@ -1,7 +1,7 @@
 <?php
 
 namespace Zeus\Kernel\Networking;
-use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\Stream\SocketStream;
 
 /**
  * Class SocketServer

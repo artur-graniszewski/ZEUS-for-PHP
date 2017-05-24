@@ -5,8 +5,8 @@ namespace Zeus\Kernel\IpcServer\Adapter;
 use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
 use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
-use Zeus\Kernel\Networking\FlushableConnectionInterface;
-use Zeus\Kernel\Networking\FileStream;
+use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\Stream\PipeStream;
 
 /**
  * Class FifoAdapter
@@ -20,7 +20,7 @@ final class FifoAdapter implements
 {
     use MessagePackager;
 
-    /** @var FileStream[] sockets */
+    /** @var PipeStream[] sockets */
     protected $ipc = [];
 
     /** @var string */
@@ -82,8 +82,8 @@ final class FifoAdapter implements
         $ipc[1] = fopen($fileName2, "r+"); // ensures at least one writer (us) so will be non-blocking
         stream_set_blocking($ipc[0], false); // prevent fread / fwrite blocking
         stream_set_blocking($ipc[1], false); // prevent fread / fwrite blocking
-        $this->ipc[0] = new FileStream($ipc[0]);
-        $this->ipc[1] = new FileStream($ipc[1]);
+        $this->ipc[0] = new PipeStream($ipc[0]);
+        $this->ipc[1] = new PipeStream($ipc[1]);
         $this->getMessageSizeLimit();
 
         $this->connected = true;

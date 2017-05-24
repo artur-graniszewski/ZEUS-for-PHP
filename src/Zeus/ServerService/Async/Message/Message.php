@@ -2,8 +2,8 @@
 
 namespace Zeus\ServerService\Async\Message;
 
-use Zeus\Kernel\Networking\ConnectionInterface;
-use Zeus\Kernel\Networking\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
 use Zeus\ServerService\Async\UnserializeException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
@@ -31,7 +31,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $this->exception = new UnserializeException("Callback unserialization failed");
     }
 
-    public function onHeartBeat(ConnectionInterface $connection, $data = null)
+    public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         if ($this->ttl > 500000) {
             $connection->end();
@@ -39,10 +39,10 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @throws \Exception
      */
-    public function onOpen(ConnectionInterface $connection)
+    public function onOpen(NetworkStreamInterface $connection)
     {
         $this->ttl = 0;
         $this->message = '';
@@ -51,30 +51,30 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @throws \Exception
      */
-    public function onClose(ConnectionInterface $connection)
+    public function onClose(NetworkStreamInterface $connection)
     {
         $connection->end();
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param \Exception $exception
      * @throws \Exception
      */
-    public function onError(ConnectionInterface $connection, $exception)
+    public function onError(NetworkStreamInterface $connection, $exception)
     {
         $connection->end();
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param string $message
      * @throws \Exception
      */
-    public function onMessage(ConnectionInterface $connection, $message)
+    public function onMessage(NetworkStreamInterface $connection, $message)
     {
         if ($connection instanceof FlushableConnectionInterface) {
             $connection->setWriteBufferSize(0);

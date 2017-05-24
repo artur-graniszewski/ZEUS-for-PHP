@@ -1,7 +1,7 @@
 <?php
 
 namespace Zeus\ServerService\Shared\Networking;
-use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
 
 /**
  * Interface MessageComponentInterface
@@ -11,28 +11,28 @@ use Zeus\Kernel\Networking\ConnectionInterface;
 interface MessageComponentInterface
 {
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @throws \Exception
      */
-    function onOpen(ConnectionInterface $connection);
+    function onOpen(NetworkStreamInterface $connection);
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @throws \Exception
      */
-    function onClose(ConnectionInterface $connection);
+    function onClose(NetworkStreamInterface $connection);
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param \Exception $exception
      * @throws \Exception
      */
-    function onError(ConnectionInterface $connection, $exception);
+    function onError(NetworkStreamInterface $connection, $exception);
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param string $message
      * @throws \Exception
      */
-    function onMessage(ConnectionInterface $connection, $message);
+    function onMessage(NetworkStreamInterface $connection, $message);
 }

@@ -1,7 +1,7 @@
 <?php
 
 namespace Zeus\ServerService\Shared\Networking;
-use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
 
 /**
  * Interface HeartBeatMessageInterface
@@ -9,5 +9,5 @@ use Zeus\Kernel\Networking\ConnectionInterface;
  */
 interface HeartBeatMessageInterface
 {
-    public function onHeartBeat(ConnectionInterface $connection, $data = null);
+    public function onHeartBeat(NetworkStreamInterface $connection, $data = null);
 }

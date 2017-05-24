@@ -4,7 +4,7 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zeus\ServerService\Async\Config;
-use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\Stream\SocketStream;
 use Zeus\Kernel\Networking\SocketServer;
 
 class SocketStreamTest extends PHPUnit_Framework_TestCase

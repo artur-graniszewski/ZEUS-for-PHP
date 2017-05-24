@@ -5,7 +5,7 @@ namespace ZeusTest\Services\Async;
 use PHPUnit_Framework_TestCase;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Networking\SocketServer;
-use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\Stream\SocketStream;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;

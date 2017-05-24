@@ -3,7 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\Stream\SocketStream;
 use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SeparateAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;

@@ -7,10 +7,10 @@ use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
 use Zeus\ServerService\Http\Message\Helper\RegularEncoding;
 use Zeus\ServerService\Http\Message\Helper\FileUpload;
-use Zeus\Kernel\Networking\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
-use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
 use Zend\Http\Header\Connection;
 use Zend\Http\Header\ContentEncoding;
 use Zend\Http\Header\TransferEncoding;
@@ -36,7 +36,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_SENDING = 16;
     const MAX_KEEP_ALIVE_REQUESTS = 100;
 
-    /** @var \Zeus\Kernel\Networking\ConnectionInterface */
+    /** @var \Zeus\Kernel\Networking\Stream\NetworkStreamInterface */
     protected $connection;
 
     /** @var int */
@@ -131,9 +131,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      */
-    public function onOpen(ConnectionInterface $connection)
+    public function onOpen(NetworkStreamInterface $connection)
     {
         $this->initNewRequest();
         $this->restartKeepAliveCounter();
@@ -143,10 +143,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param \Exception|\Throwable $exception
      */
-    public function onError(ConnectionInterface $connection, $exception)
+    public function onError(NetworkStreamInterface $connection, $exception)
     {
         if (!$connection->isWritable()) {
             $this->onClose($connection);
@@ -179,9 +179,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      */
-    public function onClose(ConnectionInterface $connection)
+    public function onClose(NetworkStreamInterface $connection)
     {
         $this->requestPhase = static::REQUEST_PHASE_IDLE;
         $connection->end();
@@ -191,10 +191,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param \Zeus\Kernel\Networking\ConnectionInterface $connection
+     * @param \Zeus\Kernel\Networking\Stream\NetworkStreamInterface $connection
      * @param null $data
      */
-    public function onHeartBeat(ConnectionInterface $connection, $data = null)
+    public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         switch ($this->requestPhase) {
             case static::REQUEST_PHASE_KEEP_ALIVE:
@@ -211,10 +211,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param string $message
      */
-    public function onMessage(ConnectionInterface $connection, $message)
+    public function onMessage(NetworkStreamInterface $connection, $message)
     {
         $this->requestPhase = static::REQUEST_PHASE_READING;
 
@@ -253,13 +253,13 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param callback $callback
      * @return $this
      * @throws \Exception
      * @throws \Throwable
      */
-    protected function dispatchRequest(ConnectionInterface $connection, $callback)
+    protected function dispatchRequest(NetworkStreamInterface $connection, $callback)
     {
         $exception = null;
         $this->connection = $connection;
@@ -305,10 +305,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @return $this
      */
-    protected function validateRequestHeaders(ConnectionInterface $connection)
+    protected function validateRequestHeaders(NetworkStreamInterface $connection)
     {
         $this->setHost($this->request, $connection->getServerAddress());
         //$this->request->setBasePath(sprintf("%s:%d", $this->request->getUri()->getHost(), $this->request->getUri()->getPort()));
@@ -491,11 +491,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param string $buffer
      * @return $this
      */
-    protected function sendBody(ConnectionInterface $connection, $buffer)
+    protected function sendBody(NetworkStreamInterface $connection, $buffer)
     {
         if ($this->isBodyAllowedInResponse($this->request)) {
             $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');

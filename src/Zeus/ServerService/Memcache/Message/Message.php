@@ -6,7 +6,7 @@ use Zend\Cache\Storage\AvailableSpaceCapableInterface;
 use Zend\Cache\Storage\FlushableInterface;
 use Zend\Cache\Storage\StorageInterface;
 use Zend\Cache\Storage\TotalSpaceCapableInterface;
-use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
 use Zeus\Module;
 use Zeus\ServerService\Shared\Exception\PrerequisitesNotMetException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
@@ -46,7 +46,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     /** @var bool */
     protected $noReply = false;
 
-    /** @var ConnectionInterface */
+    /** @var NetworkStreamInterface */
     protected $connection;
 
     /** @var StorageInterface */
@@ -74,7 +74,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $this->setCasMode();
     }
 
-    public function onHeartBeat(ConnectionInterface $connection, $data = null)
+    public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         $this->ttl++;
 
@@ -84,10 +84,10 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @throws \Exception
      */
-    public function onOpen(ConnectionInterface $connection)
+    public function onOpen(NetworkStreamInterface $connection)
     {
         $this->ttl = 0;
         $this->connection = $connection;
@@ -95,30 +95,30 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @throws \Exception
      */
-    public function onClose(ConnectionInterface $connection)
+    public function onClose(NetworkStreamInterface $connection)
     {
         $connection->end();
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param \Exception $exception
      * @throws \Exception
      */
-    public function onError(ConnectionInterface $connection, $exception)
+    public function onError(NetworkStreamInterface $connection, $exception)
     {
         $connection->end();
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param string $message
      * @throws \Exception
      */
-    public function onMessage(ConnectionInterface $connection, $message)
+    public function onMessage(NetworkStreamInterface $connection, $message)
     {
         $this->ttl = 0;
         $this->buffer .= $message;

@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 
@@ -21,44 +21,44 @@ class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageIn
     }
 
     /**
-     * @param \Zeus\Kernel\Networking\ConnectionInterface $connection
+     * @param \Zeus\Kernel\Networking\Stream\NetworkStreamInterface $connection
      * @throws \Exception
      */
-    function onOpen(ConnectionInterface $connection)
+    function onOpen(NetworkStreamInterface $connection)
     {
         // TODO: Implement onOpen() method.
     }
 
     /**
-     * @param \Zeus\Kernel\Networking\ConnectionInterface $connection
+     * @param \Zeus\Kernel\Networking\Stream\NetworkStreamInterface $connection
      * @throws \Exception
      */
-    function onClose(ConnectionInterface $connection)
+    function onClose(NetworkStreamInterface $connection)
     {
         // TODO: Implement onClose() method.
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param \Exception $exception
      * @throws \Exception
      */
-    function onError(ConnectionInterface $connection, $exception)
+    function onError(NetworkStreamInterface $connection, $exception)
     {
         // TODO: Implement onError() method.
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param NetworkStreamInterface $connection
      * @param string $message
      * @throws \Exception
      */
-    function onMessage(ConnectionInterface $connection, $message)
+    function onMessage(NetworkStreamInterface $connection, $message)
     {
         call_user_func($this->readCallback, $connection, $message);
     }
 
-    public function onHeartBeat(ConnectionInterface $connection, $data = null)
+    public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         $callback = $this->heartBeatCallback ? $this->heartBeatCallback : function() {};
 

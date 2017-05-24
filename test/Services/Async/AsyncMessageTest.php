@@ -4,13 +4,13 @@ namespace ZeusTest\Services\Async;
 
 use Opis\Closure\SerializableClosure;
 use PHPUnit_Framework_TestCase;
-use Zeus\Kernel\Networking\ConnectionInterface;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Async\Message\Message;
-use ZeusTest\Helpers\SocketTestConnection;
+use ZeusTest\Helpers\SocketTestNetworkStream;
 
 class AsyncMessageTest extends PHPUnit_Framework_TestCase
 {
-    /** @var ConnectionInterface */
+    /** @var NetworkStreamInterface */
     protected $connection;
 
     /** @var Message */
@@ -18,7 +18,7 @@ class AsyncMessageTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->connection = new SocketTestConnection(null);
+        $this->connection = new SocketTestNetworkStream(null);
         $this->async = new Message();
         $this->async->onOpen($this->connection);
         $this->connection->setWriteBufferSize(0);

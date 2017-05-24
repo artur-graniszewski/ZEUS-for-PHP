@@ -5,7 +5,7 @@ namespace ZeusBench\Memcached;
 use Athletic\AthleticEvent;
 use Zend\Cache\Storage\Adapter\Memory;
 use Zeus\ServerService\Memcache\Message\Message;
-use ZeusTest\Helpers\SocketTestConnection;
+use ZeusTest\Helpers\SocketTestNetworkStream;
 
 class MemcachedMessageBenchmark extends AthleticEvent
 {
@@ -16,7 +16,7 @@ class MemcachedMessageBenchmark extends AthleticEvent
 
     public function setUp()
     {
-        $this->connection = new SocketTestConnection(null);
+        $this->connection = new SocketTestNetworkStream(null);
         $this->message = new Message(new Memory(), new Memory());
         $this->message->onOpen($this->connection);
         $this->send("set test-key 12121212 10 2\r\nOK\r\n");

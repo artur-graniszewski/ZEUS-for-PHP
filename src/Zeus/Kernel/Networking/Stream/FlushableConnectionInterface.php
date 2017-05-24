@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\Networking;
+namespace Zeus\Kernel\Networking\Stream;
 
 /**
  * Interface FlushableConnectionInterface

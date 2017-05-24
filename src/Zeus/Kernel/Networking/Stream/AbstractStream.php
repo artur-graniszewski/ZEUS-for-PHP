@@ -1,13 +1,15 @@
 <?php
 
-namespace Zeus\Kernel\Networking;
+namespace Zeus\Kernel\Networking\Stream;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
 
 /**
- * Class SocketConnection
+ * Class AbstractStream
  * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
-class FileStream implements ConnectionInterface, FlushableConnectionInterface
+class AbstractStream implements StreamInterface, FlushableConnectionInterface
 {
     const DEFAULT_WRITE_BUFFER_SIZE = 65536;
     const DEFAULT_READ_BUFFER_SIZE = 65536;
@@ -32,8 +34,6 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
 
     protected $writeCallback = 'fwrite';
 
-    protected $peerName;
-
     /**
      * SocketConnection constructor.
      * @param resource $stream
@@ -43,22 +43,6 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
     {
         $this->stream = $stream;
         $this->peerName = $peerName;
-    }
-
-    /**
-     * @return string|null Server address (IP) or null if unknown
-     */
-    public function getServerAddress()
-    {
-        return @stream_socket_get_name($this->stream, false);
-    }
-
-    /**
-     * @return string|null Remote address (client IP) or null if unknown
-     */
-    public function getRemoteAddress()
-    {
-        return $this->peerName ? $this->peerName : @stream_socket_get_name($this->stream, true);
     }
 
     /**
@@ -133,10 +117,6 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
             throw new \LogicException("Stream is not readable");
         }
 
-        if (!$this->select(1)) {
-            return false;
-        }
-
         if ($ending !== false) {
             $data = @stream_get_line($this->stream, $this->readBufferSize, $ending);
         } else {
@@ -151,30 +131,6 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         $this->dataReceived += strlen($data);
 
         return $data;
-    }
-
-    /**
-     * @param int $timeout
-     * @return bool
-     */
-    public function select($timeout)
-    {
-        if (!$this->isReadable()) {
-            throw new \LogicException("Stream is not readable");
-        }
-
-        $write = $except = [];
-        $read = [$this->stream];
-
-        @trigger_error("");
-        $result = $this->doSelect($read, $write, $except, $timeout);
-        if ($result !== false) {
-            return $result === 1;
-        }
-
-        $this->isReadable = false;
-        $error = error_get_last();
-        throw new \RuntimeException("Stream select failed: " . $error['message']);
     }
 
     /**
@@ -219,18 +175,9 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         $size = strlen($this->data);
         $sent = 0;
 
-        $read = $except = [];
-        $write = [$this->stream];
         while ($sent !== $size) {
             $amount = 1;
             $wrote = $writeMethod($this->stream, $this->data);
-
-            // write failed, try to wait a bit
-            if ($wrote === 0) {
-                do {
-                    $amount = $this->doSelect($read, $write, $except, 1);
-                } while($amount === 0);
-            }
 
             if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
                 $this->isWritable = false;
@@ -249,22 +196,6 @@ class FileStream implements ConnectionInterface, FlushableConnectionInterface
         $this->data = '';
 
         return $this;
-    }
-
-    protected function doSelect(& $read, & $write, & $except, $timeout)
-    {
-        @trigger_error("");
-        $result = @stream_select($read, $write, $except, $timeout);
-        if ($result !== false) {
-            return $result;
-        }
-
-        $error = error_get_last();
-        if ($result === false && strstr($error['message'], 'Interrupted system call')) {
-            return 0;
-        }
-
-        return false;
     }
 
     /**

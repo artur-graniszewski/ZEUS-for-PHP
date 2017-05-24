@@ -4,14 +4,14 @@ namespace Zeus\ServerService\Async;
 
 use Opis\Closure\SerializableClosure;
 use Zend\Mvc\Controller\Plugin\AbstractPlugin;
-use Zeus\Kernel\Networking\ConnectionInterface;
-use Zeus\Kernel\Networking\FlushableConnectionInterface;
-use Zeus\Kernel\Networking\SocketStream;
+use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Kernel\Networking\Stream\SocketStream;
 
 // Plugin class
 class AsyncPlugin extends AbstractPlugin
 {
-    /** @var ConnectionInterface[] */
+    /** @var NetworkStreamInterface[] */
     protected $handles = [];
 
     /** @var Config */
@@ -172,7 +172,7 @@ class AsyncPlugin extends AbstractPlugin
         return $result === false;
     }
 
-    protected function doJoin(ConnectionInterface $socket)
+    protected function doJoin(NetworkStreamInterface $socket)
     {
         $result = $socket->read();
         if ($result === false) {
