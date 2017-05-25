@@ -42,9 +42,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /** @var IpcAdapterInterface */
     protected $ipc;
 
-    /** @var float */
-    protected $startTime;
-
     protected $discipline;
 
     /** @var SchedulerEvent */
@@ -85,7 +82,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->config = $config;
         $this->ipc = $ipcAdapter;
         $this->processService = $processService;
-        $this->schedulerStatus = new ProcessState($this->getConfig()->getServiceName());
+        $this->status = new ProcessState($this->getConfig()->getServiceName());
 
         $this->processes = new ProcessCollection($this->getConfig()->getMaxProcesses());
 
@@ -124,7 +121,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
-            $this->handleMessages();
             $this->manageProcesses($this->discipline);
         });
 
@@ -132,12 +128,11 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     }
 
     /**
-     * @param EventInterface $event
+     * @param IpcEvent $event
      */
     protected function onProcessMessage(IpcEvent $event)
     {
         $message = $event->getParams();
-        $time = microtime(true);
 
         switch ($message['type']) {
             case Message::IS_STATUS:
@@ -146,28 +141,58 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
                 /** @var ProcessState $processStatus */
                 $processStatus = $message['extra']['status'];
-                $processStatus['time'] = $time;
-
-                if ($processStatus['code'] === ProcessState::RUNNING) {
-                    $this->schedulerStatus->incrementNumberOfFinishedTasks();
-                }
 
                 // child status changed, update this information server-side
                 if (isset($this->processes[$pid])) {
+                    if ($this->processes[$pid]['code'] !== $processStatus['code']) {
+                        $processStatus['time'] = microtime(true);
+                    }
+
                     $this->processes[$pid] = $processStatus;
                 }
 
                 break;
 
-            case Message::IS_STATUS_REQUEST:
-                $this->getLogger()->debug('Status request detected');
-                $this->sendSchedulerStatus($this->getIpc());
-                break;
-
             default:
-                $this->logMessage($message);
+                //$this->logMessage($message);
                 break;
         }
+    }
+
+    /**
+     * Logs server messages.
+     *
+     * @param mixed[] $message
+     * @return $this
+     */
+    protected function logMessage($message)
+    {
+        $extra = $message['extra'];
+        $extra['service_name'] = sprintf("%s-%d", $this->getConfig()->getServiceName(), $extra['uid']);
+        $this->log($message['priority'], $message['message'], $extra);
+
+        return $this;
+    }
+
+    /**
+     * @param int $priority
+     * @param string $message
+     * @param mixed[] $extra
+     * @return $this
+     */
+    protected function log($priority, $message, $extra = [])
+    {
+        if (!isset($extra['service_name'])) {
+            $extra['service_name'] = $this->getConfig()->getServiceName();
+        }
+
+        if (!isset($extra['logger'])) {
+            $extra['logger'] = __CLASS__;
+        }
+
+        $this->getLogger()->log($priority, $message, $extra);
+
+        return $this;
     }
 
     /**
@@ -226,54 +251,13 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     }
 
     /**
-     * @return mixed[]
-     */
-    public function getStatus()
-    {
-        $ipc = $this->getIpc();
-
-        $payload = [
-            'isEvent' => false,
-            'type' => Message::IS_STATUS_REQUEST,
-            'priority' => '',
-            'message' => 'fetchStatus',
-            'extra' => [
-                'uid' => $this->getId(),
-                'logger' => __CLASS__
-            ]
-        ];
-
-        if (!$ipc->isConnected()) {
-            $ipc->connect();
-        }
-        $ipc->useChannelNumber(1);
-        $ipc->send($payload);
-
-        $timeout = 5;
-        $result = null;
-        do {
-            $result = $ipc->receive();
-            usleep(1000);
-            $timeout--;
-        } while (!$result && $timeout >= 0);
-
-        $ipc->useChannelNumber(0);
-
-        if ($result) {
-            return $result['extra'];
-        }
-
-        return null;
-    }
-
-    /**
      * @param string $eventName
      * @param mixed[]$extraData
      * @return $this
      */
     protected function triggerEvent($eventName, $extraData = [])
     {
-        $extraData = array_merge($this->schedulerStatus->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
+        $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
         $event = $this->event;
         $event->setParams($extraData);
@@ -430,8 +414,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             }
         }
 
-        $this->handleMessages();
-
         if ($exception) {
             $status = $exception->getCode();
             $this->log(Logger::ERR, sprintf("Exception (%d): %s in %s:%d", $status, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
@@ -471,8 +453,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->collectCycles();
         $this->setContinueMainLoop(false);
         $this->getIpc()->useChannelNumber(1);
-
-        $event->setProcess($this->processService);
     }
 
     /**
@@ -562,71 +542,10 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     }
 
     /**
-     * Handles messages.
-     *
-     * @return $this
+     * @return ProcessCollection|Status\ProcessState[]
      */
-    protected function handleMessages()
+    public function getProcesses()
     {
-        $this->schedulerStatus->updateStatus();
-
-        return $this;
-    }
-
-    private function sendSchedulerStatus(IpcAdapterInterface $ipcAdapter)
-    {
-        $payload = [
-            'isEvent' => false,
-            'type' => Message::IS_STATUS,
-            'priority' => Message::IS_STATUS,
-            'message' => 'statusSent',
-            'extra' => [
-                'uid' => $this->getId(),
-                'logger' => __CLASS__,
-                'process_status' => $this->processes->toArray(),
-                'scheduler_status' => $this->schedulerStatus->toArray(),
-            ]
-        ];
-
-        $payload['extra']['scheduler_status']['total_traffic'] = 0;
-        $payload['extra']['scheduler_status']['start_timestamp'] = $this->startTime;
-
-        $ipcAdapter->send($payload);
-    }
-
-    /**
-     * Logs server messages.
-     *
-     * @param Message $message
-     * @return $this
-     */
-    protected function logMessage($message)
-    {
-        $extra = $message['extra'];
-        $extra['service_name'] = sprintf("%s-%d", $this->getConfig()->getServiceName(), $extra['uid']);
-        $this->log($message['priority'], $message['message'], $extra);
-
-        return $this;
-    }
-
-    /**
-     * @param int $priority
-     * @param string $message
-     * @param mixed[] $extra
-     * @return $this
-     */
-    protected function log($priority, $message, $extra = [])
-    {
-        if (!isset($extra['service_name'])) {
-            $extra['service_name'] = $this->getConfig()->getServiceName();
-        }
-
-        if (!isset($extra['logger'])) {
-            $extra['logger'] = __CLASS__;
-        }
-
-        $this->getLogger()->log($priority, $message, $extra);
-
-        return $this;
+        return $this->processes;
     }
 }

@@ -165,14 +165,6 @@ final class Process extends AbstractProcess
      */
     protected function mainLoop()
     {
-        $this->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_LOOP, function(EventInterface $event) {
-            $status = $this->getStatus();
-            if ($status->getTime() !== time()) {
-                $status->setTime(time());
-                $this->sendStatus();
-            }
-        });
-
         $exception = null;
         $this->setWaiting();
         $status = $this->getStatus();

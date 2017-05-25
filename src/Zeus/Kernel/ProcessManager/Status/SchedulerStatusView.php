@@ -5,6 +5,7 @@ namespace Zeus\Kernel\ProcessManager\Status;
 use Zend\Console\ColorInterface;
 use Zend\Console\Console;
 use Zeus\Kernel\ProcessManager\Helper\AddUnitsToNumbers;
+use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zend\Console\Adapter\AdapterInterface;
 use Zeus\ServerService\ServerServiceInterface;
@@ -70,7 +71,7 @@ class SchedulerStatusView
         $console = $this->console;
         $output = $console->colorize("Service Status: " . PHP_EOL . PHP_EOL, ColorInterface::GREEN);
 
-        $payload = $this->scheduler->getStatus();
+        $payload = SchedulerStatus::getStatus($this->scheduler);
 
         if (!$payload) {
             return false;

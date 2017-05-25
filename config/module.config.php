@@ -12,6 +12,7 @@ use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
+use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
@@ -111,6 +112,7 @@ return $config = [
                 'enable_process_cache' => true,
                 'plugins' => [
                     ProcessTitle::class,
+                    SchedulerStatus::class,
                     /*
                     \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [
                         'user' => 'www-data',
