@@ -6,6 +6,7 @@ use PHPUnit_Framework_TestCase;
 use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
+use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Kernel\ProcessManager\Status\SchedulerStatusView;
@@ -55,7 +56,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $statuses = [];
         $statusOutputs = [];
 
-        $scheduler = $this->getScheduler(2, function(Scheduler $scheduler) use (&$statuses, &$statusOutputs) {
+        $scheduler = $this->getScheduler(3, function(Scheduler $scheduler) use (&$statuses, &$statusOutputs) {
             $schedulerStatus = $scheduler->getStatus();
             $statuses[] = $schedulerStatus;
             $service = $this->getService($scheduler);
@@ -64,6 +65,10 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         });
 
         $em = $scheduler->getEventManager();
+
+        $status = new SchedulerStatus();
+        $status->attach($em);
+
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
                 $amountOfScheduledProcesses++;
@@ -79,12 +84,8 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $scheduler->setLogger($logger);
         $scheduler->start(false);
 
-        $this->assertNull($statuses[0], "First Scheduler's iteration should not receive status request");
-        $this->assertArrayHasKey('scheduler_status', $statuses[1]);
-
         $this->assertFalse($statusOutputs[0], "First Scheduler's iteration should not receive status request");
-        $this->assertGreaterThan(1, strlen($statusOutputs[1]), "Output should be present");
-        $this->assertEquals(1, preg_match('~Service Status~', $statusOutputs[1]), 'Output should contain Server Service status');
+        $this->assertEquals(1, preg_match('~Service Status~', $statusOutputs[2]), 'Output should contain Server Service status');
     }
 
     public function testSchedulerStatusInOfflineSituation()
