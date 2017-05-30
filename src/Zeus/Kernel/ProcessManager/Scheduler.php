@@ -154,7 +154,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 break;
 
             default:
-                //$this->logMessage($message);
+                $this->logMessage($message);
                 break;
         }
     }

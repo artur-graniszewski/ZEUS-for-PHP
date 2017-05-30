@@ -73,6 +73,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $counter, 'Loop should have been executed only once');
     }
 
+    /**
+     * @todo: ignore messages created by framework and focus only on test messages
+     */
     public function testIpcLogDispatching()
     {
         $scheduler = $this->getScheduler(1);
