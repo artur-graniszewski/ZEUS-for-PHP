@@ -14,20 +14,6 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     protected $writeCallback = 'fwrite';
 
     /**
-     * @return $this
-     */
-    protected function doClose()
-    {
-        if (!$this->isEof()) {
-            stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
-        }
-
-        parent::doClose();
-
-        return $this;
-    }
-
-    /**
      * @param int $timeout
      * @return bool
      */
