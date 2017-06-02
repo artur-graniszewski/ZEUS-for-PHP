@@ -6,6 +6,7 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
+use Zeus\Helper\GarbageCollector;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
@@ -23,6 +24,7 @@ use Zeus\Kernel\IpcServer\Message;
 final class Scheduler extends AbstractProcess implements EventsCapableInterface, ProcessInterface
 {
     use PluginRegistry;
+    use GarbageCollector;
 
     /** @var ProcessState[]|ProcessCollection */
     protected $processes = [];
@@ -292,7 +294,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 $this->setId(getmypid());
                 $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
-                $this->kernelLoop();
+                $this->onKernelLoop();
 
                 return $this;
             }
@@ -317,7 +319,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                         throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
-                    $this->kernelLoop();
+                    $this->onKernelLoop();
                 }
                 , -8000
             );
@@ -325,21 +327,10 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             $this->processService->start(['server' => true]);
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
         } catch (\Throwable $exception) {
-            $this->handleException($exception);
+            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
         } catch (\Exception $exception) {
-            $this->handleException($exception);
+            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
         }
-
-        return $this;
-    }
-
-    /**
-     * @param \Throwable|\Exception $exception
-     * @return $this
-     */
-    protected function handleException($exception)
-    {
-        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
 
         return $this;
     }
@@ -352,31 +343,9 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->log(Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
 
-        return $this->mainLoop();
-    }
-
-    /**
-     * @return $this
-     */
-    protected function collectCycles()
-    {
-        $enabled = gc_enabled();
-        gc_enable();
-        if (function_exists('gc_mem_caches')) {
-            // @codeCoverageIgnoreStart
-            gc_mem_caches();
-            // @codeCoverageIgnoreEnd
+        while ($this->isContinueMainLoop()) {
+            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         }
-        gc_collect_cycles();
-
-
-        if (!$enabled) {
-            // @codeCoverageIgnoreStart
-            gc_disable();
-            // @codeCoverageIgnoreEnd
-        }
-
-        return $this;
     }
 
     /**
@@ -517,21 +486,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         return $this;
     }
 
-    /**
-     * Creates main (infinite) loop.
-     *
-     * @return $this
-     */
-    protected function mainLoop()
-    {
-        while ($this->isContinueMainLoop()) {
-            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-        }
-
-        return $this;
-    }
-
-    public function kernelLoop()
+    protected function onKernelLoop()
     {
         while ($this->isContinueMainLoop()) {
             $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
