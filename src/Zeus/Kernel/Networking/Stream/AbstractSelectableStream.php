@@ -11,8 +11,6 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 {
     protected $peerName;
 
-    protected $writeCallback = 'fwrite';
-
     /**
      * @param int $timeout
      * @return bool
@@ -77,19 +75,19 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     protected function doWrite($writeMethod)
     {
         if (!$this->isWritable()) {
-            $this->data = '';
+            $this->writeBuffer = '';
 
             return $this;
         }
 
-        $size = strlen($this->data);
+        $size = strlen($this->writeBuffer);
         $sent = 0;
 
         $read = $except = [];
         $write = [$this->stream];
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->stream, $this->data);
+            $wrote = $writeMethod($this->stream, $this->writeBuffer);
 
             // write failed, try to wait a bit
             if ($wrote === 0) {
@@ -107,12 +105,12 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
             if ($wrote) {
                 $sent += $wrote;
-                $this->data = substr($this->data, $wrote);
+                $this->writeBuffer = substr($this->writeBuffer, $wrote);
             }
         };
 
         $this->dataSent += $sent;
-        $this->data = '';
+        $this->writeBuffer = '';
 
         return $this;
     }

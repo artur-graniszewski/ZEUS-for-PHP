@@ -22,7 +22,9 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
 
     protected $stream;
 
-    protected $data = '';
+    protected $writeBuffer = '';
+
+    protected $readBuffer = '';
 
     protected $writeBufferSize = self::DEFAULT_WRITE_BUFFER_SIZE;
 
@@ -118,7 +120,23 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
         }
 
         if ($ending !== false) {
-            $data = @stream_get_line($this->stream, $this->readBufferSize, $ending);
+            $data = '';
+            $endingSize = strlen($ending);
+
+            while (!$this->isEof()) {
+                $pos = ftell($this->stream);
+
+                $buffer = @stream_get_line($this->stream, $this->readBufferSize, $ending);
+                $data .= $buffer;
+
+                $newPos = ftell($this->stream);
+                if ($newPos === $pos + strlen($buffer) + $endingSize) {
+
+                    break;
+                }
+                break;
+            }
+
         } else {
             $data = @stream_get_contents($this->stream, $this->readBufferSize);
         }
@@ -140,9 +158,9 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
     public function write($data)
     {
         if ($this->isWritable()) {
-            $this->data .= $data;
+            $this->writeBuffer .= $data;
 
-            if (isset($this->data[$this->writeBufferSize])) {
+            if (isset($this->writeBuffer[$this->writeBufferSize])) {
                 $this->doWrite($this->writeCallback);
             }
         }
@@ -167,17 +185,17 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
     protected function doWrite($writeMethod)
     {
         if (!$this->isWritable()) {
-            $this->data = '';
+            $this->writeBuffer = '';
 
             return $this;
         }
 
-        $size = strlen($this->data);
+        $size = strlen($this->writeBuffer);
         $sent = 0;
 
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->stream, $this->data);
+            $wrote = $writeMethod($this->stream, $this->writeBuffer);
 
             if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
                 $this->isWritable = false;
@@ -188,12 +206,12 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
 
             if ($wrote) {
                 $sent += $wrote;
-                $this->data = substr($this->data, $wrote);
+                $this->writeBuffer = substr($this->writeBuffer, $wrote);
             }
         };
 
         $this->dataSent += $sent;
-        $this->data = '';
+        $this->writeBuffer = '';
 
         return $this;
     }
