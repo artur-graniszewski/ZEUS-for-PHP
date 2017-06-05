@@ -6,7 +6,7 @@ use Zend\EventManager\Event;
 /**
  * @package Zeus\Kernel\ProcessManager
  */
-class SchedulerEvent extends Event
+class ProcessEvent extends Event
 {
     const PRIORITY_FINALIZE = -100000;
     const PRIORITY_INITIALIZE = 50000;
@@ -17,6 +17,7 @@ class SchedulerEvent extends Event
 
     const EVENT_PROCESS_MESSAGE = 'processMessage';
 
+    const EVENT_PROCESS_INIT = 'processStarted';
     const EVENT_PROCESS_TERMINATED = 'processTerminated';
     const EVENT_PROCESS_TERMINATE = 'processTerminate';
     const EVENT_PROCESS_EXIT = 'processExit';
@@ -26,18 +27,8 @@ class SchedulerEvent extends Event
     const EVENT_PROCESS_RUNNING = 'processRunning';
     const EVENT_PROCESS_WAITING = 'processWaiting';
 
-    const EVENT_SCHEDULER_START = 'schedulerStart';
-    const EVENT_SCHEDULER_STOP = 'schedulerStop';
-    const EVENT_SCHEDULER_LOOP = 'schedulerLoop';
-    const EVENT_KERNEL_LOOP = 'serverLoop';
-
-    // WARNING: the following INTERNAL_* events should not be used in custom projects
-    // and if used - are subjects to change and BC breaks.
-    const INTERNAL_EVENT_KERNEL_START = 'serverStart';
-    const INTERNAL_EVENT_KERNEL_STOP = 'serverStop';
-
     /**
-     * @return Scheduler
+     * @return Process
      */
     public function getTarget()
     {

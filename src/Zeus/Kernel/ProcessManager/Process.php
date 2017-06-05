@@ -35,17 +35,16 @@ final class Process extends AbstractProcess
     public function attach(EventManagerInterface $eventManager)
     {
         $this->setEventManager($eventManager);
-        $this->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+        $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $config = $this->getConfig();
-            $event->setProcess($this);
+            $event->setTarget($this);
             $this->setId($event->getParam('uid'));
             $this->status = new ProcessState($config->getServiceName());
-            $this->event = $event;
-        }, SchedulerEvent::PRIORITY_INITIALIZE);
+        }, ProcessEvent::PRIORITY_INITIALIZE);
 
-        $this->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+        $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $this->mainLoop();
-        }, SchedulerEvent::PRIORITY_FINALIZE);
+        }, ProcessEvent::PRIORITY_FINALIZE);
         return $this;
     }
 
@@ -77,12 +76,13 @@ final class Process extends AbstractProcess
             $status->incrementNumberOfFinishedTasks(1);
         }
 
-        $event = $this->event;
+        $event = new ProcessEvent();
+        $event->setTarget($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(ProcessState::RUNNING);
         $this->sendStatus();
-        $event->setName(SchedulerEvent::EVENT_PROCESS_RUNNING);
+        $event->setName(ProcessEvent::EVENT_PROCESS_RUNNING);
         $event->setParams($status->toArray());
         $this->getEventManager()->triggerEvent($event);
 
@@ -103,11 +103,12 @@ final class Process extends AbstractProcess
             }
         }
 
-        $event = $this->event;
+        $event = new ProcessEvent();
+        $event->setTarget($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(ProcessState::WAITING);
-        $event->setName(SchedulerEvent::EVENT_PROCESS_WAITING);
+        $event->setName(ProcessEvent::EVENT_PROCESS_WAITING);
         $event->setParams($status->toArray());
         $this->getEventManager()->triggerEvent($event);
         $this->sendStatus();
@@ -153,8 +154,9 @@ final class Process extends AbstractProcess
             $payload['exception'] = $exception;
         }
 
-        $event = $this->event;
-        $event->setName(SchedulerEvent::EVENT_PROCESS_EXIT);
+        $event = new ProcessEvent();
+        $event->setTarget($this);
+        $event->setName(ProcessEvent::EVENT_PROCESS_EXIT);
         $event->setParams($payload);
 
         $this->getEventManager()->triggerEvent($event);
@@ -173,8 +175,9 @@ final class Process extends AbstractProcess
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
             $exception = null;
             try {
-                $event = $this->event;
-                $event->setName(SchedulerEvent::EVENT_PROCESS_LOOP);
+                $event = new ProcessEvent();
+                $event->setTarget($this);
+                $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
             } catch (\Exception $exception) {

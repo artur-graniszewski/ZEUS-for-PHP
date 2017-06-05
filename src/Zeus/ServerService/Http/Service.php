@@ -8,6 +8,7 @@ use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
 use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
@@ -21,8 +22,8 @@ class Service extends AbstractSocketServerService
 
     public function start()
     {
-        $this->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
-            $this->process = $event->getProcess();
+        $this->getScheduler()->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+            $this->process = $event->getTarget();
         });
 
         $this->config['logger'] = get_class();

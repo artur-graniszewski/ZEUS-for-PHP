@@ -5,6 +5,7 @@ namespace ZeusTest;
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventManager;
 use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Shared\Networking\SocketEventSubscriber;
@@ -38,11 +39,10 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
     {
         $events = new EventManager();
         $event = new SchedulerEvent();
-        $event->setScheduler($this->getScheduler(0));
+        $event->setTarget($this->getScheduler(0));
         $process = new Process($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
-        $process->setIpc($event->getScheduler()->getIpc());
-        $event->setProcess($process);
+        $process->setIpc($event->getTarget()->getIpc());
         $process->attach($events);
 
         $received = null;
@@ -64,14 +64,15 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         
-        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) use (& $schedulerStarted) {
+        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
-        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $events->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+        $event = new ProcessEvent();
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
         $events->triggerEvent($event);
 
         $client = stream_socket_client('tcp://localhost:' . $this->port);
@@ -80,12 +81,13 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
         fwrite($client, $requestString);
 
-        $event->setName(SchedulerEvent::EVENT_PROCESS_LOOP);
+        $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
         $events->triggerEvent($event);
         $events->triggerEvent($event);
 
         fclose($client);
 
+        $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_PROCESS_EXIT);
         $events->triggerEvent($event);
 
@@ -98,11 +100,10 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
     {
         $events = new EventManager();
         $event = new SchedulerEvent();
-        $event->setScheduler($this->getScheduler(0));
+        $event->setTarget($this->getScheduler(0));
         $process = new Process($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
-        $process->setIpc($event->getScheduler()->getIpc());
-        $event->setProcess($process);
+        $process->setIpc($event->getTarget()->getIpc());
         $process->attach($events);
 
         $received = null;
@@ -116,14 +117,15 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) use (& $schedulerStarted) {
+        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
-        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $events->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+        $event = new ProcessEvent();
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
 
         $events->triggerEvent($event);
 
@@ -133,7 +135,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
         fwrite($client, $requestString);
 
-        $event->setName(SchedulerEvent::EVENT_PROCESS_LOOP);
+        $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
         $exception = null;
         try {
             $events->triggerEvent($event);

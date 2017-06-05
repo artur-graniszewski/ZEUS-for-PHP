@@ -6,6 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class Server implements ListenerAggregateInterface
@@ -42,8 +43,8 @@ class Server implements ListenerAggregateInterface
             $this->handleMessages();
         }, $priority);
 
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
-            $event->getProcess()->setIpc($this->getIpc());
+        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+            $event->getTarget()->setIpc($this->getIpc());
         }, $priority);
     }
 

@@ -2,12 +2,14 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
+use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Networking\Stream\SocketStream;
 use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SeparateAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedInitialAddressSpaceInterface;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 /**
@@ -41,8 +43,8 @@ final class SocketEventSubscriber
     public function attach(EventManagerInterface $events)
     {
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onServerStart']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, [$this, 'onServerStart']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
+        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onServerStart']);
+        $events->attach(ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
         $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit'], 1000);
 
         return $this;
@@ -51,7 +53,7 @@ final class SocketEventSubscriber
     /**
      * @return $this
      */
-    public function onServerStart(SchedulerEvent $event)
+    public function onServerStart(EventInterface $event)
     {
         if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START
             //&&
@@ -62,7 +64,7 @@ final class SocketEventSubscriber
             return $this;
         };
 
-        if ($event->getName() === SchedulerEvent::EVENT_PROCESS_INIT && $event->getScheduler() instanceof SeparateAddressSpaceInterface) {
+        if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && $event->getTarget() instanceof SeparateAddressSpaceInterface) {
             $this->server->createServer();
         }
 
@@ -70,11 +72,11 @@ final class SocketEventSubscriber
     }
 
     /**
-     * @param SchedulerEvent $event
+     * @param ProcessEvent $event
      * @throws \Throwable|\Exception
      * @throws null
      */
-    public function onProcessLoop(SchedulerEvent $event)
+    public function onProcessLoop(ProcessEvent $event)
     {
         $exception = null;
 
@@ -85,7 +87,7 @@ final class SocketEventSubscriber
                     return;
                 }
 
-                $event->getProcess()->setRunning();
+                $event->getTarget()->setRunning();
                 $this->connection = $connection;
                 $this->message->onOpen($connection);
             }
@@ -121,7 +123,7 @@ final class SocketEventSubscriber
             $this->connection = null;
         }
 
-        $event->getProcess()->setWaiting();
+        $event->getTarget()->setWaiting();
 
         if ($exception) {
             throw $exception;
@@ -139,10 +141,10 @@ final class SocketEventSubscriber
     }
 
     /**
-     * @param SchedulerEvent $event
+     * @param ProcessEvent $event
      * @return $this
      */
-    protected function onHeartBeat(SchedulerEvent $event)
+    protected function onHeartBeat(ProcessEvent $event)
     {
         $now = time();
         if ($this->connection && $this->lastTickTime !== $now) {

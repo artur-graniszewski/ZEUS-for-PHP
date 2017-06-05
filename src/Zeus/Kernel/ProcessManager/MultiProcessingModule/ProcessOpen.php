@@ -7,7 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -65,10 +65,10 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     {
         $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], -9000);
         $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], -9000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
+        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
         $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
         $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
+        $events->attach(ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
         $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], -9000);
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
@@ -117,7 +117,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
     public function onSchedulerTerminate()
     {
-        $event = $this->event;
+        $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
         $this->events->triggerEvent($event);
@@ -210,7 +210,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
         $type = $event->getParam('server') ? 'scheduler' : 'process';
 
-        $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getScheduler()->getConfig()->getServiceName());
+        $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
 
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {
@@ -244,7 +244,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
     public function onSchedulerInit(SchedulerEvent $event)
     {
-        $this->event = $event;
+        $this->event = new SchedulerEvent();
         $pcntl = $this->getPcntlBridge();
         $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
         //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);

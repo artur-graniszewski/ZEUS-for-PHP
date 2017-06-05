@@ -46,9 +46,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
     protected $discipline;
 
-    /** @var SchedulerEvent */
-    private $event;
-
     /** @var mixed[] */
     protected $eventHandles;
 
@@ -87,9 +84,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->status = new ProcessState($this->getConfig()->getServiceName());
 
         $this->processes = new ProcessCollection($this->getConfig()->getMaxProcesses());
-
-        $this->event = new SchedulerEvent();
-        $this->event->setScheduler($this);
     }
 
     public function __destruct()
@@ -113,10 +107,10 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     public function attach(EventManagerInterface $events)
     {
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_REGULAR);
+        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -261,7 +255,8 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
-        $event = $this->event;
+        $event = new SchedulerEvent();
+        $event->setTarget($this);
         $event->setParams($extraData);
         $event->setName($eventName);
         $events->triggerEvent($event);
@@ -299,7 +294,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 return $this;
             }
 
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {
+            $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {
                 if ($e->getParam('server')) {
                     $e->stopPropagation(true);
                     $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
@@ -416,7 +411,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * @param SchedulerEvent $event
      */
-    protected function onProcessInit(SchedulerEvent $event)
+    protected function onProcessInit(ProcessEvent $event)
     {
         $this->processes = [];
         $this->collectCycles();

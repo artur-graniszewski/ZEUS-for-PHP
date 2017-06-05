@@ -28,9 +28,9 @@ class SchedulerStatus implements ListenerAggregateInterface
 
     protected function init(SchedulerEvent $event)
     {
-        $this->schedulerStatus = new ProcessState($event->getScheduler()->getConfig()->getServiceName());
+        $this->schedulerStatus = new ProcessState($event->getTarget()->getConfig()->getServiceName());
         $this->startTime = microtime(true);
-        $this->scheduler = $event->getScheduler();
+        $this->scheduler = $event->getTarget();
     }
 
     /**

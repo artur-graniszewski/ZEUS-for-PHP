@@ -162,17 +162,17 @@ trait ZeusFactories
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {
-                    $e->getScheduler()->setContinueMainLoop(false);
+                    $e->getTarget()->setContinueMainLoop(false);
                 }
 
                 if ($loopCallback) {
-                    $loopCallback($e->getScheduler());
+                    $loopCallback($e->getTarget());
                 }
             });
         }
 
         $events->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
-            $e->getScheduler()->setContinueMainLoop(false);
+            $e->getTarget()->setContinueMainLoop(false);
             $e->stopPropagation(true);
         }, 10000000);
 

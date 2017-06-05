@@ -202,7 +202,7 @@ final class Manager
                     $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
                     $this->getEventManager()->triggerEvent($event);
                 } else {
-                    $schedulerEvent->getScheduler()->setContinueMainLoop(false);
+                    $schedulerEvent->getTarget()->setContinueMainLoop(false);
                 }
             }, -10000);
 

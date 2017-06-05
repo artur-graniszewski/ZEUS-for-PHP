@@ -4,6 +4,7 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zeus\Kernel\ProcessManager\Plugin\DropPrivileges;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -68,8 +69,8 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
 
     public function testDropPrivilegesPluginWhenSudoer()
     {
-        $event = new SchedulerEvent();
-        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+        $event = new ProcessEvent();
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
@@ -77,18 +78,18 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
-        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+        $scheduler->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $event->stopPropagation(true); // block process main loop
-        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        }, ProcessEvent::PRIORITY_FINALIZE + 1);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
     public function testSchedulerDestructor()
     {
-        $event = new SchedulerEvent();
-        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+        $event = new ProcessEvent();
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
@@ -96,11 +97,11 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
-        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $event) {
+        $scheduler->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $event->stopPropagation(true); // block process main loop
-        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $scheduler->getEventManager()->triggerEvent($event);
         $this->assertEquals(2, count($scheduler->getPluginRegistry()), 'Two plugins should be registered');
@@ -114,8 +115,8 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
      */
     public function testDropPrivilegesPluginWhenEffectiveSudoerButNotRealSudoer()
     {
-        $event = new SchedulerEvent();
-        $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+        $event = new ProcessEvent();
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
 
@@ -124,7 +125,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(false));
         $plugin->expects($this->exactly(2))->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
-        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
         $scheduler->getEventManager()->triggerEvent($event);
     }

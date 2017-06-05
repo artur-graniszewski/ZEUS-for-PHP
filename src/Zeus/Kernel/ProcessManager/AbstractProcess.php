@@ -105,7 +105,7 @@ abstract class AbstractProcess implements ProcessInterface
     public function start($startParameters = null)
     {
         $event = new SchedulerEvent();
-        $event->setProcess($this);
+        $event->setTarget($this);
         $event->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
         if (is_array($startParameters)) {
             $event->setParams($startParameters);

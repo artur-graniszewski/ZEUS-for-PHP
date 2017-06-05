@@ -11,6 +11,7 @@ use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixThread;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
 use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
 use Zeus\ServerService\Async\AsyncPlugin;
@@ -64,6 +65,7 @@ return $config = [
             Scheduler::class => SchedulerFactory::class,
             Process::class => ProcessFactory::class,
             Manager::class => ManagerFactory::class,
+            PosixThread::class => MultiProcessingModuleFactory::class,
             PosixProcess::class => MultiProcessingModuleFactory::class,
             ProcessOpen::class => MultiProcessingModuleFactory::class,
             LruDiscipline::class => LruDisciplineFactory::class,
@@ -103,6 +105,7 @@ return $config = [
                 'scheduler_name' => 'zeus_web_scheduler',
                 //'multiprocessing_module' => ProcessOpen::class,
                 'multiprocessing_module' => PosixProcess::class,
+                //'multiprocessing_module' => PosixThread::class,
                 'scheduler_discipline' => LruDiscipline::class,
                 'max_processes' => 32,
                 'max_process_tasks' => 100,

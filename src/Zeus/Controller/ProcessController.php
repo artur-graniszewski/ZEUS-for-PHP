@@ -2,12 +2,12 @@
 
 namespace Zeus\Controller;
 
-use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Manager;
@@ -170,10 +170,10 @@ class ProcessController extends AbstractActionController
             use (& $schedulerEventManager, & $schedulerEvent) {
                 $_schedulerEvent->stopPropagation(true);
                 $schedulerEvent = $_schedulerEvent;
-                $schedulerEventManager = $_schedulerEvent->getScheduler()->getEventManager();
+                $schedulerEventManager = $_schedulerEvent->getTarget()->getEventManager();
             }, 2);
 
-            $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $_schedulerEvent) {
+            $scheduler->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $_event) {
                 DynamicPriorityFilter::resetPriority();
             });
         });
@@ -182,7 +182,7 @@ class ProcessController extends AbstractActionController
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $schedulerEventManager->triggerEvent($schedulerEvent);
 
-        $schedulerEvent->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+        $schedulerEvent->setName(ProcessEvent::EVENT_PROCESS_INIT);
         $schedulerEventManager->triggerEvent($schedulerEvent);
     }
 
@@ -210,7 +210,7 @@ class ProcessController extends AbstractActionController
             $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_schedulerEvent)
             use (& $schedulerEventManager, & $schedulerEvent) {
                 $schedulerEvent = $_schedulerEvent;
-                $schedulerEventManager = $_schedulerEvent->getScheduler()->getEventManager();
+                $schedulerEventManager = $_schedulerEvent->getTarget()->getEventManager();
                 if ($_schedulerEvent->getParam('server')) {
                     $_schedulerEvent->stopPropagation(true);
 
@@ -225,8 +225,9 @@ class ProcessController extends AbstractActionController
         $schedulerEventManager->triggerEvent($schedulerEvent);
 
         $schedulerEvent->setParam('go', 1);
-        $schedulerEvent->setName(SchedulerEvent::EVENT_PROCESS_INIT);
-        $schedulerEvent->setParam('server', true);
+        $event = new ProcessEvent();
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event->setParam('server', true);
         $schedulerEventManager->triggerEvent($schedulerEvent);
     }
 

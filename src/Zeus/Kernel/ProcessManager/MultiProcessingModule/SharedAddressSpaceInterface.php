@@ -2,6 +2,6 @@
 
 namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 
-interface SharedAddressSpaceInterface
+interface SharedAddressSpaceInterface extends SharedInitialAddressSpaceInterface
 {
 }

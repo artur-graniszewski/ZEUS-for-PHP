@@ -4,6 +4,7 @@ namespace Zeus\Kernel\ProcessManager\Plugin;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class DropPrivileges implements ListenerAggregateInterface
@@ -66,7 +67,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {
+        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {
             $this->onProcessInit();
         }, $priority);
     }
