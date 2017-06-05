@@ -235,7 +235,7 @@ final class FifoAdapter implements
             $stream->close();
 
             $fileName = $this->getFilename($channelNumber);
-            unlink($this->getFilename($channelNumber));
+            unlink($fileName);
             $this->ipc[$channelNumber] = null;
         }
 

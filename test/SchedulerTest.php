@@ -312,7 +312,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
             function(SchedulerEvent $e) use (&$processesCreated, $em, $scheduler) {
                 $e->stopPropagation(true);
-                $uid = 100000000 + rand(1, 1000);
+                $uid = 100000000 + count($processesCreated);
                 $event = new ProcessEvent();
                 $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
                 $event->setParams(['uid' => $uid]);

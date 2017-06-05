@@ -109,7 +109,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -192,9 +192,9 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     }
 
     /**
-     * @param SchedulerEvent $event
+     * @param ProcessEvent $event
      */
-    protected function onProcessExit(SchedulerEvent $event)
+    protected function onProcessExit(ProcessEvent $event)
     {
         /** @var \Exception $exception */
         $exception = $event->getParam('exception');
@@ -358,10 +358,10 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * Shutdowns the server
      *
-     * @param EventInterface $event
+     * @param SchedulerEvent $event
      * @return $this
      */
-    protected function onShutdown(EventInterface $event)
+    protected function onShutdown(SchedulerEvent $event)
     {
         $exception = $event->getParam('exception', null);
 
