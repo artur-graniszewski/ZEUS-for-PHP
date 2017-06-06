@@ -67,7 +67,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {
+        $this->eventHandles[] = $events->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {
             $this->onProcessInit();
         }, $priority);
     }
@@ -81,7 +81,7 @@ class DropPrivileges implements ListenerAggregateInterface
     public function detach(EventManagerInterface $events)
     {
         foreach ($this->eventHandles as $handle) {
-            $events->detach($handle);
+            //$events->getSharedManager()->detach($handle);
         }
     }
 

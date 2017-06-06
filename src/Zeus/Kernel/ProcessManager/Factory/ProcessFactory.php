@@ -28,7 +28,7 @@ class ProcessFactory implements FactoryInterface
     {
         $schedulerConfig = $options['scheduler_config'];
         $process = new Process();
-        $eventManager = $container->get('zeus-event-manager');
+        $eventManager = $container->build('zeus-event-manager');
         $process->setLogger($options['logger_adapter']);
         $process->setEventManager($eventManager);
         $process->attach($eventManager);

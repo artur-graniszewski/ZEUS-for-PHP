@@ -36,15 +36,16 @@ class ProcessTitle implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 0)
     {
         if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], $priority);
+            $events = $events->getSharedManager();
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], $priority);
             //$this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop'], $priority);
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop'], $priority);
+            $this->eventHandles[] = $events->attach('*',SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], $priority);
         }
     }
 
@@ -95,7 +96,7 @@ class ProcessTitle implements ListenerAggregateInterface
     public function detach(EventManagerInterface $events)
     {
         foreach ($this->eventHandles as $handle) {
-            $events->detach($handle);
+            //$events->getSharedManager()->detach($handle);
         }
     }
 }

@@ -4,6 +4,7 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventManager;
+use Zend\EventManager\SharedEventManager;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
@@ -86,7 +87,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
                     'pcntlSignal' => ['amount' => 0, 'message' => 'Signal handling should be left intact'],
                 ],
-                SchedulerEvent::EVENT_PROCESS_CREATED
+                false,
             ],
 
             [
@@ -96,7 +97,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
                     'pcntlSignal' => ['amount' => 5, 'message' => 'Signal handling should be left intact'],
                 ],
-                ProcessEvent::EVENT_PROCESS_INIT
+                true,
             ],
         ];
     }
@@ -104,10 +105,10 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
     /**
      * @dataProvider eventProvider
      */
-    public function testProcessEvents($initialEventType, $forcedForkValue, $expectedForkValue, $methodAmounts, $endingEventType)
+    public function testProcessEvents($initialEventType, $forcedForkValue, $expectedForkValue, $methodAmounts, $isInitExpected)
     {
-        $em = new EventManager();
-        $em->attach($endingEventType, function($event) use (&$triggeredEvent) {
+        $em = new EventManager(new SharedEventManager());
+        $em->getSharedManager()->attach('*', $initialEventType, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -129,7 +130,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
             $this->assertEquals($expectedForkValue, $triggeredEvent->getParam('uid'));
         }
 
-        $this->assertEquals($endingEventType, $triggeredEvent->getName());
+        $this->assertEquals($isInitExpected, $triggeredEvent->getParam('init_process'));
     }
 
     public function getKillParams()
@@ -147,7 +148,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
      */
     public function testProcessTermination($signal, $isSoftKill)
     {
-        $em = new EventManager();
+        $em = new EventManager(new SharedEventManager());
         $posixProcess = new PosixProcess();
         $posixProcess->attach($em);
 
@@ -173,7 +174,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     public function testDetectionOfProcessTermination()
     {
-        $em = new EventManager();
+        $em = new EventManager(new SharedEventManager());
         $em->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
@@ -214,7 +215,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
      */
     public function testDetectionOfSchedulerTermination($signal)
     {
-        $em = new EventManager();
+        $em = new EventManager(new SharedEventManager());
         $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
@@ -242,7 +243,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     public function testDetectionOfSchedulersParentTermination()
     {
-        $em = new EventManager();
+        $em = new EventManager(new SharedEventManager());
         $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
@@ -300,7 +301,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     public function testIfSetSsidIsPerformedOnStartup()
     {
-        $em = new EventManager();
+        $em = new EventManager(new SharedEventManager());
         $pcntlMock = new PcntlMockBridge();
 
         PosixProcess::setPcntlBridge($pcntlMock);
@@ -330,7 +331,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     public function testIfProcMaskIsUsedOnProcessStateChanges()
     {
-        $em = new EventManager();
+        $em = new EventManager(new SharedEventManager());
         $pcntlMock = new PcntlMockBridge();
 
         PosixProcess::setPcntlBridge($pcntlMock);

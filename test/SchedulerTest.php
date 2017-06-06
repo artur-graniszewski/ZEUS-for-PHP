@@ -128,31 +128,17 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $processesInitialized = [];
 
         $em = $scheduler->getEventManager();
-        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, 0);
-        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
-            function(SchedulerEvent $e) use ($em) {
-                $event = new SchedulerEvent();
-                $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-                $e->stopPropagation(true);
-                $em->triggerEvent($event);
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, 0);
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
+            function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, $em) {
+                if ($e->getParam('init_process')) {
+                    $amountOfScheduledProcesses++;
+                }
             }
         );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
-            function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em, $scheduler) {
-                $amountOfScheduledProcesses++;
 
-                $uid = 100000000 + $amountOfScheduledProcesses;
-                $event = new ProcessEvent();
-                $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
-                $event->setParams(['uid' => $uid]);
-                $event->setTarget(new Process());
-                $em->triggerEvent($event);
-                $processesCreated[] = $uid;
-                //$e->stopPropagation(true);
-            }, -1000
-        );
-        $em->attach(ProcessEvent::EVENT_PROCESS_LOOP,
+        $em->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,
             function(ProcessEvent $e) use (&$processesInitialized) {
                 $processesInitialized[] = $e->getTarget()->getId();
 

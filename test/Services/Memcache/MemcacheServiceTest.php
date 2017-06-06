@@ -51,12 +51,11 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
         $sm->setFactory(PluginManager::class, StoragePluginManagerFactory::class);
         $scheduler = $this->getScheduler();
         $events = $scheduler->getEventManager();
-        $events->attach(
+        $events->getSharedManager()->attach(
+            '*',
             SchedulerEvent::EVENT_PROCESS_CREATE, function (SchedulerEvent $event) use ($events) {
-            $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
             $event->setParam("uid", 123456789);
-            $events->triggerEvent($event);
-        }
+        }, 100
         );
         $logger = $scheduler->getLogger();
 

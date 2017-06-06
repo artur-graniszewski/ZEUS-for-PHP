@@ -30,12 +30,11 @@ class AsyncServiceTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler();
         $logger = $scheduler->getLogger();
         $events = $scheduler->getEventManager();
-        $events->attach(
+        $events->getSharedManager()->attach(
+            '*',
             SchedulerEvent::EVENT_PROCESS_CREATE, function (SchedulerEvent $event) use ($events) {
-                $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-                $event->setParam("uid", 123456789);
-                $events->triggerEvent($event);
-            }
+            $event->setParam("uid", 123456789);
+        }, 100
         );
 
         $service = $sm->build(Service::class,

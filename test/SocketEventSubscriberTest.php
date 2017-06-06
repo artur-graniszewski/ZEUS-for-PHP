@@ -4,6 +4,7 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventManager;
+use Zend\EventManager\SharedEventManager;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
@@ -37,7 +38,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
 
     public function testSubscriberRequestHandling()
     {
-        $events = new EventManager();
+        $events = new EventManager(new SharedEventManager());
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
         $process = new Process($event);
@@ -98,7 +99,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
 
     public function testSubscriberErrorHandling()
     {
-        $events = new EventManager();
+        $events = new EventManager(new SharedEventManager());
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
         $process = new Process($event);

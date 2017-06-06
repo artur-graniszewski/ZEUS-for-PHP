@@ -35,14 +35,14 @@ final class Process extends AbstractProcess
     public function attach(EventManagerInterface $eventManager)
     {
         $this->setEventManager($eventManager);
-        $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $this->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $config = $this->getConfig();
             $event->setTarget($this);
             $this->setId($event->getParam('uid'));
             $this->status = new ProcessState($config->getServiceName());
         }, ProcessEvent::PRIORITY_INITIALIZE);
 
-        $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $this->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $this->mainLoop();
         }, ProcessEvent::PRIORITY_FINALIZE);
         return $this;

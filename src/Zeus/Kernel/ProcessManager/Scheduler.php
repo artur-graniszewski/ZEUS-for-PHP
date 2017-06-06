@@ -92,12 +92,12 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             $this->removePlugin($plugin);
         }
 
-        if ($this->eventHandles) {
-            $events = $this->getEventManager();
-            foreach ($this->eventHandles as $handle) {
-                $events->detach($handle);
-            }
-        }
+//        if ($this->eventHandles) {
+//            $events = $this->getEventManager();
+//            foreach ($this->eventHandles as $handle) {
+//                $events->detach($handle);
+//            }
+//        }
     }
 
     /**
@@ -106,16 +106,17 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     public function attach(EventManagerInterface $events)
     {
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_REGULAR);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $events = $events->getSharedManager();
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessInit($e);}, -1000);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
+        //$this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
 
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
             $this->manageProcesses($this->discipline);
         });
@@ -279,6 +280,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         $events = $this->getEventManager();
         $this->attach($events);
+        $events = $events->getSharedManager();
         $this->log(Logger::INFO, "Establishing IPC");
         if (!$this->getIpc()->isConnected()) {
             $this->getIpc()->connect();
@@ -294,21 +296,22 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 return $this;
             }
 
-            $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {
-                if ($e->getParam('server')) {
-                    $e->stopPropagation(true);
-                    $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
+                function(SchedulerEvent $e) {
+                    if ($e->getParam('server') && $e->getParam('init_process')) {
+                        $e->stopPropagation(true);
+                        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
                 }
-            }, 10000);
+            }, -10);
 
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
                 function (SchedulerEvent $event) {
-                    $pid = $event->getParam('uid');
-                    $this->setId($pid);
-
-                    if (!$event->getParam('server')) {
+                    if (!$event->getParam('server') || $event->getParam('init_process')) {
                         return;
                     }
+
+                    $pid = $event->getParam('uid');
+                    $this->setId($pid);
 
                     if (!@file_put_contents(sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName()), $pid)) {
                         throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
@@ -316,7 +319,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
                     $this->onKernelLoop();
                 }
-                , -8000
+                , -10
             );
 
             $this->processService->start(['server' => true]);
@@ -411,12 +414,21 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * @param SchedulerEvent $event
      */
-    protected function onProcessInit(ProcessEvent $event)
+    protected function onProcessInit(SchedulerEvent $event)
     {
+        if (!$event->getParam('init_process') || $event->getParam('server')) {
+            return;
+        }
+
         $this->processes = [];
         $this->collectCycles();
         $this->setContinueMainLoop(false);
         $this->getIpc()->useChannelNumber(1);
+
+        $event = new ProcessEvent();
+        $event->setTarget($this);
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $this->getEventManager()->triggerEvent($event);
     }
 
     /**

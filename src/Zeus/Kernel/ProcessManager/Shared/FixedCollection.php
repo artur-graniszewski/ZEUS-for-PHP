@@ -18,7 +18,7 @@ class FixedCollection implements \Iterator, \ArrayAccess, \Countable
      */
     public function toArray()
     {
-        $result = array_combine(array_filter($this->ids->toArray()), array_filter($this->values->toArray()));
+        $result = array_filter(array_combine(($this->ids->toArray()), ($this->values->toArray())));
 
         return $result;
     }
