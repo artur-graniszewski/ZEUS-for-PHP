@@ -108,7 +108,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         $events = $events->getSharedManager();
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessInit($e);}, -1000);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
@@ -420,14 +420,18 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             return;
         }
 
+        $this->processService->setId($event->getParam('uid'));
         $this->processes = [];
+        $pid = $event->getParam('uid');
         $this->collectCycles();
         $this->setContinueMainLoop(false);
         $this->getIpc()->useChannelNumber(1);
 
         $event = new ProcessEvent();
-        $event->setTarget($this);
+        $event->setTarget($this->processService);
         $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event->setParam('uid', $pid);
+
         $this->getEventManager()->triggerEvent($event);
     }
 
@@ -436,6 +440,10 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function addNewProcess(SchedulerEvent $event)
     {
+        if ($event->getParam('server')) {
+            return;
+        }
+
         $pid = $event->getParam('uid');
 
         $this->processes[$pid] = [

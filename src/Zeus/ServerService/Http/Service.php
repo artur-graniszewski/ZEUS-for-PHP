@@ -22,7 +22,7 @@ class Service extends AbstractSocketServerService
 
     public function start()
     {
-        $this->getScheduler()->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $this->process = $event->getTarget();
         });
 

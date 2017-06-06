@@ -12,9 +12,6 @@ class ProcessEvent extends Event
     const PRIORITY_INITIALIZE = 50000;
     const PRIORITY_REGULAR = 0;
 
-    const EVENT_PROCESS_CREATE = 'processCreate';
-    const EVENT_PROCESS_CREATED = 'processCreated';
-
     const EVENT_PROCESS_MESSAGE = 'processMessage';
 
     const EVENT_PROCESS_INIT = 'processStarted';

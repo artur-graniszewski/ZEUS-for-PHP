@@ -5,7 +5,6 @@ use Zeus\Kernel\Networking\Stream\SocketStream;
 
 /**
  * Class SocketServer
- * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
 final class SocketServer

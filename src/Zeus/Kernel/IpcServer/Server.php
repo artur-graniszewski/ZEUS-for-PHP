@@ -39,11 +39,11 @@ class Server implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $event) {
+        $this->eventHandles[] = $events->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $event) {
             $this->handleMessages();
         }, $priority);
 
-        $this->eventHandles[] = $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $this->eventHandles[] = $events->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $event->getTarget()->setIpc($this->getIpc());
         }, $priority);
     }

@@ -46,7 +46,7 @@ final class Manager
         if ($this->eventHandles) {
             $events = $this->getEventManager();
             foreach ($this->eventHandles as $handle) {
-                $events->detach($handle);
+                //$events->detach($handle);
             }
         }
     }
@@ -189,13 +189,13 @@ final class Manager
         $event->setError(null);
         $event->setService($service);
 
-        $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
+        $this->eventHandles[] = $service->getScheduler()->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
 
 
-        $this->eventHandles[] = $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_KERNEL_LOOP,
+        $this->eventHandles[] = $service->getScheduler()->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP,
             function (SchedulerEvent $schedulerEvent) use ($service, $event) {
                 if(!$event->propagationIsStopped()) {
                     pcntl_signal_dispatch(); //@todo: REPLACE me with something more platform agnostic!
