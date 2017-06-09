@@ -4,13 +4,13 @@ namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
-use Zend\Stdlib\ArrayUtils;
+use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixThread\ThreadWrapper;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-final class PosixThread implements MultiProcessingModuleInterface, SharedAddressSpaceInterface
+final class PosixThread implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;
@@ -19,16 +19,17 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
     public $ppid;
 
     /** @var SchedulerEvent */
+    protected $event;
+
+    /** @var SchedulerEvent */
     protected $processEvent;
-
-    public static $tid = 1;
-    public static $em = 1;
-    public static $ev = 1;
-
-    protected $threads = [];
 
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
+
+    protected $processes = [];
+
+    protected static $id = 0;
 
     /**
      * PosixDriver constructor.
@@ -64,17 +65,21 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
      */
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning']);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
-
         $this->events = $events;
+
+        $events = $events->getSharedManager();
+
+        $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
 
         return $this;
     }
@@ -86,15 +91,16 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
      */
     public static function isSupported($throwException = false)
     {
-        $supported = extension_loaded("pthreads");
+        $isSupported = function_exists('proc_open');
 
-        if (!$throwException) {
-            return $supported;
+        if (!$isSupported && $throwException) {
+            throw new \RuntimeException(sprintf("proc_open() is required by %s but disabled in PHP",
+                    static::class
+                )
+            );
         }
 
-        if (!$supported) {
-            throw new \RuntimeException("The pthreads extension is not loaded");
-        }
+        return $isSupported;
     }
 
 
@@ -111,8 +117,6 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
      */
     public function onKernelStart()
     {
-        // make the current process a session leader
-        $this->getPcntlBridge()->posixSetSid();
     }
 
     public function onSchedulerTerminate()
@@ -139,24 +143,53 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
         $this->onProcessLoop();
     }
 
-    public function onSchedulerLoop()
+    public function onKernelLoop()
     {
+        $this->readPipes();
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+        $this->readPipes();
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $event = new SchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
             $event->setParam('uid', $pid);
             $this->events->triggerEvent($event);
         }
 
         $this->onProcessLoop();
+    }
 
-        if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
-            $event = new SchedulerEvent();
-            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', $this->ppid);
-            $this->events->triggerEvent($event);
+    protected function readPipes()
+    {
+        $stdin = $stderr = [];
+        foreach ($this->processes as $process) {
+            if (isset($process['pipes'][1])) {
+                $stdin[] = $process['pipes'][1];
+                $stderr[] = $process['pipes'][2];
+            }
         }
+
+        $streams = array_merge($stdin, $stderr);
+        if (@stream_select($streams, $null, $null, 0)) {
+            foreach ($streams as $stream) {
+                fpassthru($stream);
+            }
+        }
+
+        return $this;
+    }
+
+    public function onProcessInit()
+    {
+        $pcntl = $this->getPcntlBridge();
+        // we are the new process
+        $pcntl->pcntlSignal(SIGTERM, SIG_DFL);
+        $pcntl->pcntlSignal(SIGINT, SIG_DFL);
+        $pcntl->pcntlSignal(SIGHUP, SIG_DFL);
+        $pcntl->pcntlSignal(SIGQUIT, SIG_DFL);
+        $pcntl->pcntlSignal(SIGTSTP, SIG_DFL);
     }
 
     public function onSchedulerStop()
@@ -165,51 +198,100 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
         $this->onProcessLoop();
     }
 
-    public function onProcessCreate(SchedulerEvent $event)
+    protected function startProcess(SchedulerEvent $event)
     {
-        $tid = static::$tid++;
-        static::$em = $this->events;
-        static::$ev = $event;
-//        $thread = ThreadWrapper::call(
-//            function () use ($tid, $event) {
+        $descriptors = [
+            0 => ['pipe', 'r'], // stdin
+            1 => ['pipe', 'w'], // stdout
+            2 => ['pipe', 'w'], // stderr
+        ];
+
+        $pipes = [];
+
+        $phpExecutable = $_SERVER['SCRIPT_NAME'];
+
+        $applicationPath = $_SERVER['PHP_SELF'];
+
+        $type = $event->getParam('server') ? 'scheduler' : 'process';
+
+        $argv = [$applicationPath, 'zeus', $type, $event->getTarget()->getConfig()->getServiceName()];
+        $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
+
+//        $process = proc_open($command, $descriptors, $pipes, getcwd());
+//        if ($process === false) {
+//            throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
+//        }
 //
-//                $event->setParam('uid', $tid);
-//                $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
-//                $this->events->triggerEvent($event);
-//            }
-//        );
+//        $status = proc_get_status($process);
+//        $pid = $status['pid'];
+//
+//        stream_set_blocking($pipes[0], false);
+//        stream_set_blocking($pipes[1], false);
+//        stream_set_blocking($pipes[2], false);
+//        $this->processes[$pid] = [
+//            'resource' => $process,
+//            'pipes' => $pipes
+//        ];
+//
+//        return $pid;
 
         $thread = new class extends \Thread {
+            public $server;
+            public $argv;
             public function run() {
-                // Setup autoloading
-                include '/app/vendor/autoload.php';
-
-                $appConfig = include '/app/config/application.config.php';
-
-                if (file_exists('config/development.config.php')) {
-                    $appConfig = ArrayUtils::merge(
-                        $appConfig,
-                        include '/app/config/development.config.php'
-                    );
+                global $_SERVER;
+                global $argv;
+                global $argc;
+                $_SERVER = [];
+                foreach ($this->server as $type => $value) {
+                    $_SERVER[$type] = $value;
                 }
+                $_SERVER['argv'] = (array) $this->argv;
+                $_SERVER['argc'] = count($this->argv);
 
-                $event = PosixThread::$ev;
-                $event->setParam('uid', 1);
-                $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-                PosixThread::$em->triggerEvent($event);
+                $argv = $_SERVER['argv'];
+                $argc = $_SERVER['argc'];
+
+                $php = '
+                
+                    $SERVER = ' . var_export((array) $_SERVER, true) .';
+                    foreach ($SERVER as $type => $value) {
+                        $_SERVER[$type] = $value;
+                    }
+                    
+                    require_once($_SERVER[\'SCRIPT_NAME\']);
+                ?>';
+
+                eval ($php);
+                exit();
             }
         };
 
-        $thread->start(PTHREADS_INHERIT_NONE|PTHREADS_INHERIT_INI);
-        $this->threads[] = $thread;
+        $thread->server = $_SERVER;
+        $thread->argv = $argv;
+        $thread->start(PTHREADS_INHERIT_NONE);
 
-        $event->setParam('uid', $tid);
-        $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-        $this->events->triggerEvent($event);
+        trigger_error("THREAD ID: " . static::$id . ": " . json_encode([$_SERVER['argv'][2], $type]));
+        static::$id++;
+        
+        return static::$id;
+    }
+
+    public function onProcessCreate(SchedulerEvent $event)
+    {
+        $pid = $this->startProcess($event);
+        $event->setParam('uid', $pid);
+
+        // we are the parent
+//        $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
+//        $event->setParam('uid', $pid);
+//        $event->setName($eventName);
+//        $this->events->triggerEvent($event);
     }
 
     public function onSchedulerInit(SchedulerEvent $event)
     {
+        $this->event = new SchedulerEvent();
         $pcntl = $this->getPcntlBridge();
         $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
         //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);
@@ -227,7 +309,25 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
      */
     protected function terminateProcess($pid, $useSoftTermination)
     {
-        //$this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
+        return;
+        $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
+
+        $process = $this->processes[$pid];
+
+        // @todo: This should NOT be necessary!
+        if (!$process) {
+            return $this;
+        }
+
+        foreach($process['pipes'] as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+
+        proc_terminate($process['resource']);
+
+        $this->processes[$pid] = null;
 
         return $this;
     }
@@ -238,7 +338,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SharedAddress
     public function getCapabilities()
     {
         $capabilities = new MultiProcessingModuleCapabilities();
-        $capabilities->setIsolationLevel($capabilities::ISOLATION_THREAD);
+        $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);
 
         return $capabilities;
     }
