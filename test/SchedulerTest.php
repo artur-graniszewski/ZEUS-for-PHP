@@ -55,7 +55,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf(Scheduler::class, $scheduler);
         $scheduler->setContinueMainLoop(false);
         $scheduler->start(false);
-        $this->assertEquals(getmypid(), $scheduler->getId());
+        $this->assertEquals(getmypid(), $scheduler->getProcessId());
     }
 
     public function testMainLoopIteration()
@@ -140,7 +140,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $em->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,
             function(ProcessEvent $e) use (&$processesInitialized) {
-                $processesInitialized[] = $e->getTarget()->getId();
+                $processesInitialized[] = $e->getTarget()->getProcessId();
 
                 // stop the process
                 $e->getTarget()->getStatus()->setTime(1);
@@ -175,7 +175,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $em->triggerEvent($event);
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
-                $process->setId($uid);
+                $process->setProcessId($uid);
                 // mark all processes as busy
                 if ($amountOfScheduledProcesses < 9) {
                     $process->setRunning();
@@ -232,7 +232,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         );
         $em->attach(SchedulerEvent::EVENT_PROCESS_LOOP,
             function(ProcessEvent $e) use (&$processesInitialized) {
-                $uid = $e->getTarget()->getId();
+                $uid = $e->getTarget()->getProcessId();
                 $processesInitialized[] = $uid;
 
                 // kill the processs
@@ -309,7 +309,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         );
         $em->attach(ProcessEvent::EVENT_PROCESS_LOOP,
             function(ProcessEvent $e) use (&$processesInitialized) {
-                $id = $e->getTarget()->getId();
+                $id = $e->getTarget()->getProcessId();
                 if (in_array($id, $processesInitialized)) {
                     $e->getTarget()->setRunning();
                     $e->getTarget()->getStatus()->incrementNumberOfFinishedTasks(100);

@@ -37,7 +37,7 @@ abstract class AbstractProcess implements ProcessInterface
      * @param string $processId
      * @return $this
      */
-    public function setId($processId)
+    public function setProcessId($processId)
     {
         $this->processId = $processId;
 
@@ -66,7 +66,7 @@ abstract class AbstractProcess implements ProcessInterface
     /**
      * @return int
      */
-    public function getId()
+    public function getProcessId()
     {
         return $this->processId;
     }

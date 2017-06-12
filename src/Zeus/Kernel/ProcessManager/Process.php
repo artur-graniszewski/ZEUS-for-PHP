@@ -12,7 +12,7 @@ use Zeus\Kernel\ProcessManager\Status\ProcessState;
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-final class Process extends AbstractProcess
+class Process extends AbstractThread
 {
     /** @var ConfigInterface */
     protected $config;
@@ -38,7 +38,7 @@ final class Process extends AbstractProcess
         $this->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             $config = $this->getConfig();
             $event->setTarget($this);
-            $this->setId($event->getParam('uid'));
+            $this->setProcessId($event->getParam('uid'));
             $this->status = new ProcessState($config->getServiceName());
         }, ProcessEvent::PRIORITY_INITIALIZE);
 
@@ -167,14 +167,12 @@ final class Process extends AbstractProcess
      */
     protected function mainLoop()
     {
-        trigger_error($_SERVER['argv'][2] . " > PROCESS LOOP START");
         $exception = null;
         $this->setWaiting();
         $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
-            trigger_error($_SERVER['argv'][2] . " > PROCESS LOOPING");
             $exception = null;
             try {
                 $event = new ProcessEvent();
@@ -206,7 +204,7 @@ final class Process extends AbstractProcess
             'priority' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $this->getId(),
+                'uid' => $this->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
             ]

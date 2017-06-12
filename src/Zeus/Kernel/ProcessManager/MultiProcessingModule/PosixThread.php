@@ -202,13 +202,6 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function startProcess(SchedulerEvent $event)
     {
-        $descriptors = [
-            0 => ['pipe', 'r'], // stdin
-            1 => ['pipe', 'w'], // stdout
-            2 => ['pipe', 'w'], // stderr
-        ];
-
-        $pipes = [];
 
         $phpExecutable = $_SERVER['SCRIPT_NAME'];
 
@@ -240,6 +233,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $thread = new class extends \Thread {
             public $server;
             public $argv;
+            public $id;
             public function run() {
                 global $_SERVER;
                 global $argv;
@@ -264,6 +258,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
                     require_once($_SERVER[\'SCRIPT_NAME\']);
                 ?>';
 
+                $this->id = \Thread::getCurrentThreadId();
                 eval ($php);
                 exit();
             }
@@ -277,7 +272,6 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
         $this->threads[static::$id] = $thread;
 
-        trigger_error($_SERVER['argv'][2] . " > PTHREADS CREATED " . static::$id);
         return static::$id;
     }
 
@@ -285,7 +279,6 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
     {
         $pid = $this->startProcess($event);
 
-        trigger_error($_SERVER['argv'][2] . " > PTHREADS RETURN " . static::$id);
         $event->setParam('uid', $pid);
 
         // we are the parent

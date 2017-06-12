@@ -211,7 +211,7 @@ final class Manager
             $this->getEventManager()->triggerEvent($event);
 
             $service->start();
-            $schedulerPid = $service->getScheduler()->getId();
+            $schedulerPid = $service->getScheduler()->getProcessId();
             $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
             $this->pidToServiceMap[$schedulerPid] = $service;
             $this->servicesRunning++;

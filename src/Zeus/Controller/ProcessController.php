@@ -158,35 +158,29 @@ class ProcessController extends AbstractActionController
 
         $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_START, function(ManagerEvent $event)
         use (& $schedulerEventManager, & $schedulerEvent) {
-            trigger_error($_SERVER['argv'][2] . " >SERVICE START");
             $service = $event->getService();
             /** @var Scheduler $scheduler */
             $scheduler = $service->getScheduler();
             // block starting new scheduler
             $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) {
-                trigger_error($_SERVER['argv'][2] . " >SCHEDULER START");
                 $event->stopPropagation(true);
             }, -5000);
 
             $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_schedulerEvent)
             use (& $schedulerEventManager, & $schedulerEvent) {
-                trigger_error($_SERVER['argv'][2] . " >CREATE");
                 $_schedulerEvent->stopPropagation(true);
                 $schedulerEvent = $_schedulerEvent;
                 $schedulerEventManager = $_schedulerEvent->getTarget()->getEventManager();
             }, 2000);
 
             $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $_event) {
-                trigger_error($_SERVER['argv'][2] . " >INIT");
                 DynamicPriorityFilter::resetPriority();
             });
 
             $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $_event) {
-                trigger_error($_SERVER['argv'][2] . " > INIT COMPLETE");
             }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
             $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_event) {
-                trigger_error($_SERVER['argv'][2] . " > PROCESS CREATED");
             }, 1001);
         });
 
@@ -211,8 +205,7 @@ class ProcessController extends AbstractActionController
         }, 1);
 
         $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_START, function(ManagerEvent $event)
-        use (& $schedulerEventManager, & $schedulerEvent) {
-            trigger_error($_SERVER['argv'][2] . " >SERVICE START");
+        use (& $scheduler, & $schedulerEventManager, & $schedulerEvent) {
             $service = $event->getService();
             /** @var Scheduler $scheduler */
             $scheduler = $service->getScheduler();
@@ -238,13 +231,14 @@ class ProcessController extends AbstractActionController
 
         $this->manager->startService($serviceName);
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $schedulerEvent->setTarget($scheduler);
         $schedulerEventManager->triggerEvent($schedulerEvent);
 
         $schedulerEvent->setParam('go', 1);
-        $event = new ProcessEvent();
-        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
-        $event->setParam('server', true);
-        $schedulerEventManager->triggerEvent($schedulerEvent);
+//        $event = new ProcessEvent();
+//        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+//        $event->setParam('server', true);
+//        $schedulerEventManager->triggerEvent($schedulerEvent);
     }
 
 

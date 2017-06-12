@@ -204,15 +204,13 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
         $pipes = [];
 
-        $phpExecutable = $_SERVER['_'];
+        $phpExecutable = isset($_SERVER['_']) ? $_SERVER['_'] : PHP_BINARY;
 
         $applicationPath = $_SERVER['PHP_SELF'];
 
         $type = $event->getParam('server') ? 'scheduler' : 'process';
 
         $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
-
-        trigger_error("PROCESS START $command");
 
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {

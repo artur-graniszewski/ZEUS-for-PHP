@@ -39,9 +39,10 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 100)
     {
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->init($e);}, $priority);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e);}, $priority);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
+        $events = $events->getSharedManager();
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->init($e);}, $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e);}, $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
     }
 
     protected function onProcessMessage(IpcEvent $event)
@@ -75,7 +76,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             'priority' => '',
             'message' => 'fetchStatus',
             'extra' => [
-                'uid' => $scheduler->getId(),
+                'uid' => $scheduler->getProcessId(),
                 'logger' => __CLASS__
             ]
         ];
@@ -130,7 +131,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             'priority' => Message::IS_STATUS,
             'message' => 'statusSent',
             'extra' => [
-                'uid' => $scheduler->getId(),
+                'uid' => $scheduler->getProcessId(),
                 'logger' => __CLASS__,
                 'process_status' => $scheduler->getProcesses()->toArray(),
                 'scheduler_status' => $scheduler->getStatus()->toArray(),

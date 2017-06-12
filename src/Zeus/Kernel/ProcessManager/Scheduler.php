@@ -286,7 +286,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         try {
             if (!$launchAsDaemon) {
-                $this->setId(getmypid());
+                $this->setProcessId(getmypid());
                 $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
                 $this->kernelLoop();
@@ -309,7 +309,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                     }
 
                     $pid = $event->getParam('uid');
-                    $this->setId($pid);
+                    $this->setProcessId($pid);
 
                     if (!@file_put_contents(sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName()), $pid)) {
                         //throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
@@ -451,7 +451,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             return;
         }
 
-        $this->processService->setId($event->getParam('uid'));
+        $this->processService->setProcessId($event->getParam('uid'));
         $this->processes = [];
         $pid = $event->getParam('uid');
         $this->collectCycles();
