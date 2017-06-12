@@ -12,7 +12,7 @@ use Zeus\Kernel\ProcessManager\Status\ProcessState;
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-class Process extends AbstractThread
+class Process extends AbstractProcess
 {
     /** @var ConfigInterface */
     protected $config;
@@ -192,6 +192,7 @@ class Process extends AbstractThread
 
     /**
      * @return $this
+     * @todo: move this to AbstractProcess?
      */
     protected function sendStatus()
     {
@@ -204,11 +205,16 @@ class Process extends AbstractThread
             'priority' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $this->getProcessId(),
+                'uid' => $this instanceof ThreadInterface ? $this->getThreadId() : $this->getProcessId(),
+                'processId' => $this->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
             ]
         ];
+
+        if ($this instanceof ThreadInterface) {
+            $payload['extra']['threadId'] = $this->getThreadId();
+        }
 
         $this->getIpc()->send($payload);
 

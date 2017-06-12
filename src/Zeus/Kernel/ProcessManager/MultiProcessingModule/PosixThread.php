@@ -136,6 +136,9 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     public function onProcessLoop()
     {
+        global $terminate;
+
+        trigger_error("TERMINATE ? " .json_encode($terminate));
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
@@ -202,38 +205,17 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function startProcess(SchedulerEvent $event)
     {
-
-        $phpExecutable = $_SERVER['SCRIPT_NAME'];
-
         $applicationPath = $_SERVER['PHP_SELF'];
 
         $type = $event->getParam('server') ? 'scheduler' : 'process';
 
         $argv = [$applicationPath, 'zeus', $type, $event->getTarget()->getConfig()->getServiceName()];
-        $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
-
-//        $process = proc_open($command, $descriptors, $pipes, getcwd());
-//        if ($process === false) {
-//            throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
-//        }
-//
-//        $status = proc_get_status($process);
-//        $pid = $status['pid'];
-//
-//        stream_set_blocking($pipes[0], false);
-//        stream_set_blocking($pipes[1], false);
-//        stream_set_blocking($pipes[2], false);
-//        $this->processes[$pid] = [
-//            'resource' => $process,
-//            'pipes' => $pipes
-//        ];
-//
-//        return $pid;
 
         $thread = new class extends \Thread {
             public $server;
             public $argv;
             public $id;
+            public $terminate = false;
             public function run() {
                 global $_SERVER;
                 global $argv;
@@ -248,8 +230,8 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
                 $argv = $_SERVER['argv'];
                 $argc = $_SERVER['argc'];
 
+                $terminate = $this;
                 $php = '
-
                     $SERVER = ' . var_export((array) $_SERVER, true) .';
                     foreach ($SERVER as $type => $value) {
                         $_SERVER[$type] = $value;
@@ -280,12 +262,6 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $pid = $this->startProcess($event);
 
         $event->setParam('uid', $pid);
-
-        // we are the parent
-//        $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
-//        $event->setParam('uid', $pid);
-//        $event->setName($eventName);
-//        $this->events->triggerEvent($event);
     }
 
     public function onSchedulerInit(SchedulerEvent $event)
@@ -308,24 +284,15 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
      */
     protected function terminateProcess($pid, $useSoftTermination)
     {
-        return;
-        $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
-
-        $process = $this->processes[$pid];
-
-        // @todo: This should NOT be necessary!
-        if (!$process) {
-            return $this;
-        }
-
-        foreach($process['pipes'] as $pipe) {
-            if (is_resource($pipe)) {
-                fclose($pipe);
-            }
-        }
-
-        proc_terminate($process['resource']);
-
+        /** @var \Thread $threadToTerminate */
+        $threadToTerminate = $this->threads[$pid];
+        $threadToTerminate->synchronized(
+            function($thread) {
+                trigger_error("TERMINATE!!!");
+                $thread->terminate = true;
+                $thread->notify();
+            }, $threadToTerminate
+        );
         $this->processes[$pid] = null;
 
         return $this;

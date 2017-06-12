@@ -132,9 +132,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, $em) {
-                if ($e->getParam('init_process')) {
-                    $amountOfScheduledProcesses++;
-                }
+                $e->setParam('init_process', true);
+                $amountOfScheduledProcesses++;
+
             }
         );
 
@@ -150,21 +150,21 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler->start(false);
 
         $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
-        $this->assertEquals($processesCreated, $processesInitialized, "Scheduler should have initialized all requested processes");
+        $this->assertEquals(8, count($processesInitialized), "Scheduler should have initialized all requested processes");
     }
 
     public function testProcessCreationWhenTooLittleOfThemIsWaiting()
     {
-        $scheduler = $this->getScheduler(20);
+        $scheduler = $this->getScheduler(2);
         $scheduler->getConfig()->setStartProcesses(8);
 
         $amountOfScheduledProcesses = 0;
 
         $em = $scheduler->getEventManager();
-        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
-        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {throw $e->getParam('exception');$e->stopPropagation(true);}, 0);
-        $em->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {$e->stopPropagation(true);}, ProcessEvent::PRIORITY_REGULAR + 1);
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {throw $e->getParam('exception'); $e->stopPropagation(true);}, 0);
+        $em->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $e) {$e->stopPropagation(true);}, ProcessEvent::PRIORITY_REGULAR + 1);
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function() use ($em, &$amountOfScheduledProcesses, $scheduler) {
                 $process = new Process();
                 $event = new ProcessEvent();
@@ -177,14 +177,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $process->setProcessId($uid);
                 // mark all processes as busy
-                if ($amountOfScheduledProcesses < 9) {
+                if ($amountOfScheduledProcesses < 11) {
                     $process->setRunning();
                 }
-                $event = new SchedulerEvent();
-                $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-                $event->setParam('uid', $uid);
-                $event->setTarget($scheduler);
-                $em->triggerEvent($event);
             }
         );
 
@@ -206,15 +201,15 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $processesToTerminate = [];
 
         $em = $scheduler->getEventManager();
-        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
-        $em->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE,
             function(SchedulerEvent $processEvent) use ($em, & $processesToTerminate, & $amountOfTerminateCommands) {
                 $processEvent->stopPropagation(true);
                 $amountOfTerminateCommands++;
                 $processesToTerminate[] = $processEvent->getParam('uid');
             }
         );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use ($em, &$amountOfScheduledProcesses) {
                 $amountOfScheduledProcesses++;
 
@@ -225,12 +220,12 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $em->triggerEvent($e);
             }
         );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATED,
             function(SchedulerEvent $event) use (&$amountOfScheduledProcesses, &$processesCreated, $em, $scheduler) {
                 $processesCreated[] = $event->getParam('uid');
             }
         );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_LOOP,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_LOOP,
             function(ProcessEvent $e) use (&$processesInitialized) {
                 $uid = $e->getTarget()->getProcessId();
                 $processesInitialized[] = $uid;
@@ -262,11 +257,11 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler(1);
         $events = $scheduler->getEventManager();
 
-        $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() use (& $serverStarted) {
+        $events->getSharedManager()->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() use (& $serverStarted) {
             $serverStarted = true;
         });
 
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() use (& $schedulerStarted) {
+        $events->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use (& $schedulerStarted) {
             $schedulerStarted = true;
         });
 
@@ -284,9 +279,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $processesInitialized = [];
 
         $em = $scheduler->getEventManager();
-        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
-        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use ($em, &$amountOfScheduledProcesses) {
                 $event = new SchedulerEvent();
                 $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
@@ -295,7 +290,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $em->triggerEvent($event);
             }
         );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATED,
             function(SchedulerEvent $e) use (&$processesCreated, $em, $scheduler) {
                 $e->stopPropagation(true);
                 $uid = 100000000 + count($processesCreated);
@@ -307,7 +302,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $processesCreated[] = $uid;
             }
         );
-        $em->attach(ProcessEvent::EVENT_PROCESS_LOOP,
+        $em->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,
             function(ProcessEvent $e) use (&$processesInitialized) {
                 $id = $e->getTarget()->getProcessId();
                 if (in_array($id, $processesInitialized)) {
@@ -351,8 +346,8 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $processesCreated = [];
 
         $em = $scheduler->getEventManager();
-        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
-        $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
                 $amountOfScheduledProcesses++;
 
@@ -363,7 +358,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $em->triggerEvent($e);
             }
         );
-        $em->attach(SchedulerEvent::EVENT_PROCESS_LOOP,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_LOOP,
             function(SchedulerEvent $e) {
                 // stop the process
                 $e->getTarget()->getStatus()->incrementNumberOfFinishedTasks(100);
@@ -371,14 +366,14 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         );
 
         $schedulerStopped = false;
-        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP,
             function(SchedulerEvent $e) use (&$schedulerStopped) {
                 $schedulerStopped = true;
                 $e->stopPropagation(true);
             }, -9999);
 
         $unknownProcesses = [];
-        $em->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE,
             function(SchedulerEvent $e) use ($em) {
                 $uid = $e->getParam('uid');
                 $e->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
@@ -387,7 +382,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }
         );
 
-        $em->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED,
+        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATED,
             function(SchedulerEvent $e) use (&$unknownProcesses, &$processesCreated, $em) {
                 $uid = $e->getParam('uid');
                 if (!isset($processesCreated[$uid])) {

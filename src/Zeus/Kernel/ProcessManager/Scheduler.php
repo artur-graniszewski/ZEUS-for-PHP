@@ -451,7 +451,13 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             return;
         }
 
-        $this->processService->setProcessId($event->getParam('uid'));
+        if ($this->processService instanceof ThreadInterface) {
+            $this->processService->setThreadId($event->getParam('uid'));
+            $this->processService->setProcessId(getmypid());
+        } else {
+            $this->processService->setProcessId($event->getParam('uid'));
+        }
+
         $this->processes = [];
         $pid = $event->getParam('uid');
         $this->collectCycles();
