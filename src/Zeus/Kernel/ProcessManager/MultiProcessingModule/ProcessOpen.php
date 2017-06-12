@@ -27,7 +27,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
 
-    protected $processes;
+    protected $processes = [];
 
     /**
      * PosixDriver constructor.
@@ -63,19 +63,19 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
      */
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], -9000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], -9000);
-        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
-        $events->attach(ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
-        $events->attach(SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], -9000);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
-        $events->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
-
         $this->events = $events;
+        $events = $events->getSharedManager();
+        $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
 
         return $this;
     }
@@ -168,7 +168,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         }
 
         $streams = array_merge($stdin, $stderr);
-        if (stream_select($streams, $null, $null, 0)) {
+        if ($streams && stream_select($streams, $null, $null, 0)) {
             foreach ($streams as $stream) {
                 fpassthru($stream);
             }
@@ -212,6 +212,8 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
         $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
 
+        trigger_error("PROCESS START $command");
+
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {
             throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
@@ -234,12 +236,13 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     public function onProcessCreate(SchedulerEvent $event)
     {
         $pid = $this->startProcess($event);
-
-        // we are the parent
-        $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
         $event->setParam('uid', $pid);
-        $event->setName($eventName);
-        $this->events->triggerEvent($event);
+
+//        // we are the parent
+//        $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
+//        $event->setParam('uid', $pid);
+//        $event->setName($eventName);
+//        $this->events->triggerEvent($event);
     }
 
     public function onSchedulerInit(SchedulerEvent $event)

@@ -167,12 +167,14 @@ final class Process extends AbstractProcess
      */
     protected function mainLoop()
     {
+        trigger_error($_SERVER['argv'][2] . " > PROCESS LOOP START");
         $exception = null;
         $this->setWaiting();
         $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
+            trigger_error($_SERVER['argv'][2] . " > PROCESS LOOPING");
             $exception = null;
             try {
                 $event = new ProcessEvent();
