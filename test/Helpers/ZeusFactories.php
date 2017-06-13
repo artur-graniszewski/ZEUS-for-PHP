@@ -3,6 +3,7 @@
 namespace ZeusTest\Helpers;
 
 use ReflectionProperty;
+use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
 use Zend\Mvc\Service\EventManagerFactory;
 use Zend\Mvc\Service\ModuleManagerFactory;
@@ -143,12 +144,15 @@ trait ZeusFactories
     {
         $sm = $serviceManager ?  $serviceManager : $this->getServiceManager();
 
+        $this->clearSharedEventManager($sm);
+
         $ipcAdapter = $sm->build(SocketAdapter::class, ['service_name' => 'test-service']);
         $logger = new Logger();
         $ipcWriter = new IpcLogWriter();
         $ipcWriter->setIpcAdapter($ipcAdapter);
         $logger->addWriter($ipcWriter);
 
+        /** @var Scheduler $scheduler */
         $scheduler = $sm->build(Scheduler::class, [
             'ipc_adapter' => $ipcAdapter,
             'service_name' => 'test-service',
@@ -156,26 +160,36 @@ trait ZeusFactories
             'logger_adapter' => $logger,
         ]);
 
-        $events = $scheduler->getEventManager();
+        $events = $scheduler->getEventManager()->getSharedManager();
         if ($mainLoopIterations > 0) {
-            $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
+            $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {
-                    $e->getTarget()->setContinueMainLoop(false);
+                    $e->getTarget()->setSchedulerActive(false);
                 }
 
                 if ($loopCallback) {
                     $loopCallback($e->getTarget());
                 }
-            });
+            }, -100000);
         }
 
-        $events->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
-            $e->getTarget()->setContinueMainLoop(false);
+        $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
+            $e->getTarget()->setSchedulerActive(false);
             $e->stopPropagation(true);
         }, 10000000);
 
+        $scheduler->setSchedulerActive(true);
+
         return $scheduler;
+    }
+
+    public function clearSharedEventManager(ServiceManager $serviceManager = null)
+    {
+        $sm = $serviceManager ?  $serviceManager : $this->getServiceManager();
+        /** @var EventManager $eventManager */
+        $eventManager = $sm->build('zeus-event-manager');
+        $eventManager->getSharedManager()->clearListeners('*');
     }
 }

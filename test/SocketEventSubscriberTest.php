@@ -73,6 +73,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $events->triggerEvent($event);
 
         $event = new ProcessEvent();
+        $event->setTarget($process);
         $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
         $events->triggerEvent($event);
 

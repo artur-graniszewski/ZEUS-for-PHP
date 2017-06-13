@@ -31,7 +31,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     protected $config;
 
     /** @var bool */
-    protected $continueMainLoop = true;
+    protected $schedulerActive = true;
 
     /** @var ProcessState */
     protected $schedulerStatus;
@@ -50,18 +50,18 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * @return bool
      */
-    public function isContinueMainLoop()
+    public function isSchedulerActive()
     {
-        return $this->continueMainLoop;
+        return $this->schedulerActive;
     }
 
     /**
-     * @param bool $continueMainLoop
+     * @param bool $schedulerActive
      * @return $this
      */
-    public function setContinueMainLoop($continueMainLoop)
+    public function setSchedulerActive($schedulerActive)
     {
-        $this->continueMainLoop = $continueMainLoop;
+        $this->schedulerActive = $schedulerActive;
 
         return $this;
     }
@@ -137,7 +137,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                 /** @var ProcessState $processStatus */
                 $processStatus = $message['extra']['status'];
 
-                // child status changed, update this information server-side
+                // process status changed, update this information server-side
                 if (isset($this->processes[$pid])) {
                     if ($this->processes[$pid]['code'] !== $processStatus['code']) {
                         $processStatus['time'] = microtime(true);
@@ -312,7 +312,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                     $this->setProcessId($pid);
 
                     if (!@file_put_contents(sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName()), $pid)) {
-                        //throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
+                        throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
                     $this->kernelLoop();
@@ -397,11 +397,15 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function onShutdown(SchedulerEvent $event)
     {
+        if (!$this->isSchedulerActive()) {
+            return;
+        }
+
         $exception = $event->getParam('exception', null);
 
         $this->log(Logger::DEBUG, "Shutting down" . ($exception ? ' with exception: ' . $exception->getMessage() : ''));
 
-        $this->setContinueMainLoop(false);
+        $this->setSchedulerActive(false);
 
         $this->log(Logger::INFO, "Terminating scheduler");
 
@@ -451,25 +455,18 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             return;
         }
 
-        if ($this->processService instanceof ThreadInterface) {
-            $this->processService->setThreadId($event->getParam('uid'));
-            $this->processService->setProcessId(getmypid());
-        } else {
+//        if ($this->processService instanceof ThreadInterface) {
+//            $this->processService->setThreadId($event->getParam('uid'));
+//            $this->processService->setProcessId(getmypid());
+//        } else {
             $this->processService->setProcessId($event->getParam('uid'));
-        }
+//        }
 
-        $this->processes = [];
-        $pid = $event->getParam('uid');
+//        $this->processes = [];
+        $this->processService->setIpc($this->getIpc());
         $this->collectCycles();
-        $this->setContinueMainLoop(false);
+        $this->setSchedulerActive(false);
         $this->getIpc()->useChannelNumber(1);
-
-        $event = new ProcessEvent();
-        $event->setTarget($this->processService);
-        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
-        $event->setParam('uid', $pid);
-
-        $this->getEventManager()->triggerEvent($event);
     }
 
     /**
@@ -545,7 +542,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function mainLoop()
     {
-        while ($this->isContinueMainLoop()) {
+        while ($this->isSchedulerActive()) {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         }
 
@@ -554,7 +551,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
     public function kernelLoop()
     {
-        while ($this->isContinueMainLoop()) {
+        while ($this->isSchedulerActive()) {
             $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
             usleep(1000);
         }

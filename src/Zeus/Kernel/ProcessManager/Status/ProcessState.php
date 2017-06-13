@@ -100,7 +100,7 @@ class ProcessState
     {
         return [
             'code' => $this->code,
-            'uid' => getmypid(),
+            'uid' => $this->getProcessId(),
             'requests_finished' => $this->tasksFinished,
             'requests_per_second' => $this->tasksPerSecond,
             'time' => $this->time,
@@ -168,9 +168,20 @@ class ProcessState
     /**
      * @return int
      */
-    public function getId()
+    public function getProcessId()
     {
         return $this->processId ? $this->processId : getmypid();
+    }
+
+    /**
+     * @param int $processId
+     * @return $this
+     */
+    public function setProcessId($processId)
+    {
+        $this->processId = $processId;
+
+        return $this;
     }
 
     /**

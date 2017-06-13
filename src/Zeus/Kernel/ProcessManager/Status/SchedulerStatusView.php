@@ -99,7 +99,7 @@ class SchedulerStatusView
             $currentUserCpuUsage += $processStatus->getCurrentUserCpuTime();
             $currentSysCpuUsage += $processStatus->getCurrentSystemCpuTime();
 
-            $processStatusChars[$processStatus->getId()] =
+            $processStatusChars[$processStatus->getProcessId()] =
                 isset($this->statusToCharMapping[$processStatusCode]) ?
                     $this->statusToCharMapping[$processStatusCode] : '?';
 
@@ -164,8 +164,8 @@ class SchedulerStatusView
             $output .= $console->colorize(
                 sprintf("   %s── Process %s [%s] CPU: %d%%, RPS: %s, REQ: %s%s" . PHP_EOL,
                     $connector,
-                    $processStatus->getId(),
-                    $processStatusChars[$processStatus->getId()],
+                    $processStatus->getProcessId(),
+                    $processStatusChars[$processStatus->getProcessId()],
                     $processStatus->getCpuUsage(),
                     $this->addUnitsToNumber($processStatus->getNumberOfTasksPerSecond()),
                     $this->addUnitsToNumber($processStatus->getNumberOfFinishedTasks()),

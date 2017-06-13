@@ -76,6 +76,11 @@ abstract class AbstractProcess implements ProcessInterface
      */
     public function getStatus()
     {
+        if (!$this->status) {
+            $this->status = new ProcessState($this->getConfig()->getServiceName());
+            $this->status->setProcessId($this->getProcessId());
+        }
+
         return $this->status;
     }
 
@@ -105,11 +110,26 @@ abstract class AbstractProcess implements ProcessInterface
     public function start($startParameters = null)
     {
         $event = new SchedulerEvent();
-        $event->setTarget($this);
+        $process = clone($this);
+
+        $event->setTarget($process);
         $event->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
         if (is_array($startParameters)) {
             $event->setParams($startParameters);
         }
+        $this->getEventManager()->triggerEvent($event);
+
+        if (!$event->getParam('init_process')) {
+            return $this;
+        }
+
+        $pid = $event->getParam('uid');
+        $this->setProcessId($pid);
+
+        $event = new ProcessEvent();
+        $event->setTarget($process);
+        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event->setParam('uid', $pid);
         $this->getEventManager()->triggerEvent($event);
 
         return $this;

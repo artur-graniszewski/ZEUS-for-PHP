@@ -6,6 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
@@ -42,10 +43,6 @@ class Server implements ListenerAggregateInterface
         $this->eventHandles[] = $events->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $event) {
             $this->handleMessages();
         }, $priority);
-
-        $this->eventHandles[] = $events->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
-            $event->getTarget()->setIpc($this->getIpc());
-        }, $priority);
     }
 
     /**
@@ -68,18 +65,16 @@ class Server implements ListenerAggregateInterface
      */
     protected function handleMessages()
     {
-        /** @var IpcEvent $event */
-        $event = $this->event;
-
         /** @var Message[] $messages */
         $this->ipc->useChannelNumber(0);
 
         $messages = $this->ipc->receiveAll();
 
         foreach ($messages as $message) {
-            //$pid = $message['extra']['uid'];
-            $event->setName(SchedulerEvent::EVENT_PROCESS_MESSAGE);
+            $event = new IpcEvent();
+            $event->setName(ProcessEvent::EVENT_PROCESS_MESSAGE);
             $event->setParams($message);
+            $event->setTarget($this);
             $this->getEventManager()->triggerEvent($event);
         }
 

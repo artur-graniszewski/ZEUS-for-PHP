@@ -34,17 +34,10 @@ class Process extends AbstractProcess
      */
     public function attach(EventManagerInterface $eventManager)
     {
-        $this->setEventManager($eventManager);
-        $this->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
-            $config = $this->getConfig();
-            $event->setTarget($this);
-            $this->setProcessId($event->getParam('uid'));
-            $this->status = new ProcessState($config->getServiceName());
-        }, ProcessEvent::PRIORITY_INITIALIZE);
-
-        $this->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
-            $this->mainLoop();
+        $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+            $event->getTarget()->mainLoop();
         }, ProcessEvent::PRIORITY_FINALIZE);
+
         return $this;
     }
 
@@ -165,7 +158,7 @@ class Process extends AbstractProcess
     /**
      * Listen for incoming requests.
      */
-    protected function mainLoop()
+    public function mainLoop()
     {
         $exception = null;
         $this->setWaiting();
@@ -192,7 +185,7 @@ class Process extends AbstractProcess
 
     /**
      * @return $this
-     * @todo: move this to AbstractProcess?
+     * @todo: move this to an AbstractProcess or a Plugin?
      */
     protected function sendStatus()
     {
