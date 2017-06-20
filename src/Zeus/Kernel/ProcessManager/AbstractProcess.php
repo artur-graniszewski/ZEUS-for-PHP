@@ -110,7 +110,7 @@ abstract class AbstractProcess implements ProcessInterface
     public function start($startParameters = null)
     {
         $event = new SchedulerEvent();
-        $process = clone($this);
+        $process = clone $this;
 
         $event->setTarget($process);
         $event->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
@@ -118,7 +118,6 @@ abstract class AbstractProcess implements ProcessInterface
             $event->setParams($startParameters);
         }
         $this->getEventManager()->triggerEvent($event);
-
         if (!$event->getParam('init_process')) {
             return $this;
         }

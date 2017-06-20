@@ -106,7 +106,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         $events = $events->getSharedManager();
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessInit($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
@@ -449,7 +449,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * @param SchedulerEvent $event
      */
-    protected function onProcessInit(SchedulerEvent $event)
+    protected function onProcessCreate(SchedulerEvent $event)
     {
         if (!$event->getParam('init_process') || $event->getParam('server')) {
             return;
@@ -459,11 +459,13 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 //            $this->processService->setThreadId($event->getParam('uid'));
 //            $this->processService->setProcessId(getmypid());
 //        } else {
-            $this->processService->setProcessId($event->getParam('uid'));
+            //$this->processService->setProcessId($event->getParam('uid'));
 //        }
 
 //        $this->processes = [];
-        $this->processService->setIpc($this->getIpc());
+
+        $process = $this->processService;
+        $process->setProcessId($event->getParam('uid'));
         $this->collectCycles();
         $this->setSchedulerActive(false);
         $this->getIpc()->useChannelNumber(1);

@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\ProcessManager;
 
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
