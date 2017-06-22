@@ -50,14 +50,12 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     public function testPosixProcessFactory()
     {
-        $this->markTestIncomplete("FIXME: INFINITE LOOP");
-
         $pcntlMock = new PcntlMockBridge();
         $pcntlMock->setPpid(123456789);
         PosixProcess::setPcntlBridge($pcntlMock);
 
         $sm = $this->getServiceManager();
-        $scheduler = $this->getScheduler(0);
+        $scheduler = $this->getScheduler(1);
         $sm->setFactory(PosixProcess::class, MultiProcessingModuleFactory::class);
         /** @var PosixProcess $service */
         $service = $sm->build(PosixProcess::class, ['scheduler' => $scheduler, 'scheduler_event' => new SchedulerEvent()]);
@@ -73,7 +71,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $scheduler->start(true);
+        $scheduler->start(false);
         $service->onSchedulerLoop();
 
         $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixProcess');

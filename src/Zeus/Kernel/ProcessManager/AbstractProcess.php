@@ -123,7 +123,7 @@ abstract class AbstractProcess implements ProcessInterface
         }
 
         $pid = $event->getParam('uid');
-        $this->setProcessId($pid);
+        $process->setProcessId($pid);
 
         $event = new ProcessEvent();
         $event->setTarget($process);

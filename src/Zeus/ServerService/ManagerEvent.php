@@ -14,9 +14,6 @@ class ManagerEvent extends Event
     /** @var ServerServiceInterface */
     protected $service;
 
-    /** @var Manager */
-    protected $manager;
-
     /**
      * @return ServerServiceInterface
      */
@@ -32,25 +29,6 @@ class ManagerEvent extends Event
     public function setService(ServerServiceInterface $service)
     {
         $this->service = $service;
-
-        return $this;
-    }
-
-    /**
-     * @return Manager
-     */
-    public function getManager()
-    {
-        return $this->manager;
-    }
-
-    /**
-     * @param Manager $manager
-     * @return $this
-     */
-    public function setManager($manager)
-    {
-        $this->manager = $manager;
 
         return $this;
     }

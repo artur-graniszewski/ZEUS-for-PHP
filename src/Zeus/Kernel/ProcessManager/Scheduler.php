@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\ProcessManager;
 
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
@@ -296,11 +295,18 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
                 function(SchedulerEvent $e) {
-                    if ($e->getParam('server') && $e->getParam('init_process')) {
+                    if (!$e->getParam('server')) {
+                        return;
+                    }
+
+                    if ($e->getParam('init_process')) {
                         $e->stopPropagation(true);
+                        $this->setProcessId(getmypid());
                         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
-                }
-            }, -10);
+                    } else {
+                        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
+                    }
+                }, SchedulerEvent::PRIORITY_FINALIZE);
 
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
                 function (SchedulerEvent $event) {
@@ -317,11 +323,11 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
                     $this->kernelLoop();
                 }
-                , -10
+                , SchedulerEvent::PRIORITY_FINALIZE
             );
 
             $this->processService->start(['server' => true]);
-            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
+
         } catch (\Throwable $exception) {
             $this->handleException($exception);
         } catch (\Exception $exception) {

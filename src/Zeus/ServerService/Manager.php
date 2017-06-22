@@ -92,7 +92,7 @@ final class Manager
     {
         if (!$this->event) {
             $this->event = new ManagerEvent();
-            $this->event->setManager($this);
+            $this->event->setTarget($this);
         }
 
         return $this->event;
@@ -109,7 +109,9 @@ final class Manager
         }
 
         $service = $this->services[$serviceName]['service'];
-        return ($service instanceof ServerServiceInterface ? $service : $service());
+        $this->services[$serviceName]['service'] = ($service instanceof ServerServiceInterface ? $service : $service());
+
+        return $this->services[$serviceName]['service'];
     }
 
     /**
@@ -184,21 +186,31 @@ final class Manager
     {
         $service = $this->getService($serviceName);
 
+        $sharedEvents = $service->getScheduler()->getEventManager()->getSharedManager();
+
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);
         $event->setError(null);
         $event->setService($service);
 
-        $this->eventHandles[] = $service->getScheduler()->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP,
+        $this->eventHandles[] = $sharedEvents->attach('*', SchedulerEvent::EVENT_SCHEDULER_START,
+            function (SchedulerEvent $event) use ($service) {
+                $schedulerPid = $event->getTarget()->getProcessId();
+                $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
+                $this->pidToServiceMap[$schedulerPid] = $service;
+                $this->servicesRunning++;
+            }, -10000);
+
+        $this->eventHandles[] = $sharedEvents->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
 
 
-        $this->eventHandles[] = $service->getScheduler()->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP,
+        $this->eventHandles[] = $sharedEvents->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP,
             function (SchedulerEvent $schedulerEvent) use ($service, $event) {
-                if(!$event->propagationIsStopped()) {
-                    pcntl_signal_dispatch(); //@todo: REPLACE me with something more platform agnostic!
+                if (!$event->propagationIsStopped()) {
+                    pcntl_signal_dispatch(); //@todo: URGENT! REPLACE me with something more platform agnostic!
                     $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
                     $this->getEventManager()->triggerEvent($event);
                 } else {
@@ -211,18 +223,10 @@ final class Manager
             $this->getEventManager()->triggerEvent($event);
 
             $service->start();
-            $schedulerPid = $service->getScheduler()->getProcessId();
-            $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
-            $this->pidToServiceMap[$schedulerPid] = $service;
-            $this->servicesRunning++;
         } catch (\Exception $exception) {
             $this->registerBrokenService($serviceName, $exception);
-
-            return $this;
         } catch (\Throwable $exception) {
             $this->registerBrokenService($serviceName, $exception);
-
-            return $this;
         }
 
         return $this;
@@ -246,23 +250,25 @@ final class Manager
 
         $startTime = microtime(true);
 
-        foreach ($serviceNames as $service) {
-            $this->doStartService($service);
-        }
-
         $now = microtime(true);
+        $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
         $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
         $managerTime = $now - $startTime;
 
-        $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
-        if ($this->servicesRunning > 0) {
-            $this->logger->info(sprintf("Started %d services in %.2f seconds ($engine running for %.2fs)", $this->servicesRunning, $managerTime, $phpTime));
+        foreach ($serviceNames as $serviceName) {
+            $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_START,
+                function (SchedulerEvent $event) use ($serviceName, $managerTime, $phpTime, $engine) {
+
+                    $this->servicesRunning++;
+                    $this->logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
+
+                }, -10000);
+
+            $this->doStartService($serviceName);
         }
 
-        if ($this->servicesRunning === 0) {
+        if (!$this->servicesRunning) {
             $this->logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
-
-            return $this;
         }
 
         return $this;

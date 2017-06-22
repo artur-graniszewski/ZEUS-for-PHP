@@ -197,7 +197,7 @@ class Process extends AbstractProcess
             'priority' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $this instanceof ThreadInterface ? $this->getThreadId() : $this->getProcessId(),
+                'uid' => $this->getProcessId(),
                 'processId' => $this->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
