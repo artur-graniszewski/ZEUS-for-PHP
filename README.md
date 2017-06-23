@@ -35,7 +35,7 @@ It's designed to be compliant with any ZF3 application such as [Apigility](https
 - Compatible with any UNIX/Linux/BSD platform
 - Well documented and [unit tested](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) (with at least [90% code coverage](https://coveralls.io/github/artur-graniszewski/ZEUS-for-PHP))
 - Stress tested, shipped with its own benchmark tests
-- Compatible with and [tested](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) against **PHP 5.6, PHP 7.0, PHP 7.1** and **HHVM**
+- Compatible with and [tested](https://travis-ci.org/artur-graniszewski/ZEUS-for-PHP) against **PHP 7.0, PHP 7.1** and **HHVM**
 
 # Documentation
 
@@ -329,7 +329,7 @@ Percentage of the requests served within a certain time (ms)
 - _Windows platform currently not supported_
 
 ## PHP requirements
-- PHP 5.6+ (HHVM or PHP 7+ is recommended for performance reasons as ZEUS can be up to 4x faster and use less memory)
+- PHP 7.0+ or HHVM
 - Posix module installed and enabled
 - Pcntl module installed and enabled
 - socket functions enabled for IPC purposes

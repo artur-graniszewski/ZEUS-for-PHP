@@ -5,7 +5,7 @@
 - _Windows platform currently not supported_
 
 ### PHP requirements
-- PHP 5.6+ (HHVM or PHP 7+ is recommended for performance reasons as ZEUS can be up to 4x faster and use less memory)
+- PHP 7.0+ or HHVM
 - Posix module installed and enabled
 - Pcntl module installed and enabled
 - socket functions enabled for IPC purposes
