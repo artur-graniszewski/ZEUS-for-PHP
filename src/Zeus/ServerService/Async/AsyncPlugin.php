@@ -86,7 +86,6 @@ class AsyncPlugin extends AbstractPlugin
         $exception = null;
         try {
             $socket->write($message);
-        } catch (\Exception $exception) {
         } catch (\Throwable $exception) {
         }
 

@@ -172,8 +172,6 @@ class Process extends AbstractProcess
                 $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
-            } catch (\Exception $exception) {
-                $this->reportException($exception);
             } catch (\Throwable $exception) {
                 $this->reportException($exception);
             }

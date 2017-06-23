@@ -107,7 +107,6 @@ final class SocketEventSubscriber
             if ($this->connection->isReadable() && $this->connection->isWritable()) {
                 return;
             }
-        } catch (\Exception $exception) {
         } catch (\Throwable $exception) {
         }
 
@@ -115,7 +114,6 @@ final class SocketEventSubscriber
             if ($exception) {
                 try {
                     $this->message->onError($this->connection, $exception);
-                } catch (\Exception $exception) {
                 } catch (\Throwable $exception) {
                 }
             }

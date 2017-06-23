@@ -83,7 +83,7 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
 
         try {
             $bridge->isSupported();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if ($throwException) {
                 throw $e;
             }

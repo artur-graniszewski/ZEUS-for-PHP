@@ -271,7 +271,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $callback($this->request, $this->response);
 
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
-        } catch (\Exception $exception) {
 
         } catch (\Throwable $exception) {
 

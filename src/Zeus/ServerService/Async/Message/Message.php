@@ -128,7 +128,6 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $exception = null;
         try {
             $result = $this->run(substr($this->callback, 0, -1));
-        } catch (\Exception $exception) {
 
         } catch (\Throwable $exception) {
 

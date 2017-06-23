@@ -223,8 +223,6 @@ final class Manager
             $this->getEventManager()->triggerEvent($event);
 
             $service->start();
-        } catch (\Exception $exception) {
-            $this->registerBrokenService($serviceName, $exception);
         } catch (\Throwable $exception) {
             $this->registerBrokenService($serviceName, $exception);
         }
@@ -287,7 +285,7 @@ final class Manager
             try {
                 $this->stopService($service);
                 $servicesAmount++;
-            } catch (\Exception $exception) {
+            } catch (\Throwable $exception) {
                 if ($mustBeRunning) {
                     throw $exception;
                 }

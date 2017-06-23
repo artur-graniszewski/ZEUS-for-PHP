@@ -330,8 +330,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         } catch (\Throwable $exception) {
             $this->handleException($exception);
-        } catch (\Exception $exception) {
-            $this->handleException($exception);
         }
 
         return $this;

@@ -89,7 +89,7 @@ class ConsoleController extends AbstractActionController
                     $this->stopServicesCommand($serviceName);
                     break;
             }
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
             $this->logger->err(sprintf("Exception (%d): %s in %s on line %d",
                 $exception->getCode(),
                 addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
