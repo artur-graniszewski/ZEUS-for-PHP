@@ -104,24 +104,6 @@ class ProcessController extends AbstractActionController
 
     /**
      * @param string $serviceName
-     * @param bool $autoStartOnly
-     * @return string[]
-     */
-    protected function getServices($serviceName = null, $autoStartOnly = false)
-    {
-        if ($this->reportBrokenServices($serviceName)) {
-            return [];
-        }
-
-        return $serviceName
-            ?
-            [$serviceName]
-            :
-            $this->manager->getServiceList($autoStartOnly);
-    }
-
-    /**
-     * @param string $serviceName
      * @return bool
      */
     protected function reportBrokenServices($serviceName)
@@ -149,48 +131,30 @@ class ProcessController extends AbstractActionController
      */
     protected function starProcessForService($serviceName)
     {
-        $schedulerEvent = null;
-        $schedulerEventManager = null;
-
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
+        /** @var Scheduler $scheduler */
+        $scheduler = $this->manager->getService($serviceName)->getScheduler();
+        $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $event) {
             $event->stopPropagation(true);
-        }, 1);
+            $event->setParam('init_process', true);
+        }, 100000);
 
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_START, function(ManagerEvent $event)
-        use (& $schedulerEventManager, & $schedulerEvent) {
-            $service = $event->getService();
-            /** @var Scheduler $scheduler */
-            $scheduler = $service->getScheduler();
-            // block starting new scheduler
-            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) {
-                $event->stopPropagation(true);
-            }, -5000);
+        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+            DynamicPriorityFilter::resetPriority();
+        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
-            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_schedulerEvent)
-            use (& $schedulerEventManager, & $schedulerEvent) {
-                $_schedulerEvent->stopPropagation(true);
-                $schedulerEvent = $_schedulerEvent;
-                $schedulerEventManager = $_schedulerEvent->getTarget()->getEventManager();
-            }, 2000);
-
-            $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $_event) {
-                DynamicPriorityFilter::resetPriority();
-            });
-
-            $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $_event) {
-            }, ProcessEvent::PRIORITY_FINALIZE + 1);
-
-            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_event) {
-            }, 1001);
-        });
+        // @todo: below is a thread code
+//        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,
+//            function(ProcessEvent $event) use ($scheduler) {
+//
+//            trigger_error(\Thread::getCurrentThreadId() . " LOOP " . posix_getpid());
+//            if (!file_exists($scheduler->getPidFile()) || file_get_contents($scheduler->getPidFile()) != getmypid()) {
+//                echo "CLOSE THREAD!\n";
+//                $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(100000);
+//            }
+//        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $this->manager->startService($serviceName);
-        $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
-        $schedulerEventManager->triggerEvent($schedulerEvent);
-
-        $event = new ProcessEvent();
-        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
-        $schedulerEventManager->triggerEvent($event);
+        $scheduler->getProcessService()->start();
     }
 
     /**
@@ -209,11 +173,6 @@ class ProcessController extends AbstractActionController
             $service = $event->getService();
             /** @var Scheduler $scheduler */
             $scheduler = $service->getScheduler();
-            // block starting new scheduler
-//            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) {
-//                trigger_error($_SERVER['argv'][2] . " >SCHEDULER STOP");
-//                $event->stopPropagation(true);
-//            }, 5000);
 
             $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_schedulerEvent)
             use (& $schedulerEventManager, & $schedulerEvent) {
@@ -227,6 +186,16 @@ class ProcessController extends AbstractActionController
                 }
             }, 2000);
 
+            // @todo: below is a thread code
+//            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP,
+//                function(SchedulerEvent $event) use ($scheduler) {
+//                    trigger_error(\Thread::getCurrentThreadId() . " S LOOP");
+//                    if (!file_exists($scheduler->getPidFile()) || file_get_contents($scheduler->getPidFile()) != getmypid()) {
+//                        echo "CLOSE SCHEDULER!\n";
+//                        $scheduler->setSchedulerActive(false);
+//                    }
+//                }, ProcessEvent::PRIORITY_FINALIZE + 1);
+
         });
 
         $this->manager->startService($serviceName);
@@ -235,10 +204,6 @@ class ProcessController extends AbstractActionController
         $schedulerEventManager->triggerEvent($schedulerEvent);
 
         $schedulerEvent->setParam('go', 1);
-//        $event = new ProcessEvent();
-//        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
-//        $event->setParam('server', true);
-//        $schedulerEventManager->triggerEvent($schedulerEvent);
     }
 
 

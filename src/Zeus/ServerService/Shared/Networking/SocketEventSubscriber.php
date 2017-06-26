@@ -56,16 +56,16 @@ final class SocketEventSubscriber
      */
     public function onServerStart(EventInterface $event)
     {
-        if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START
-            //&&
-            //($event->getScheduler() instanceof SharedAddressSpaceInterface || $event->getScheduler() instanceof SharedInitialAddressSpaceInterface)) {
-        ) {
-            $this->server->createServer();
+        if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START) {
+            $mpm = $event->getTarget()->getMultiProcessingModule();
+            if ($mpm instanceof SharedAddressSpaceInterface || $mpm instanceof SharedInitialAddressSpaceInterface) {
+                $this->server->createServer();
 
-            return $this;
+                return $this;
+            }
         };
 
-        if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && $event->getTarget() instanceof SeparateAddressSpaceInterface) {
+        if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && !$this->server->isServerCreated()) {
             $this->server->createServer();
         }
 

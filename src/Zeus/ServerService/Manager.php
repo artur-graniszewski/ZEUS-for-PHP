@@ -98,11 +98,11 @@ final class Manager
         return $this->event;
     }
 
-        /**
+    /**
      * @param string $serviceName
      * @return ServerServiceInterface
      */
-    protected function getService($serviceName)
+    public function getService($serviceName)
     {
         if (!isset($this->services[$serviceName]['service'])) {
             throw new \RuntimeException("Service \"$serviceName\" not found");
@@ -276,7 +276,7 @@ final class Manager
      * @param ServerServiceInterface[] $services
      * @param bool $mustBeRunning
      * @return int Amount of services which Manager was unable to stop
-     * @throws \Exception
+     * @throws \Throwable
      */
     public function stopServices($services, $mustBeRunning)
     {
@@ -297,7 +297,7 @@ final class Manager
         $signalInfo = [];
 
         if (function_exists('pcntl_sigtimedwait')) {
-            while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1)) {
+            while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1) > 0) {
                 $servicesLeft--;
             }
         }

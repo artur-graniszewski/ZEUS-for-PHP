@@ -34,6 +34,7 @@ class Process extends AbstractProcess
     public function attach(EventManagerInterface $eventManager)
     {
         $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+            // @todo: do not use mainLoop() method from outside
             $event->getTarget()->mainLoop();
         }, ProcessEvent::PRIORITY_FINALIZE);
 

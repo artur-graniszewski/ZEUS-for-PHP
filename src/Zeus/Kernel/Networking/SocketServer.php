@@ -88,4 +88,12 @@ final class SocketServer
 
         return $this;
     }
+
+    /**
+     * @return bool
+     */
+    public function isServerCreated()
+    {
+        return is_resource($this->socket);
+    }
 }

@@ -112,6 +112,10 @@ abstract class AbstractProcess implements ProcessInterface
         $event = new SchedulerEvent();
         $process = clone $this;
 
+        if (!$process->getIpc()->isConnected()) {
+            $process->getIpc()->connect();
+        }
+
         $event->setTarget($process);
         $event->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
         if (is_array($startParameters)) {

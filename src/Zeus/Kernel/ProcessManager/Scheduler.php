@@ -9,6 +9,7 @@ use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
@@ -46,12 +47,23 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /** @var mixed[] */
     protected $eventHandles;
 
+    /** @var MultiProcessingModuleInterface */
+    protected $multiProcessingModule;
+
     /**
      * @return bool
      */
     public function isSchedulerActive()
     {
         return $this->schedulerActive;
+    }
+
+    /**
+     * @return Process
+     */
+    public function getProcessService()
+    {
+        return $this->processService;
     }
 
     /**
@@ -230,7 +242,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
 
         if ($pid = @file_get_contents($fileName)) {
-            $pid = (int)$pid;
+            $pid = (int) $pid;
 
             if ($pid) {
                 $this->stopProcess($pid, true);
@@ -242,6 +254,17 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         }
 
         throw new ProcessManagerException("Server not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
+    }
+
+    /**
+     * @return string
+     */
+    public function getPidFile()
+    {
+        // @todo: make it more sophisticated
+        $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
+
+        return $fileName;
     }
 
     /**
@@ -270,6 +293,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     public function start($launchAsDaemon = null)
     {
+        $this->getMultiProcessingModule()->attach($this->getEventManager());
         $this->startTime = microtime(true);
         $plugins = $this->getPluginRegistry()->count();
         $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
@@ -317,8 +341,9 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                     $pid = $event->getParam('uid');
                     $this->setProcessId($pid);
 
-                    if (!@file_put_contents(sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName()), $pid)) {
-                        throw new ProcessManagerException("Could not write to PID file, aborting", ProcessManagerException::LOCK_FILE_ERROR);
+                    $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
+                    if (!file_put_contents($fileName, $pid)) {
+                        throw new ProcessManagerException(sprintf("Could not write to PID file: %s, aborting", $fileName), ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
                     $this->kernelLoop();
@@ -354,7 +379,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->log(Logger::INFO, "Scheduler started");
         $this->createProcesses($this->getConfig()->getStartProcesses());
 
-        return $this->mainLoop();
+        $this->mainLoop();
     }
 
     /**
@@ -459,15 +484,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             return;
         }
 
-//        if ($this->processService instanceof ThreadInterface) {
-//            $this->processService->setThreadId($event->getParam('uid'));
-//            $this->processService->setProcessId(getmypid());
-//        } else {
-            //$this->processService->setProcessId($event->getParam('uid'));
-//        }
-
-//        $this->processes = [];
-
         $process = $this->processService;
         $process->setProcessId($event->getParam('uid'));
         $this->collectCycles();
@@ -550,6 +566,11 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         while ($this->isSchedulerActive()) {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+
+            if (!$this->isSchedulerActive()) {
+                $this->setSchedulerActive(true);
+                $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
+            }
         }
 
         return $this;
@@ -559,6 +580,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         while ($this->isSchedulerActive()) {
             $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
+
             usleep(1000);
         }
 
@@ -571,5 +593,24 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     public function getProcesses()
     {
         return $this->processes;
+    }
+
+    /**
+     * @param MultiProcessingModuleInterface $driver
+     * @return $this
+     */
+    public function setMultiProcessingModule(MultiProcessingModuleInterface $driver)
+    {
+        $this->multiProcessingModule = $driver;
+
+        return $this;
+    }
+
+    /**
+     * @return MultiProcessingModuleInterface
+     */
+    public function getMultiProcessingModule() : MultiProcessingModuleInterface
+    {
+        return $this->multiProcessingModule;
     }
 }
