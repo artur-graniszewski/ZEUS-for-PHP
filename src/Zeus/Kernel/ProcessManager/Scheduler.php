@@ -342,7 +342,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
                     $this->setProcessId($pid);
 
                     $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
-                    if (!file_put_contents($fileName, $pid)) {
+                    if (!@file_put_contents($fileName, $pid)) {
                         throw new ProcessManagerException(sprintf("Could not write to PID file: %s, aborting", $fileName), ProcessManagerException::LOCK_FILE_ERROR);
                     }
 
@@ -422,7 +422,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      * Shutdowns the server
      *
      * @param SchedulerEvent $event
-     * @return $this
      */
     protected function onShutdown(SchedulerEvent $event)
     {
@@ -564,14 +563,13 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
      */
     protected function mainLoop()
     {
-        while ($this->isSchedulerActive()) {
+        do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
 
             if (!$this->isSchedulerActive()) {
-                $this->setSchedulerActive(true);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
             }
-        }
+        } while ($this->isSchedulerActive());
 
         return $this;
     }

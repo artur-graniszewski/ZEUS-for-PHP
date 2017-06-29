@@ -172,7 +172,7 @@ trait ZeusFactories
                 if ($loopCallback) {
                     $loopCallback($e->getTarget());
                 }
-            }, -100000);
+            }, SchedulerEvent::PRIORITY_FINALIZE - 1);
         }
 
         $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
@@ -181,6 +181,7 @@ trait ZeusFactories
         }, 10000000);
 
         $scheduler->setSchedulerActive(true);
+        $scheduler->setMultiProcessingModule(new DummyMpm());
 
         return $scheduler;
     }

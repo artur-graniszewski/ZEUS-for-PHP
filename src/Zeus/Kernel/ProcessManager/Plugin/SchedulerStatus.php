@@ -2,13 +2,10 @@
 
 namespace Zeus\Kernel\ProcessManager\Plugin;
 
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\Helper\AddUnitsToNumbers;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;

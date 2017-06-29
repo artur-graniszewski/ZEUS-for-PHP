@@ -122,7 +122,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
     public function testProcessCreationOnStartup()
     {
-        $scheduler = $this->getScheduler(2);
+        $scheduler = $this->getScheduler(1);
 
         $amountOfScheduledProcesses = 0;
         $processesInitialized = [];
@@ -145,10 +145,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $e->stopPropagation(true);
             }
         );
-        $scheduler->start(false);
+        $scheduler->start(true);
 
-        $this->assertEquals(8, $amountOfScheduledProcesses, "Scheduler should try to create 8 processes on its startup");
-        $this->assertEquals(8, count($processesInitialized), "Scheduler should have initialized all requested processes");
+        $this->assertEquals(count($processesInitialized), $amountOfScheduledProcesses, "Scheduler should initialize all newly created processes");
     }
 
     public function schedulerProcessAmountProvider()
@@ -201,7 +200,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use (&$scheduler) {
-                $scheduler->setSchedulerActive(true);
                 $e->stopPropagation(true);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
@@ -330,7 +328,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use (&$scheduler) {
-                $scheduler->setSchedulerActive(true);
                 $e->stopPropagation(true);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
@@ -386,7 +383,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use (&$scheduler) {
-                $scheduler->setSchedulerActive(true);
                 $e->stopPropagation(true);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
