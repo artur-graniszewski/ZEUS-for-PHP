@@ -9,9 +9,7 @@ use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
-use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
-use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\ServerService\ServerServiceInterface;
 

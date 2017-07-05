@@ -27,9 +27,7 @@ final class IpcAdapterAbstractFactory implements AbstractFactoryInterface
 
         $class = new \ReflectionClass($requestedName);
 
-        if ($class->implementsInterface(IpcAdapterInterface::class)) {
-            return true;
-        }
+        return $class->implementsInterface(IpcAdapterInterface::class);
     }
 
     /**

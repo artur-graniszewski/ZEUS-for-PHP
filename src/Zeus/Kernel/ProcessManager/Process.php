@@ -136,7 +136,6 @@ class Process extends AbstractProcess
         // process is terminating, time to live equals zero
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
-        $this->ttl = 0;
 
         $status->setCode(ProcessState::EXITING);
         $this->sendStatus();

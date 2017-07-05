@@ -23,10 +23,10 @@ interface ProcessInterface
     public function getIpc();
 
     /**
-     * @param $ipcAdapter
+     * @param IpcAdapterInterface $ipcAdapter
      * @return $this
      */
-    public function setIpc($ipcAdapter);
+    public function setIpc(IpcAdapterInterface $ipcAdapter);
 
     /**
      * @return $this

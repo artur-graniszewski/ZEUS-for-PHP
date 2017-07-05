@@ -2,8 +2,8 @@
 
 namespace Zeus\ServerService\Shared\Logger;
 
-use Zend\Console\ColorInterface;
-use Zend\Console\Adapter\AdapterInterface;
+
+
 use Zend\Log\Formatter\FormatterInterface;
 
 class StreamLogFormatter implements FormatterInterface

@@ -243,7 +243,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 //        $this->events->triggerEvent($event);
     }
 
-    public function onSchedulerInit(SchedulerEvent $event)
+    public function onSchedulerInit()
     {
         $this->event = new SchedulerEvent();
         $pcntl = $this->getPcntlBridge();

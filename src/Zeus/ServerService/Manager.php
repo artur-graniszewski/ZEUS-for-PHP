@@ -6,7 +6,6 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
-use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class Manager
@@ -52,7 +51,7 @@ final class Manager
     }
 
     /**
-     * @return mixed[]
+     * @return mixed[]|false
      */
     protected function checkSignal()
     {
@@ -61,6 +60,8 @@ final class Manager
         if ($pid > 0) {
             return ['pid' => $pid, 'status' => $status];
         }
+
+        return false;
     }
 
     /**
@@ -70,7 +71,7 @@ final class Manager
     {
         $events = $this->getEventManager();
 
-        $this->eventHandles[] = $events->attach(ManagerEvent::EVENT_MANAGER_LOOP, function (ManagerEvent $e) {
+        $this->eventHandles[] = $events->attach(ManagerEvent::EVENT_MANAGER_LOOP, function () {
             $signal = $this->checkSignal();
 
             if (!$signal) {
@@ -83,6 +84,8 @@ final class Manager
                 $this->onServiceStop($service);
             }
         }, -10000);
+
+        return $this;
     }
 
     /**
@@ -255,7 +258,7 @@ final class Manager
 
         foreach ($serviceNames as $serviceName) {
             $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_START,
-                function (SchedulerEvent $event) use ($serviceName, $managerTime, $phpTime, $engine) {
+                function () use ($serviceName, $managerTime, $phpTime, $engine) {
 
                     $this->servicesRunning++;
                     $this->logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));

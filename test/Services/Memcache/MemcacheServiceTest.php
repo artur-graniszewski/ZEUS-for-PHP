@@ -9,9 +9,9 @@ use Zend\Cache\Service\StoragePluginManagerFactory;
 use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\AdapterPluginManager;
 use Zend\Cache\Storage\PluginManager;
-use Zend\Http\Response;
+
 use Zend\ServiceManager\ServiceManager;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;

@@ -138,7 +138,7 @@ class ProcessController extends AbstractActionController
             $event->setParam('init_process', true);
         }, 100000);
 
-        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function() {
             DynamicPriorityFilter::resetPriority();
         }, ProcessEvent::PRIORITY_FINALIZE + 1);
 

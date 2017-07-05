@@ -4,7 +4,6 @@ namespace ZeusBench\Http;
 
 use Athletic\AthleticEvent;
 use Zend\Http\Request;
-use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Message;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 

@@ -158,6 +158,8 @@ final class SocketAdapter implements
             $success = true;
             return $this->unpackMessage(defined('HHVM_VERSION') ? $message : substr($message, 0, -1));
         }
+
+        return null;
     }
 
     /**

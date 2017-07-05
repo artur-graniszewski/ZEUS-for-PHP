@@ -3,7 +3,7 @@
 namespace Zeus\Kernel\ProcessManager\Status;
 
 use Zend\Console\ColorInterface;
-use Zend\Console\Console;
+
 use Zeus\Kernel\ProcessManager\Helper\AddUnitsToNumbers;
 use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
 use Zeus\Kernel\ProcessManager\Scheduler;

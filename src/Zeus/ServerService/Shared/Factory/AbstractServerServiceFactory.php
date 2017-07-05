@@ -3,7 +3,7 @@
 namespace Zeus\ServerService\Shared\Factory;
 
 use Interop\Container\ContainerInterface;
-use Zend\Console\Console;
+
 use Zend\ServiceManager\Factory\AbstractFactoryInterface;
 use Zeus\ServerService\ServerServiceInterface;
 
@@ -25,9 +25,7 @@ class AbstractServerServiceFactory implements AbstractFactoryInterface
 
         $class = new \ReflectionClass($requestedName);
 
-        if ($class->implementsInterface(ServerServiceInterface::class)) {
-            return true;
-        }
+        return $class->implementsInterface(ServerServiceInterface::class);
     }
 
     /**

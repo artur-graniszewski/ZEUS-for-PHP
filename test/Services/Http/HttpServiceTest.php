@@ -7,7 +7,6 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Helpers\ZeusFactories;

@@ -9,8 +9,7 @@ use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Config;
-use Zeus\ServerService\Shared\Networking\SocketEventSubscriber;
-use Zeus\Kernel\Networking\SocketServer;
+use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -18,22 +17,27 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
 {
     use ZeusFactories;
 
-    /** @var SocketServer */
-    protected $server;
+    /** @var SocketMessageBroker */
+    protected $service;
     protected $port;
+    /** @var Config */
+    protected $config;
 
     public function setUp()
     {
-        $config = new Config();
         $this->port = 7777;
-        $config->setListenPort($this->port);
-        $config->setListenAddress('0.0.0.0');
-        $this->server = new SocketServer($config);
+        $this->config = new Config();
+        $this->config->setListenAddress('0.0.0.0');
+        $this->config->setListenPort($this->port);
     }
 
     public function tearDown()
     {
-        $this->server->stop();
+        $server = $this->service->getServer();
+
+        if ($server) {
+            $server->stop();
+        }
     }
 
     public function testSubscriberRequestHandling()
@@ -58,7 +62,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
                 $connection->close();
             }
         });
-        $eventSubscriber = new SocketEventSubscriber($this->server, $message);
+        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
@@ -112,7 +116,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $message = new SocketTestMessage(function($connection, $data) use (&$received) {
             throw new \RuntimeException("TEST");
         });
-        $eventSubscriber = new SocketEventSubscriber($this->server, $message);
+        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {

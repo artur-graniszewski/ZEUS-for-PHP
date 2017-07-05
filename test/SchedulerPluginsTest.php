@@ -5,7 +5,7 @@ namespace ZeusTest;
 use PHPUnit_Framework_TestCase;
 use Zeus\Kernel\ProcessManager\Plugin\DropPrivileges;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+
 use ZeusTest\Helpers\ZeusFactories;
 
 class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
@@ -59,7 +59,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
     public function testDropPrivilegesPluginFailureWhenNotSudoer()
     {
         $this->getSchedulerWithPlugin([
-                \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [
+                DropPrivileges::class => [
                     'user' => 'root',
                     'group' => 'root',
                 ]

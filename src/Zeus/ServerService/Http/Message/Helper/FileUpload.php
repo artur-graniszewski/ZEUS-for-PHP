@@ -263,5 +263,6 @@ trait FileUpload
         }
 
         // @todo: validate the above header
+        return null;
     }
 }

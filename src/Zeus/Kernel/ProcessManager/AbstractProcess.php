@@ -85,7 +85,7 @@ abstract class AbstractProcess implements ProcessInterface
     }
 
     /**
-     * @return Config
+     * @return ConfigInterface
      */
     public function getConfig()
     {
@@ -180,10 +180,10 @@ abstract class AbstractProcess implements ProcessInterface
     }
 
     /**
-     * @param $ipcAdapter
+     * @param IpcAdapterInterface $ipcAdapter
      * @return $this
      */
-    public function setIpc($ipcAdapter)
+    public function setIpc(IpcAdapterInterface $ipcAdapter)
     {
         $this->ipc = $ipcAdapter;
 

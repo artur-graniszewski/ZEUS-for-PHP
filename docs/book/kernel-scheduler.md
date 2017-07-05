@@ -109,10 +109,10 @@ return [
                 'max_spare_processes' => 5,
                 'start_processes' => 8,
                 'enable_process_cache' => true,
-                'plugins => [
+                'plugins' => [
                     \Zeus\Kernel\ProcessManager\Plugin\ProcessTitle::class, // by class name
                     
-                    'SomeZFServiceManagerServiceName`, // by name of ZF Service instantiated by its ServiceManager,
+                    'SomeZFServiceManagerServiceName', // by name of ZF Service instantiated by its ServiceManager,
                     
                     \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [ // by class name in array key and constructor params in array value
                         'user' => 'www-data',

@@ -4,10 +4,8 @@ namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+
+
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\ManagerEvent;
@@ -193,7 +191,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
     protected function terminateProcess($pid, $useSoftTermination)
     {
         if (!isset($this->threads[$pid]) || !$this->threads[$pid]) {
-            return;
+            return $this;
         }
         trigger_error(\Thread::getCurrentThreadId() . " TRYING TO TERMINATE $pid");
 

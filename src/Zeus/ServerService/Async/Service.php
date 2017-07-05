@@ -4,7 +4,7 @@ namespace Zeus\ServerService\Async;
 
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
 
@@ -12,6 +12,7 @@ class Service extends AbstractSocketServerService
 {
     /** @var Process */
     protected $process;
+    protected $message;
 
     public function start()
     {

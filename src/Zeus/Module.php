@@ -4,7 +4,7 @@ namespace Zeus;
 
 use Zend\Console\Adapter\AdapterInterface as ConsoleAdapter;
 use Zend\Console\ColorInterface;
-use Zend\Console\Console;
+
 use Zend\EventManager\EventInterface;
 use Zend\ModuleManager\Feature\AutoloaderProviderInterface;
 use Zend\ModuleManager\Feature\BootstrapListenerInterface;
@@ -48,7 +48,7 @@ class Module implements
      * Listen to the bootstrap event
      *
      * @param EventInterface $event
-     * @return array
+     * @return void
      */
     public function onBootstrap(EventInterface $event)
     {

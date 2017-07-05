@@ -25,6 +25,8 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
     public function write($data)
     {
         $this->dataSent .= $data;
+
+        return $this;
     }
 
     /**
@@ -152,6 +154,7 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
     public function select($timeout)
     {
         // TODO: Implement select() method.
+        return true;
     }
 
     public function flush()

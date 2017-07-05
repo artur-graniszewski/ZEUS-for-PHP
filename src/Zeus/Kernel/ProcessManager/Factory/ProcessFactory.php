@@ -7,7 +7,7 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
-use Zeus\Kernel\ProcessManager\Scheduler;
+
 use Zeus\Kernel\ProcessManager\Process;
 
 class ProcessFactory implements FactoryInterface

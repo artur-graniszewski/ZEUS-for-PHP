@@ -7,8 +7,8 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
-use Zeus\Kernel\ProcessManager\Scheduler;
+
+
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
@@ -188,7 +188,7 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         $event->setParam('uid', $pid);
     }
 
-    public function onSchedulerInit(SchedulerEvent $event)
+    public function onSchedulerInit()
     {
         $pcntl = $this->getPcntlBridge();
         $onTaskTerminate = function() { $this->onSchedulerTerminate(); };

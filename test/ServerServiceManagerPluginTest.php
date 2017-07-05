@@ -3,7 +3,7 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
-use Zend\EventManager\EventManager;
+
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\ServerService\Manager;

@@ -123,7 +123,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         //$this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
@@ -241,19 +241,18 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     {
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
 
-        if ($pid = @file_get_contents($fileName)) {
-            $pid = (int) $pid;
-
-            if ($pid) {
-                $this->stopProcess($pid, true);
-                $this->log(Logger::INFO, "Server stopped");
-                unlink($fileName);
-
-                return $this;
-            }
+        $pid = @file_get_contents($fileName);
+        if (!$pid) {
+            throw new ProcessManagerException("Server not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
         }
 
-        throw new ProcessManagerException("Server not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
+        $pid = (int) $pid;
+
+        $this->stopProcess($pid, true);
+        $this->log(Logger::INFO, "Server stopped");
+        unlink($fileName);
+
+        return $this;
     }
 
     /**
@@ -294,7 +293,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     public function start($launchAsDaemon = null)
     {
         $this->getMultiProcessingModule()->attach($this->getEventManager());
-        $this->startTime = microtime(true);
         $plugins = $this->getPluginRegistry()->count();
         $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
         $this->collectCycles();
@@ -371,9 +369,6 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function onSchedulerStart()
     {
         $this->log(Logger::INFO, "Scheduler started");
@@ -607,7 +602,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * @return MultiProcessingModuleInterface
      */
-    public function getMultiProcessingModule() : MultiProcessingModuleInterface
+    public function getMultiProcessingModule()
     {
         return $this->multiProcessingModule;
     }

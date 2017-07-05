@@ -10,7 +10,7 @@ use ZeusTest\Helpers\SocketTestNetworkStream;
 
 class AsyncMessageTest extends PHPUnit_Framework_TestCase
 {
-    /** @var NetworkStreamInterface */
+    /** @var NetworkStreamInterface|SocketTestNetworkStream */
     protected $connection;
 
     /** @var Message */

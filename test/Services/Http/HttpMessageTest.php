@@ -570,7 +570,8 @@ World
                 $rawResponse = Response::fromString($testConnection->getSentData());
             } catch (\Exception $e) {
                 $this->fail("Invalid response detected in chunk $chunkSize: " . json_encode($chunks));
-                $this->fail("Invalid response detected in chunk $chunkSize: " . $testConnection->getSentData());
+
+                return;
             }
             $this->assertEquals(200, $rawResponse->getStatusCode(), "HTTP response should return 200 OK status, message received: " . $rawResponse->getContent());
             $this->assertEquals("Hello_World", $request->getContent(), "HTTP response should have returned 'Hello_World', received: " . $request->getContent());

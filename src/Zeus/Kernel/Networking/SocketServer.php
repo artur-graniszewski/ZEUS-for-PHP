@@ -9,30 +9,107 @@ use Zeus\Kernel\Networking\Stream\SocketStream;
  */
 final class SocketServer
 {
+    /** @var resource */
     protected $socket;
 
-    protected $config;
+    /** @var int */
+    protected $port = -1;
 
-    public function __construct($config)
+    /** @var string */
+    protected $host;
+
+    /** @var int */
+    protected $backlog = 5;
+
+    /** @var bool */
+    protected $reuseAddress = false;
+
+    /**
+     * SocketServer constructor.
+     * @param int $port
+     * @param int $backlog
+     * @param string|null $host
+     */
+    public function __construct(int $port = -1, int $backlog = null, string $host = null)
     {
-        $this->config = $config;
+        $this->host = $host;
+
+        if ($backlog) {
+            $this->backlog = $backlog;
+        }
+
+        if ($port >= 0) {
+            $this->port = $port;
+            $this->createServer();
+        }
+    }
+
+    /**
+     * @param bool $reuse
+     * @return $this
+     */
+    public function setReuseAddress(bool $reuse)
+    {
+        $this->reuseAddress = $reuse;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getReuseAddress()
+    {
+        return $this->reuseAddress;
+    }
+
+    /**
+     * @param string $host
+     * @param int $backlog
+     * @param int $port
+     * @return $this
+     */
+    public function bind(string $host, int $backlog = null, int $port = -1)
+    {
+        if ($this->isBound()) {
+            throw new \LogicException("Server already bound");
+        }
+
+        $this->host = $host;
+        if ($backlog) {
+            $this->backlog = $backlog;
+        }
+
+        if ($port >= 0) {
+            $this->port = $port;
+        } else if ($this->port < 0) {
+            throw new \LogicException("Can't bind to $host: no port specified");
+        }
+
+        $this->createServer();
+
+        return $this;
     }
 
     /**
      * @return $this
      */
-    public function createServer()
+    protected function createServer()
     {
         $opts = [
             'socket' => [
-                'backlog' => 100,
-                'so_reuseport' => true,
+                'backlog' => $this->backlog,
+                'so_reuseport' => $this->getReuseAddress(),
             ],
         ];
 
         $context = stream_context_create($opts);
 
-        $uri = 'tcp://' . $this->config->getListenAddress() . ':' . $this->config->getListenPort();
+        if (!$this->host) {
+            $this->host = '0.0.0.0';
+        }
+
+        $uri = 'tcp://' . $this->host . ':' . $this->port;
 
         $this->socket = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN, $context);
         if (false === $this->socket) {
@@ -48,30 +125,30 @@ final class SocketServer
      * @param int $timeout
      * @return null|SocketStream
      */
-    public function listen($timeout)
+    public function accept($timeout)
     {
         $newSocket = @stream_socket_accept($this->socket, $timeout, $peerName);
-        if ($newSocket) {
-            stream_set_blocking($newSocket, false);
-
-            if (function_exists('stream_set_chunk_size')) {
-                //stream_set_chunk_size($newSocket, 1);
-            }
-
-            if (function_exists('stream_set_read_buffer')) {
-                //stream_set_read_buffer($newSocket, 0);
-            }
-
-            if (function_exists('stream_set_write_buffer')) {
-                //stream_set_write_buffer($newSocket, 0);
-            }
-
-            $connection = new SocketStream($newSocket, $peerName);
-
-            return $connection;
+        if (!$newSocket) {
+            return null;
         }
 
-        return null;
+        stream_set_blocking($newSocket, false);
+
+        if (function_exists('stream_set_chunk_size')) {
+            //stream_set_chunk_size($newSocket, 1);
+        }
+
+        if (function_exists('stream_set_read_buffer')) {
+            //stream_set_read_buffer($newSocket, 0);
+        }
+
+        if (function_exists('stream_set_write_buffer')) {
+            //stream_set_write_buffer($newSocket, 0);
+        }
+
+        $connection = new SocketStream($newSocket, $peerName);
+
+        return $connection;
     }
 
     /**
@@ -92,8 +169,24 @@ final class SocketServer
     /**
      * @return bool
      */
-    public function isServerCreated()
+    public function isBound()
     {
         return is_resource($this->socket);
+    }
+
+    /**
+     * @return int
+     */
+    public function getLocalPort()
+    {
+        return $this->port;
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getLocalSocketAddress()
+    {
+        return $this->host;
     }
 }

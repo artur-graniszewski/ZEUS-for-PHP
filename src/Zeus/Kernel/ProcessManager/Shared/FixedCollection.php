@@ -131,6 +131,8 @@ class FixedCollection implements \Iterator, \ArrayAccess, \Countable
         if ($this->values->valid()) {
             return $this->values->current();
         }
+
+        return null;
     }
 
     /**

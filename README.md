@@ -186,7 +186,6 @@ namespace Application\Controller;
 
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\View\Model\ViewModel;
-use ZF\Apigility\Admin\Module as AdminModule;
 
 class IndexController extends AbstractActionController
 {
@@ -216,6 +215,8 @@ class IndexController extends AbstractActionController
         // usual Zend Framework stuff to return data to the view layer
         $view = new ViewModel();
         $view->setVariable('async_results', $results);
+        
+        return $view;
     }
 }
 ```

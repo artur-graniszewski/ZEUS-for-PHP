@@ -54,7 +54,7 @@ trait PluginRegistry
     /**
      * Return registry of plugins
      *
-     * @return SplObjectStorage
+     * @return SplObjectStorage|ListenerAggregateInterface[]
      */
     public function getPluginRegistry()
     {

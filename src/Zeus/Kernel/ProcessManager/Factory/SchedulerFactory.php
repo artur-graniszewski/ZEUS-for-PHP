@@ -13,8 +13,7 @@ use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\ServerService\Shared\Logger\LoggerInterface;
+
 
 class SchedulerFactory implements FactoryInterface
 {

@@ -175,6 +175,8 @@ final class FifoAdapter implements
             $success = true;
             return $message;
         }
+
+        return null;
     }
 
     /**

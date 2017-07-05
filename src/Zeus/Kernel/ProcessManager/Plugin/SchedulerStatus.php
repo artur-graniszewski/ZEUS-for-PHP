@@ -22,6 +22,7 @@ class SchedulerStatus implements ListenerAggregateInterface
 
     /** @var float */
     protected $startTime;
+    protected $schedulerStatus;
 
     protected function init(SchedulerEvent $event)
     {
@@ -38,7 +39,7 @@ class SchedulerStatus implements ListenerAggregateInterface
     {
         $events = $events->getSharedManager();
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->init($e);}, $priority);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e);}, $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop();}, $priority);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
     }
 
@@ -114,7 +115,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
     }
 
-    private function onSchedulerLoop(SchedulerEvent $event)
+    private function onSchedulerLoop()
     {
         $scheduler = $this->scheduler;
 

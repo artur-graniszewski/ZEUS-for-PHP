@@ -9,10 +9,11 @@ use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
 use Zeus\Kernel\ProcessManager\Process;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
+use Zeus\ServerService\Http\Message\Request as HttpRequest;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
 
 class Service extends AbstractSocketServerService
@@ -97,7 +98,7 @@ class Service extends AbstractSocketServerService
      */
     protected function getHeader(RequestInterface $request, $headerName, $defaultValue = null)
     {
-        if ($request instanceof \Zeus\ServerService\Http\Message\Request) {
+        if ($request instanceof HttpRequest) {
             $value = $request->getHeaderOverview($headerName, false);
             return $value ? $value : $defaultValue;
         }

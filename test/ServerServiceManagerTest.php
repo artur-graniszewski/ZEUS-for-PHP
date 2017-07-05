@@ -118,6 +118,7 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
             'detach',
         ]);
 
+        /** @var EventManager|\PHPUnit_Framework_MockObject_MockObject $events */
         $events = $mockBuilder->getMock();
         $events->expects($this->atLeastOnce())
             ->method('detach');

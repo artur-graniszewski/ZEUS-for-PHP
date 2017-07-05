@@ -24,7 +24,7 @@ return [
                 'service_name' => 'some_service_name',
                 'scheduler_name' => 'sample_scheduler',
                 'service_adapter' => 'CustomZendFrameworkServiceName',
-                'logger_adapter' => LoggerInterface::class
+                'logger_adapter' => LoggerInterface::class,
                 'service_settings' => [
                     'service_custom_data' => 'value'
                 ]

@@ -6,17 +6,18 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Networking\Stream\SocketStream;
 use Zeus\Kernel\Networking\SocketServer;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\SeparateAddressSpaceInterface;
+
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedInitialAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
 /**
- * Class SocketEventSubscriber
+ * Class SocketMessageBroker
  * @internal
  */
-final class SocketEventSubscriber
+final class SocketMessageBroker
 {
     /** @var SocketServer */
     protected $server;
@@ -30,9 +31,9 @@ final class SocketEventSubscriber
     /** @var SocketStream */
     protected $connection;
 
-    public function __construct(SocketServer $server, MessageComponentInterface $message)
+    public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
-        $this->server = $server;
+        $this->config = $config;
         $this->message = $message;
     }
 
@@ -59,14 +60,16 @@ final class SocketEventSubscriber
         if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START) {
             $mpm = $event->getTarget()->getMultiProcessingModule();
             if ($mpm instanceof SharedAddressSpaceInterface || $mpm instanceof SharedInitialAddressSpaceInterface) {
-                $this->server->createServer();
+                $this->server = new SocketServer($this->config->getListenPort(), null, $this->config->getListenAddress());
 
                 return $this;
             }
         };
 
-        if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && !$this->server->isServerCreated()) {
-            $this->server->createServer();
+        if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && !$this->server) {
+            $this->server = new SocketServer();
+            $this->server->setReuseAddress(true);
+            $this->server->bind($this->config->getListenAddress(), null, $this->config->getListenPort());
         }
 
         return $this;
@@ -83,7 +86,7 @@ final class SocketEventSubscriber
 
         try {
             if (!$this->connection) {
-                $connection = $this->server->listen(1);
+                $connection = $this->server->accept(1);
                 if (!$connection) {
                     return;
                 }
@@ -136,14 +139,22 @@ final class SocketEventSubscriber
             $this->connection = null;
         }
 
+        $this->server->stop();
         $this->server = null;
     }
 
     /**
-     * @param ProcessEvent $event
+     * @return SocketServer
+     */
+    public function getServer()
+    {
+        return $this->server;
+    }
+
+    /**
      * @return $this
      */
-    protected function onHeartBeat(ProcessEvent $event)
+    protected function onHeartBeat()
     {
         $now = time();
         if ($this->connection && $this->lastTickTime !== $now) {
