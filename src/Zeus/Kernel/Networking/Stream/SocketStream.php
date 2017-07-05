@@ -31,7 +31,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     protected function doClose()
     {
         if (!$this->isEof()) {
-            stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
+            stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
         }
 
         parent::doClose();
@@ -44,7 +44,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     public function getServerAddress()
     {
-        return @stream_socket_get_name($this->stream, false);
+        return @stream_socket_get_name($this->resource, false);
     }
 
     /**
@@ -52,7 +52,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     public function getRemoteAddress()
     {
-        return $this->peerName ? $this->peerName : @stream_socket_get_name($this->stream, true);
+        return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
     }
 
     /**
@@ -66,7 +66,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         }
 
         $write = $except = [];
-        $read = [$this->stream];
+        $read = [$this->resource];
 
         @trigger_error("");
         $result = $this->doSelect($read, $write, $except, $timeout);
@@ -111,10 +111,10 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         $sent = 0;
 
         $read = $except = [];
-        $write = [$this->stream];
+        $write = [$this->resource];
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->stream, $this->writeBuffer);
+            $wrote = $writeMethod($this->resource, $this->writeBuffer);
 
             // write failed, try to wait a bit
             if ($wrote === 0) {

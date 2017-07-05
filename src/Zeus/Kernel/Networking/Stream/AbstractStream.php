@@ -9,7 +9,7 @@ use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
  * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
-class AbstractStream implements StreamInterface, FlushableConnectionInterface
+class AbstractStream extends AbstractPhpResource implements StreamInterface, FlushableConnectionInterface
 {
     const DEFAULT_WRITE_BUFFER_SIZE = 65536;
     const DEFAULT_READ_BUFFER_SIZE = 65536;
@@ -20,7 +20,7 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
 
     protected $isClosing = false;
 
-    protected $stream;
+    protected $isClosed = false;
 
     protected $writeBuffer = '';
 
@@ -43,7 +43,7 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
      */
     public function __construct($stream, $peerName = null)
     {
-        $this->stream = $stream;
+        $this->setResource($stream);
         $this->peerName = $peerName;
     }
 
@@ -52,7 +52,7 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
      */
     public function isReadable()
     {
-        return $this->isReadable && $this->stream;
+        return $this->isReadable && $this->resource;
     }
 
     /**
@@ -68,7 +68,17 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
 
         $this->doClose();
 
+        $this->isClosed = true;
+
         return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isClosed()
+    {
+        return $this->isClosed;
     }
 
     /**
@@ -80,9 +90,9 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
         $this->isReadable = false;
         $this->isWritable = false;
 
-        fclose($this->stream);
+        fclose($this->resource);
 
-        $this->stream = null;
+        $this->resource = null;
 
         return $this;
     }
@@ -93,10 +103,10 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
     protected function isEof()
     {
         // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
-        if (feof($this->stream)) {
+        if (feof($this->resource)) {
             return true;
         }
-        $info = @stream_get_meta_data($this->stream);
+        $info = @stream_get_meta_data($this->resource);
 
         return $info['eof'] || $info['timed_out'];
     }
@@ -106,7 +116,7 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
      */
     public function isWritable()
     {
-        return $this->isWritable && $this->stream;
+        return $this->isWritable && $this->resource;
     }
 
     /**
@@ -124,12 +134,12 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
             $endingSize = strlen($ending);
 
             while (!$this->isEof()) {
-                $pos = ftell($this->stream);
+                $pos = ftell($this->resource);
 
-                $buffer = @stream_get_line($this->stream, $this->readBufferSize, $ending);
+                $buffer = @stream_get_line($this->resource, $this->readBufferSize, $ending);
                 $data .= $buffer;
 
-                $newPos = ftell($this->stream);
+                $newPos = ftell($this->resource);
                 if ($newPos === $pos + strlen($buffer) + $endingSize) {
 
                     break;
@@ -138,7 +148,7 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
             }
 
         } else {
-            $data = @stream_get_contents($this->stream, $this->readBufferSize);
+            $data = @stream_get_contents($this->resource, $this->readBufferSize);
         }
 
         if ($data === false || $this->isEof()) {
@@ -195,7 +205,7 @@ class AbstractStream implements StreamInterface, FlushableConnectionInterface
 
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->stream, $this->writeBuffer);
+            $wrote = $writeMethod($this->resource, $this->writeBuffer);
 
             if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
                 $this->isWritable = false;

@@ -22,7 +22,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         }
 
         $write = $except = [];
-        $read = [$this->stream];
+        $read = [$this->resource];
 
         @trigger_error("");
         $result = $this->doSelect($read, $write, $except, $timeout);
@@ -84,10 +84,10 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         $sent = 0;
 
         $read = $except = [];
-        $write = [$this->stream];
+        $write = [$this->resource];
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->stream, $this->writeBuffer);
+            $wrote = $writeMethod($this->resource, $this->writeBuffer);
 
             // write failed, try to wait a bit
             if ($wrote === 0) {
