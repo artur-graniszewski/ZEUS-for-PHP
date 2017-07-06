@@ -19,11 +19,18 @@ class Selector extends AbstractPhpResource
     public function register(AbstractStream $stream, $operation = self::OP_ALL)
     {
         if (!$stream instanceof SelectableStreamInterface) {
+<<<<<<< HEAD
             $interface = SelectableStreamInterface::class;
             throw new \LogicException("Stream class must implement $interface");
         }
 
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
+=======
+            throw new \LogicException("Only selectable streams can be registered");
+        }
+
+        if (!in_array($operation, [1, 2, 3])) {
+>>>>>>> 2371fdb1db521ecdd3c747d939f597de711fcb0e
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
         }
 
@@ -33,6 +40,27 @@ class Selector extends AbstractPhpResource
     }
 
     /**
+<<<<<<< HEAD
+=======
+     * @return AbstractStream[]
+     */
+    protected function getActiveStreams()
+    {
+        $streams = [];
+
+        foreach ($this->streams as $streamDetails) {
+            if ($streamDetails[0]->isClosed()) {
+                continue;
+            }
+
+            $streams[] = $streamDetails;
+        }
+
+        return $streams;
+    }
+
+    /**
+>>>>>>> 2371fdb1db521ecdd3c747d939f597de711fcb0e
      * @param int $timeout
      * @return int
      */
@@ -45,6 +73,7 @@ class Selector extends AbstractPhpResource
         $except = [];
 
         foreach ($this->streams as $streamDetails) {
+<<<<<<< HEAD
             /** @var AbstractStream $stream */
             list($stream, $operation) = $streamDetails;
             $resource = $stream->getResource();
@@ -65,6 +94,18 @@ class Selector extends AbstractPhpResource
         }
 
         return (int) $streamsChanged;
+=======
+            $resource = $streamDetails[0]->getResource();
+
+            if ($streamDetails[1] & self::OP_READ) {
+                $read[] = $resource;
+            }
+        }
+
+        $streamsChanged = stream_select($read, $write, $except, 0, $timeout);
+
+        return $streamsChanged;
+>>>>>>> 2371fdb1db521ecdd3c747d939f597de711fcb0e
     }
 
     /**
@@ -79,6 +120,7 @@ class Selector extends AbstractPhpResource
         $except = [];
 
         foreach ($this->streams as $streamDetails) {
+<<<<<<< HEAD
             /** @var AbstractStream $stream */
             list($stream, $operation) = $streamDetails;
             $resource = $stream->getResource();
@@ -97,6 +139,20 @@ class Selector extends AbstractPhpResource
 
         if ($streamsChanged > 0) {
             $resources = array_unique(array_merge($read, $write));
+=======
+            $resource = $streamDetails[0]->getResource();
+
+            if ($streamDetails[1] & self::OP_READ) {
+                $read[] = $resource;
+            }
+        }
+
+        $streamsChanged = stream_select($read, $write, $except, 0, 0);
+        $result = [];
+
+        if ($streamsChanged > 0) {
+            $resources = array_merge($read, $write);
+>>>>>>> 2371fdb1db521ecdd3c747d939f597de711fcb0e
             foreach ($resources as $resource) {
                 $result[] = $this->getStreamForResource($resource);
             }
@@ -105,6 +161,7 @@ class Selector extends AbstractPhpResource
         return $result;
     }
 
+<<<<<<< HEAD
     /**
      * @param resource $resource
      * @return AbstractStream
@@ -140,5 +197,14 @@ class Selector extends AbstractPhpResource
         }
 
         return $streams;
+=======
+    protected function getStreamForResource($resource)
+    {
+        foreach ($this->streams as $streamDetails) {
+            if ($streamDetails[0]->getResource() === $resource) {
+                return $streamDetails[0];
+            }
+        }
+>>>>>>> 2371fdb1db521ecdd3c747d939f597de711fcb0e
     }
 }
