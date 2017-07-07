@@ -29,7 +29,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
     public function tearDown()
     {
         if ($this->server) {
-            $this->server->stop();
+            $this->server->close();
         }
         fclose($this->client);
     }
@@ -104,7 +104,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
     public function testErrorHandlingOnRunWhenOffline()
     {
         $plugin = $this->getPlugin(false);
-        $this->server->stop();
+        $this->server->close();
         $this->server = null;
 
         $plugin->run(function() { return "ok"; });

@@ -65,7 +65,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     {
         $this->events = $events;
         $events = $events->getSharedManager();
-        $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
         $events->attach('*', ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
@@ -108,12 +107,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->terminateProcess($event->getParam('uid'), $event->getParam('soft', false));
     }
 
-    /**
-     *
-     */
-    public function onKernelStart()
-    {
-    }
 
     public function onSchedulerTerminate()
     {

@@ -35,6 +35,7 @@ class Process extends AbstractProcess
     {
         $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
             // @todo: do not use mainLoop() method from outside
+            $this->getIpc()->useChannelNumber(1);
             $event->getTarget()->mainLoop();
         }, ProcessEvent::PRIORITY_FINALIZE);
 
@@ -172,6 +173,10 @@ class Process extends AbstractProcess
                 $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
+
+                if ($event->getParam('exit')) {
+                    break;
+                }
             } catch (\Throwable $exception) {
                 $this->reportException($exception);
             }
@@ -196,15 +201,12 @@ class Process extends AbstractProcess
             'message' => $status->getStatusDescription(),
             'extra' => [
                 'uid' => $this->getProcessId(),
+                'threadId' => $this->getThreadId(),
                 'processId' => $this->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
             ]
         ];
-
-        if ($this instanceof ThreadInterface) {
-            $payload['extra']['threadId'] = $this->getThreadId();
-        }
 
         $this->getIpc()->send($payload);
 

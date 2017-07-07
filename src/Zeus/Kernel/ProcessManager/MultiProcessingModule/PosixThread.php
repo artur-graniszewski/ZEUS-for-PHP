@@ -6,12 +6,16 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 
 
+use Zeus\Kernel\Networking\SocketServer;
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\ManagerEvent;
 
 final class PosixThread implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
+    const LOOPBACK_INTERFACE = '127.0.0.1';
+
     /** @var EventManagerInterface */
     protected $events;
 
@@ -26,12 +30,19 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected $processes = [];
 
+    /** @var \Thread[] */
     protected $threads = [];
+
+    /** @var SocketServer[] */
+    protected $threadIpcs = [];
 
     protected static $id = 0;
 
     /** @var Scheduler */
     protected $scheduler;
+
+    /** @var SocketServer */
+    protected $ipc;
 
     /**
      * PosixDriver constructor.
@@ -54,8 +65,9 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], 10000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
         $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, [$this, 'onManagerStop'], -9000);
 
@@ -65,7 +77,56 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
     public function onManagerStop()
     {
         $this->terminateProcess(1, true);
-        trigger_error("MANAGER STOP");
+    }
+
+    protected function isPipeBroken()
+    {
+        $stream = @stream_socket_client('tcp://' . static::LOOPBACK_INTERFACE . ':' . ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
+
+        if ($stream) {
+            fclose($stream);
+        }
+        return ($stream === false);
+    }
+
+    public function onProcessLoop(ProcessEvent $event)
+    {
+        if ($this->isPipeBroken()) {
+            $event->setParam('exit', true);
+            return;
+        }
+    }
+
+    public function onKernelLoop()
+    {
+
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+        if ($this->isPipeBroken()) {
+            $event = new SchedulerEvent();
+            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
+            $event->setParam('uid', $this->ppid);
+            $this->events->triggerEvent($event);
+            return;
+        }
+
+        foreach ($this->threads as $threadId => $thread) {
+            $this->threadIpcs[$threadId]->accept(0);
+            if ($thread->isTerminated()) {
+                $this->threads[$threadId] = null;
+
+                $newEvent = new SchedulerEvent();
+                $newEvent->setParam('uid', $threadId);
+                $newEvent->setParam('threadId', $threadId);
+                $event->setParam('processId', getmypid());
+                $newEvent->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
+                $this->events->triggerEvent($newEvent);
+                unset ($this->threads[$threadId]);
+                unset($this->threadIpcs[$threadId]);
+            }
+        }
     }
 
     /**
@@ -89,7 +150,9 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     public function onSchedulerStop()
     {
-
+        foreach ($this->threads as $key => $thread) {
+            $this->threads[$key] = null;
+        }
     }
 
     /**
@@ -105,16 +168,8 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
+        $event->setParam('processId', getmypid());
         $this->events->triggerEvent($event);
-    }
-
-    public function onKernelLoop()
-    {
-        trigger_error(\Thread::getCurrentThreadId() . " KERNEL LOOP");
-    }
-
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
     }
 
     protected function startProcess(SchedulerEvent $event)
@@ -130,6 +185,8 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
             public $argv;
             public $id;
             public $terminate = false;
+            /** @var int */
+            public $ipcPort;
 
             public function run()
             {
@@ -146,11 +203,14 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
                 $argv = $_SERVER['argv'];
                 $argc = $_SERVER['argc'];
                 $php = '
+                    define("ZEUS_THREAD_CONN_PORT", ' . $this->ipcPort . ');
+                    define("ZEUS_THREAD_ID", ' . $this->id . ');
                     $SERVER = ' . var_export((array) $_SERVER, true) .';
                     foreach ($SERVER as $type => $value) {
                         $_SERVER[$type] = $value;
                     }
 
+                    unset ($SERVER);
                     require_once($_SERVER[\'SCRIPT_NAME\']);
                 ?>';
 
@@ -161,11 +221,21 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
             }
         };
 
+        static::$id++;
+        $this->threadIpcs[static::$id] = new SocketServer(0, 5, static::LOOPBACK_INTERFACE);
+        $port = $this->threadIpcs[static::$id]->getLocalPort();
+
+        $stream = @stream_socket_client('tcp://' . static::LOOPBACK_INTERFACE . ':' . $port, $errno, $errstr, 1);
+        if ($stream === false) {
+            $event->setParam('exit', true);
+            return;
+        }
+
         $thread->server = $_SERVER;
         $thread->argv = $argv;
+        $thread->id = static::$id;
+        $thread->ipcPort = $port;
         $thread->start(PTHREADS_INHERIT_INI);
-
-        static::$id++;
 
         $this->threads[static::$id] = $thread;
 
@@ -177,10 +247,13 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $pid = $this->startProcess($event);
 
         $event->setParam('uid', $pid);
+        $event->setParam('processId', getmypid());
+        $event->setParam('threadId', $pid);
     }
 
     public function onSchedulerInit(SchedulerEvent $event)
     {
+        static::$id = ZEUS_THREAD_ID;
     }
 
     /**
@@ -193,19 +266,10 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         if (!isset($this->threads[$pid]) || !$this->threads[$pid]) {
             return $this;
         }
-        trigger_error(\Thread::getCurrentThreadId() . " TRYING TO TERMINATE $pid");
 
-        //$this->threads[$pid]->shutdown();
-        trigger_error(\Thread::getCurrentThreadId() . " TERMINATED $pid");
-        /** @var \Thread $threadToTerminate */
-//        $threadToTerminate = $this->threads[$pid];
-//        $threadToTerminate->synchronized(
-//            function($thread) {
-//                $thread->terminate = true;
-//                $thread->notify();
-//            }, $threadToTerminate
-//        );
-        $this->threads[$pid] = null;
+        if ($this->threadIpcs[$pid]->isBound()) {
+            $this->threadIpcs[$pid]->close();
+        }
 
         return $this;
     }

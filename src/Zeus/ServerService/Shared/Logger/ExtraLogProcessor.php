@@ -43,6 +43,7 @@ class ExtraLogProcessor implements ProcessorInterface
 
         $event['extra']['service_name'] = isset($event['extra']['service_name']) ? $event['extra']['service_name'] : $this->config['service_name'];
         $event['extra']['uid'] = isset($event['extra']['uid']) ? $event['extra']['uid'] : getmypid();
+        $event['extra']['threadId'] = isset($event['extra']['threadId']) ? $event['extra']['threadId'] : (defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         $event['extra']['logger'] = isset($event['extra']['logger']) ? $event['extra']['logger'] : $this->detectLogger();
         $microtime = microtime(true);
 

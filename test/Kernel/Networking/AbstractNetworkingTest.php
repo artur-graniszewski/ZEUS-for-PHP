@@ -17,7 +17,7 @@ abstract class AbstractNetworkingTest extends PHPUnit_Framework_TestCase
     public function tearDown()
     {
         foreach ($this->servers as $server) {
-            $server->stop();
+            $server->close();
         }
 
         $this->servers = [];

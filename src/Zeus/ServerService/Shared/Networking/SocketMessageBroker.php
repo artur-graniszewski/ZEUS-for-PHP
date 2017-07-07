@@ -69,7 +69,7 @@ final class SocketMessageBroker
         if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && !$this->server) {
             $this->server = new SocketServer();
             $this->server->setReuseAddress(true);
-            $this->server->bind($this->config->getListenAddress(), null, $this->config->getListenPort());
+            $this->server->bind($this->config->getListenAddress(), 1, $this->config->getListenPort());
         }
 
         return $this;
@@ -139,7 +139,7 @@ final class SocketMessageBroker
             $this->connection = null;
         }
 
-        $this->server->stop();
+        $this->server->close();
         $this->server = null;
     }
 

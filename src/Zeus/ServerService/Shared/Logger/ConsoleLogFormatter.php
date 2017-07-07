@@ -46,7 +46,7 @@ class ConsoleLogFormatter extends StreamLogFormatter implements FormatterInterfa
     {
         $console = $this->console;
 
-        $serviceName = $event['extra']['service_name'];
+        $serviceName = $event['extra']['service_name'] . '-' . $event['extra']['threadId'];
         $dateTime = $console->colorize($event['timestamp']->format($this->dateTimeFormat . '.') . sprintf("%'.03d", $event['extra']['microtime']), ColorInterface::GRAY);
         $severity = $console->colorize(str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT), $this->getSeverityColor($event['priorityName']));
         $pid = $console->colorize($event['extra']['uid'], ColorInterface::CYAN);

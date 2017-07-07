@@ -74,7 +74,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             'priority' => '',
             'message' => 'fetchStatus',
             'extra' => [
-                'uid' => $scheduler->getProcessId(),
+                'uid' => getmypid(),
                 'logger' => __CLASS__
             ]
         ];

@@ -118,6 +118,15 @@ final class SocketServer
 
         stream_set_blocking($this->socket, 0);
 
+        if ($this->port === 0) {
+            $socketName = stream_socket_get_name($this->socket, false);
+            $parts = explode(":", $socketName);
+
+            end($parts);
+
+            $this->port = (int) current($parts);
+        }
+
         return $this;
     }
 
@@ -125,7 +134,7 @@ final class SocketServer
      * @param int $timeout
      * @return null|SocketStream
      */
-    public function accept($timeout)
+    public function accept(int $timeout)
     {
         $newSocket = @stream_socket_accept($this->socket, $timeout, $peerName);
         if (!$newSocket) {
@@ -154,7 +163,7 @@ final class SocketServer
     /**
      * @return $this
      */
-    public function stop()
+    public function close()
     {
         if (!$this->socket) {
             throw new \LogicException("Server already stopped");

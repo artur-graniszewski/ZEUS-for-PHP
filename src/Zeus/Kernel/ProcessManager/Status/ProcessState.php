@@ -75,6 +75,9 @@ class ProcessState
     /** @var string */
     protected $statusDescription = '';
 
+    /** @var int */
+    protected $threadId = 1;
+
     /**
      * TaskStatus constructor.
      * @param string $serviceName
@@ -91,6 +94,25 @@ class ProcessState
     /**
      * @return int
      */
+    public function getThreadId(): int
+    {
+        return $this->threadId;
+    }
+
+    /**
+     * @param int $threadId
+     * @return $this
+     */
+    public function setThreadId(int $threadId)
+    {
+        $this->threadId = $threadId;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
     public function getNumberOfTasksPerSecond()
     {
         return $this->tasksPerSecond;
@@ -101,6 +123,7 @@ class ProcessState
         return [
             'code' => $this->code,
             'uid' => $this->getProcessId(),
+            'threadId' => $this->getThreadId(),
             'requests_finished' => $this->tasksFinished,
             'requests_per_second' => $this->tasksPerSecond,
             'time' => $this->time,

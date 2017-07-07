@@ -36,7 +36,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $server = $this->service->getServer();
 
         if ($server) {
-            $server->stop();
+            $server->close();
         }
     }
 

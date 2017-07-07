@@ -144,6 +144,11 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
             case Message::IS_STATUS:
                 $details = $message['extra'];
                 $pid = $details['uid'];
+                $threadId = $details['threadId'];
+
+                if ($threadId > 1) {
+                    $pid = $threadId;
+                }
 
                 /** @var ProcessState $processStatus */
                 $processStatus = $message['extra']['status'];
@@ -480,6 +485,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         $process = $this->processService;
         $process->setProcessId($event->getParam('uid'));
+        $process->setThreadId($event->getParam('threadId'));
         $this->collectCycles();
         $this->setSchedulerActive(false);
         $this->getIpc()->useChannelNumber(1);
@@ -569,6 +575,9 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     public function kernelLoop()
     {
         while ($this->isSchedulerActive()) {

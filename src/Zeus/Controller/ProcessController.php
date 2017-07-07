@@ -2,6 +2,7 @@
 
 namespace Zeus\Controller;
 
+use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
@@ -136,7 +137,13 @@ class ProcessController extends AbstractActionController
         $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $event) {
             $event->stopPropagation(true);
             $event->setParam('init_process', true);
+            $event->setParam('uid', getmypid());
+            $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         }, 100000);
+
+        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
+            $event->stopPropagation(true);
+        }, 1);
 
         $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function() {
             DynamicPriorityFilter::resetPriority();
@@ -162,7 +169,12 @@ class ProcessController extends AbstractActionController
      */
     protected function starSchedulerForService($serviceName)
     {
+        /** @var Scheduler $scheduler */
+        $scheduler = null;
+
+        /** @var SchedulerEvent $schedulerEvent */
         $schedulerEvent = null;
+        /** @var EventManager $schedulerEventManager */
         $schedulerEventManager = null;
         $this->manager->getEventManager()->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
             $event->stopPropagation(true);
@@ -176,11 +188,13 @@ class ProcessController extends AbstractActionController
 
             $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_schedulerEvent)
             use (& $schedulerEventManager, & $schedulerEvent) {
-
                 $schedulerEvent = $_schedulerEvent;
+                $_schedulerEvent->getTarget()->setProcessId(getmypid());
                 $schedulerEventManager = $_schedulerEvent->getTarget()->getEventManager();
                 if ($_schedulerEvent->getParam('server')) {
+
                     $_schedulerEvent->stopPropagation(true);
+                    DynamicPriorityFilter::resetPriority();
 
                     return;
                 }
@@ -199,11 +213,10 @@ class ProcessController extends AbstractActionController
         });
 
         $this->manager->startService($serviceName);
+        $scheduler->setProcessId(getmypid());
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $schedulerEvent->setTarget($scheduler);
         $schedulerEventManager->triggerEvent($schedulerEvent);
-
-        $schedulerEvent->setParam('go', 1);
     }
 
 

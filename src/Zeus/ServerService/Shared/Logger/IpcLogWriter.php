@@ -39,7 +39,7 @@ class IpcLogWriter extends AbstractWriter implements WriterInterface
         }
 
         if (!isset($event['extra']['uid'])) {
-            $event['extra']['uid'] = getmypid();
+            $event['extra']['uid'] = '?';
         }
 
         $this->ipcAdapter->useChannelNumber(1);

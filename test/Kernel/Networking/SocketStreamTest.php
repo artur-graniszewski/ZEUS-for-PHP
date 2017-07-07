@@ -23,7 +23,7 @@ class SocketStreamTest extends AbstractNetworkingTest
 
     public function tearDown()
     {
-        $this->server->stop();
+        $this->server->close();
 
         if (is_resource($this->client)) {
             fclose($this->client);

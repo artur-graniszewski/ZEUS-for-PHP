@@ -29,6 +29,10 @@ class LruDiscipline implements DisciplineInterface
         $processesToTerminate = $this->getProcessesToTerminate($processes, $config, $statusSummary);
         $processesToCreate = $this->getAmountOfProcessesToCreate($processes, $config, $statusSummary);
 
+        $r = $statusSummary[ProcessState::WAITING];;
+        $t = count($processesToTerminate);
+        $c = $processesToCreate;
+        //trigger_error("R: $r, T: $t, C: $c");
         return [
             'create' => $processesToCreate,
             'terminate' => [],

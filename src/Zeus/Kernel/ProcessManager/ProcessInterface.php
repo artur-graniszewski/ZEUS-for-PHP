@@ -9,13 +9,24 @@ interface ProcessInterface
     /**
      * @return int
      */
-    public function getProcessId();
+    public function getProcessId() : int;
 
     /**
-     * @param string $processId
+     * @param int $processId
      * @return $this
      */
-    public function setProcessId($processId);
+    public function setProcessId(int $processId);
+
+    /**
+     * @return int
+     */
+    public function getThreadId() : int;
+
+    /**
+     * @param int $threadId
+     * @return $this
+     */
+    public function setThreadId(int $threadId);
 
     /**
      * @return IpcAdapterInterface

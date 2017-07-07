@@ -135,13 +135,14 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         $this->onProcessLoop();
     }
 
-    public function onSchedulerLoop()
+    public function onSchedulerLoop(SchedulerEvent $oldEvent)
     {
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $event = new SchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
             $event->setParam('uid', $pid);
+            $event->setParam('threadId', $oldEvent->getParam('threadId'));
             $this->events->triggerEvent($event);
         }
 

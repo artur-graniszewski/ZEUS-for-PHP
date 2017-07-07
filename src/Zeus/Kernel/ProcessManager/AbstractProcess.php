@@ -18,8 +18,11 @@ abstract class AbstractProcess implements ProcessInterface
     /** @var ProcessState */
     protected $status;
 
-    /** @var string */
+    /** @var int */
     protected $processId;
+
+    /** @var int */
+    protected $threadId = 1;
 
     /** @var EventManagerInterface */
     protected $events;
@@ -34,14 +37,33 @@ abstract class AbstractProcess implements ProcessInterface
     protected $ipc;
 
     /**
-     * @param string $processId
+     * @param int $processId
      * @return $this
      */
-    public function setProcessId($processId)
+    public function setProcessId(int $processId)
     {
         $this->processId = $processId;
 
         return $this;
+    }
+
+    /**
+     * @param int $threadId
+     * @return $this
+     */
+    public function setThreadId(int $threadId)
+    {
+        $this->threadId = $threadId;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getThreadId(): int
+    {
+        return $this->threadId;
     }
 
     /**
@@ -66,7 +88,7 @@ abstract class AbstractProcess implements ProcessInterface
     /**
      * @return int
      */
-    public function getProcessId()
+    public function getProcessId() : int
     {
         return $this->processId;
     }
@@ -128,6 +150,7 @@ abstract class AbstractProcess implements ProcessInterface
 
         $pid = $event->getParam('uid');
         $process->setProcessId($pid);
+        $process->setThreadId($event->getParam('threadId'));
 
         $event = new ProcessEvent();
         $event->setTarget($process);

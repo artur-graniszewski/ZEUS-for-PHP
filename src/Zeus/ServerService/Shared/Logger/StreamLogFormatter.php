@@ -31,7 +31,7 @@ class StreamLogFormatter implements FormatterInterface
 
     public function format($event)
     {
-        $serviceName = $event['extra']['service_name'];
+        $serviceName = $event['extra']['service_name'] . '-' . $event['extra']['threadId'];
         $dateTime = $event['timestamp']->format('Y-m-d H:i:s.') . sprintf("%'.03d", $event['extra']['microtime']);
         $severity = str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT);
         $pid = $event['extra']['uid'];
