@@ -485,7 +485,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
 
         $process = $this->processService;
         $process->setProcessId($event->getParam('uid'));
-        $process->setThreadId($event->getParam('threadId'));
+        $process->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
         $this->setSchedulerActive(false);
         $this->getIpc()->useChannelNumber(1);
