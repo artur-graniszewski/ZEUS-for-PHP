@@ -15,10 +15,10 @@ abstract class AbstractThread extends AbstractProcess implements ThreadInterface
     }
 
     /**
-     * @param $id
+     * @param int $id
      * @return $this
      */
-    public function setThreadId($id)
+    public function setThreadId(int $id)
     {
         $this->threadId = $id;
 
