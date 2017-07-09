@@ -277,7 +277,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param bool $launchAsDaemon Run this server as a daemon?
      * @return $this
      */
-    public function start(bool $launchAsDaemon = false)
+    public function start($launchAsDaemon = false)
     {
         $this->getMultiProcessingModule()->attach($this->getEventManager());
         $plugins = $this->getPluginRegistry()->count();

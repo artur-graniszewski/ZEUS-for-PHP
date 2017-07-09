@@ -5,6 +5,7 @@ namespace Zeus\Kernel\ProcessManager;
 use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\Message;
+use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
 /**
@@ -14,6 +15,8 @@ use Zeus\Kernel\ProcessManager\Status\WorkerState;
  */
 class Worker extends AbstractWorker
 {
+    use GarbageCollector;
+
     /**
      * Worker constructor.
      */
@@ -152,6 +155,7 @@ class Worker extends AbstractWorker
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
+            $this->collectCycles();
             $exception = null;
             try {
                 $event = new WorkerEvent();
