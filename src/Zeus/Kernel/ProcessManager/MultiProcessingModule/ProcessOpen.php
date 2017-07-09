@@ -7,7 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -66,11 +66,11 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->events = $events;
         $events = $events->getSharedManager();
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_INIT, [$this, 'onProcessInit'], -9000);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], -9000);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);

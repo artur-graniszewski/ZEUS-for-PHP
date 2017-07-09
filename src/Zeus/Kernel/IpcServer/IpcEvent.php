@@ -3,7 +3,7 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zend\EventManager\Event;
-use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\Task;
 
 class IpcEvent extends Event
 {
@@ -12,16 +12,16 @@ class IpcEvent extends Event
 
     protected $ipcInstance = '';
 
-    /** @var Process */
+    /** @var Task */
     protected $source;
 
-    public function setSource(Process $process)
+    public function setSource(Task $process)
     {
         $this->source = $process;
     }
 
     /**
-     * @return Process
+     * @return Task
      */
     public function getTarget()
     {

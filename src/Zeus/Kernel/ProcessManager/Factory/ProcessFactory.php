@@ -8,7 +8,7 @@ use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 
-use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\Task;
 
 class ProcessFactory implements FactoryInterface
 {
@@ -27,7 +27,7 @@ class ProcessFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $schedulerConfig = $options['scheduler_config'];
-        $process = new Process();
+        $process = new Task();
         $eventManager = $container->build('zeus-event-manager');
         $process->setLogger($options['logger_adapter']);
         $process->setEventManager($eventManager);

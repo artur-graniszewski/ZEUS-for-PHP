@@ -6,7 +6,7 @@ use Zend\EventManager\Event;
 /**
  * @package Zeus\Kernel\ProcessManager
  */
-class ProcessEvent extends Event
+class TaskEvent extends Event
 {
     const PRIORITY_FINALIZE = -100000;
     const PRIORITY_INITIALIZE = 50000;
@@ -23,7 +23,7 @@ class ProcessEvent extends Event
     const EVENT_PROCESS_WAITING = 'processWaiting';
 
     /**
-     * @return Process
+     * @return Task
      */
     public function getTarget()
     {

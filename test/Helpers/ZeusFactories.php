@@ -21,7 +21,7 @@ use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
-use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\Task;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
@@ -45,7 +45,7 @@ trait ZeusFactories
         $sm->addAbstractFactory(IpcAdapterAbstractFactory::class);
         $sm->addAbstractFactory(AbstractServerServiceFactory::class);
         $sm->setFactory(Scheduler::class, SchedulerFactory::class);
-        $sm->setFactory(Process::class, ProcessFactory::class);
+        $sm->setFactory(Task::class, ProcessFactory::class);
         $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
         $sm->setFactory(IpcLoggerInterface::class, IpcLoggerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);

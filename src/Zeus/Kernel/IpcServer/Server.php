@@ -6,7 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class Server implements ListenerAggregateInterface
@@ -71,7 +71,7 @@ class Server implements ListenerAggregateInterface
 
         foreach ($messages as $message) {
             $event = new IpcEvent();
-            $event->setName(ProcessEvent::EVENT_PROCESS_MESSAGE);
+            $event->setName(TaskEvent::EVENT_PROCESS_MESSAGE);
             $event->setParams($message);
             $event->setTarget($this);
             $this->getEventManager()->triggerEvent($event);

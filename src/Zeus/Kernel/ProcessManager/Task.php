@@ -7,11 +7,11 @@ use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\ProcessManager\Status\ProcessState;
 
 /**
- * Class Process
+ * Class Task
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-class Process extends AbstractProcess
+class Task extends AbstractTask
 {
     /** @var ConfigInterface */
     protected $config;
@@ -33,11 +33,11 @@ class Process extends AbstractProcess
      */
     public function attach(EventManagerInterface $eventManager)
     {
-        $this->getEventManager()->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $this->getEventManager()->attach(TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) {
             // @todo: do not use mainLoop() method from outside
             $this->getIpc()->useChannelNumber(1);
             $event->getTarget()->mainLoop();
-        }, ProcessEvent::PRIORITY_FINALIZE);
+        }, TaskEvent::PRIORITY_FINALIZE);
 
         return $this;
     }
@@ -70,13 +70,13 @@ class Process extends AbstractProcess
             $status->incrementNumberOfFinishedTasks(1);
         }
 
-        $event = new ProcessEvent();
+        $event = new TaskEvent();
         $event->setTarget($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(ProcessState::RUNNING);
         $this->sendStatus();
-        $event->setName(ProcessEvent::EVENT_PROCESS_RUNNING);
+        $event->setName(TaskEvent::EVENT_PROCESS_RUNNING);
         $event->setParams($status->toArray());
         $this->getEventManager()->triggerEvent($event);
 
@@ -97,12 +97,12 @@ class Process extends AbstractProcess
             }
         }
 
-        $event = new ProcessEvent();
+        $event = new TaskEvent();
         $event->setTarget($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(ProcessState::WAITING);
-        $event->setName(ProcessEvent::EVENT_PROCESS_WAITING);
+        $event->setName(TaskEvent::EVENT_PROCESS_WAITING);
         $event->setParams($status->toArray());
         $this->getEventManager()->triggerEvent($event);
         $this->sendStatus();
@@ -146,9 +146,9 @@ class Process extends AbstractProcess
             $payload['exception'] = $exception;
         }
 
-        $event = new ProcessEvent();
+        $event = new TaskEvent();
         $event->setTarget($this);
-        $event->setName(ProcessEvent::EVENT_PROCESS_EXIT);
+        $event->setName(TaskEvent::EVENT_PROCESS_EXIT);
         $event->setParams($payload);
 
         $this->getEventManager()->triggerEvent($event);
@@ -165,12 +165,11 @@ class Process extends AbstractProcess
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
-            //trigger_error(getmypid(). " > LOOP");
             $exception = null;
             try {
-                $event = new ProcessEvent();
+                $event = new TaskEvent();
                 $event->setTarget($this);
-                $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
+                $event->setName(TaskEvent::EVENT_PROCESS_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 

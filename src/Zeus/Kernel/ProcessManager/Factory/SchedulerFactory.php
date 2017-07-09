@@ -11,7 +11,7 @@ use Zeus\Kernel\IpcServer\Server;
 use Zeus\Kernel\ProcessManager\Config;
 use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
 use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\Task;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 
 
@@ -42,8 +42,8 @@ class SchedulerFactory implements FactoryInterface
         $schedulerDiscipline =
             isset($config['scheduler_discipline']) ? $container->get($config['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        /** @var Process $processService */
-        $processService = $container->build(Process::class, ['logger_adapter' => $logger, 'scheduler_config' => $configObject]);
+        /** @var Task $processService */
+        $processService = $container->build(Task::class, ['logger_adapter' => $logger, 'scheduler_config' => $configObject]);
 
         $scheduler = new Scheduler($configObject, $processService, $options['ipc_adapter'], $schedulerDiscipline);
         $scheduler->setLogger($logger);

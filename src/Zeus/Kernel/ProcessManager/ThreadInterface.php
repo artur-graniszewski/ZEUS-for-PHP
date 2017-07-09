@@ -5,13 +5,13 @@ namespace Zeus\Kernel\ProcessManager;
 interface ThreadInterface
 {
     /**
-     * @return mixed
+     * @return int
      */
-    public function getThreadId();
+    public function getThreadId() : int;
 
     /**
      * @param mixed $id
      * @return $this
      */
-    public function setThreadId($id);
+    public function setThreadId(int $id);
 }

@@ -7,7 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 
 
 use Zeus\Kernel\Networking\SocketServer;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\ManagerEvent;
@@ -67,7 +67,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
         $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, [$this, 'onManagerStop'], -9000);
 
@@ -89,7 +89,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         return ($stream === false);
     }
 
-    public function onProcessLoop(ProcessEvent $event)
+    public function onProcessLoop(TaskEvent $event)
     {
         if ($this->isPipeBroken()) {
             $event->setParam('exit', true);

@@ -18,17 +18,6 @@ interface ProcessInterface
     public function setProcessId(int $processId);
 
     /**
-     * @return int
-     */
-    public function getThreadId() : int;
-
-    /**
-     * @param int $threadId
-     * @return $this
-     */
-    public function setThreadId(int $threadId);
-
-    /**
      * @return IpcAdapterInterface
      */
     public function getIpc();

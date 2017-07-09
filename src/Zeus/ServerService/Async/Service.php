@@ -2,15 +2,15 @@
 
 namespace Zeus\ServerService\Async;
 
-use Zeus\Kernel\ProcessManager\Process;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\Task;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
 
 class Service extends AbstractSocketServerService
 {
-    /** @var Process */
+    /** @var Task */
     protected $process;
     protected $message;
 
@@ -20,7 +20,7 @@ class Service extends AbstractSocketServerService
             throw new \LogicException("Async service failed: serialization module is missing");
         }
 
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) {
+        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) {
             $this->process = $event->getTarget();
         });
 
@@ -34,7 +34,7 @@ class Service extends AbstractSocketServerService
     }
 
     /**
-     * @return Process
+     * @return Task
      */
     public function getProcess()
     {

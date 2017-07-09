@@ -9,7 +9,7 @@ use Zeus\Kernel\Networking\SocketServer;
 
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedInitialAddressSpaceInterface;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
@@ -47,9 +47,9 @@ final class SocketMessageBroker
     {
         $events = $events->getSharedManager();
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onServerStart']);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onServerStart']);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
-        $events->attach('*', ProcessEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit'], 1000);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_INIT, [$this, 'onServerStart']);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
+        $events->attach('*', TaskEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit'], 1000);
 
         return $this;
     }
@@ -69,7 +69,7 @@ final class SocketMessageBroker
             }
         };
 
-        if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && !$this->server) {
+        if ($event->getName() === TaskEvent::EVENT_PROCESS_INIT && !$this->server) {
             $this->stopServerAtProcessExit = true;
             $this->server = new SocketServer();
             $this->server->setReuseAddress(true);
@@ -80,11 +80,11 @@ final class SocketMessageBroker
     }
 
     /**
-     * @param ProcessEvent $event
+     * @param TaskEvent $event
      * @throws \Throwable|\Exception
      * @throws null
      */
-    public function onProcessLoop(ProcessEvent $event)
+    public function onProcessLoop(TaskEvent $event)
     {
         $exception = null;
 

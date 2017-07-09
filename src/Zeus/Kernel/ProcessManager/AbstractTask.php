@@ -13,7 +13,7 @@ use Zeus\Kernel\ProcessManager\Status\ProcessState;
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-abstract class AbstractProcess implements ProcessInterface
+abstract class AbstractTask implements ProcessInterface, ThreadInterface
 {
     /** @var ProcessState */
     protected $status;
@@ -152,9 +152,9 @@ abstract class AbstractProcess implements ProcessInterface
         $process->setProcessId($pid);
         $process->setThreadId($event->getParam('threadId', 1));
 
-        $event = new ProcessEvent();
+        $event = new TaskEvent();
         $event->setTarget($process);
-        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
         $event->setParam('uid', $pid);
         $event->setParam('threadId', $event->getParam('threadId', 1));
         $this->getEventManager()->triggerEvent($event);

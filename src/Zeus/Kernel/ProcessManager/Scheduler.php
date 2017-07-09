@@ -20,7 +20,7 @@ use Zeus\Kernel\IpcServer\Message;
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-final class Scheduler extends AbstractProcess implements EventsCapableInterface, ProcessInterface
+final class Scheduler extends AbstractTask implements EventsCapableInterface, ProcessInterface
 {
     use PluginRegistry;
 
@@ -36,7 +36,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /** @var ProcessState */
     protected $schedulerStatus;
 
-    /** @var Process */
+    /** @var Task */
     protected $processService;
 
     /** @var IpcAdapterInterface */
@@ -59,7 +59,7 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     }
 
     /**
-     * @return Process
+     * @return Task
      */
     public function getProcessService()
     {
@@ -80,11 +80,11 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     /**
      * Scheduler constructor.
      * @param ConfigInterface $config
-     * @param Process $processService
+     * @param Task $processService
      * @param IpcAdapterInterface $ipcAdapter
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, Process $processService, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, Task $processService, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
     {
         $this->discipline = $discipline;
         $this->config = $config;
@@ -119,8 +119,8 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_EXIT, function(ProcessEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', ProcessEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
+        $this->eventHandles[] = $events->attach('*', TaskEvent::EVENT_PROCESS_EXIT, function(TaskEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', TaskEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         //$this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -207,9 +207,9 @@ final class Scheduler extends AbstractProcess implements EventsCapableInterface,
     }
 
     /**
-     * @param ProcessEvent $event
+     * @param TaskEvent $event
      */
-    protected function onProcessExit(ProcessEvent $event)
+    protected function onProcessExit(TaskEvent $event)
     {
         /** @var \Exception $exception */
         $exception = $event->getParam('exception');

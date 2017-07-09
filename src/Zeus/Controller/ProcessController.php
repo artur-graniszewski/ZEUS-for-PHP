@@ -8,7 +8,7 @@ use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Manager;
@@ -145,9 +145,9 @@ class ProcessController extends AbstractActionController
             $event->stopPropagation(true);
         }, 1);
 
-        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT, function() {
+        $scheduler->getEventManager()->getSharedManager()->attach('*', TaskEvent::EVENT_PROCESS_INIT, function() {
             DynamicPriorityFilter::resetPriority();
-        }, ProcessEvent::PRIORITY_FINALIZE + 1);
+        }, TaskEvent::PRIORITY_FINALIZE + 1);
 
         // @todo: below is a thread code
 //        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,

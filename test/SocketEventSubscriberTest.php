@@ -5,8 +5,8 @@ namespace ZeusTest;
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\SharedEventManager;
-use Zeus\Kernel\ProcessManager\Process;
-use Zeus\Kernel\ProcessManager\ProcessEvent;
+use Zeus\Kernel\ProcessManager\Task;
+use Zeus\Kernel\ProcessManager\TaskEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
@@ -45,7 +45,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $events = new EventManager(new SharedEventManager());
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
-        $process = new Process($event);
+        $process = new Task($event);
         $process->setProcessId(getmypid());
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
         $process->setIpc($event->getTarget()->getIpc());
@@ -70,16 +70,16 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         
-        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) use (& $schedulerStarted) {
+        $events->attach(TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
-        }, ProcessEvent::PRIORITY_FINALIZE + 1);
+        }, TaskEvent::PRIORITY_FINALIZE + 1);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $events->triggerEvent($event);
 
-        $event = new ProcessEvent();
+        $event = new TaskEvent();
         $event->setTarget($process);
-        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
@@ -89,14 +89,14 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
         fwrite($client, $requestString);
 
-        $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
+        $event->setName(TaskEvent::EVENT_PROCESS_LOOP);
         $events->triggerEvent($event);
         $events->triggerEvent($event);
 
         fclose($client);
 
         $event = new SchedulerEvent();
-        $event->setName(ProcessEvent::EVENT_PROCESS_EXIT);
+        $event->setName(TaskEvent::EVENT_PROCESS_EXIT);
         $events->triggerEvent($event);
 
         $this->assertEquals($requestString, $received);
@@ -109,7 +109,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $events = new EventManager(new SharedEventManager());
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
-        $process = new Process($event);
+        $process = new Task($event);
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
         $process->setIpc($event->getTarget()->getIpc());
         $process->attach($events);
@@ -126,15 +126,15 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $events->attach(ProcessEvent::EVENT_PROCESS_INIT, function(ProcessEvent $event) use (& $schedulerStarted) {
+        $events->attach(TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
-        }, ProcessEvent::PRIORITY_FINALIZE + 1);
+        }, TaskEvent::PRIORITY_FINALIZE + 1);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $events->triggerEvent($event);
 
-        $event = new ProcessEvent();
-        $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event = new TaskEvent();
+        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
         $event->setTarget($process);
 
         $events->triggerEvent($event);
@@ -145,7 +145,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
         fwrite($client, $requestString);
 
-        $event->setName(ProcessEvent::EVENT_PROCESS_LOOP);
+        $event->setName(TaskEvent::EVENT_PROCESS_LOOP);
         $exception = null;
         try {
             $events->triggerEvent($event);
