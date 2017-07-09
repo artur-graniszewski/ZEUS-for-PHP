@@ -15,8 +15,6 @@ class ProcessEvent extends Event
     const EVENT_PROCESS_MESSAGE = 'processMessage';
 
     const EVENT_PROCESS_INIT = 'processStarted';
-    const EVENT_PROCESS_TERMINATED = 'processTerminated';
-    const EVENT_PROCESS_TERMINATE = 'processTerminate';
     const EVENT_PROCESS_EXIT = 'processExit';
 
     const EVENT_PROCESS_LOOP = 'processLoop';

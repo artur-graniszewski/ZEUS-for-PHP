@@ -9,6 +9,7 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 
 
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
@@ -61,10 +62,10 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         $events = $events->getSharedManager();
         $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
-        $events->attach('*', SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting']);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting']);
         $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate']);
-        $events->attach('*', SchedulerEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
-        $events->attach('*', SchedulerEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning']);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_RUNNING, [$this, 'onProcessRunning']);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
@@ -116,6 +117,8 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
+        $event->setParam('processId', getmypid());
+        $event->setParam('threadId', 1);
         $this->events->triggerEvent($event);
     }
 
@@ -143,6 +146,7 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
             $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
             $event->setParam('uid', $pid);
             $event->setParam('threadId', $oldEvent->getParam('threadId'));
+            $event->setParam('processId', $pid);
             $this->events->triggerEvent($event);
         }
 
@@ -152,6 +156,8 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
             $event = new SchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $event->setParam('uid', $this->ppid);
+            $event->setParam('threadId', 1);
+            $event->setParam('processId', $this->ppid);
             $this->events->triggerEvent($event);
         }
     }
@@ -187,6 +193,8 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
         }
 
         $event->setParam('uid', $pid);
+        $event->setParam('processId', $pid);
+        $event->setParam('threadId', 1);
     }
 
     public function onSchedulerInit()

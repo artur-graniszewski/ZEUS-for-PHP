@@ -49,7 +49,7 @@ final class SocketMessageBroker
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onServerStart']);
         $events->attach('*', ProcessEvent::EVENT_PROCESS_INIT, [$this, 'onServerStart']);
         $events->attach('*', ProcessEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop']);
-        $events->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit'], 1000);
+        $events->attach('*', ProcessEvent::EVENT_PROCESS_EXIT, [$this, 'onProcessExit'], 1000);
 
         return $this;
     }

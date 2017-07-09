@@ -96,7 +96,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         fclose($client);
 
         $event = new SchedulerEvent();
-        $event->setName(SchedulerEvent::EVENT_PROCESS_EXIT);
+        $event->setName(ProcessEvent::EVENT_PROCESS_EXIT);
         $events->triggerEvent($event);
 
         $this->assertEquals($requestString, $received);

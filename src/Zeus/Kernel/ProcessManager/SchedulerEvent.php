@@ -15,16 +15,8 @@ class SchedulerEvent extends Event
     const EVENT_PROCESS_CREATE = 'processCreate';
     const EVENT_PROCESS_CREATED = 'processCreated';
 
-    const EVENT_PROCESS_MESSAGE = 'processMessage';
-
     const EVENT_PROCESS_TERMINATED = 'processTerminated';
     const EVENT_PROCESS_TERMINATE = 'processTerminate';
-    const EVENT_PROCESS_EXIT = 'processExit';
-
-    const EVENT_PROCESS_LOOP = 'processLoop';
-
-    const EVENT_PROCESS_RUNNING = 'processRunning';
-    const EVENT_PROCESS_WAITING = 'processWaiting';
 
     const EVENT_SCHEDULER_START = 'schedulerStart';
     const EVENT_SCHEDULER_STOP = 'schedulerStop';
