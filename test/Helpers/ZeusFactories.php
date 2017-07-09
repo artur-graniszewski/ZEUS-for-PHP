@@ -18,7 +18,7 @@ use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
-use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
+use Zeus\Kernel\ProcessManager\Factory\WorkerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
 use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\Kernel\ProcessManager\Worker;
@@ -45,7 +45,7 @@ trait ZeusFactories
         $sm->addAbstractFactory(IpcAdapterAbstractFactory::class);
         $sm->addAbstractFactory(AbstractServerServiceFactory::class);
         $sm->setFactory(Scheduler::class, SchedulerFactory::class);
-        $sm->setFactory(Worker::class, ProcessFactory::class);
+        $sm->setFactory(Worker::class, WorkerFactory::class);
         $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
         $sm->setFactory(IpcLoggerInterface::class, IpcLoggerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);

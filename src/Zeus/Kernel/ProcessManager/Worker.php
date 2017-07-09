@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\ProcessManager;
 
+use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
@@ -13,11 +14,8 @@ use Zeus\Kernel\ProcessManager\Status\WorkerState;
  */
 class Worker extends AbstractWorker
 {
-    /** @var SchedulerEvent */
-    protected $event;
-
     /**
-     * Process constructor.
+     * Worker constructor.
      */
     public function __construct()
     {
@@ -37,7 +35,7 @@ class Worker extends AbstractWorker
         }, WorkerEvent::PRIORITY_FINALIZE);
 
         $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
-            $this->onWorkerExit($e);
+            $this->onExit($e);
         }, SchedulerEvent::PRIORITY_FINALIZE);
 
         return $this;
@@ -47,7 +45,7 @@ class Worker extends AbstractWorker
      * @param string $statusDescription
      * @return $this
      */
-    public function setRunning($statusDescription = null)
+    public function setRunning(string $statusDescription = null)
     {
         $status = $this->getStatus();
         $now = time();
@@ -76,7 +74,7 @@ class Worker extends AbstractWorker
      * @param string $statusDescription
      * @return $this
      */
-    public function setWaiting($statusDescription = null)
+    public function setWaiting(string $statusDescription = null)
     {
         $status = $this->getStatus();
         $now = time();
@@ -100,10 +98,10 @@ class Worker extends AbstractWorker
     }
 
     /**
-     * @param \Exception $exception
+     * @param \Throwable $exception
      * @return $this
      */
-    protected function reportException($exception)
+    protected function reportException(Throwable $exception)
     {
         $this->getLogger()->err(sprintf("Exception (%d): %s in %s on line %d",
             $exception->getCode(),
@@ -119,7 +117,7 @@ class Worker extends AbstractWorker
     /**
      * @param \Exception|\Throwable|null $exception
      */
-    protected function terminate($exception = null)
+    protected function terminate(Throwable $exception = null)
     {
         $status = $this->getStatus();
 
@@ -204,7 +202,7 @@ class Worker extends AbstractWorker
     /**
      * @param WorkerEvent $event
      */
-    protected function onWorkerExit(WorkerEvent $event)
+    protected function onExit(WorkerEvent $event)
     {
         /** @var \Exception $exception */
         $exception = $event->getParam('exception');

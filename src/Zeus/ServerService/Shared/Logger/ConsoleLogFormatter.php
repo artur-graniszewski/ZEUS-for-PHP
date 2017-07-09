@@ -11,35 +11,9 @@ class ConsoleLogFormatter extends StreamLogFormatter implements FormatterInterfa
     /** @var AdapterInterface */
     protected $console;
 
-    /** @var string */
-    protected $dateTimeFormat = 'Y-m-d H:i:s';
-
     public function __construct(AdapterInterface $console)
     {
         $this->console = $console;
-    }
-
-    /**
-     * This method is implemented for FormatterInterface but not used.
-     *
-     * @return string
-     */
-    public function getDateTimeFormat()
-    {
-        return '';
-    }
-
-    /**
-     * This method is implemented for FormatterInterface but not used.
-     *
-     * @param  string $dateTimeFormat
-     * @return FormatterInterface
-     */
-    public function setDateTimeFormat($dateTimeFormat)
-    {
-        $this->dateTimeFormat = $dateTimeFormat;
-
-        return $this;
     }
 
     public function format($event)

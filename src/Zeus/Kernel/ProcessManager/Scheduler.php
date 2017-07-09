@@ -235,7 +235,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         $pid = (int) $pid;
 
-        $this->stopProcess($pid, true);
+        $this->stopWorker($pid, true);
         $this->log(Logger::INFO, "Scheduler stopped");
         unlink($fileName);
 
@@ -245,7 +245,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /**
      * @return string
      */
-    public function getPidFile()
+    public function getPidFile() : string
     {
         // @todo: make it more sophisticated
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
@@ -258,7 +258,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param mixed[]$extraData
      * @return $this
      */
-    protected function triggerEvent($eventName, $extraData = [])
+    protected function triggerEvent(string $eventName, array $extraData = [])
     {
         $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
@@ -277,7 +277,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param bool $launchAsDaemon Run this server as a daemon?
      * @return $this
      */
-    public function start($launchAsDaemon = null)
+    public function start(bool $launchAsDaemon = false)
     {
         $this->getMultiProcessingModule()->attach($this->getEventManager());
         $plugins = $this->getPluginRegistry()->count();
@@ -346,10 +346,10 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     }
 
     /**
-     * @param \Throwable|\Exception $exception
+     * @param \Throwable $exception
      * @return $this
      */
-    protected function handleException($exception)
+    protected function handleException(\Throwable $exception)
     {
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
 
@@ -369,7 +369,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param bool $isSoftStop
      * @return $this
      */
-    protected function stopProcess($uid, $isSoftStop)
+    protected function stopWorker(int $uid, bool $isSoftStop)
     {
         $this->triggerEvent(SchedulerEvent::EVENT_WORKER_TERMINATE, ['uid' => $uid, 'soft' => $isSoftStop]);
 
@@ -398,7 +398,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         if ($this->workers) {
             foreach (array_keys($this->workers->toArray()) as $pid) {
                 $this->log(Logger::DEBUG, "Terminating worker $pid");
-                $this->stopProcess($pid, false);
+                $this->stopWorker($pid, false);
             }
         }
 
@@ -419,7 +419,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param int $count Number of processes to create.
      * @return $this
      */
-    protected function createProcesses($count)
+    protected function createProcesses(int $count)
     {
         if ($count === 0) {
             return $this;
@@ -487,8 +487,8 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $toCreate = $operations['create'];
 
         $this->createProcesses($toCreate);
-        $this->terminateProcesses($toTerminate, false);
-        $this->terminateProcesses($toSoftTerminate, true);
+        $this->stopWorkers($toTerminate, false);
+        $this->stopWorkers($toSoftTerminate, true);
 
         return $this;
     }
@@ -498,7 +498,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param $isSoftTermination
      * @return $this
      */
-    protected function terminateProcesses(array $processIds, $isSoftTermination)
+    protected function stopWorkers(array $processIds, bool $isSoftTermination)
     {
         $now = microtime(true);
 
@@ -509,7 +509,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             $this->workers[$processId] = $processStatus;
 
             $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $processId));
-            $this->stopProcess($processId, $isSoftTermination);
+            $this->stopWorker($processId, $isSoftTermination);
         }
 
         return $this;
@@ -550,7 +550,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /**
      * @return WorkerCollection|Status\WorkerState[]
      */
-    public function getWorkers()
+    public function getWorkers() : WorkerCollection
     {
         return $this->workers;
     }
@@ -569,7 +569,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /**
      * @return MultiProcessingModuleInterface
      */
-    public function getMultiProcessingModule()
+    public function getMultiProcessingModule() : MultiProcessingModuleInterface
     {
         return $this->multiProcessingModule;
     }

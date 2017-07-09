@@ -10,7 +10,7 @@ use Zend\ServiceManager\Factory\FactoryInterface;
 
 use Zeus\Kernel\ProcessManager\Worker;
 
-class ProcessFactory implements FactoryInterface
+class WorkerFactory implements FactoryInterface
 {
     /**
      * Create an object

@@ -2,12 +2,12 @@
 
 namespace Zeus\ServerService\Shared\Logger;
 
-
-
 use Zend\Log\Formatter\FormatterInterface;
 
 class StreamLogFormatter implements FormatterInterface
 {
+    protected $loggerCache = [];
+
     /**
      * This method is implemented for FormatterInterface but not used.
      *
@@ -49,13 +49,25 @@ class StreamLogFormatter implements FormatterInterface
             return $loggerName;
         }
 
-        $parts = explode("\\", $loggerName);
-        $loggerName = '';
-        $className = array_pop($parts);
-        foreach ($parts as $part) {
-            $loggerName .= $part[0] . '\\';
+        if (isset($this->loggerCache[$loggerName])) {
+            return $this->loggerCache[$loggerName];
         }
 
-        return $loggerName . $className;
+        if (count($this->loggerCache) > 256) {
+            $this->loggerCache = [];
+        }
+
+        $parts = explode("\\", $loggerName);
+        $shortLoggerName = '';
+        $className = array_pop($parts);
+        foreach ($parts as $part) {
+            $shortLoggerName .= $part[0] . '\\';
+        }
+
+        $shortLoggerName .= $className;
+
+        $this->loggerCache[$loggerName] = $shortLoggerName;
+
+        return $shortLoggerName;
     }
 }
