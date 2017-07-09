@@ -6,16 +6,16 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\Kernel\ProcessManager\Status\ProcessState;
+use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
 /**
- * Class Process
+ * Class AbstractWorker
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-abstract class AbstractTask implements ProcessInterface, ThreadInterface
+abstract class AbstractWorker implements ProcessInterface, ThreadInterface, WorkerInterface
 {
-    /** @var ProcessState */
+    /** @var WorkerState */
     protected $status;
 
     /** @var int */
@@ -94,12 +94,12 @@ abstract class AbstractTask implements ProcessInterface, ThreadInterface
     }
 
     /**
-     * @return ProcessState
+     * @return WorkerState
      */
     public function getStatus()
     {
         if (!$this->status) {
-            $this->status = new ProcessState($this->getConfig()->getServiceName());
+            $this->status = new WorkerState($this->getConfig()->getServiceName());
             $this->status->setProcessId($this->getProcessId());
         }
 
@@ -139,7 +139,7 @@ abstract class AbstractTask implements ProcessInterface, ThreadInterface
         }
 
         $event->setTarget($process);
-        $event->setName(SchedulerEvent::EVENT_PROCESS_CREATE);
+        $event->setName(SchedulerEvent::EVENT_WORKER_CREATE);
         if (is_array($startParameters)) {
             $event->setParams($startParameters);
         }
@@ -152,10 +152,11 @@ abstract class AbstractTask implements ProcessInterface, ThreadInterface
         $process->setProcessId($pid);
         $process->setThreadId($event->getParam('threadId', 1));
 
-        $event = new TaskEvent();
+        $event = new WorkerEvent();
         $event->setTarget($process);
-        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParam('uid', $pid);
+        $event->setParam('processId', $pid);
         $event->setParam('threadId', $event->getParam('threadId', 1));
         $this->getEventManager()->triggerEvent($event);
 

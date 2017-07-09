@@ -7,7 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 
 
 use Zeus\Kernel\Networking\SocketServer;
-use Zeus\Kernel\ProcessManager\TaskEvent;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\ManagerEvent;
@@ -62,12 +62,12 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
         $events = $events->getSharedManager();
 
-        $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessCreate'], 1000);
-        $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessCreate'], 1000);
+        $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
-        $events->attach('*', TaskEvent::EVENT_PROCESS_LOOP, [$this, 'onProcessLoop'], -9000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onProcessLoop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
         $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, [$this, 'onManagerStop'], -9000);
 
@@ -89,7 +89,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         return ($stream === false);
     }
 
-    public function onProcessLoop(TaskEvent $event)
+    public function onProcessLoop(WorkerEvent $event)
     {
         if ($this->isPipeBroken()) {
             $event->setParam('exit', true);
@@ -121,7 +121,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
                 $newEvent->setParam('uid', $threadId);
                 $newEvent->setParam('threadId', $threadId);
                 $event->setParam('processId', getmypid());
-                $newEvent->setName(SchedulerEvent::EVENT_PROCESS_TERMINATED);
+                $newEvent->setName(SchedulerEvent::EVENT_WORKER_TERMINATED);
                 $this->events->triggerEvent($newEvent);
                 unset ($this->threads[$threadId]);
                 unset($this->threadIpcs[$threadId]);

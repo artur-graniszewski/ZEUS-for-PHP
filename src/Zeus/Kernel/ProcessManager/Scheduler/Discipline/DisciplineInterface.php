@@ -2,15 +2,15 @@
 
 namespace Zeus\Kernel\ProcessManager\Scheduler\Discipline;
 
-use Zeus\Kernel\ProcessManager\Config;
-use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
+use Zeus\Kernel\ProcessManager\ConfigInterface;
+use Zeus\Kernel\ProcessManager\Scheduler\WorkerCollection;
 
 interface DisciplineInterface
 {
     /**
-     * @param Config $config
-     * @param ProcessCollection $processes
+     * @param ConfigInterface $config
+     * @param WorkerCollection $processes
      * @return \mixed[]
      */
-    public function manage(Config $config, ProcessCollection $processes);
+    public function manage(ConfigInterface $config, WorkerCollection $processes);
 }

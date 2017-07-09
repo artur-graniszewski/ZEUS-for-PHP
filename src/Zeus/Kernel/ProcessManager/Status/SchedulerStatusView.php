@@ -28,10 +28,10 @@ class SchedulerStatusView
     protected $console;
 
     protected $statusToCharMapping = [
-        ProcessState::WAITING => '_',
-        ProcessState::RUNNING => 'R',
-        ProcessState::EXITING => 'E',
-        ProcessState::TERMINATED => 'T',
+        WorkerState::WAITING => '_',
+        WorkerState::RUNNING => 'R',
+        WorkerState::EXITING => 'E',
+        WorkerState::TERMINATED => 'T',
     ];
 
     /**
@@ -55,7 +55,7 @@ class SchedulerStatusView
      * @param Scheduler $scheduler
      * @return SchedulerStatusView
      */
-    public function setScheduler($scheduler)
+    public function setScheduler(Scheduler $scheduler)
     {
         $this->scheduler = $scheduler;
         return $this;
@@ -92,7 +92,7 @@ class SchedulerStatusView
 
         foreach ($processList as $processStatus) {
             ++$allChildren;
-            $processStatus = ProcessState::fromArray($processStatus);
+            $processStatus = WorkerState::fromArray($processStatus);
             $processStatusCode = $processStatus->getCode();
 
             $currentCpuUsage += $processStatus->getCpuUsage();
@@ -103,7 +103,7 @@ class SchedulerStatusView
                 isset($this->statusToCharMapping[$processStatusCode]) ?
                     $this->statusToCharMapping[$processStatusCode] : '?';
 
-            $processStatusCode === ProcessState::WAITING ? ++$idleChildren : ++$busyChildren;
+            $processStatusCode === WorkerState::WAITING ? ++$idleChildren : ++$busyChildren;
         }
 
         $statusTab = str_pad(implode($processStatusChars), $this->getScheduler()->getConfig()->getMaxProcesses(), '.', STR_PAD_RIGHT);
@@ -156,11 +156,11 @@ class SchedulerStatusView
         $output .= sprintf(' └─┬ Scheduler %s, CPU: %d%%' . PHP_EOL, $schedulerStatus['uid'], $schedulerStatus['cpu_usage']);
 
         foreach ($processList as $key => $processStatus) {
-            $color = ProcessState::isIdle($processStatus) ? ColorInterface::WHITE : ColorInterface::LIGHT_WHITE;
-            $processStatus = ProcessState::fromArray($processStatus);
+            $color = WorkerState::isIdle($processStatus) ? ColorInterface::WHITE : ColorInterface::LIGHT_WHITE;
+            $processStatus = WorkerState::fromArray($processStatus);
 
             $connector = ($key === $lastElementKey ? '└' : '├');
-            /** @var ProcessState $processStatus */
+            /** @var WorkerState $processStatus */
             $output .= $console->colorize(
                 sprintf("   %s── Process %s [%s] CPU: %d%%, RPS: %s, REQ: %s%s" . PHP_EOL,
                     $connector,

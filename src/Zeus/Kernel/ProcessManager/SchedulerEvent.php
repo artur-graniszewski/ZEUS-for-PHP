@@ -12,11 +12,11 @@ class SchedulerEvent extends Event
     const PRIORITY_INITIALIZE = 50000;
     const PRIORITY_REGULAR = 0;
 
-    const EVENT_PROCESS_CREATE = 'processCreate';
-    const EVENT_PROCESS_CREATED = 'processCreated';
+    const EVENT_WORKER_CREATE = 'workerCreate';
+    const EVENT_WORKER_CREATED = 'workerCreated';
 
-    const EVENT_PROCESS_TERMINATED = 'processTerminated';
-    const EVENT_PROCESS_TERMINATE = 'processTerminate';
+    const EVENT_WORKER_TERMINATED = 'workerTerminated';
+    const EVENT_WORKER_TERMINATE = 'workerTerminate';
 
     const EVENT_SCHEDULER_START = 'schedulerStart';
     const EVENT_SCHEDULER_STOP = 'schedulerStop';

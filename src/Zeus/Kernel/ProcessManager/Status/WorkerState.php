@@ -3,9 +3,9 @@
 namespace Zeus\Kernel\ProcessManager\Status;
 
 /**
- * Current status of the process.
+ * Current status of the worker.
  */
-class ProcessState
+class WorkerState
 {
     /**
      * Process is waiting.
@@ -83,7 +83,7 @@ class ProcessState
      * @param string $serviceName
      * @param int $status
      */
-    public function __construct($serviceName, $status = self::WAITING)
+    public function __construct(string $serviceName, int $status = self::WAITING)
     {
         $this->startTime = microtime(true);
         $this->code = $status;
@@ -94,7 +94,7 @@ class ProcessState
     /**
      * @return int
      */
-    public function getThreadId(): int
+    public function getThreadId() : int
     {
         return $this->threadId;
     }
@@ -137,7 +137,7 @@ class ProcessState
      * @param mixed[] $array
      * @return static
      */
-    public static function fromArray($array)
+    public static function fromArray(array $array)
     {
         $status = new static($array['service_name'], $array['code']);
         $status->setTime($array['time']);
@@ -162,7 +162,7 @@ class ProcessState
      * @param string $statusDescription
      * @return $this
      */
-    public function setStatusDescription($statusDescription)
+    public function setStatusDescription(string $statusDescription = null)
     {
         $this->statusDescription = $statusDescription;
 
@@ -170,10 +170,10 @@ class ProcessState
     }
 
     /**
-     * @param int $time
+     * @param float $time
      * @return $this
      */
-    public function setTime($time)
+    public function setTime(float $time)
     {
         $this->time = $time;
 
@@ -191,7 +191,7 @@ class ProcessState
     /**
      * @return int
      */
-    public function getProcessId()
+    public function getProcessId() : int
     {
         return $this->processId ? $this->processId : getmypid();
     }
@@ -200,7 +200,7 @@ class ProcessState
      * @param int $processId
      * @return $this
      */
-    public function setProcessId($processId)
+    public function setProcessId(int $processId)
     {
         $this->processId = $processId;
 
@@ -211,7 +211,7 @@ class ProcessState
      * @param int $status
      * @return $this
      */
-    public function setCode($status)
+    public function setCode(int $status)
     {
         $this->code = $status;
 
@@ -221,7 +221,7 @@ class ProcessState
     /**
      * @return int
      */
-    public function getCode()
+    public function getCode() : int
     {
         return $this->code;
     }
@@ -232,7 +232,7 @@ class ProcessState
      */
     public static function isIdle(array $array)
     {
-        return $array['code'] === ProcessState::WAITING;
+        return $array['code'] === WorkerState::WAITING;
     }
 
     /**
@@ -241,7 +241,7 @@ class ProcessState
      */
     public static function isExiting(array $array)
     {
-        return $array['code'] === ProcessState::EXITING || $array['code'] === ProcessState::TERMINATED;
+        return $array['code'] === WorkerState::EXITING || $array['code'] === WorkerState::TERMINATED;
     }
 
     /**
@@ -259,7 +259,7 @@ class ProcessState
      * @param int $amount
      * @return $this
      */
-    public function incrementNumberOfFinishedTasks($amount = 1)
+    public function incrementNumberOfFinishedTasks(int $amount = 1)
     {
         $now = microtime(true);
         if (ceil($this->time) !== ceil($now)) {
@@ -277,7 +277,7 @@ class ProcessState
     /**
      * @return int
      */
-    public function getNumberOfFinishedTasks()
+    public function getNumberOfFinishedTasks() : int
     {
         return $this->tasksFinished;
     }
@@ -307,7 +307,7 @@ class ProcessState
     /**
      * @return float
      */
-    public function getCurrentSystemCpuTime()
+    public function getCurrentSystemCpuTime() : float
     {
         return $this->currentSysCpuTime;
     }
@@ -315,7 +315,7 @@ class ProcessState
     /**
      * @return float
      */
-    public function getCurrentUserCpuTime()
+    public function getCurrentUserCpuTime() : float
     {
         return $this->currentUserCpuTime;
     }
@@ -323,7 +323,7 @@ class ProcessState
     /**
      * @return float
      */
-    public function getCpuUsage()
+    public function getCpuUsage() : float
     {
         if (isset($this->cpuUsage)) {
             return $this->cpuUsage;
@@ -339,17 +339,17 @@ class ProcessState
     }
 
     /**
-     * @return int
+     * @return float
      */
-    public function getUptime()
+    public function getUptime() : float
     {
         return microtime(true) - $this->getStartTime();
     }
 
     /**
-     * @return int
+     * @return float
      */
-    public function getStartTime()
+    public function getStartTime() : float
     {
         return $this->startTime;
     }
@@ -357,7 +357,7 @@ class ProcessState
     /**
      * @return string
      */
-    public function getServiceName()
+    public function getServiceName() : string
     {
         return $this->serviceName;
     }

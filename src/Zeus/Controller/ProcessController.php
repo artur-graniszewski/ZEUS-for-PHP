@@ -8,7 +8,7 @@ use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zeus\Kernel\ProcessManager\TaskEvent;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Manager;
@@ -134,7 +134,7 @@ class ProcessController extends AbstractActionController
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
-        $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $event) {
+        $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
             $event->stopPropagation(true);
             $event->setParam('init_process', true);
             $event->setParam('uid', getmypid());
@@ -145,9 +145,9 @@ class ProcessController extends AbstractActionController
             $event->stopPropagation(true);
         }, 1);
 
-        $scheduler->getEventManager()->getSharedManager()->attach('*', TaskEvent::EVENT_PROCESS_INIT, function() {
+        $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function() {
             DynamicPriorityFilter::resetPriority();
-        }, TaskEvent::PRIORITY_FINALIZE + 1);
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         // @todo: below is a thread code
 //        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,
@@ -161,7 +161,7 @@ class ProcessController extends AbstractActionController
 //        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $this->manager->startService($serviceName);
-        $scheduler->getProcessService()->start();
+        $scheduler->getWorkerService()->start();
     }
 
     /**
@@ -186,7 +186,7 @@ class ProcessController extends AbstractActionController
             /** @var Scheduler $scheduler */
             $scheduler = $service->getScheduler();
 
-            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $_schedulerEvent)
+            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $_schedulerEvent)
             use (& $schedulerEventManager, & $schedulerEvent) {
                 $schedulerEvent = $_schedulerEvent;
                 $_schedulerEvent->getTarget()->setProcessId(getmypid());

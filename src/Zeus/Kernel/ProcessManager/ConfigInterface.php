@@ -50,4 +50,9 @@ interface ConfigInterface extends \ArrayAccess
      * @return mixed[]
      */
     public function toArray();
+
+    /**
+     * @return bool
+     */
+    public function isProcessCacheEnabled();
 }

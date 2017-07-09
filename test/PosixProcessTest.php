@@ -9,7 +9,7 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModu
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 
-use Zeus\Kernel\ProcessManager\TaskEvent;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use ZeusTest\Helpers\PcntlMockBridge;
@@ -83,7 +83,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
     {
         return [
             [
-                SchedulerEvent::EVENT_PROCESS_CREATE,
+                SchedulerEvent::EVENT_WORKER_CREATE,
                 123412341234, 123412341234,
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -93,7 +93,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
             ],
 
             [
-                SchedulerEvent::EVENT_PROCESS_CREATE,
+                SchedulerEvent::EVENT_WORKER_CREATE,
                 false, getmypid(),
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -161,7 +161,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $event->setParam('uid', 123456);
         $em->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
+        $event->setName(SchedulerEvent::EVENT_WORKER_TERMINATE);
 
         $event->setParam('soft', $isSoftKill);
         $em->triggerEvent($event);
@@ -170,14 +170,14 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
         $this->assertEquals(123456, $logArray[5][1][0], 'Kill signal should be sent to a certain process');
         $this->assertEquals($signal, $logArray[5][1][1], 'Correct type of kill signal should be sent to a certain process');
-        $this->assertEquals(SchedulerEvent::EVENT_PROCESS_TERMINATE, $event->getName());
+        $this->assertEquals(SchedulerEvent::EVENT_WORKER_TERMINATE, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
 
     public function testDetectionOfProcessTermination()
     {
         $em = new EventManager(new SharedEventManager());
-        $em->attach(SchedulerEvent::EVENT_PROCESS_TERMINATED, function($event) use (&$triggeredEvent) {
+        $em->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -344,7 +344,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $em->triggerEvent($event);
 
-        $event->setName(TaskEvent::EVENT_PROCESS_WAITING);
+        $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
@@ -352,7 +352,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSignalDispatch'), 'Signal dispatching should be performed when process is waiting');
         $pcntlMock->setExecutionLog([]);
 
-        $event->setName(TaskEvent::EVENT_PROCESS_RUNNING);
+        $event->setName(WorkerEvent::EVENT_WORKER_RUNNING);
         $em->triggerEvent($event);
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSigprocmask'), 'Signal masking should be disabled when process is running');

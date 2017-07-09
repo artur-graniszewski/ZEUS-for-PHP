@@ -6,10 +6,10 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\TaskEvent;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\Kernel\ProcessManager\Status\ProcessState;
+use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
 class SchedulerStatus implements ListenerAggregateInterface
 {
@@ -27,7 +27,7 @@ class SchedulerStatus implements ListenerAggregateInterface
 
     protected function init(SchedulerEvent $event)
     {
-        $this->schedulerStatus = new ProcessState($event->getTarget()->getConfig()->getServiceName());
+        $this->schedulerStatus = new WorkerState($event->getTarget()->getConfig()->getServiceName());
         $this->startTime = microtime(true);
         $this->scheduler = $event->getTarget();
     }
@@ -41,7 +41,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         $events = $events->getSharedManager();
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->init($e);}, $priority);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop();}, $priority);
-        $this->eventHandles[] = $events->attach('*', TaskEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
+        $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
     }
 
     protected function onProcessMessage(IpcEvent $event)
@@ -55,7 +55,7 @@ class SchedulerStatus implements ListenerAggregateInterface
                 break;
 
             case Message::IS_STATUS:
-                if ($message['extra']['status']['code'] === ProcessState::RUNNING) {
+                if ($message['extra']['status']['code'] === WorkerState::RUNNING) {
                     $this->scheduler->getStatus()->incrementNumberOfFinishedTasks();
                 }
                 break;
@@ -132,7 +132,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             'extra' => [
                 'uid' => $scheduler->getProcessId(),
                 'logger' => __CLASS__,
-                'process_status' => $scheduler->getProcesses()->toArray(),
+                'process_status' => $scheduler->getWorkers()->toArray(),
                 'scheduler_status' => $scheduler->getStatus()->toArray(),
             ]
         ];

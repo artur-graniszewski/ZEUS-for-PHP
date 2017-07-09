@@ -4,18 +4,15 @@ namespace Zeus\Kernel\ProcessManager;
 
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\ProcessManager\Status\ProcessState;
+use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
 /**
- * Class Task
+ * Class Worker
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-class Task extends AbstractTask
+class Worker extends AbstractWorker
 {
-    /** @var ConfigInterface */
-    protected $config;
-
     /** @var SchedulerEvent */
     protected $event;
 
@@ -24,7 +21,7 @@ class Task extends AbstractTask
      */
     public function __construct()
     {
-        set_exception_handler([$this, 'terminateProcess']);
+        set_exception_handler([$this, 'terminate']);
     }
 
     /**
@@ -33,23 +30,15 @@ class Task extends AbstractTask
      */
     public function attach(EventManagerInterface $eventManager)
     {
-        $this->getEventManager()->attach(TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) {
+        $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             // @todo: do not use mainLoop() method from outside
             $this->getIpc()->useChannelNumber(1);
             $event->getTarget()->mainLoop();
-        }, TaskEvent::PRIORITY_FINALIZE);
+        }, WorkerEvent::PRIORITY_FINALIZE);
 
-        return $this;
-    }
-
-    /**
-     * @param ConfigInterface $config
-     * @return $this
-     */
-    public function setConfig(ConfigInterface $config)
-    {
-        // set time to live counter
-        $this->config = $config;
+        $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
+            $this->onWorkerExit($e);
+        }, SchedulerEvent::PRIORITY_FINALIZE);
 
         return $this;
     }
@@ -62,7 +51,7 @@ class Task extends AbstractTask
     {
         $status = $this->getStatus();
         $now = time();
-        if ($status->getCode() === ProcessState::RUNNING) {
+        if ($status->getCode() === WorkerState::RUNNING) {
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
                 return $this;
             }
@@ -70,13 +59,13 @@ class Task extends AbstractTask
             $status->incrementNumberOfFinishedTasks(1);
         }
 
-        $event = new TaskEvent();
+        $event = new WorkerEvent();
         $event->setTarget($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
-        $status->setCode(ProcessState::RUNNING);
+        $status->setCode(WorkerState::RUNNING);
         $this->sendStatus();
-        $event->setName(TaskEvent::EVENT_PROCESS_RUNNING);
+        $event->setName(WorkerEvent::EVENT_WORKER_RUNNING);
         $event->setParams($status->toArray());
         $this->getEventManager()->triggerEvent($event);
 
@@ -91,18 +80,18 @@ class Task extends AbstractTask
     {
         $status = $this->getStatus();
         $now = time();
-        if ($status->getCode() === ProcessState::WAITING) {
+        if ($status->getCode() === WorkerState::WAITING) {
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
                 return $this;
             }
         }
 
-        $event = new TaskEvent();
+        $event = new WorkerEvent();
         $event->setTarget($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
-        $status->setCode(ProcessState::WAITING);
-        $event->setName(TaskEvent::EVENT_PROCESS_WAITING);
+        $status->setCode(WorkerState::WAITING);
+        $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
         $event->setParams($status->toArray());
         $this->getEventManager()->triggerEvent($event);
         $this->sendStatus();
@@ -130,14 +119,14 @@ class Task extends AbstractTask
     /**
      * @param \Exception|\Throwable|null $exception
      */
-    protected function terminateProcess($exception = null)
+    protected function terminate($exception = null)
     {
         $status = $this->getStatus();
 
         // process is terminating, time to live equals zero
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
-        $status->setCode(ProcessState::EXITING);
+        $status->setCode(WorkerState::EXITING);
         $this->sendStatus();
 
         $payload = $status->toArray();
@@ -146,9 +135,9 @@ class Task extends AbstractTask
             $payload['exception'] = $exception;
         }
 
-        $event = new TaskEvent();
+        $event = new WorkerEvent();
         $event->setTarget($this);
-        $event->setName(TaskEvent::EVENT_PROCESS_EXIT);
+        $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
         $event->setParams($payload);
 
         $this->getEventManager()->triggerEvent($event);
@@ -167,9 +156,9 @@ class Task extends AbstractTask
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
             $exception = null;
             try {
-                $event = new TaskEvent();
+                $event = new WorkerEvent();
                 $event->setTarget($this);
-                $event->setName(TaskEvent::EVENT_PROCESS_LOOP);
+                $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 
@@ -181,7 +170,7 @@ class Task extends AbstractTask
             }
         }
 
-        $this->terminateProcess();
+        $this->terminate();
     }
 
     /**
@@ -210,5 +199,17 @@ class Task extends AbstractTask
         $this->getIpc()->send($payload);
 
         return $this;
+    }
+
+    /**
+     * @param WorkerEvent $event
+     */
+    protected function onWorkerExit(WorkerEvent $event)
+    {
+        /** @var \Exception $exception */
+        $exception = $event->getParam('exception');
+
+        $status = $exception ? $exception->getCode(): 0;
+        exit($status);
     }
 }

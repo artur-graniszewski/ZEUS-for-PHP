@@ -8,11 +8,12 @@ use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
+use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\DisciplineInterface;
-use Zeus\Kernel\ProcessManager\Scheduler\ProcessCollection;
-use Zeus\Kernel\ProcessManager\Status\ProcessState;
+use Zeus\Kernel\ProcessManager\Scheduler\WorkerCollection;
+use Zeus\Kernel\ProcessManager\Status\WorkerState;
 use Zeus\Kernel\IpcServer\Message;
 
 /**
@@ -20,27 +21,22 @@ use Zeus\Kernel\IpcServer\Message;
  * @package Zeus\Kernel\ProcessManager
  * @internal
  */
-final class Scheduler extends AbstractTask implements EventsCapableInterface, ProcessInterface
+final class Scheduler extends AbstractWorker implements EventsCapableInterface, ProcessInterface
 {
     use PluginRegistry;
+    use GarbageCollector;
 
-    /** @var ProcessState[]|ProcessCollection */
-    protected $processes = [];
-
-    /** @var Config */
-    protected $config;
+    /** @var WorkerState[]|WorkerCollection */
+    protected $workers = [];
 
     /** @var bool */
     protected $schedulerActive = true;
 
-    /** @var ProcessState */
+    /** @var WorkerState */
     protected $schedulerStatus;
 
-    /** @var Task */
-    protected $processService;
-
-    /** @var IpcAdapterInterface */
-    protected $ipc;
+    /** @var Worker */
+    protected $workerService;
 
     protected $discipline;
 
@@ -59,11 +55,11 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     }
 
     /**
-     * @return Task
+     * @return Worker
      */
-    public function getProcessService()
+    public function getWorkerService()
     {
-        return $this->processService;
+        return $this->workerService;
     }
 
     /**
@@ -80,19 +76,18 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     /**
      * Scheduler constructor.
      * @param ConfigInterface $config
-     * @param Task $processService
+     * @param Worker $workerService
      * @param IpcAdapterInterface $ipcAdapter
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, Task $processService, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, Worker $workerService, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
     {
         $this->discipline = $discipline;
-        $this->config = $config;
-        $this->ipc = $ipcAdapter;
-        $this->processService = $processService;
-        $this->status = new ProcessState($this->getConfig()->getServiceName());
-
-        $this->processes = new ProcessCollection($this->getConfig()->getMaxProcesses());
+        $this->setConfig($config);
+        $this->setIpc($ipcAdapter);
+        $this->workerService = $workerService;
+        $this->status = new WorkerState($this->getConfig()->getServiceName());
+        $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
     }
 
     public function __destruct()
@@ -116,18 +111,17 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     public function attach(EventManagerInterface $events)
     {
         $events = $events->getSharedManager();
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->addNewProcess($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE, function(SchedulerEvent $e) { $this->onProcessCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_TERMINATED, function(SchedulerEvent $e) { $this->onProcessTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', TaskEvent::EVENT_PROCESS_EXIT, function(TaskEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', TaskEvent::EVENT_PROCESS_MESSAGE, function(IpcEvent $e) { $this->onProcessMessage($e);});
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         //$this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
-            $this->manageProcesses($this->discipline);
+            $this->manageWorkers($this->discipline);
         });
 
         return $this;
@@ -136,7 +130,7 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     /**
      * @param IpcEvent $event
      */
-    protected function onProcessMessage(IpcEvent $event)
+    protected function onWorkerMessage(IpcEvent $event)
     {
         $message = $event->getParams();
 
@@ -150,16 +144,16 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
                     $pid = $threadId;
                 }
 
-                /** @var ProcessState $processStatus */
+                /** @var WorkerState $processStatus */
                 $processStatus = $message['extra']['status'];
 
                 // process status changed, update this information server-side
-                if (isset($this->processes[$pid])) {
-                    if ($this->processes[$pid]['code'] !== $processStatus['code']) {
+                if (isset($this->workers[$pid])) {
+                    if ($this->workers[$pid]['code'] !== $processStatus['code']) {
                         $processStatus['time'] = microtime(true);
                     }
 
-                    $this->processes[$pid] = $processStatus;
+                    $this->workers[$pid] = $processStatus;
                 }
 
                 break;
@@ -207,33 +201,21 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     }
 
     /**
-     * @param TaskEvent $event
-     */
-    protected function onProcessExit(TaskEvent $event)
-    {
-        /** @var \Exception $exception */
-        $exception = $event->getParam('exception');
-
-        $status = $exception ? $exception->getCode(): 0;
-        exit($status);
-    }
-
-    /**
      * @param SchedulerEvent $event
      */
-    protected function onProcessTerminated(SchedulerEvent $event)
+    protected function onWorkerTerminated(SchedulerEvent $event)
     {
-        $pid = $event->getParam('uid');
-        $this->log(Logger::DEBUG, "Process $pid exited");
+        $id = $event->getParam('uid');
+        $this->log(Logger::DEBUG, "Worker $id exited");
 
-        if (isset($this->processes[$pid])) {
-            $processStatus = $this->processes[$pid];
+        if (isset($this->workers[$id])) {
+            $processStatus = $this->workers[$id];
 
-            if (!ProcessState::isExiting($processStatus) && $processStatus['time'] < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
-                $this->log(Logger::ERR, "Process $pid exited prematurely");
+            if (!WorkerState::isExiting($processStatus) && $processStatus['time'] < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
+                $this->log(Logger::ERR, "Worker $id exited prematurely");
             }
 
-            unset($this->processes[$pid]);
+            unset($this->workers[$id]);
         }
     }
 
@@ -248,13 +230,13 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
 
         $pid = @file_get_contents($fileName);
         if (!$pid) {
-            throw new ProcessManagerException("Server not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
+            throw new ProcessManagerException("Scheduler not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
         }
 
         $pid = (int) $pid;
 
         $this->stopProcess($pid, true);
-        $this->log(Logger::INFO, "Server stopped");
+        $this->log(Logger::INFO, "Scheduler stopped");
         unlink($fileName);
 
         return $this;
@@ -320,7 +302,7 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
                 return $this;
             }
 
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
                 function(SchedulerEvent $e) {
                     if (!$e->getParam('server')) {
                         return;
@@ -335,7 +317,7 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
                     }
                 }, SchedulerEvent::PRIORITY_FINALIZE);
 
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
                 function (SchedulerEvent $event) {
                     if (!$event->getParam('server') || $event->getParam('init_process')) {
                         return;
@@ -354,7 +336,7 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
                 , SchedulerEvent::PRIORITY_FINALIZE
             );
 
-            $this->processService->start(['server' => true]);
+            $this->workerService->start(['server' => true]);
 
         } catch (\Throwable $exception) {
             $this->handleException($exception);
@@ -383,37 +365,13 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     }
 
     /**
-     * @return $this
-     */
-    protected function collectCycles()
-    {
-        $enabled = gc_enabled();
-        gc_enable();
-        if (function_exists('gc_mem_caches')) {
-            // @codeCoverageIgnoreStart
-            gc_mem_caches();
-            // @codeCoverageIgnoreEnd
-        }
-        gc_collect_cycles();
-
-
-        if (!$enabled) {
-            // @codeCoverageIgnoreStart
-            gc_disable();
-            // @codeCoverageIgnoreEnd
-        }
-
-        return $this;
-    }
-
-    /**
      * @param int $uid
      * @param bool $isSoftStop
      * @return $this
      */
     protected function stopProcess($uid, $isSoftStop)
     {
-        $this->triggerEvent(SchedulerEvent::EVENT_PROCESS_TERMINATE, ['uid' => $uid, 'soft' => $isSoftStop]);
+        $this->triggerEvent(SchedulerEvent::EVENT_WORKER_TERMINATE, ['uid' => $uid, 'soft' => $isSoftStop]);
 
         return $this;
     }
@@ -435,11 +393,11 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
 
         $this->setSchedulerActive(false);
 
-        $this->log(Logger::INFO, "Terminating scheduler");
+        $this->log(Logger::INFO, "Terminating Scheduler");
 
-        if ($this->processes) {
-            foreach (array_keys($this->processes->toArray()) as $pid) {
-                $this->log(Logger::DEBUG, "Terminating process $pid");
+        if ($this->workers) {
+            foreach (array_keys($this->workers->toArray()) as $pid) {
+                $this->log(Logger::DEBUG, "Terminating worker $pid");
                 $this->stopProcess($pid, false);
             }
         }
@@ -468,7 +426,7 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
         }
 
         for ($i = 0; $i < $count; ++$i) {
-            $this->processService->start();
+            $this->workerService->start();
         }
 
         return $this;
@@ -477,13 +435,13 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     /**
      * @param SchedulerEvent $event
      */
-    protected function onProcessCreate(SchedulerEvent $event)
+    protected function onWorkerCreate(SchedulerEvent $event)
     {
         if (!$event->getParam('init_process') || $event->getParam('server')) {
             return;
         }
 
-        $process = $this->processService;
+        $process = $this->workerService;
         $process->setProcessId($event->getParam('uid'));
         $process->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
@@ -494,7 +452,7 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     /**
      * @param SchedulerEvent $event
      */
-    protected function addNewProcess(SchedulerEvent $event)
+    protected function addNewWorker(SchedulerEvent $event)
     {
         if ($event->getParam('server')) {
             return;
@@ -502,8 +460,8 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
 
         $pid = $event->getParam('uid');
 
-        $this->processes[$pid] = [
-            'code' => ProcessState::WAITING,
+        $this->workers[$pid] = [
+            'code' => WorkerState::WAITING,
             'uid' => $pid,
             'time' => microtime(true),
             'service_name' => $this->getConfig()->getServiceName(),
@@ -515,14 +473,14 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     }
 
     /**
-     * Manages server processes.
+     * Manages server workers.
      *
      * @param DisciplineInterface $discipline
      * @return $this
      */
-    protected function manageProcesses(DisciplineInterface $discipline)
+    protected function manageWorkers(DisciplineInterface $discipline)
     {
-        $operations = $discipline->manage($this->getConfig(), $this->processes);
+        $operations = $discipline->manage($this->getConfig(), $this->workers);
 
         $toTerminate = $operations['terminate'];
         $toSoftTerminate = $operations['soft_terminate'];
@@ -545,12 +503,12 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
         $now = microtime(true);
 
         foreach ($processIds as $processId) {
-            $processStatus = $this->processes[$processId];
-            $processStatus['code'] = ProcessState::TERMINATED;
+            $processStatus = $this->workers[$processId];
+            $processStatus['code'] = WorkerState::TERMINATED;
             $processStatus['time'] = $now;
-            $this->processes[$processId] = $processStatus;
+            $this->workers[$processId] = $processStatus;
 
-            $this->log(Logger::DEBUG, sprintf('Terminating process %d', $processId));
+            $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $processId));
             $this->stopProcess($processId, $isSoftTermination);
         }
 
@@ -590,11 +548,11 @@ final class Scheduler extends AbstractTask implements EventsCapableInterface, Pr
     }
 
     /**
-     * @return ProcessCollection|Status\ProcessState[]
+     * @return WorkerCollection|Status\WorkerState[]
      */
-    public function getProcesses()
+    public function getWorkers()
     {
-        return $this->processes;
+        return $this->workers;
     }
 
     /**

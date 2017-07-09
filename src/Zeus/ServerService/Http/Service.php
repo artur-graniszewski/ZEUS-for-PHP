@@ -7,8 +7,8 @@ use Zend\Http\Response;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
-use Zeus\Kernel\ProcessManager\Task;
-use Zeus\Kernel\ProcessManager\TaskEvent;
+use Zeus\Kernel\ProcessManager\Worker;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
@@ -18,12 +18,12 @@ use Zeus\ServerService\Shared\AbstractSocketServerService;
 
 class Service extends AbstractSocketServerService
 {
-    /** @var Task */
+    /** @var Worker */
     protected $process;
 
     public function start()
     {
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) {
+        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $this->process = $event->getTarget();
         });
 
@@ -54,7 +54,7 @@ class Service extends AbstractSocketServerService
     }
 
     /**
-     * @return Task
+     * @return Worker
      */
     public function getProcess()
     {

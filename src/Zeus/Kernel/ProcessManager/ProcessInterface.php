@@ -2,8 +2,6 @@
 
 namespace Zeus\Kernel\ProcessManager;
 
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-
 interface ProcessInterface
 {
     /**
@@ -16,17 +14,6 @@ interface ProcessInterface
      * @return $this
      */
     public function setProcessId(int $processId);
-
-    /**
-     * @return IpcAdapterInterface
-     */
-    public function getIpc();
-
-    /**
-     * @param IpcAdapterInterface $ipcAdapter
-     * @return $this
-     */
-    public function setIpc(IpcAdapterInterface $ipcAdapter);
 
     /**
      * @return $this

@@ -4,7 +4,7 @@ namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
 use Zeus\Kernel\ProcessManager\Plugin\DropPrivileges;
-use Zeus\Kernel\ProcessManager\TaskEvent;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -69,8 +69,8 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
 
     public function testDropPrivilegesPluginWhenSudoer()
     {
-        $event = new TaskEvent();
-        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
+        $event = new WorkerEvent();
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
@@ -80,16 +80,16 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
-        }, TaskEvent::PRIORITY_FINALIZE + 1);
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
     public function testSchedulerDestructor()
     {
-        $event = new TaskEvent();
-        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
+        $event = new WorkerEvent();
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
@@ -99,9 +99,9 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(TaskEvent::EVENT_PROCESS_INIT, function(TaskEvent $event) {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
-        }, TaskEvent::PRIORITY_FINALIZE + 1);
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $scheduler->getEventManager()->triggerEvent($event);
         $this->assertEquals(2, count($scheduler->getPluginRegistry()), 'Two plugins should be registered');
@@ -115,8 +115,8 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
      */
     public function testDropPrivilegesPluginWhenEffectiveSudoerButNotRealSudoer()
     {
-        $event = new TaskEvent();
-        $event->setName(TaskEvent::EVENT_PROCESS_INIT);
+        $event = new WorkerEvent();
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
 
