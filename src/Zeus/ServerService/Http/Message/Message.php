@@ -144,7 +144,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /**
      * @param NetworkStreamInterface $connection
-     * @param \Exception|\Throwable $exception
+     * @param \Throwable $exception
+     * @throws \Throwable
      */
     public function onError(NetworkStreamInterface $connection, $exception)
     {
@@ -328,7 +329,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param string $message
      * @return $this
      */
-    protected function decodeRequestBody(& $message)
+    protected function decodeRequestBody(string & $message)
     {
         if ($this->bodyReceived) {
             return $this;
@@ -361,7 +362,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param string $buffer
      * @return $this
      */
-    protected function sendHeaders(& $buffer)
+    protected function sendHeaders(string & $buffer)
     {
         $connection = $this->connection;
         $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
@@ -404,7 +405,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param string $buffer
      * @return bool
      */
-    protected function enableCompressionIfSupported(& $buffer)
+    protected function enableCompressionIfSupported(string & $buffer)
     {
         $this->compressionHandler = null;
 
@@ -452,7 +453,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param string $buffer
      * @return string
      */
-    public function sendResponse($buffer)
+    public function sendResponse(string $buffer)
     {
         $connection = $this->connection;
 
@@ -494,7 +495,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param string $buffer
      * @return $this
      */
-    protected function sendBody(NetworkStreamInterface $connection, $buffer)
+    protected function sendBody(NetworkStreamInterface $connection, string $buffer = null)
     {
         if ($this->isBodyAllowedInResponse($this->request)) {
             $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
@@ -561,11 +562,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /**
      * @param Request $request
-     * @param Response $response
-     * @param \Exception|\Error $exception
+     * @param \Throwable $exception
      * @return Response
+     * @internal param Response $response
      */
-    protected function dispatchError(Request $request, $exception)
+    protected function dispatchError(Request $request, \Throwable $exception)
     {
         $statusCode = $exception->getCode() >= Response::STATUS_CODE_400 ? $exception->getCode() : Response::STATUS_CODE_500;
 

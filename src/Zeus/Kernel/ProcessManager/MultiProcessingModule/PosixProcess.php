@@ -76,7 +76,7 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
     /**
      * @param bool $throwException
      * @return bool
-     * @throws \Exception
+     * @throws \Throwable
      */
     public static function isSupported($throwException = false)
     {

@@ -62,7 +62,8 @@ class SchedulerStatusView
     }
 
     /**
-     * @return string|false
+     * @param ServerServiceInterface $service
+     * @return false|string
      */
     public function getStatus(ServerServiceInterface $service)
     {

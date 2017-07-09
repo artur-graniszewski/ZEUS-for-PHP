@@ -6,7 +6,6 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class Server implements ListenerAggregateInterface
