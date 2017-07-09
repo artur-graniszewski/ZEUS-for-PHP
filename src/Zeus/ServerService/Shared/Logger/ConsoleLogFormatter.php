@@ -24,7 +24,7 @@ class ConsoleLogFormatter extends StreamLogFormatter implements FormatterInterfa
         $dateTime = $console->colorize($event['timestamp']->format($this->dateTimeFormat . '.') . sprintf("%'.03d", $event['extra']['microtime']), ColorInterface::GRAY);
         $severity = $console->colorize(str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT), $this->getSeverityColor($event['priorityName']));
         $pid = $console->colorize($event['extra']['uid'], ColorInterface::CYAN);
-        $serviceName = $console->colorize(sprintf("--- [%s]", str_pad(substr($serviceName,0, 15), 15, " ", STR_PAD_LEFT)), ColorInterface::GRAY);
+        $serviceName = $console->colorize(sprintf("--- [%s]", str_pad(substr($serviceName, 0, 15), 15, " ", STR_PAD_LEFT)), ColorInterface::GRAY);
         $loggerName = $console->colorize(str_pad(isset($event['extra']['logger']) ? substr($this->getShortLoggerName($event['extra']['logger']), -40): '<unknown>', 40, " ", STR_PAD_RIGHT), ColorInterface::LIGHT_BLUE) ;
         $message = $console->colorize(": ", ColorInterface::GRAY) . $event['message'];
 

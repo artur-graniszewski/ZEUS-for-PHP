@@ -6,7 +6,11 @@ use Zend\Log\Formatter\FormatterInterface;
 
 class StreamLogFormatter implements FormatterInterface
 {
+    /** @var string[] */
     protected $loggerCache = [];
+
+    /** @var string */
+    protected $dateTimeFormat = 'Y-m-d H:i:s';
 
     /**
      * This method is implemented for FormatterInterface but not used.
@@ -26,13 +30,15 @@ class StreamLogFormatter implements FormatterInterface
      */
     public function setDateTimeFormat($dateTimeFormat)
     {
+        $this->dateTimeFormat = $dateTimeFormat;
+
         return $this;
     }
 
     public function format($event)
     {
         $serviceName = $event['extra']['service_name'] . '-' . $event['extra']['threadId'];
-        $dateTime = $event['timestamp']->format('Y-m-d H:i:s.') . sprintf("%'.03d", $event['extra']['microtime']);
+        $dateTime = $event['timestamp']->format($this->dateTimeFormat) . sprintf("%'.03d", $event['extra']['microtime']);
         $severity = str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT);
         $pid = $event['extra']['uid'];
         $serviceName = sprintf("--- [%s]", str_pad(substr($serviceName,0, 15), 15, " ", STR_PAD_LEFT));
@@ -43,7 +49,7 @@ class StreamLogFormatter implements FormatterInterface
         return $eventText;
     }
 
-    protected function getShortLoggerName($loggerName)
+    protected function getShortLoggerName(string $loggerName) : string
     {
         if (!isset($loggerName[40])) {
             return $loggerName;
