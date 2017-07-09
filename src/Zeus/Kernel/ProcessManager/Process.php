@@ -137,7 +137,6 @@ class Process extends AbstractProcess
         // process is terminating, time to live equals zero
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
-
         $status->setCode(ProcessState::EXITING);
         $this->sendStatus();
 
@@ -166,6 +165,7 @@ class Process extends AbstractProcess
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
+            //trigger_error(getmypid(). " > LOOP");
             $exception = null;
             try {
                 $event = new ProcessEvent();

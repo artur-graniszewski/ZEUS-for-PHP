@@ -46,6 +46,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
         $process = new Process($event);
+        $process->setProcessId(getmypid());
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
         $process->setIpc($event->getTarget()->getIpc());
         $process->attach($events);
@@ -79,6 +80,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $event = new ProcessEvent();
         $event->setTarget($process);
         $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
+        $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
         $client = stream_socket_client('tcp://localhost:' . $this->port);
@@ -111,6 +113,7 @@ class SocketEventSubscriberTest extends PHPUnit_Framework_TestCase
         $process->setConfig(new \Zeus\Kernel\ProcessManager\Config([]));
         $process->setIpc($event->getTarget()->getIpc());
         $process->attach($events);
+        $process->setProcessId(getmypid());
 
         $received = null;
         $message = new SocketTestMessage(function($connection, $data) use (&$received) {

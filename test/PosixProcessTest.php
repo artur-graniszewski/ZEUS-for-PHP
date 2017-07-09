@@ -9,6 +9,7 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModu
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 
+use Zeus\Kernel\ProcessManager\ProcessEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use ZeusTest\Helpers\PcntlMockBridge;
@@ -53,6 +54,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $pcntlMock = new PcntlMockBridge();
         $pcntlMock->setPpid(123456789);
         PosixProcess::setPcntlBridge($pcntlMock);
+        $event = new SchedulerEvent();
 
         $sm = $this->getServiceManager();
         $scheduler = $this->getScheduler(1);
@@ -72,7 +74,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $scheduler->start(false);
-        $service->onSchedulerLoop();
+        $service->onSchedulerLoop($event);
 
         $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixProcess');
     }

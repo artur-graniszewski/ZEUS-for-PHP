@@ -150,12 +150,13 @@ abstract class AbstractProcess implements ProcessInterface
 
         $pid = $event->getParam('uid');
         $process->setProcessId($pid);
-        $process->setThreadId($event->getParam('threadId'));
+        $process->setThreadId($event->getParam('threadId', 1));
 
         $event = new ProcessEvent();
         $event->setTarget($process);
         $event->setName(ProcessEvent::EVENT_PROCESS_INIT);
         $event->setParam('uid', $pid);
+        $event->setParam('threadId', $event->getParam('threadId', 1));
         $this->getEventManager()->triggerEvent($event);
 
         return $this;

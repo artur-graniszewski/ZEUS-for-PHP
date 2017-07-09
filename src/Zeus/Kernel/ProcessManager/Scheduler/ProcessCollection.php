@@ -19,7 +19,7 @@ class ProcessCollection extends FixedCollection
             ProcessState::TERMINATED => 0
         ];
 
-        foreach ($this->values as $taskStatus) {
+        foreach ($this->values as $key => $taskStatus) {
             if (!$taskStatus) {
                 continue;
             }

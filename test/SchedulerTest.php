@@ -120,36 +120,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(8, count(array_unique($foundEvents)), "Messages should be unique");
     }
 
-    public function testProcessCreationOnStartup()
-    {
-        $scheduler = $this->getScheduler(1);
-
-        $amountOfScheduledProcesses = 0;
-        $processesInitialized = [];
-
-        $em = $scheduler->getEventManager();
-        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, 0);
-        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
-        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_PROCESS_CREATE,
-            function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, $em) {
-                $e->setParam('init_process', true);
-                $amountOfScheduledProcesses++;
-            }, 1000
-        );
-
-        $em->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_INIT,
-            function(ProcessEvent $e) use (&$processesInitialized) {
-                $processesInitialized[] = $e->getTarget()->getProcessId();
-
-                // stop the process
-                $e->stopPropagation(true);
-            }
-        );
-        $scheduler->start(true);
-
-        $this->assertEquals(count($processesInitialized), $amountOfScheduledProcesses, "Scheduler should initialize all newly created processes");
-    }
-
     public function schedulerProcessAmountProvider()
     {
         return [

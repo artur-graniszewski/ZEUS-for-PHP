@@ -19,6 +19,8 @@ use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
  */
 final class SocketMessageBroker
 {
+    protected $stopServerAtProcessExit = false;
+
     /** @var SocketServer */
     protected $server;
 
@@ -53,6 +55,7 @@ final class SocketMessageBroker
     }
 
     /**
+     * @param EventInterface $event
      * @return $this
      */
     public function onServerStart(EventInterface $event)
@@ -67,6 +70,7 @@ final class SocketMessageBroker
         };
 
         if ($event->getName() === ProcessEvent::EVENT_PROCESS_INIT && !$this->server) {
+            $this->stopServerAtProcessExit = true;
             $this->server = new SocketServer();
             $this->server->setReuseAddress(true);
             $this->server->bind($this->config->getListenAddress(), 1, $this->config->getListenPort());
@@ -139,7 +143,9 @@ final class SocketMessageBroker
             $this->connection = null;
         }
 
-        $this->server->close();
+        if ($this->stopServerAtProcessExit) {
+            $this->server->close();
+        }
         $this->server = null;
     }
 
