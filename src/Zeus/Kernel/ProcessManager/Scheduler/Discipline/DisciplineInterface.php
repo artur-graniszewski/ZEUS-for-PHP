@@ -12,5 +12,5 @@ interface DisciplineInterface
      * @param WorkerCollection $processes
      * @return \mixed[]
      */
-    public function manage(ConfigInterface $config, WorkerCollection $processes);
+    public function manage(ConfigInterface $config, WorkerCollection $processes) : array;
 }

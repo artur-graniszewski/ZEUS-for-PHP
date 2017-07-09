@@ -9,6 +9,7 @@ trait ChunkedEncoding
 {
     private $buffer = null;
 
+    /** @var int */
     private $expectedChunkSize = 0;
 
     public function clearBuffer()

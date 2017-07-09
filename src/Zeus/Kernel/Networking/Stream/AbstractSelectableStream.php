@@ -52,7 +52,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     }
 
     /**
-     * @param null|string $ending
+     * @param bool|string $ending
      * @return bool|string
      */
     public function read($ending = false)

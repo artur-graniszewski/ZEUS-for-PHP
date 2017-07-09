@@ -145,6 +145,10 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider schedulerProcessAmountProvider
+     * @param $schedulerIterations
+     * @param $starProcesses
+     * @param $minIdleProcesses
+     * @param $expectedProcesses
      */
     public function testProcessCreationWhenTooLittleOfThemIsWaiting($schedulerIterations, $starProcesses, $minIdleProcesses, $expectedProcesses)
     {
@@ -220,17 +224,13 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $amountOfScheduledProcesses++;
 
                 $uid = 100000000 + $amountOfScheduledProcesses;
-                $e->stopPropagation(true);
-                $e->setName(SchedulerEvent::EVENT_WORKER_CREATED);
                 $e->setParam('uid', $uid);
-                $em->triggerEvent($e);
+                $e->setParam('processId', $uid);
+                $e->setParam('threadId', 1);
+                $processesCreated[] = $uid;
             }
         );
-        $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATED,
-            function(SchedulerEvent $event) use (&$amountOfScheduledProcesses, &$processesCreated, $em, $scheduler) {
-                $processesCreated[] = $event->getParam('uid');
-            }
-        );
+
         $em->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_LOOP,
             function(WorkerEvent $e) use (&$processesInitialized) {
                 $uid = $e->getTarget()->getProcessId();
@@ -255,6 +255,8 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider getSchedulerLaunchTypes
+     * @param $runInBackground
+     * @param $launchDescription
      */
     public function testSchedulerStartingEvents($runInBackground, $launchDescription)
     {

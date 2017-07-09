@@ -263,10 +263,9 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     /**
      * Increases cas bad value count for the given operation.
-     *
-     * @param string $operation
-     * @param int $misses
      * @return $this
+     * @internal param string $operation
+     * @internal param int $misses
      */
     protected function markCasBadValue()
     {

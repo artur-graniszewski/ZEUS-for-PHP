@@ -21,7 +21,7 @@ trait PluginRegistry
      * @param  ListenerAggregateInterface $plugin
      * @return bool
      */
-    public function hasPlugin(ListenerAggregateInterface $plugin)
+    public function hasPlugin(ListenerAggregateInterface $plugin) : bool
     {
         $registry = $this->getPluginRegistry();
         return $registry->contains($plugin);

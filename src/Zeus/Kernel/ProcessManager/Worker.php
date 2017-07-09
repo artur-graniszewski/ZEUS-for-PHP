@@ -118,7 +118,7 @@ class Worker extends AbstractWorker
     }
 
     /**
-     * @param \Exception|\Throwable|null $exception
+     * @param \Throwable|null $exception
      */
     protected function terminate(Throwable $exception = null)
     {

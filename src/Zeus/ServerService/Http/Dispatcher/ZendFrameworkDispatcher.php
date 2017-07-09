@@ -103,6 +103,7 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
 
     /**
      * @param Request $request
+     * @param Response $response
      */
     public function dispatch(Request $request, Response $response)
     {

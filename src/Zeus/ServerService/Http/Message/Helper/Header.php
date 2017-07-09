@@ -131,9 +131,10 @@ trait Header
     }
 
     /**
+     * @param Request $request
      * @return bool
      */
-    protected function isBodyAllowedInResponse(Request $request)
+    protected function isBodyAllowedInResponse(Request $request) : bool
     {
         switch ($request->getMethod()) {
             case 'OPTIONS':

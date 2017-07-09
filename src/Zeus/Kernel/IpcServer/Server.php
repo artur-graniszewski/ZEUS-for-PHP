@@ -12,11 +12,13 @@ class Server implements ListenerAggregateInterface
 {
     protected $eventHandles;
 
+    /** @var bool */
     protected $isConnected = false;
 
     /** @var IpcAdapterInterface */
     protected $ipc;
 
+    /** @var EventManagerInterface */
     protected $events;
 
     protected $event;

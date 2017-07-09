@@ -106,6 +106,11 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider eventProvider
+     * @param $initialEventType
+     * @param $forcedForkValue
+     * @param $expectedForkValue
+     * @param $methodAmounts
+     * @param $isInitExpected
      */
     public function testProcessEvents($initialEventType, $forcedForkValue, $expectedForkValue, $methodAmounts, $isInitExpected)
     {
@@ -214,6 +219,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider signalsProvider
+     * @param $signal
      */
     public function testDetectionOfSchedulerTermination($signal)
     {

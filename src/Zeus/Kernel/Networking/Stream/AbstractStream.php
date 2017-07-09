@@ -120,7 +120,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     }
 
     /**
-     * @param null|string $ending
+     * @param bool|string $ending
      * @return bool|string
      */
     public function read($ending = false)

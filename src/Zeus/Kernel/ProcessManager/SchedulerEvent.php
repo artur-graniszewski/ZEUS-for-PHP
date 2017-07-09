@@ -1,6 +1,7 @@
 <?php
 
 namespace Zeus\Kernel\ProcessManager;
+
 use Zend\EventManager\Event;
 
 /**
@@ -13,7 +14,6 @@ class SchedulerEvent extends Event
     const PRIORITY_REGULAR = 0;
 
     const EVENT_WORKER_CREATE = 'workerCreate';
-    const EVENT_WORKER_CREATED = 'workerCreated';
 
     const EVENT_WORKER_TERMINATED = 'workerTerminated';
     const EVENT_WORKER_TERMINATE = 'workerTerminate';

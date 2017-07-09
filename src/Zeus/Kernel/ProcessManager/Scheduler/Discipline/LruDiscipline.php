@@ -13,7 +13,7 @@ class LruDiscipline implements DisciplineInterface
      * @param WorkerCollection $processes
      * @return \mixed[]
      */
-    public function manage(ConfigInterface $config, WorkerCollection $processes)
+    public function manage(ConfigInterface $config, WorkerCollection $processes) : array
     {
         $result = [
             'create' => 0,
@@ -44,9 +44,9 @@ class LruDiscipline implements DisciplineInterface
      * @param WorkerCollection $processes
      * @param ConfigInterface $config
      * @param int[] $statusSummary
-     * @return int|mixed
+     * @return int
      */
-    protected function getAmountOfProcessesToCreate(WorkerCollection $processes, ConfigInterface $config, array $statusSummary)
+    protected function getAmountOfProcessesToCreate(WorkerCollection $processes, ConfigInterface $config, array $statusSummary) : int
     {
         $idleProcesses = $statusSummary[WorkerState::WAITING];
         $allProcesses = $processes->count();
@@ -72,7 +72,7 @@ class LruDiscipline implements DisciplineInterface
      * @param int[] $statusSummary
      * @return int[]
      */
-    protected function getProcessesToTerminate(WorkerCollection $processes, ConfigInterface $config, array $statusSummary)
+    protected function getProcessesToTerminate(WorkerCollection $processes, ConfigInterface $config, array $statusSummary) : array
     {
         $expireTime = microtime(true) - $config->getProcessIdleTimeout();
 
