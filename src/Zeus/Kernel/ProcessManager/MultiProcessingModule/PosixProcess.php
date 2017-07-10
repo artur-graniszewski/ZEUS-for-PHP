@@ -7,8 +7,6 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-
-
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
@@ -175,7 +173,7 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
 
         switch ($pid) {
             case -1:
-                throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
+                throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::WORKER_NOT_STARTED);
             case 0:
                 // we are the new process
                 $pcntl->pcntlSignal(SIGTERM, SIG_DFL);
@@ -200,13 +198,12 @@ final class PosixProcess implements MultiProcessingModuleInterface, SeparateAddr
     public function onSchedulerInit()
     {
         $pcntl = $this->getPcntlBridge();
-        $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
-        //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);
-        $pcntl->pcntlSignal(SIGTERM, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGQUIT, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGTSTP, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGINT, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGHUP, $onTaskTerminate);
+        $onTerminate = function() { $this->onSchedulerTerminate(); };
+        $pcntl->pcntlSignal(SIGTERM, $onTerminate);
+        $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
+        $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
+        $pcntl->pcntlSignal(SIGINT, $onTerminate);
+        $pcntl->pcntlSignal(SIGHUP, $onTerminate);
     }
 
     /**

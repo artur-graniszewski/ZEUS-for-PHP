@@ -12,7 +12,7 @@ use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
 use Zeus\ServerService\ServerServiceInterface;
 
-class ConsoleController extends AbstractActionController
+class MainController extends AbstractActionController
 {
     /** @var mixed[] */
     protected $config;

@@ -164,7 +164,7 @@ class Worker extends AbstractWorker
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 
-                if ($event->getParam('exit')) {
+                if ($event->isWorkerStopping()) {
                     break;
                 }
             } catch (\Throwable $exception) {

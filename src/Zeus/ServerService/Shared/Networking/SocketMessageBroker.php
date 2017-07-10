@@ -46,10 +46,10 @@ final class SocketMessageBroker
     public function attach(EventManagerInterface $events)
     {
         $events = $events->getSharedManager();
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onServerStart']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onServerStart']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onProcessLoop']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onProcessExit'], 1000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onStart']);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onStart']);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop']);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
 
         return $this;
     }
@@ -58,7 +58,7 @@ final class SocketMessageBroker
      * @param EventInterface $event
      * @return $this
      */
-    public function onServerStart(EventInterface $event)
+    public function onStart(EventInterface $event)
     {
         if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START) {
             $mpm = $event->getTarget()->getMultiProcessingModule();
@@ -84,7 +84,7 @@ final class SocketMessageBroker
      * @throws \Throwable|\Exception
      * @throws null
      */
-    public function onProcessLoop(WorkerEvent $event)
+    public function onWorkerLoop(WorkerEvent $event)
     {
         $exception = null;
 
@@ -136,7 +136,7 @@ final class SocketMessageBroker
         }
     }
 
-    public function onProcessExit()
+    public function onWorkerExit()
     {
         if ($this->connection) {
             $this->connection->close();

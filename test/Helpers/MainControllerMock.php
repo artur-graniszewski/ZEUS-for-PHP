@@ -2,9 +2,9 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\Controller\ConsoleController;
+use Zeus\Controller\MainController;
 
-class ConsoleControllerMock extends ConsoleController
+class MainControllerMock extends MainController
 {
     protected $exitCode;
 
@@ -26,7 +26,7 @@ class ConsoleControllerMock extends ConsoleController
 
     /**
      * @param mixed $exitCode
-     * @return ConsoleControllerMock
+     * @return MainControllerMock
      */
     public function setExitCode($exitCode)
     {

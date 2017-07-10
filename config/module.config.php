@@ -3,9 +3,9 @@
 namespace Zeus;
 
 use Zend\Mvc\Service\EventManagerFactory;
-use Zeus\Controller\ConsoleController;
+use Zeus\Controller\MainController;
 use Zeus\Controller\Factory\ControllerFactory;
-use Zeus\Controller\ProcessController;
+use Zeus\Controller\WorkerController;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
@@ -18,13 +18,13 @@ use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
-use Zeus\Kernel\ProcessManager\Factory\ProcessFactory;
+use Zeus\Kernel\ProcessManager\Factory\WorkerFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
 use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\Process;
+use Zeus\Kernel\ProcessManager\Worker;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
@@ -42,8 +42,8 @@ return $config = [
 
         ],
         'factories' => [
-            ConsoleController::class => ControllerFactory::class,
-            ProcessController::class => ControllerFactory::class,
+            MainController::class => ControllerFactory::class,
+            WorkerController::class => ControllerFactory::class,
 
         ]
     ],
@@ -63,7 +63,7 @@ return $config = [
             IpcAdapterInterface::class => IpcServerFactory::class,
             LoggerInterface::class => LoggerFactory::class,
             Scheduler::class => SchedulerFactory::class,
-            Process::class => ProcessFactory::class,
+            Worker::class => WorkerFactory::class,
             Manager::class => ManagerFactory::class,
             PosixThread::class => MultiProcessingModuleFactory::class,
             PosixProcess::class => MultiProcessingModuleFactory::class,

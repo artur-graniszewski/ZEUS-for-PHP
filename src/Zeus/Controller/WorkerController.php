@@ -17,7 +17,7 @@ use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\ServerServiceInterface;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 
-class ProcessController extends AbstractActionController
+class WorkerController extends AbstractActionController
 {
     /** @var mixed[] */
     protected $config;
@@ -75,8 +75,8 @@ class ProcessController extends AbstractActionController
 
         try {
             switch ($action) {
-                case 'process':
-                    $this->starProcessForService($serviceName);
+                case 'worker':
+                    $this->startWorkerForService($serviceName);
                     break;
 
                 case 'scheduler':
@@ -130,7 +130,7 @@ class ProcessController extends AbstractActionController
     /**
      * @param string $serviceName
      */
-    protected function starProcessForService($serviceName)
+    protected function startWorkerForService($serviceName)
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();

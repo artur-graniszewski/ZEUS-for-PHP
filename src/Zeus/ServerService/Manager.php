@@ -189,15 +189,15 @@ final class Manager
     {
         $service = $this->getService($serviceName);
 
-        /** @var EventManager $sharedEvents */
-        $sharedEvents = $service->getScheduler()->getEventManager();
+        /** @var EventManager $eventManager */
+        $eventManager = $service->getScheduler()->getEventManager();
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);
         $event->setError(null);
         $event->setService($service);
 
-        $this->eventHandles[] = $sharedEvents->attach(SchedulerEvent::EVENT_SCHEDULER_START,
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START,
             function (SchedulerEvent $event) use ($service) {
                 $schedulerPid = $event->getTarget()->getProcessId();
                 $this->logger->debug(sprintf('Scheduler running as process #%d', $schedulerPid));
@@ -205,13 +205,13 @@ final class Manager
                 $this->servicesRunning++;
             }, -10000);
 
-        $this->eventHandles[] = $sharedEvents->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
             function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
 
 
-        $this->eventHandles[] = $sharedEvents->attach(SchedulerEvent::EVENT_KERNEL_LOOP,
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP,
             function (SchedulerEvent $schedulerEvent) use ($service, $event) {
                 if (!$event->propagationIsStopped()) {
                     pcntl_signal_dispatch(); //@todo: URGENT! REPLACE me with something more platform agnostic!
@@ -284,11 +284,14 @@ final class Manager
      */
     public function stopServices($services, $mustBeRunning)
     {
+        $this->logger->debug(sprintf("Stopping services"));
         $servicesAmount = 0;
+        $servicesStopped = 0;
         foreach ($services as $service) {
+            $servicesAmount++;
             try {
                 $this->stopService($service);
-                $servicesAmount++;
+                $servicesStopped++;
             } catch (\Throwable $exception) {
                 if ($mustBeRunning) {
                     throw $exception;
@@ -296,23 +299,13 @@ final class Manager
             }
         }
 
-        $servicesLeft = $servicesAmount;
-
-        $signalInfo = [];
-
-        if (function_exists('pcntl_sigtimedwait')) {
-            while ($servicesLeft > 0 && pcntl_sigtimedwait([SIGCHLD], $signalInfo, 1) > 0) {
-                $servicesLeft--;
-            }
+        if ($servicesAmount !== $servicesStopped) {
+            $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
         }
 
-        if ($servicesLeft) {
-            $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesAmount - $servicesLeft, $servicesAmount));
-        }
+        $this->logger->info(sprintf("Stopped %d service(s)", $servicesStopped));
 
-        $this->logger->info(sprintf("Stopped %d service(s)", $servicesAmount - $servicesLeft));
-
-        return $servicesLeft;
+        return $servicesAmount - $servicesStopped;
     }
 
     /**
