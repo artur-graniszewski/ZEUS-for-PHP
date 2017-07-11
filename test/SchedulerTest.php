@@ -174,6 +174,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
             function(SchedulerEvent $e) use (&$scheduler) {
                 $e->stopPropagation(true);
+                $scheduler->setSchedulerActive(true);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 
@@ -300,6 +301,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
             function(SchedulerEvent $e) use (&$scheduler) {
                 $e->stopPropagation(true);
+                $scheduler->setSchedulerActive(true);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 

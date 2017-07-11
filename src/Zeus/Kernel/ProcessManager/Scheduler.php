@@ -116,7 +116,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
-        //$this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onProcessExit($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
@@ -230,12 +229,24 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         $pid = @file_get_contents($fileName);
         if (!$pid) {
-            throw new ProcessManagerException("Scheduler not running: " . $fileName, ProcessManagerException::SERVER_NOT_RUNNING);
+            throw new ProcessManagerException("Scheduler not running: " . $fileName, ProcessManagerException::SCHEDULER_NOT_RUNNING);
         }
 
         $pid = (int) $pid;
 
         $this->stopWorker($pid, true);
+        $this->setSchedulerActive(false);
+        $schedulerExited = false;
+        $this->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $event) use (&$schedulerExited) {
+            $schedulerExited = true;
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_REGULAR + 1);
+
+        $time = time() + 3;
+        while (time() < $time && $schedulerExited === false) {
+            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+        }
+
         $this->log(Logger::INFO, "Scheduler stopped");
         unlink($fileName);
 
@@ -390,6 +401,10 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $exception = $event->getParam('exception', null);
 
         $this->log(Logger::DEBUG, "Shutting down" . ($exception ? ' with exception: ' . $exception->getMessage() : ''));
+        if ($exception) {
+            $status = $exception->getCode();
+            $this->log(Logger::ERR, sprintf("Exception (%d): %s in %s:%d", $status, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
+        }
 
         $this->setSchedulerActive(false);
 
@@ -402,13 +417,9 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             }
         }
 
-        if ($exception) {
-            $status = $exception->getCode();
-            $this->log(Logger::ERR, sprintf("Exception (%d): %s in %s:%d", $status, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
-        }
+        $this->waitForWorkersToStop();
 
         $this->log(Logger::INFO, "Scheduler terminated");
-
         $this->log(Logger::INFO, "Stopping IPC");
         $this->getIpc()->disconnect();
     }
@@ -480,6 +491,10 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      */
     protected function manageWorkers(DisciplineInterface $discipline)
     {
+        if (!$this->isSchedulerActive()) {
+            return $this;
+        }
+
         $operations = $discipline->manage($this->getConfig(), $this->workers);
 
         $toTerminate = $operations['terminate'];
@@ -572,5 +587,20 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     public function getMultiProcessingModule() : MultiProcessingModuleInterface
     {
         return $this->multiProcessingModule;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function waitForWorkersToStop()
+    {
+        // wait for workers
+        $time = time() + 3;
+
+        while (time() < $time && count($this->workers) > 0) {
+            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+        }
+
+        return $this;
     }
 }

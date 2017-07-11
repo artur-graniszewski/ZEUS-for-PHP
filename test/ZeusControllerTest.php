@@ -8,7 +8,7 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
-use Zeus\Controller\ConsoleController;
+use Zeus\Controller\MainController;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
@@ -16,7 +16,7 @@ use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\DummyServiceFactory;
-use ZeusTest\Helpers\ConsoleControllerMock;
+use ZeusTest\Helpers\MainControllerMock;
 use ZeusTest\Helpers\ZeusFactories;
 
 class ZeusControllerTest extends PHPUnit_Framework_TestCase
@@ -43,7 +43,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
     /**
      * @param bool $useOriginalClass
-     * @return ConsoleController
+     * @return MainController
      */
     public function getController($useOriginalClass = false)
     {
@@ -51,7 +51,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
         $sm->setFactory(LoggerInterface::class, LoggerFactory::class);
         $sm->setFactory(PosixProcess::class, DummyServiceFactory::class);
         $sm->setFactory(ProcessOpen::class, DummyServiceFactory::class);
-        $controller = $sm->get($useOriginalClass ? ConsoleController::class : ConsoleControllerMock::class);
+        $controller = $sm->get($useOriginalClass ? MainController::class : MainControllerMock::class);
 
         return $controller;
     }
@@ -60,11 +60,11 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
     {
         $controller = $this->getController(true);
 
-        $this->assertInstanceOf(ConsoleController::class, $controller);
+        $this->assertInstanceOf(MainController::class, $controller);
     }
 
     /**
-     * @expectedExceptionMessage Zeus\Controller\ConsoleController can only dispatch requests in a console environment
+     * @expectedExceptionMessage Zeus\Controller\MainController can only dispatch requests in a console environment
      * @expectedException \InvalidArgumentException
      */
     public function testControllerRequestValidation()

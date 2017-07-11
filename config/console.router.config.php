@@ -1,7 +1,7 @@
 <?php
 
-use Zeus\Controller\ConsoleController;
-use Zeus\Controller\ProcessController;
+use Zeus\Controller\MainController;
+use Zeus\Controller\WorkerController;
 
 return [
     'routes' => [
@@ -9,16 +9,16 @@ return [
             'options' => [
                 'route' => 'zeus (start|list|status|stop) [<service>]',
                 'defaults' => [
-                    'controller' => ConsoleController::class
+                    'controller' => MainController::class
                 ]
             ]
         ],
 
         'zeus-process' => [
             'options' => [
-                'route' => 'zeus (scheduler|process) [<service>]',
+                'route' => 'zeus (scheduler|worker) [<service>]',
                 'defaults' => [
-                    'controller' => ProcessController::class
+                    'controller' => WorkerController::class
                 ]
             ]
         ]

@@ -170,7 +170,7 @@ final class FifoAdapter implements
 
         $message = $this->ipc[$channelNumber]->read("\0");
 
-        if (is_string($message) && $message !== false) {
+        if (is_string($message) && $message !== '') {
             $message = $this->unpackMessage($message);
             $success = true;
             return $message;

@@ -18,12 +18,6 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     /** @var int Parent PID */
     public $ppid;
 
-    /** @var SchedulerEvent */
-    protected $event;
-
-    /** @var SchedulerEvent */
-    protected $processEvent;
-
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
 
@@ -65,12 +59,12 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     {
         $this->events = $events;
         $events = $events->getSharedManager();
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessCreate'], 1000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], -9000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate'], -9000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onProcessLoop'], -9000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onProcessRunning'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerInit'], -9000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onWorkerWaiting'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
@@ -102,9 +96,9 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     /**
      * @param EventInterface $event
      */
-    public function onProcessTerminate(EventInterface $event)
+    public function onWorkerTerminate(EventInterface $event)
     {
-        $this->terminateProcess($event->getParam('uid'), $event->getParam('soft', false));
+        $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
     }
 
 
@@ -113,23 +107,24 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $event = new SchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
+        $event->setParam('processId', getmypid());
         $this->events->triggerEvent($event);
     }
 
-    public function onProcessRunning()
+    public function onWorkerRunning()
     {
         $this->getPcntlBridge()->pcntlSigprocmask(SIG_BLOCK, [SIGTERM]);
     }
 
-    public function onProcessLoop()
+    public function onWorkerLoop()
     {
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    public function onProcessWaiting()
+    public function onWorkerWaiting()
     {
         $this->getPcntlBridge()->pcntlSigprocmask(SIG_UNBLOCK, [SIGTERM]);
-        $this->onProcessLoop();
+        $this->onWorkerLoop();
     }
 
     public function onKernelLoop()
@@ -147,7 +142,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
             $this->events->triggerEvent($event);
         }
 
-        $this->onProcessLoop();
+        $this->onWorkerLoop();
     }
 
     protected function readPipes()
@@ -170,7 +165,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         return $this;
     }
 
-    public function onProcessInit()
+    public function onWorkerInit()
     {
         $pcntl = $this->getPcntlBridge();
         // we are the new process
@@ -184,7 +179,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     public function onSchedulerStop()
     {
         $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
-        $this->onProcessLoop();
+        $this->onWorkerLoop();
     }
 
     protected function startProcess(SchedulerEvent $event)
@@ -201,13 +196,13 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
         $applicationPath = $_SERVER['PHP_SELF'];
 
-        $type = $event->getParam('server') ? 'scheduler' : 'process';
+        $type = $event->getParam('server') ? 'scheduler' : 'worker';
 
         $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
 
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {
-            throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::PROCESS_NOT_CREATED);
+            throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::WORKER_NOT_STARTED);
         }
 
         $status = proc_get_status($process);
@@ -224,21 +219,16 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         return $pid;
     }
 
-    public function onProcessCreate(SchedulerEvent $event)
+    public function onWorkerCreate(SchedulerEvent $event)
     {
         $pid = $this->startProcess($event);
         $event->setParam('uid', $pid);
-
-//        // we are the parent
-//        $eventName = SchedulerEvent::EVENT_PROCESS_CREATED;
-//        $event->setParam('uid', $pid);
-//        $event->setName($eventName);
-//        $this->events->triggerEvent($event);
+        $event->setParam('processId', $pid);
+        $event->setParam('threadId', 1);
     }
 
     public function onSchedulerInit()
     {
-        $this->event = new SchedulerEvent();
         $pcntl = $this->getPcntlBridge();
         $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
         //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);
@@ -254,7 +244,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
      * @param bool $useSoftTermination
      * @return $this
      */
-    protected function terminateProcess($pid, $useSoftTermination)
+    protected function stopWorker($pid, $useSoftTermination)
     {
         $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
 

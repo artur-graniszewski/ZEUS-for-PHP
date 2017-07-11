@@ -22,11 +22,30 @@ class WorkerEvent extends Event
     const EVENT_WORKER_RUNNING = 'workerRunning';
     const EVENT_WORKER_WAITING = 'workerWaiting';
 
+    /** @var bool */
+    protected $stopWorker = false;
+
     /**
      * @return Worker
      */
     public function getTarget()
     {
         return parent::getTarget();
+    }
+
+    /**
+     * @param bool $stop
+     * @return $this
+     */
+    public function stopWorker(bool $stop)
+    {
+        $this->stopWorker = $stop;
+
+        return $this;
+    }
+
+    public function isWorkerStopping() : bool
+    {
+        return $this->stopWorker;
     }
 }
