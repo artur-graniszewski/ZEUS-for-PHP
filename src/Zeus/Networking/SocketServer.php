@@ -1,6 +1,7 @@
 <?php
 
 namespace Zeus\Networking;
+use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Util\UnitConverter;
@@ -171,6 +172,23 @@ final class SocketServer
         $connection = new SocketStream($newSocket, $peerName);
 
         return $connection;
+    }
+
+    /**
+     * @param int $option
+     * @param mixed $value
+     * @return $this
+     */
+    public function setOption(int $option, mixed $value)
+    {
+        if (!$this->socket) {
+            throw new SocketException("Socket must be bound first");
+        }
+
+        $socket = socket_import_stream($this->socket);
+        socket_set_option($socket, SOL_SOCKET, $option, $value);
+
+        return $this;
     }
 
     /**

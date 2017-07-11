@@ -11,7 +11,7 @@ interface FlushableConnectionInterface
 {
     public function flush();
 
-    public function setReadBufferSize($size);
+    public function setReadBufferSize(int $size);
 
-    public function setWriteBufferSize($size);
+    public function setWriteBufferSize(int $size);
 }

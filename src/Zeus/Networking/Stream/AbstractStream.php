@@ -41,7 +41,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param resource $stream
      * @param string $peerName
      */
-    public function __construct($stream, $peerName = null)
+    public function __construct($stream, string $peerName = null)
     {
         $this->setResource($stream);
         $this->peerName = $peerName;
@@ -50,7 +50,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     /**
      * @return bool
      */
-    public function isReadable()
+    public function isReadable() : bool
     {
         return $this->isReadable && $this->resource;
     }
@@ -76,7 +76,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     /**
      * @return bool
      */
-    public function isClosed()
+    public function isClosed() : bool
     {
         return $this->isClosed;
     }
@@ -100,7 +100,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     /**
      * @return bool
      */
-    protected function isEof()
+    protected function isEof() : bool
     {
         // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
         if (feof($this->resource)) {
@@ -114,22 +114,22 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     /**
      * @return bool
      */
-    public function isWritable()
+    public function isWritable() : bool
     {
         return $this->isWritable && $this->resource;
     }
 
     /**
-     * @param bool|string $ending
-     * @return bool|string
+     * @param string $ending
+     * @return mixed
      */
-    public function read($ending = false)
+    public function read(string $ending = '')
     {
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
         }
 
-        if ($ending !== false) {
+        if ($ending !== '') {
             $data = '';
             $endingSize = strlen($ending);
 
@@ -165,7 +165,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param string $data
      * @return $this
      */
-    public function write($data)
+    public function write(string $data)
     {
         if ($this->isWritable()) {
             $this->writeBuffer .= $data;
@@ -230,7 +230,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param string $data
      * @return $this
      */
-    public function end($data = null)
+    public function end(string $data = '')
     {
         if ($this->isWritable()) {
             $this->write($data);
@@ -246,7 +246,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param int $size
      * @return $this
      */
-    public function setWriteBufferSize($size)
+    public function setWriteBufferSize(int $size)
     {
         $this->writeBufferSize = $size;
 
@@ -257,7 +257,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param int $size
      * @return $this
      */
-    public function setReadBufferSize($size)
+    public function setReadBufferSize(int $size)
     {
         $this->readBufferSize = $size;
 

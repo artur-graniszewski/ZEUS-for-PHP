@@ -13,5 +13,5 @@ interface SelectableStreamInterface
      * @param int $timeout
      * @return bool
      */
-    public function select($timeout);
+    public function select(int $timeout) : bool;
 }

@@ -13,13 +13,13 @@ interface StreamInterface
 
     public function close();
 
-    public function isWritable();
+    public function isWritable() : bool;
 
-    public function read($ending = false);
+    public function read(string $ending = '');
 
-    public function isReadable();
+    public function isReadable() : bool;
 
-    public function write($data);
+    public function write(string $data);
 
-    public function end($data = null);
+    public function end(string $data = '');
 }

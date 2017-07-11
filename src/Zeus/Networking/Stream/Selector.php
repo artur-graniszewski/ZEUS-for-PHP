@@ -18,7 +18,7 @@ class Selector extends AbstractPhpResource
      * @param int $operation
      * @return int
      */
-    public function register(AbstractStream $stream, $operation = self::OP_ALL)
+    public function register(AbstractStream $stream, int $operation = self::OP_ALL) : int
     {
         if (!$stream instanceof SelectableStreamInterface) {
             $interface = SelectableStreamInterface::class;
@@ -72,7 +72,7 @@ class Selector extends AbstractPhpResource
     /**
      * @return AbstractStream[]
      */
-    public function getSelectedStreams()
+    public function getSelectedStreams() : array
     {
         $this->streams = $this->getActiveStreams();
 
@@ -127,7 +127,7 @@ class Selector extends AbstractPhpResource
     /**
      * @return AbstractStream[]
      */
-    private function getActiveStreams()
+    private function getActiveStreams() : array
     {
         $streams = [];
 

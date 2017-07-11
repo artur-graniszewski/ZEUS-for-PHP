@@ -104,7 +104,7 @@ class SelectorTest extends AbstractNetworkingTest
 
     /**
      * @expectedException \LogicException
-     * @expectedExceptionMessage Invalid operation type: false
+     * @expectedExceptionMessage Invalid operation type: 0
      */
     public function testOperationArgumentValidation()
     {

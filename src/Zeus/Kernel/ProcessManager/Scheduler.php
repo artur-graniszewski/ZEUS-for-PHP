@@ -384,6 +384,12 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         $this->triggerEvent(SchedulerEvent::EVENT_WORKER_TERMINATE, ['uid' => $uid, 'soft' => $isSoftStop]);
 
+        if (isset($this->workers[$uid])) {
+            $workerState = $this->workers[$uid];
+            $workerState['code'] = WorkerState::TERMINATED;
+            $this->workers[$uid] = $workerState;
+        }
+
         return $this;
     }
 

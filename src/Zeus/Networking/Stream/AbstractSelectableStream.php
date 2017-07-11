@@ -1,6 +1,7 @@
 <?php
 
 namespace Zeus\Networking\Stream;
+use Zeus\Util\UnitConverter;
 
 /**
  * Class AbstractSelectableStream
@@ -9,13 +10,11 @@ namespace Zeus\Networking\Stream;
  */
 abstract class AbstractSelectableStream extends AbstractStream implements SelectableStreamInterface
 {
-    protected $peerName;
-
     /**
-     * @param int $timeout
+     * @param int $timeout Timeout in milliseconds
      * @return bool
      */
-    public function select($timeout)
+    public function select(int $timeout) : bool
     {
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
@@ -35,10 +34,17 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         throw new \RuntimeException("Stream select failed: " . $error['message']);
     }
 
+    /**
+     * @param resource[] $read
+     * @param resource[] $write
+     * @param resource[] $except
+     * @param int $timeout
+     * @return bool|int
+     */
     protected function doSelect(& $read, & $write, & $except, $timeout)
     {
         @trigger_error("");
-        $result = @stream_select($read, $write, $except, $timeout);
+        $result = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
         if ($result !== false) {
             return $result;
         }
@@ -55,13 +61,13 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
      * @param bool|string $ending
      * @return bool|string
      */
-    public function read($ending = false)
+    public function read(string $ending = '')
     {
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
         }
 
-        if (!$this->select(1)) {
+        if (!$this->select(1000)) {
             return false;
         }
 
@@ -92,7 +98,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
             // write failed, try to wait a bit
             if ($wrote === 0) {
                 do {
-                    $amount = $this->doSelect($read, $write, $except, 1);
+                    $amount = $this->doSelect($read, $write, $except, 1000);
                 } while($amount === 0);
             }
 

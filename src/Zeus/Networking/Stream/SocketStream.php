@@ -1,6 +1,7 @@
 <?php
 
 namespace Zeus\Networking\Stream;
+use Zeus\Networking\Exception\SocketException;
 
 /**
  * Class SocketStream
@@ -16,13 +17,30 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      * @param resource $stream
      * @param string $peerName
      */
-    public function __construct($stream, $peerName = null)
+    public function __construct($stream, string $peerName = null)
     {
         $this->peerName = $peerName;
 
         parent::__construct($stream);
 
         $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
+    }
+
+    /**
+     * @param int $option
+     * @param mixed $value
+     * @return $this
+     */
+    public function setOption(int $option, mixed $value)
+    {
+        if ($this->isClosed()) {
+            throw new SocketException("Stream must be open");
+        }
+
+        $socket = socket_import_stream($this->getResource());
+        socket_set_option($socket, SOL_SOCKET, $option, $value);
+
+        return $this;
     }
 
     /**
@@ -42,7 +60,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     /**
      * @return string|null Server address (IP) or null if unknown
      */
-    public function getServerAddress()
+    public function getServerAddress() : string
     {
         return @stream_socket_get_name($this->resource, false);
     }
@@ -50,49 +68,9 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     /**
      * @return string|null Remote address (client IP) or null if unknown
      */
-    public function getRemoteAddress()
+    public function getRemoteAddress() : string
     {
         return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
-    }
-
-    /**
-     * @param int $timeout
-     * @return bool
-     */
-    public function select($timeout)
-    {
-        if (!$this->isReadable()) {
-            throw new \LogicException("Stream is not readable");
-        }
-
-        $write = $except = [];
-        $read = [$this->resource];
-
-        @trigger_error("");
-        $result = $this->doSelect($read, $write, $except, $timeout);
-        if ($result !== false) {
-            return $result === 1;
-        }
-
-        $this->isReadable = false;
-        $error = error_get_last();
-        throw new \RuntimeException("Stream select failed: " . $error['message']);
-    }
-
-    protected function doSelect(& $read, & $write, & $except, $timeout)
-    {
-        @trigger_error("");
-        $result = @stream_select($read, $write, $except, $timeout);
-        if ($result !== false) {
-            return $result;
-        }
-
-        $error = error_get_last();
-        if ($result === false && strstr($error['message'], 'Interrupted system call')) {
-            return 0;
-        }
-
-        return false;
     }
 
     /**

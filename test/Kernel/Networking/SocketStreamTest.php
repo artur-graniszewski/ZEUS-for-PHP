@@ -225,7 +225,7 @@ class SocketStreamTest extends AbstractNetworkingTest
         $received = '';
         $time = time();
         do {
-            $chunk = array_shift($chunks);
+            $chunk = (string) array_shift($chunks);
             $connection->write($chunk);
             $connection->flush();
 
@@ -281,7 +281,7 @@ class SocketStreamTest extends AbstractNetworkingTest
         $connection = $this->server->accept();
         fclose($this->client);
         $connection->read();
-        $connection->select(1);
+        $connection->select(1000);
     }
 
     public function testServerSelectReturnsTrueWhenDisconnected()
@@ -290,7 +290,7 @@ class SocketStreamTest extends AbstractNetworkingTest
         stream_set_blocking($this->client, true);
         $connection = $this->server->accept();
         fclose($this->client);
-        $result = $connection->select(1);
+        $result = $connection->select(1000);
         $this->assertTrue($result, 'Select should report stream as readable until read is performed on disconnected client');
     }
 

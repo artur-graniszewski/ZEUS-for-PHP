@@ -9,12 +9,12 @@ namespace Zeus\Networking\Stream;
  */
 interface NetworkStreamInterface
 {
-    public function getServerAddress();
+    public function getServerAddress() : string;
 
     /**
      * Returns the remote address (client IP) where this connection has been established from
      *
      * @return string|null remote address (client IP) or null if unknown
      */
-    public function getRemoteAddress();
+    public function getRemoteAddress() : string;
 }

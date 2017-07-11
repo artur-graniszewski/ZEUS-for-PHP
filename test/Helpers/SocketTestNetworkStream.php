@@ -38,12 +38,12 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
         $this->isConnectionClosed = true;
     }
 
-    public function getRemoteAddress()
+    public function getRemoteAddress() : string
     {
         return $this->remoteAddress;
     }
 
-    public function getServerAddress()
+    public function getServerAddress() : string
     {
         return $this->serverAddress;
     }
@@ -162,12 +162,12 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
         // TODO: Implement flush() method.
     }
 
-    public function setWriteBufferSize($size)
+    public function setWriteBufferSize(int $size)
     {
         // TODO: Implement setWriteBufferSize() method.
     }
 
-    public function setReadBufferSize($size)
+    public function setReadBufferSize(int $size)
     {
         // TODO: Implement setReadBufferSize() method.
     }
