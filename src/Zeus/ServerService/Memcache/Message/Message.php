@@ -6,7 +6,7 @@ use Zend\Cache\Storage\AvailableSpaceCapableInterface;
 use Zend\Cache\Storage\FlushableInterface;
 use Zend\Cache\Storage\StorageInterface;
 use Zend\Cache\Storage\TotalSpaceCapableInterface;
-use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Networking\Stream\NetworkStreamInterface;
 use Zeus\Module;
 use Zeus\ServerService\Shared\Exception\PrerequisitesNotMetException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;

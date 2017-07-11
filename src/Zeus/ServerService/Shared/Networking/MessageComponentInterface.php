@@ -1,7 +1,7 @@
 <?php
 
 namespace Zeus\ServerService\Shared\Networking;
-use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Networking\Stream\NetworkStreamInterface;
 
 /**
  * Interface MessageComponentInterface

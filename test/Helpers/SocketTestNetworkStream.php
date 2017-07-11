@@ -2,8 +2,8 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
-use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\NetworkStreamInterface;
+use Zeus\Networking\Stream\FlushableConnectionInterface;
 
 class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnectionInterface
 {

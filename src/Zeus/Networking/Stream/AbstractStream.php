@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\Networking\Stream;
+namespace Zeus\Networking\Stream;
 
 /**
  * Class AbstractStream

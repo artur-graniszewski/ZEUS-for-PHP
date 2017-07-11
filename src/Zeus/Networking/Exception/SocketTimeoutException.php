@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\Networking\Exception;
+namespace Zeus\Networking\Exception;
 
 class SocketTimeoutException extends \RuntimeException
 {

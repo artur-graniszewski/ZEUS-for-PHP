@@ -5,7 +5,7 @@ namespace ZeusTest\Services\Memcache;
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Storage\Adapter\Filesystem;
 use Zend\Cache\Storage\Adapter\Memory;
-use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Networking\Stream\NetworkStreamInterface;
 use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
 use ZeusTest\Helpers\SocketTestNetworkStream;

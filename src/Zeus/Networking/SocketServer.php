@@ -1,8 +1,8 @@
 <?php
 
-namespace Zeus\Kernel\Networking;
-use Zeus\Kernel\Networking\Exception\SocketTimeoutException;
-use Zeus\Kernel\Networking\Stream\SocketStream;
+namespace Zeus\Networking;
+use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\Stream\SocketStream;
 use Zeus\Util\UnitConverter;
 
 /**

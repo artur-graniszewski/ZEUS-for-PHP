@@ -3,8 +3,8 @@
 namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\Networking\Exception\SocketTimeoutException;
-use Zeus\Kernel\Networking\SocketServer;
+use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\ManagerEvent;

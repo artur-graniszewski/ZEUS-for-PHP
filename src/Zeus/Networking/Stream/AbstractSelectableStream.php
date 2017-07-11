@@ -1,59 +1,15 @@
 <?php
 
-namespace Zeus\Kernel\Networking\Stream;
+namespace Zeus\Networking\Stream;
 
 /**
- * Class SocketStream
+ * Class AbstractSelectableStream
  * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
-final class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
+abstract class AbstractSelectableStream extends AbstractStream implements SelectableStreamInterface
 {
     protected $peerName;
-
-    /**
-     * SocketConnection constructor.
-     * @param resource $stream
-     * @param string $peerName
-     */
-    public function __construct($stream, $peerName = null)
-    {
-        $this->peerName = $peerName;
-
-        parent::__construct($stream);
-
-        $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
-    }
-
-    /**
-     * @return $this
-     */
-    protected function doClose()
-    {
-        if (!$this->isEof()) {
-            stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
-        }
-
-        parent::doClose();
-
-        return $this;
-    }
-
-    /**
-     * @return string|null Server address (IP) or null if unknown
-     */
-    public function getServerAddress()
-    {
-        return @stream_socket_get_name($this->resource, false);
-    }
-
-    /**
-     * @return string|null Remote address (client IP) or null if unknown
-     */
-    public function getRemoteAddress()
-    {
-        return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
-    }
 
     /**
      * @param int $timeout
@@ -93,6 +49,23 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         }
 
         return false;
+    }
+
+    /**
+     * @param bool|string $ending
+     * @return bool|string
+     */
+    public function read($ending = false)
+    {
+        if (!$this->isReadable()) {
+            throw new \LogicException("Stream is not readable");
+        }
+
+        if (!$this->select(1)) {
+            return false;
+        }
+
+        return parent::read($ending);
     }
 
     /**

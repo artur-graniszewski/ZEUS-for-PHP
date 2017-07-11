@@ -2,8 +2,8 @@
 
 namespace Zeus\ServerService\Async\Message;
 
-use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
-use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\NetworkStreamInterface;
+use Zeus\Networking\Stream\FlushableConnectionInterface;
 use Zeus\ServerService\Async\UnserializeException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;

@@ -4,9 +4,9 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\Networking\Exception\SocketTimeoutException;
-use Zeus\Kernel\Networking\Stream\SocketStream;
-use Zeus\Kernel\Networking\SocketServer;
+use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\Stream\SocketStream;
+use Zeus\Networking\SocketServer;
 
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedInitialAddressSpaceInterface;

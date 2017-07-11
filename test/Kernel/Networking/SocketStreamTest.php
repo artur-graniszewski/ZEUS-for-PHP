@@ -3,8 +3,8 @@
 namespace ZeusTest\Kernel\Networking;
 
 
-use Zeus\Kernel\Networking\Stream\SocketStream;
-use Zeus\Kernel\Networking\SocketServer;
+use Zeus\Networking\Stream\SocketStream;
+use Zeus\Networking\SocketServer;
 
 class SocketStreamTest extends AbstractNetworkingTest
 {

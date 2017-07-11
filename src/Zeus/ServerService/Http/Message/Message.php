@@ -7,10 +7,10 @@ use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
 use Zeus\ServerService\Http\Message\Helper\RegularEncoding;
 use Zeus\ServerService\Http\Message\Helper\FileUpload;
-use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\FlushableConnectionInterface;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
-use Zeus\Kernel\Networking\Stream\NetworkStreamInterface;
+use Zeus\Networking\Stream\NetworkStreamInterface;
 use Zend\Http\Header\Connection;
 use Zend\Http\Header\ContentEncoding;
 use Zend\Http\Header\TransferEncoding;
@@ -36,7 +36,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_SENDING = 16;
     const MAX_KEEP_ALIVE_REQUESTS = 100;
 
-    /** @var \Zeus\Kernel\Networking\Stream\NetworkStreamInterface */
+    /** @var \Zeus\Networking\Stream\NetworkStreamInterface */
     protected $connection;
 
     /** @var int */
@@ -192,7 +192,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     }
 
     /**
-     * @param \Zeus\Kernel\Networking\Stream\NetworkStreamInterface $connection
+     * @param \Zeus\Networking\Stream\NetworkStreamInterface $connection
      * @param null $data
      */
     public function onHeartBeat(NetworkStreamInterface $connection, $data = null)

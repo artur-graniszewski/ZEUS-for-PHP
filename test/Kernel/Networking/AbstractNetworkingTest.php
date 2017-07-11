@@ -5,7 +5,7 @@ namespace ZeusTest\Kernel\Networking;
 use PHPUnit_Framework_TestCase;
 
 
-use Zeus\Kernel\Networking\SocketServer;
+use Zeus\Networking\SocketServer;
 
 abstract class AbstractNetworkingTest extends PHPUnit_Framework_TestCase
 {

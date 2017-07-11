@@ -5,8 +5,8 @@ namespace Zeus\Kernel\IpcServer\Adapter;
 use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
 use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
-use Zeus\Kernel\Networking\Stream\FlushableConnectionInterface;
-use Zeus\Kernel\Networking\Stream\PipeStream;
+use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\PipeStream;
 
 /**
  * Class FifoAdapter

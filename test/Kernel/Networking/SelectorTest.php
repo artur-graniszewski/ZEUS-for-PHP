@@ -2,10 +2,10 @@
 
 namespace ZeusTest\Kernel\Networking;
 
-use Zeus\Kernel\Networking\SocketServer;
-use Zeus\Kernel\Networking\Stream\FileStream;
-use Zeus\Kernel\Networking\Stream\Selector;
-use Zeus\Kernel\Networking\Stream\SocketStream;
+use Zeus\Networking\SocketServer;
+use Zeus\Networking\Stream\FileStream;
+use Zeus\Networking\Stream\Selector;
+use Zeus\Networking\Stream\SocketStream;
 
 class SelectorTest extends AbstractNetworkingTest
 {
@@ -115,7 +115,7 @@ class SelectorTest extends AbstractNetworkingTest
 
     /**
      * @expectedException \LogicException
-     * @expectedExceptionMessage Stream class must implement Zeus\Kernel\Networking\Stream\SelectableStreamInterface
+     * @expectedExceptionMessage Stream class must implement Zeus\Networking\Stream\SelectableStreamInterface
      */
     public function testStreamArgumentValidation()
     {

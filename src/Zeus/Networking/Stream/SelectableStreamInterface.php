@@ -1,10 +1,10 @@
 <?php
 
-namespace Zeus\Kernel\Networking\Stream;
+namespace Zeus\Networking\Stream;
 
 /**
  * Interface SelectableStreamInterface
- * @package Zeus\Kernel\Networking
+ * @package Zeus\Networking
  * @internal
  */
 interface SelectableStreamInterface
