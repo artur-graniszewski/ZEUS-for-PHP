@@ -4,6 +4,7 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\Networking\Exception\SocketTimeoutException;
 use Zeus\Kernel\Networking\Stream\SocketStream;
 use Zeus\Kernel\Networking\SocketServer;
 
@@ -64,6 +65,7 @@ final class SocketMessageBroker
             $mpm = $event->getTarget()->getMultiProcessingModule();
             if ($mpm instanceof SharedAddressSpaceInterface || $mpm instanceof SharedInitialAddressSpaceInterface) {
                 $this->server = new SocketServer($this->config->getListenPort(), null, $this->config->getListenAddress());
+                $this->server->setSoTimeout(1000);
 
                 return $this;
             }
@@ -73,6 +75,7 @@ final class SocketMessageBroker
             $this->stopServerAtProcessExit = true;
             $this->server = new SocketServer();
             $this->server->setReuseAddress(true);
+            $this->server->setSoTimeout(1000);
             $this->server->bind($this->config->getListenAddress(), 1, $this->config->getListenPort());
         }
 
@@ -90,8 +93,9 @@ final class SocketMessageBroker
 
         try {
             if (!$this->connection) {
-                $connection = $this->server->accept(1);
-                if (!$connection) {
+                try {
+                    $connection = $this->server->accept();
+                } catch (SocketTimeoutException $exception) {
                     return;
                 }
 

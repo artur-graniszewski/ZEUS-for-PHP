@@ -25,7 +25,7 @@ class SelectorTest extends AbstractNetworkingTest
             $servers[$port] = $this->addServer($port);
             $this->addClient($port);
 
-            $stream = $servers[$port]->accept(1);
+            $stream = $servers[$port]->accept();
             $streams[] = $stream;
             $readSelector->register($stream, Selector::OP_READ);
             $writeSelector->register($stream, Selector::OP_WRITE);
@@ -39,8 +39,8 @@ class SelectorTest extends AbstractNetworkingTest
         $this->assertEquals(0, $amountToRead, "No stream should have been readable");
         $this->assertEquals(count($servers), $amountToWrite, "All streams should have been writable");
         $this->assertEquals(count($servers), $amountChanged, "All streams should have been selected");
-        $this->assertArraySubset($streams, $fullSelector->getSelectedKeys(), "All Stream objects should be returned by Selector");
-        $this->assertArraySubset($streams, $writeSelector->getSelectedKeys(), "All Stream objects should be returned by Selector");
+        $this->assertArraySubset($streams, $fullSelector->getSelectedStreams(), "All Stream objects should be returned by Selector");
+        $this->assertArraySubset($streams, $writeSelector->getSelectedStreams(), "All Stream objects should be returned by Selector");
     }
 
     public function testMultiSelectOnReadableSockets()
@@ -56,7 +56,7 @@ class SelectorTest extends AbstractNetworkingTest
             $client = $this->addClient($port);
             fputs($client, "TEST");
 
-            $stream = $servers[$port]->accept(1);
+            $stream = $servers[$port]->accept();
             $streams[] = $stream;
             $readSelector->register($stream, Selector::OP_READ);
             $fullSelector->register($stream, Selector::OP_ALL);
@@ -67,8 +67,8 @@ class SelectorTest extends AbstractNetworkingTest
 
         $this->assertEquals(count($servers), $amountToRead, "All streams should have been readable");
         $this->assertEquals(count($servers), $amountChanged, "All streams should have been selected");
-        $this->assertArraySubset($streams, $fullSelector->getSelectedKeys(), "All Stream objects should be returned by Selector");
-        $this->assertArraySubset($streams, $readSelector->getSelectedKeys(), "All Stream objects should be returned by Selector");
+        $this->assertArraySubset($streams, $fullSelector->getSelectedStreams(), "All Stream objects should be returned by Selector");
+        $this->assertArraySubset($streams, $readSelector->getSelectedStreams(), "All Stream objects should be returned by Selector");
     }
 
     public function testSelectorTimeout()
@@ -76,14 +76,14 @@ class SelectorTest extends AbstractNetworkingTest
         $selector = new Selector();
         $server = $this->addServer(self::MIN_TEST_PORT);
         $this->addClient(self::MIN_TEST_PORT);
-        $stream = $server->accept(1);
+        $stream = $server->accept();
         $selector->register($stream, Selector::OP_READ);
 
         $now = time();
-        $amountToRead = $selector->select(2000000);
+        $amountToRead = $selector->select(2000);
         $this->assertEquals(0, $amountToRead, "No stream should have been readable");
         $this->assertTrue(time() <= $now + 2, "Select method should have waited at least two seconds");
-        $this->assertEmpty($selector->getSelectedKeys(), "No streams should be returned");
+        $this->assertEmpty($selector->getSelectedStreams(), "No streams should be returned");
     }
 
     public function testSelectorOnClosedStream()
@@ -91,7 +91,7 @@ class SelectorTest extends AbstractNetworkingTest
         $selector = new Selector();
         $server = $this->addServer(self::MIN_TEST_PORT);
         $this->addClient(self::MIN_TEST_PORT);
-        $stream = $server->accept(1);
+        $stream = $server->accept();
         $selector->register($stream, Selector::OP_READ);
         $stream->close();
 
@@ -99,7 +99,7 @@ class SelectorTest extends AbstractNetworkingTest
 
         $amountToRead = $selector->select();
         $this->assertEquals(0, $amountToRead, "No stream should have been readable");
-        $this->assertEmpty($selector->getSelectedKeys(), "No streams should be returned");
+        $this->assertEmpty($selector->getSelectedStreams(), "No streams should be returned");
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace Zeus\Kernel\Networking\Stream;
 
+use Zeus\Util\UnitConverter;
+
 class Selector extends AbstractPhpResource
 {
     const OP_READ = 1;
@@ -33,7 +35,7 @@ class Selector extends AbstractPhpResource
     }
 
     /**
-     * @param int $timeout
+     * @param int $timeout Timeout in milliseconds
      * @return int
      */
     public function select($timeout = 0)
@@ -58,7 +60,7 @@ class Selector extends AbstractPhpResource
             }
         }
 
-        $streamsChanged = @stream_select($read, $write, $except, 0, $timeout);
+        $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged > 0) {
             $streamsChanged = count(array_unique(array_merge($read, $write)));
@@ -70,7 +72,7 @@ class Selector extends AbstractPhpResource
     /**
      * @return AbstractStream[]
      */
-    public function getSelectedKeys()
+    public function getSelectedStreams()
     {
         $this->streams = $this->getActiveStreams();
 

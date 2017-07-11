@@ -21,6 +21,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
     {
         $this->port = 9999;
         $this->server = new SocketServer($this->port);
+        $this->server->setSoTimeout(1000);
 
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
@@ -92,7 +93,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $plugin->run(function() { return "ok"; });
     }
@@ -117,7 +118,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($stream = $this->server->accept(1));
+            ->willReturn($stream = $this->server->accept());
 
         try {
             $plugin->run(function () {
@@ -138,7 +139,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $plugin->run(function() { return "ok"; });
     }
@@ -149,7 +150,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
      */
     public function testOperationOnRealNotConnectedSocket()
     {
-        $this->server->accept(1);
+        $this->server->accept();
         $plugin = $this->getPlugin(false);
 
         $plugin->run(function() { return "ok"; });
@@ -162,7 +163,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $isWorking = $plugin->isWorking($id);
@@ -176,7 +177,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         fwrite($this->client, "SOME DATA\n");
@@ -194,7 +195,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $result = $message = $plugin->join($id);
@@ -212,7 +213,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $this->assertGreaterThan(1, $plugin->getJoinTimeout());
         $plugin->setJoinTimeout(1);
@@ -231,7 +232,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $result = $message = $plugin->join([$id]);
@@ -249,7 +250,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $plugin->join($id);
@@ -266,7 +267,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($stream = $this->server->accept(1));
+            ->willReturn($stream = $this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $stream->close();
@@ -284,7 +285,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($stream = $this->server->accept(1));
+            ->willReturn($stream = $this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $plugin->join($id);
@@ -301,7 +302,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $plugin
             ->expects($this->any())
             ->method('getSocket')
-            ->willReturn($this->server->accept(1));
+            ->willReturn($this->server->accept());
 
         $id = $plugin->run(function() { return "ok"; });
         $plugin->join($id);

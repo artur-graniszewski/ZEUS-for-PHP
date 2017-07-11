@@ -1,7 +1,9 @@
 <?php
 
 namespace Zeus\Kernel\Networking;
+use Zeus\Kernel\Networking\Exception\SocketTimeoutException;
 use Zeus\Kernel\Networking\Stream\SocketStream;
+use Zeus\Util\UnitConverter;
 
 /**
  * Class SocketServer
@@ -23,6 +25,14 @@ final class SocketServer
 
     /** @var bool */
     protected $reuseAddress = false;
+
+    /** @var bool */
+    protected $isClosed = false;
+
+    /** @var bool */
+    protected $isBound = false;
+
+    protected $soTimeout = 0;
 
     /**
      * SocketServer constructor.
@@ -58,7 +68,7 @@ final class SocketServer
     /**
      * @return bool
      */
-    public function getReuseAddress()
+    public function getReuseAddress() : bool
     {
         return $this->reuseAddress;
     }
@@ -127,18 +137,21 @@ final class SocketServer
             $this->port = (int) current($parts);
         }
 
+        $this->isBound = true;
+
         return $this;
     }
 
     /**
-     * @param int $timeout
      * @return null|SocketStream
      */
-    public function accept(int $timeout)
+    public function accept() : SocketStream
     {
+        $timeout = UnitConverter::convertMillisecondsToSeconds($this->getSoTimeout());
+
         $newSocket = @stream_socket_accept($this->socket, $timeout, $peerName);
         if (!$newSocket) {
-            return null;
+            throw new SocketTimeoutException('Socket timed out');
         }
 
         stream_set_blocking($newSocket, false);
@@ -171,6 +184,7 @@ final class SocketServer
         @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
         fclose($this->socket);
         $this->socket = null;
+        $this->isClosed = true;
 
         return $this;
     }
@@ -178,15 +192,15 @@ final class SocketServer
     /**
      * @return bool
      */
-    public function isBound()
+    public function isBound() : bool
     {
-        return is_resource($this->socket);
+        return $this->isBound;
     }
 
     /**
      * @return int
      */
-    public function getLocalPort()
+    public function getLocalPort() : int
     {
         return $this->port;
     }
@@ -194,8 +208,43 @@ final class SocketServer
     /**
      * @return null|string
      */
-    public function getLocalSocketAddress()
+    public function getLocalSocketAddress() : string
     {
         return $this->host;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isIsClosed() : bool
+    {
+        return $this->isClosed;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isIsBound() : bool
+    {
+        return $this->isBound;
+    }
+
+    /**
+     * @return int
+     */
+    public function getSoTimeout() : int
+    {
+        return $this->soTimeout;
+    }
+
+    /**
+     * @param int $soTimeout Timeout in milliseconds
+     * @return $this
+     */
+    public function setSoTimeout(int $soTimeout)
+    {
+        $this->soTimeout = $soTimeout;
+
+        return $this;
     }
 }

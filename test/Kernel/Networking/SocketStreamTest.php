@@ -19,6 +19,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->port = 7777;
         $this->server = new SocketServer($this->port);
+        $this->server->setSoTimeout(1000);
     }
 
     public function tearDown()
@@ -50,7 +51,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
 
         $this->assertTrue($connection->isReadable(), 'Stream should be readable when connected');
@@ -62,7 +63,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
 
         $this->assertEquals(stream_socket_get_name($this->client, false), $connection->getRemoteAddress(), 'Remote address is incorrect');
@@ -74,7 +75,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->close();
         $read = @stream_get_contents($this->client);
@@ -94,7 +95,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->end($dataToSend);
         $read = stream_socket_recvfrom($this->client, strlen($dataToSend));
@@ -106,7 +107,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $connection->close();
 
         $this->assertInstanceOf(SocketStream::class, $connection->close());
@@ -116,7 +117,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertTrue($connection->isReadable(), 'Connection should be readable');
         $connection->close();
         $this->assertFalse($connection->isReadable(), 'Connection should not be readable after close');
@@ -130,7 +131,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $connection->close();
         $this->assertFalse($connection->isReadable(), 'Connection should not be readable after close');
         $connection->read();
@@ -140,7 +141,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $connection->close();
         $this->assertFalse($connection->isReadable(), 'Connection should not be readable after close');
         $result = $connection->write("TEST");
@@ -151,7 +152,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertTrue($connection->isReadable(), 'Connection should be readable');
         fclose($this->client);
         $result = $connection->write("TEST!");
@@ -168,7 +169,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
 
         $chunks = str_split($dataToSend, 8192);
@@ -195,7 +196,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
         $received = '';
         $time = time();
@@ -218,7 +219,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
 
         $chunks = str_split($dataToSend, 8192);
         $received = '';
@@ -244,7 +245,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $received = '';
         $time = time();
         $connection->write($dataToSend);
@@ -262,7 +263,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, true);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         fclose($this->client);
         $connection->read();
         $this->assertFalse($connection->isReadable(), 'Stream should not be readable when disconnected');
@@ -277,7 +278,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, true);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         fclose($this->client);
         $connection->read();
         $connection->select(1);
@@ -287,7 +288,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, true);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         fclose($this->client);
         $result = $connection->select(1);
         $this->assertTrue($result, 'Select should report stream as readable until read is performed on disconnected client');
@@ -301,7 +302,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->write($dataToSend);
 
@@ -328,7 +329,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);
-        $connection = $this->server->accept(1);
+        $connection = $this->server->accept();
         $this->assertInstanceOf(SocketStream::class, $connection);
         $connection->setWriteBufferSize(0);
         $connection->write($dataToSend);

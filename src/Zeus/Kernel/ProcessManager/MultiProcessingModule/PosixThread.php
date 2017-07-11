@@ -6,6 +6,7 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 
 
+use Zeus\Kernel\Networking\Exception\SocketTimeoutException;
 use Zeus\Kernel\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
@@ -113,7 +114,11 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         }
 
         foreach ($this->threads as $threadId => $thread) {
-            $this->threadIpcs[$threadId]->accept(0);
+            try {
+                $this->threadIpcs[$threadId]->accept();
+            } catch (SocketTimeoutException $exception) {
+                // @todo: verify if nothing to do?
+            }
             if ($thread->isTerminated()) {
                 $this->threads[$threadId] = null;
 
@@ -222,8 +227,10 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         };
 
         static::$id++;
-        $this->threadIpcs[static::$id] = new SocketServer(0, 5, static::LOOPBACK_INTERFACE);
-        $port = $this->threadIpcs[static::$id]->getLocalPort();
+        $socketServer = new SocketServer(0, 5, static::LOOPBACK_INTERFACE);
+        $socketServer->setSoTimeout(1000);
+        $this->threadIpcs[static::$id] = $socketServer;
+        $port = $socketServer->getLocalPort();
 
         $stream = @stream_socket_client('tcp://' . static::LOOPBACK_INTERFACE . ':' . $port, $errno, $errstr, 1);
         if ($stream === false) {

@@ -36,6 +36,7 @@ abstract class AbstractNetworkingTest extends PHPUnit_Framework_TestCase
     protected function addServer($port)
     {
         $server = new SocketServer($port);
+        $server->setSoTimeout(1000);
         $this->servers[] = $server;
 
         return $server;
