@@ -370,7 +370,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     protected function onSchedulerStart()
     {
         $this->log(Logger::INFO, "Scheduler started");
-        $this->createProcesses($this->getConfig()->getStartProcesses());
+        $this->createWorkers($this->getConfig()->getStartProcesses());
 
         $this->mainLoop();
     }
@@ -436,7 +436,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param int $count Number of processes to create.
      * @return $this
      */
-    protected function createProcesses(int $count)
+    protected function createWorkers(int $count)
     {
         if ($count === 0) {
             return $this;
@@ -507,7 +507,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $toSoftTerminate = $operations['soft_terminate'];
         $toCreate = $operations['create'];
 
-        $this->createProcesses($toCreate);
+        $this->createWorkers($toCreate);
         $this->stopWorkers($toTerminate, false);
         $this->stopWorkers($toSoftTerminate, true);
 

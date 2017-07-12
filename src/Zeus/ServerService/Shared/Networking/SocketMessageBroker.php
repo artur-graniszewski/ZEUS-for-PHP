@@ -20,7 +20,7 @@ use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
  */
 final class SocketMessageBroker
 {
-    protected $stopServerAtProcessExit = false;
+    protected $stopServerAtWorkerExit = false;
 
     /** @var SocketServer */
     protected $server;
@@ -72,7 +72,7 @@ final class SocketMessageBroker
         };
 
         if ($event->getName() === WorkerEvent::EVENT_WORKER_INIT && !$this->server) {
-            $this->stopServerAtProcessExit = true;
+            $this->stopServerAtWorkerExit = true;
             $this->server = new SocketServer();
             $this->server->setReuseAddress(true);
             $this->server->setSoTimeout(1000);
@@ -147,7 +147,7 @@ final class SocketMessageBroker
             $this->connection = null;
         }
 
-        if ($this->stopServerAtProcessExit) {
+        if ($this->stopServerAtWorkerExit) {
             $this->server->close();
         }
         $this->server = null;
