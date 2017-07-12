@@ -5,10 +5,8 @@ namespace Zeus\Kernel\ProcessManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
-use Zeus\Kernel\IpcServer\Adapter\FifoAdapter;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\IpcServer\Server;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
@@ -47,9 +45,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
     /** @var MultiProcessingModuleInterface */
     protected $multiProcessingModule;
-
-    /** @var Server */
-    protected $ipcServer;
 
     /**
      * @return bool
@@ -375,7 +370,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     protected function onSchedulerStart()
     {
         $this->log(Logger::INFO, "Scheduler started");
-        $this->createWorkers($this->getConfig()->getStartProcesses());
+        $this->createProcesses($this->getConfig()->getStartProcesses());
 
         $this->mainLoop();
     }
@@ -391,10 +386,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
-            $this->ipcServer->removeIpc($workerState['ipc']);
             $workerState['code'] = WorkerState::TERMINATED;
-            $workerState['ipc']->disconnect();
-
             $this->workers[$uid] = $workerState;
         }
 
@@ -444,7 +436,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param int $count Number of processes to create.
      * @return $this
      */
-    protected function createWorkers(int $count)
+    protected function createProcesses(int $count)
     {
         if ($count === 0) {
             return $this;
@@ -466,13 +458,9 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             return;
         }
 
-        $ipc = new FifoAdapter($event->getParam('uid'), []);
-        $ipc->connect();
-
         $process = $this->workerService;
         $process->setProcessId($event->getParam('uid'));
         $process->setThreadId($event->getParam('threadId', 1));
-        $process->setIpc($ipc);
         $this->collectCycles();
         $this->setSchedulerActive(false);
         $this->getIpc()->useChannelNumber(1);
@@ -488,8 +476,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         }
 
         $pid = $event->getParam('uid');
-        $ipc = new FifoAdapter($pid, []);
-        $ipc->connect();
 
         $this->workers[$pid] = [
             'code' => WorkerState::WAITING,
@@ -500,10 +486,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             'requests_per_second' => 0,
             'cpu_usage' => 0,
             'status_description' => '',
-            'ipc' => $ipc
         ];
-
-        $this->ipcServer->addIpc($ipc);
     }
 
     /**
@@ -524,7 +507,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $toSoftTerminate = $operations['soft_terminate'];
         $toCreate = $operations['create'];
 
-        $this->createWorkers($toCreate);
+        $this->createProcesses($toCreate);
         $this->stopWorkers($toTerminate, false);
         $this->stopWorkers($toSoftTerminate, true);
 
@@ -561,16 +544,12 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     protected function mainLoop()
     {
         do {
-            $now = microtime(true);
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
 
             if (!$this->isSchedulerActive()) {
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
             }
-
-            $delay = $now - microtime(true);
-            $delay = $delay > 0.01 ? 0 : 0.01 - $delay;
-        } while ($this->isSchedulerActive() && null === usleep(100000 * $delay));
+        } while ($this->isSchedulerActive());
 
         return $this;
     }
@@ -627,17 +606,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         while (time() < $time && count($this->workers) > 0) {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         }
-
-        return $this;
-    }
-
-    /**
-     * @param Server $ipcServer
-     * @return $this
-     */
-    public function setIpcServer(Server $ipcServer)
-    {
-        $this->ipcServer = $ipcServer;
 
         return $this;
     }

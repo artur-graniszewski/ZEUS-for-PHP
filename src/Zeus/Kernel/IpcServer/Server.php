@@ -6,7 +6,6 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
 class Server implements ListenerAggregateInterface
@@ -16,8 +15,8 @@ class Server implements ListenerAggregateInterface
     /** @var bool */
     protected $isConnected = false;
 
-    /** @var IpcAdapterInterface[] */
-    protected $ipc = [];
+    /** @var IpcAdapterInterface */
+    protected $ipc;
 
     /** @var EventManagerInterface */
     protected $events;
@@ -60,52 +59,23 @@ class Server implements ListenerAggregateInterface
     }
 
     /**
-     * @param IpcAdapterInterface $ipc
-     * @return $this
-     */
-    public function addIpc(IpcAdapterInterface $ipc)
-    {
-        $this->ipc[] = $ipc;
-
-        return $this;
-    }
-
-    /**
-     * @param IpcAdapterInterface $ipcToRemove
-     * @return $this
-     */
-    public function removeIpc(IpcAdapterInterface $ipcToRemove)
-    {
-        foreach ($this->ipc as $key =>  $ipc) {
-            if ($ipcToRemove === $ipc) {
-                unset ($this->ipc[$key]);
-                return $this;
-            }
-        }
-
-        throw new \LogicException("Trying to unregister unknown IPC instance");
-    }
-
-    /**
      * Handles messages.
      *
      * @return $this
      */
     protected function handleMessages()
     {
-        foreach ($this->ipc as $ipc) {
-            /** @var Message[] $messages */
-            $ipc->useChannelNumber(0);
+        /** @var Message[] $messages */
+        $this->ipc->useChannelNumber(0);
 
-            $messages = $ipc->receiveAll();
+        $messages = $this->ipc->receiveAll();
 
-            foreach ($messages as $message) {
-                $event = new IpcEvent();
-                $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
-                $event->setParams($message);
-                $event->setTarget($this);
-                $this->getEventManager()->triggerEvent($event);
-            }
+        foreach ($messages as $message) {
+            $event = new IpcEvent();
+            $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
+            $event->setParams($message);
+            $event->setTarget($this);
+            $this->getEventManager()->triggerEvent($event);
         }
 
         return $this;
@@ -136,5 +106,24 @@ class Server implements ListenerAggregateInterface
         }
 
         return $this->events;
+    }
+
+    /**
+     * @param IpcAdapterInterface $ipcAdapter
+     * @return $this
+     */
+    public function setIpc(IpcAdapterInterface $ipcAdapter)
+    {
+        $this->ipc = $ipcAdapter;
+
+        return $this;
+    }
+
+    /**
+     * @return IpcAdapterInterface
+     */
+    public function getIpc()
+    {
+        return $this->ipc;
     }
 }

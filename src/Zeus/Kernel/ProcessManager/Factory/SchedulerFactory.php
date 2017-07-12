@@ -45,14 +45,14 @@ class SchedulerFactory implements FactoryInterface
         /** @var Worker $processService */
         $processService = $container->build(Worker::class, ['logger_adapter' => $logger, 'scheduler_config' => $configObject]);
 
-        $ipcServer = new Server();
-        $ipcServer->setEventManager($eventManager);
-        $ipcServer->attach($eventManager);
-
         $scheduler = new Scheduler($configObject, $processService, $options['ipc_adapter'], $schedulerDiscipline);
         $scheduler->setLogger($logger);
         $scheduler->setEventManager($eventManager);
-        $scheduler->setIpcServer($ipcServer);
+
+        $ipcServer = new Server();
+        $ipcServer->setIpc($options['ipc_adapter']);
+        $ipcServer->setEventManager($eventManager);
+        $ipcServer->attach($eventManager);
 
         // @todo: remove this from here
         $processService->setIpc($scheduler->getIpc());
