@@ -34,6 +34,18 @@ class Selector extends AbstractPhpResource
         return key($this->streams);
     }
 
+    public function unregister(AbstractStream $streamToUnregister)
+    {
+        foreach ($this->streams as $key => $stream) {
+            if ($stream === $streamToUnregister) {
+                unset ($this->streams[$key]);
+                break;
+            }
+        }
+
+        return $this;
+    }
+
     /**
      * @param int $timeout Timeout in milliseconds
      * @return int

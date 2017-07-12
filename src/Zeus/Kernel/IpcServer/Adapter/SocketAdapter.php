@@ -175,7 +175,7 @@ final class SocketAdapter implements
         $writeSocket = $except = [];
         $messages = [];
 
-        if (@socket_select($readSocket, $writeSocket, $except, 1)) {
+        if (@socket_select($readSocket, $writeSocket, $except, 0, 10)) {
             for (;;) {
                 $message = $this->receive($success);
                 if (!$success) {
