@@ -195,7 +195,6 @@ final class FifoAdapter implements
         }
 
         if (!$this->ipc[$channelNumber]->select(1000)) {
-
             return [];
         }
 

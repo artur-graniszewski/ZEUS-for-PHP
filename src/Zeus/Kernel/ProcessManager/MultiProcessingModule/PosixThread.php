@@ -211,7 +211,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $thread->argv = $argv;
         $thread->id = static::$id;
         $thread->ipcPort = $port;
-        $thread->start(PTHREADS_INHERIT_INI);
+        $thread->start(PTHREADS_INHERIT_NONE);
 
         $this->threads[static::$id] = $thread;
 

@@ -31,7 +31,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      * @param mixed $value
      * @return $this
      */
-    public function setOption(int $option, mixed $value)
+    public function setOption(int $option, $value)
     {
         if ($this->isClosed()) {
             throw new SocketException("Stream must be open");
@@ -49,7 +49,9 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     protected function doClose()
     {
         if (!$this->isEof()) {
+            stream_set_blocking($this->resource, true);
             stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
+            fread($this->resource, 4096);
         }
 
         parent::doClose();

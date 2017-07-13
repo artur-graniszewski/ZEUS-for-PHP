@@ -182,7 +182,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $this->onWorkerLoop();
     }
 
-    protected function startProcess(SchedulerEvent $event)
+    protected function startWorker(SchedulerEvent $event)
     {
         $descriptors = [
             0 => ['pipe', 'r'], // stdin
@@ -221,7 +221,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
 
     public function onWorkerCreate(SchedulerEvent $event)
     {
-        $pid = $this->startProcess($event);
+        $pid = $this->startWorker($event);
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
         $event->setParam('threadId', 1);

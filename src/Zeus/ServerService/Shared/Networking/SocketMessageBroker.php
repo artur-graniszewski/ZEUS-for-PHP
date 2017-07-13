@@ -20,7 +20,7 @@ use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
  */
 final class SocketMessageBroker
 {
-    protected $stopServerAtWorkerExit = false;
+    protected $oneServerPerWorker = false;
 
     /** @var SocketServer */
     protected $server;
@@ -64,20 +64,30 @@ final class SocketMessageBroker
         if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START) {
             $mpm = $event->getTarget()->getMultiProcessingModule();
             if ($mpm instanceof SharedAddressSpaceInterface || $mpm instanceof SharedInitialAddressSpaceInterface) {
-                $this->server = new SocketServer($this->config->getListenPort(), null, $this->config->getListenAddress());
-                $this->server->setSoTimeout(1000);
+                $this->createServer(5);
 
                 return $this;
             }
         };
 
-        if ($event->getName() === WorkerEvent::EVENT_WORKER_INIT && !$this->server) {
-            $this->stopServerAtWorkerExit = true;
-            $this->server = new SocketServer();
-            $this->server->setReuseAddress(true);
-            $this->server->setSoTimeout(1000);
-            $this->server->bind($this->config->getListenAddress(), 1, $this->config->getListenPort());
+        if (!$this->server && $event->getName() === WorkerEvent::EVENT_WORKER_INIT) {
+            $this->oneServerPerWorker = true;
+            $this->createServer(1);
         }
+
+        return $this;
+    }
+
+    /**
+     * @param int $backlog
+     * @return $this
+     */
+    protected function createServer($backlog)
+    {
+        $this->server = new SocketServer();
+        $this->server->setReuseAddress(true);
+        $this->server->setSoTimeout(1000);
+        $this->server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
 
         return $this;
     }
@@ -91,15 +101,28 @@ final class SocketMessageBroker
     {
         $exception = null;
 
+        if ($this->oneServerPerWorker && $this->server->isClosed()) {
+            $this->createServer(1);
+        }
+
         try {
             if (!$this->connection) {
                 try {
                     $connection = $this->server->accept();
+                    $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(1);
+                    $event->getTarget()->setRunning();
+                    if ($this->oneServerPerWorker) {
+                        $this->server->close();
+                    }
                 } catch (SocketTimeoutException $exception) {
+                    $event->getTarget()->setWaiting();
+                    if ($this->oneServerPerWorker) {
+                        $this->server->close();
+                    }
+
                     return;
                 }
 
-                $event->getTarget()->setRunning();
                 $this->connection = $connection;
                 $this->message->onOpen($connection);
             }
@@ -142,13 +165,13 @@ final class SocketMessageBroker
 
     public function onWorkerExit()
     {
+        if ($this->oneServerPerWorker && !$this->server->isClosed()) {
+            $this->server->close();
+        }
+
         if ($this->connection) {
             $this->connection->close();
             $this->connection = null;
-        }
-
-        if ($this->stopServerAtWorkerExit) {
-            $this->server->close();
         }
         $this->server = null;
     }

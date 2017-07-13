@@ -157,6 +157,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         if (!$this->request) {
             $this->request = new Request();
+            $this->request->setMetadata('remoteAddress', $this->remoteAddress);
         }
 
         $callback = function($request) use ($exception) {
@@ -226,6 +227,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             }
 
             $request->setMetadata('remoteAddress', $this->remoteAddress);
+
             $this->request = $request;
             $this->response->setVersion($this->request->getVersion());
             $this->headersReceived = true;
@@ -365,7 +367,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     protected function sendHeaders(string & $buffer)
     {
         $connection = $this->connection;
-        $this->request->setMetadata('remoteAddress', $connection->getRemoteAddress());
         $response = $this->response;
         $request = $this->request;
         $responseHeaders = $response->getHeaders();

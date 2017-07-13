@@ -56,8 +56,6 @@ class Worker extends AbstractWorker
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
                 return $this;
             }
-        } else {
-            $status->incrementNumberOfFinishedTasks(1);
         }
 
         $event = new WorkerEvent();

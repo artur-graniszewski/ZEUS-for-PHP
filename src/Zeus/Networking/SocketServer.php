@@ -179,7 +179,7 @@ final class SocketServer
      * @param mixed $value
      * @return $this
      */
-    public function setOption(int $option, mixed $value)
+    public function setOption(int $option, $value)
     {
         if (!$this->socket) {
             throw new SocketException("Socket must be bound first");
@@ -199,7 +199,10 @@ final class SocketServer
         if (!$this->socket) {
             throw new \LogicException("Server already stopped");
         }
-        @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+
+        stream_set_blocking($this->socket, true);
+        @stream_socket_shutdown($this->socket, STREAM_SHUT_RD);
+        fread($this->socket, 4096);
         fclose($this->socket);
         $this->socket = null;
         $this->isClosed = true;
@@ -234,7 +237,7 @@ final class SocketServer
     /**
      * @return bool
      */
-    public function isIsClosed() : bool
+    public function isClosed() : bool
     {
         return $this->isClosed;
     }
