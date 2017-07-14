@@ -53,10 +53,8 @@ class AthleticEvent extends Event
      */
     public function testSmallMessage()
     {
-        $this->ipcAdapter->useChannelNumber(0);
-        $this->ipcAdapter->send($this->smallMessage);
-        $this->ipcAdapter->useChannelNumber(1);
-        $message = $this->ipcAdapter->receive();
+        $this->ipcAdapter->send(0, $this->smallMessage);
+        $message = $this->ipcAdapter->receive(1);
         if ($message !== $this->smallMessage) {
             throw new \Exception('Small message is corrupted');
         }
@@ -67,10 +65,8 @@ class AthleticEvent extends Event
      */
     public function testMediumMessage()
     {
-        $this->ipcAdapter->useChannelNumber(0);
-        $this->ipcAdapter->send($this->mediumMessage);
-        $this->ipcAdapter->useChannelNumber(1);
-        $message = $this->ipcAdapter->receive();
+        $this->ipcAdapter->send(0, $this->mediumMessage);
+        $message = $this->ipcAdapter->receive(1);
         if ($message !== $this->mediumMessage) {
             throw new \Exception('Medium message is corrupted');
         }
@@ -81,10 +77,8 @@ class AthleticEvent extends Event
      */
     public function testLargeMessage()
     {
-        $this->ipcAdapter->useChannelNumber(0);
-        $this->ipcAdapter->send($this->largeMessage);
-        $this->ipcAdapter->useChannelNumber(1);
-        $message = $this->ipcAdapter->receive();
+        $this->ipcAdapter->send(0, $this->largeMessage);
+        $message = $this->ipcAdapter->receive(1);
         if ($message !== $this->largeMessage) {
             throw new \Exception('Large message is corrupted');
         }

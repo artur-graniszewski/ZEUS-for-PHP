@@ -51,6 +51,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
 
     public function testSchedulerStatus()
     {
+        $this->markTestSkipped("Scheduler Status feature is being refactored");
         $logger = new Logger();
         $logger->addWriter(new Noop());
         $statuses = [];

@@ -4,6 +4,8 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Networking\SocketServer;
@@ -34,6 +36,8 @@ final class SocketMessageBroker
     /** @var SocketStream */
     protected $connection;
 
+    protected $leaderElected = false;
+
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
         $this->config = $config;
@@ -48,25 +52,46 @@ final class SocketMessageBroker
     {
         $events = $events->getSharedManager();
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onStart']);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onStart']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop']);
+        $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'onWorkerMessage']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
 
         return $this;
     }
 
     /**
+     * @param SchedulerEvent $event
+     */
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+        if ($this->leaderElected) {
+            return;
+        }
+
+        $this->leaderElected = true;
+        /** @var Scheduler $scheduler */
+        $scheduler = $event->getTarget();
+
+        // ask for a session leader...
+        $scheduler->sendMessage(0, "find-leader", "find-leader");
+    }
+
+    /**
      * @param EventInterface $event
-     * @return $this
      */
     public function onStart(EventInterface $event)
     {
         if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START) {
-            $mpm = $event->getTarget()->getMultiProcessingModule();
+            /** @var Scheduler $scheduler */
+            $scheduler = $event->getTarget();
+
+            $mpm = $scheduler->getMultiProcessingModule();
             if ($mpm instanceof SharedAddressSpaceInterface || $mpm instanceof SharedInitialAddressSpaceInterface) {
                 $this->createServer(5);
 
-                return $this;
+                return;
             }
         };
 
@@ -74,15 +99,13 @@ final class SocketMessageBroker
             $this->oneServerPerWorker = true;
             $this->createServer(1);
         }
-
-        return $this;
     }
 
     /**
      * @param int $backlog
      * @return $this
      */
-    protected function createServer($backlog)
+    protected function createServer(int $backlog)
     {
         $this->server = new SocketServer();
         $this->server->setReuseAddress(true);
@@ -90,6 +113,22 @@ final class SocketMessageBroker
         $this->server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
 
         return $this;
+    }
+
+    /**
+     * @param WorkerEvent $event
+     * @throws \Throwable|\Exception
+     * @throws null
+     */
+    public function onWorkerMessage(IpcEvent $event)
+    {
+        $name = $event->getParam('type');
+        if ($name !== 'find-leader') {
+            return;
+        }
+        $message = $event->getParam('message');
+
+        //trigger_error(getmypid() . " MESSAGE RECEIVED " . $message);
     }
 
     /**

@@ -157,7 +157,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
                 break;
 
-            default:
+            case Message::IS_MESSAGE:
                 $this->logMessage($message);
                 break;
         }
@@ -463,7 +463,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $process->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
         $this->setSchedulerActive(false);
-        $this->getIpc()->useChannelNumber(1);
     }
 
     /**

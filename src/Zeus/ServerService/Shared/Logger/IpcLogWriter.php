@@ -42,7 +42,6 @@ class IpcLogWriter extends AbstractWriter implements WriterInterface
             $event['extra']['uid'] = '?';
         }
 
-        $this->ipcAdapter->useChannelNumber(1);
-        $this->ipcAdapter->send($event);
+        $this->ipcAdapter->send(1, $event);
     }
 }

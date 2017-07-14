@@ -37,7 +37,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
     {
         $server = $this->service->getServer();
 
-        if ($server) {
+        if ($server && !$server->isClosed()) {
             $server->close();
         }
     }

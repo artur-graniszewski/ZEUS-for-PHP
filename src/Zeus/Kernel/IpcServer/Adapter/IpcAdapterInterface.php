@@ -9,6 +9,10 @@ namespace Zeus\Kernel\IpcServer\Adapter;
  */
 interface IpcAdapterInterface
 {
+    const CLIENT_ENDPOINT = 1;
+
+    const SERVER_CHANNEL = 0;
+
     /**
      * Creates IPC object.
      *
@@ -34,24 +38,28 @@ interface IpcAdapterInterface
     /**
      * Sends a message to the queue.
      *
+     * @param int $channelNumber
+     * @param mixed $message
      * @return $this
      */
-    public function send($message);
+    public function send(int $channelNumber, $message);
 
     /**
      * Receives a message from the queue.
      *
+     * @param int $channelNumber
      * @param bool $success
      * @return mixed Received message.
      */
-    public function receive(& $success = false);
+    public function receive(int $channelNumber, & $success = false);
 
     /**
      * Receives all messages from the queue.
      *
+     * @param int $channelNumber
      * @return mixed Received messages.
      */
-    public function receiveAll();
+    public function receiveAll(int $channelNumber);
 
     /**
      * Destroys this IPC object.
@@ -70,5 +78,5 @@ interface IpcAdapterInterface
      * @param int $channelNumber
      * @return $this
      */
-    public function useChannelNumber($channelNumber);
+    public function checkChannelAvailability(int $channelNumber);
 }

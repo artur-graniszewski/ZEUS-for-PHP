@@ -27,9 +27,6 @@ final class SharedMemoryAdapter implements
     /** @var mixed[] */
     protected $config;
 
-    /** @var int */
-    protected $channelNumber = 0;
-
     /** @var bool[] */
     protected $activeChannels = [0 => true, 1 => true];
 
@@ -100,13 +97,12 @@ final class SharedMemoryAdapter implements
     /**
      * Sends a message to the queue.
      *
+     * @param int $channelNumber
      * @param string $message
      * @return $this
      */
-    public function send($message)
+    public function send(int $channelNumber, $message)
     {
-        $channelNumber = $this->channelNumber;
-
         $channelNumber == 0 ?
             $channelNumber = 1
             :
@@ -145,13 +141,13 @@ final class SharedMemoryAdapter implements
     /**
      * Receives a message from the queue.
      *
+     * @param int $channelNumber
      * @param bool $success
      * @return mixed Received message.
      */
-    public function receive(& $success = false)
+    public function receive(int $channelNumber, & $success = false)
     {
         $success = false;
-        $channelNumber = $this->channelNumber;
 
         $this->checkChannelAvailability($channelNumber);
 
@@ -183,12 +179,13 @@ final class SharedMemoryAdapter implements
     /**
      * Receives all messages from the queue.
      *
-     * @return mixed[] Received messages.
+     * @param int $channelNumber
+     * @return \mixed[] Received messages.
      */
-    public function receiveAll()
+    public function receiveAll(int $channelNumber)
     {
         $results = [];
-        while (($result = $this->receive($success)) && $success) {
+        while (($result = $this->receive($channelNumber, $success)) && $success) {
             $results[] = $result;
         }
 
@@ -230,8 +227,9 @@ final class SharedMemoryAdapter implements
 
     /**
      * @param int $channelNumber
+     * @return $this
      */
-    protected function checkChannelAvailability($channelNumber)
+    public function checkChannelAvailability(int $channelNumber)
     {
         if (!$this->connected) {
             throw new \LogicException("Connection is not established");
@@ -240,6 +238,8 @@ final class SharedMemoryAdapter implements
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
+
+        return $this;
     }
 
     /**
@@ -264,18 +264,6 @@ final class SharedMemoryAdapter implements
             &&
             function_exists('shm_detach')
         );
-    }
-
-    /**
-     * @param int $channelNumber
-     * @return $this
-     */
-    public function useChannelNumber($channelNumber)
-    {
-        $this->checkChannelAvailability($channelNumber);
-        $this->channelNumber = $channelNumber;
-
-        return $this;
     }
 
     /**

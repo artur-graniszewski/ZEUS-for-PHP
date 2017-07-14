@@ -69,9 +69,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         $ipc = $scheduler->getIpc();
 
         $payload = [
-            'isEvent' => false,
             'type' => Message::IS_STATUS_REQUEST,
-            'priority' => '',
             'message' => 'fetchStatus',
             'extra' => [
                 'uid' => getmypid(),
@@ -82,18 +80,16 @@ class SchedulerStatus implements ListenerAggregateInterface
         if (!$ipc->isConnected()) {
             $ipc->connect();
         }
-        $ipc->useChannelNumber(1);
-        $ipc->send($payload);
+
+        $ipc->send(1, $payload);
 
         $timeout = 5;
         $result = null;
         do {
-            $result = $ipc->receive();
+            $result = $ipc->receive(1);
             usleep(1000);
             $timeout--;
         } while (!$result && $timeout >= 0);
-
-        $ipc->useChannelNumber(0);
 
         if ($result) {
             return $result['extra'];
@@ -124,9 +120,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
 
         $payload = [
-            'isEvent' => false,
             'type' => Message::IS_STATUS,
-            'priority' => Message::IS_STATUS,
             'message' => 'statusSent',
             'extra' => [
                 'uid' => $scheduler->getProcessId(),
@@ -139,7 +133,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         $payload['extra']['scheduler_status']['total_traffic'] = 0;
         $payload['extra']['scheduler_status']['start_timestamp'] = $this->startTime;
 
-        $scheduler->getIpc()->send($payload);
+        $scheduler->getIpc()->send(1, $payload);
         $this->refreshStatus = false;
     }
 }

@@ -7,6 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\ProcessManager\WorkerEvent;
 
 class Server implements ListenerAggregateInterface
 {
@@ -41,7 +42,11 @@ class Server implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $this->eventHandles[] = $events->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
-            $this->handleMessages();
+            $this->handleMessages(0);
+        }, $priority);
+
+        $this->eventHandles[] = $events->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function() {
+            $this->handleMessages(1);
         }, $priority);
     }
 
@@ -61,16 +66,18 @@ class Server implements ListenerAggregateInterface
     /**
      * Handles messages.
      *
+     * @param $channelNumber
      * @return $this
      */
-    protected function handleMessages()
+    protected function handleMessages(int $channelNumber)
     {
         /** @var Message[] $messages */
-        $this->ipc->useChannelNumber(0);
-
-        $messages = $this->ipc->receiveAll();
+        $messages = $this->ipc->receiveAll($channelNumber);
 
         foreach ($messages as $message) {
+            if (!$message) {
+                var_dump('!', $message);
+            }
             $event = new IpcEvent();
             $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
             $event->setParams($message);

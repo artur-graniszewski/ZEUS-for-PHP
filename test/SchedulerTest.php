@@ -95,14 +95,10 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $nullLogger->addWriter($mockWriter);
         $scheduler->setLogger($nullLogger);
 
-        $ipc->useChannelNumber(0);
-
         $this->assertInstanceOf(Scheduler::class, $scheduler);
 
         $scheduler->start(false);
-        $ipc->useChannelNumber(1);
-        $this->assertEquals(0, count($ipc->receiveAll()), "No messages should be left on IPC");
-        $ipc->useChannelNumber(0);
+        $this->assertEquals(0, count($ipc->receiveAll(1)), "No messages should be left on IPC");
 
         $this->assertGreaterThanOrEqual(8, count($mockWriter->events), "At least 8 messages should have been transferred from one channel to another");
 

@@ -59,24 +59,18 @@ class IpcTest extends PHPUnit_Framework_TestCase
 
         $ipcAdapter->connect();
 
-        $ipcAdapter->useChannelNumber(0);
-        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Input queue should be empty');
-
-        $ipcAdapter->useChannelNumber(1);
-        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Output queue should be empty');
-
-        $ipcAdapter->useChannelNumber(0);
+        $this->assertEquals(0, count($ipcAdapter->receiveAll(0)), 'Input queue should be empty');
+        $this->assertEquals(0, count($ipcAdapter->receiveAll(1)), 'Output queue should be empty');
 
         foreach (range(1, $messagesAmount) as $index) {
-            $ipcAdapter->send('Message number ' . $index);
+            $ipcAdapter->send(0, 'Message number ' . $index);
         }
 
-        $this->assertEquals(0, count($ipcAdapter->receiveAll()), $adapter . ' input queue should be empty after sending some data');
+        $this->assertEquals(0, count($ipcAdapter->receiveAll(0)), $adapter . ' input queue should be empty after sending some data');
 
-        $ipcAdapter->useChannelNumber(1);
-        $output = $ipcAdapter->receiveAll();
+        $output = $ipcAdapter->receiveAll(1);
         $this->assertEquals($messagesAmount, count($output), 'Output queue should contain all the messages: ' . json_encode($output));
-        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Output queue should be empty after fetching the data');
+        $this->assertEquals(0, count($ipcAdapter->receiveAll(1)), 'Output queue should be empty after fetching the data');
 
         foreach (range(1, $messagesAmount) as $index) {
             $message = 'Message number ' . $index;
@@ -120,23 +114,21 @@ class IpcTest extends PHPUnit_Framework_TestCase
 
         $this->assertInstanceOf($adapter, $ipcAdapter);
 
-        $ipcAdapter->useChannelNumber(0);
-        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Input queue should be empty');
+        $this->assertEquals(0, count($ipcAdapter->receiveAll(0)), 'Input queue should be empty');
 
-        $ipcAdapter->useChannelNumber(1);
-        $this->assertEquals(0, count($ipcAdapter->receiveAll()), 'Output queue should be empty');
+        $this->assertEquals(0, count($ipcAdapter->receiveAll(1)), 'Output queue should be empty');
 
         $ipcAdapter->disconnect(1);
 
         $ex1 = $ex2 = null;
         try {
-            $ipcAdapter->useChannelNumber(1);
+            $ipcAdapter->checkChannelAvailability(1);
         } catch (\LogicException $ex1) {
 
         }
         $ipcAdapter->disconnect(0);
         try {
-            $ipcAdapter->useChannelNumber(0);
+            $ipcAdapter->checkChannelAvailability(0);
         } catch (\LogicException $ex2) {
 
         }
@@ -165,7 +157,7 @@ class IpcTest extends PHPUnit_Framework_TestCase
         $logger = $sm->build(IpcLoggerInterface::class, ['ipc_adapter' => $ipcAdapter, 'service_name' => $serviceName]);
         $logger->info('TEST MESSAGE');
 
-        $results = $ipcAdapter->useChannelNumber(0)->receiveAll();
+        $results = $ipcAdapter->receiveAll(0);
         $this->assertEquals(1, count($results));
         $this->assertEquals('INFO', $results[0]['priorityName']);
         $this->assertEquals('TEST MESSAGE', $results[0]['message']);

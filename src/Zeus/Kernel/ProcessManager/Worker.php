@@ -32,8 +32,6 @@ class Worker extends AbstractWorker
     public function attach(EventManagerInterface $eventManager)
     {
         $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
-            // @todo: do not use mainLoop() method from outside
-            $this->getIpc()->useChannelNumber(1);
             $event->getTarget()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
 
@@ -183,9 +181,7 @@ class Worker extends AbstractWorker
         $status->updateStatus();
 
         $payload = [
-            'isEvent' => false,
             'type' => Message::IS_STATUS,
-            'priority' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
                 'uid' => $this->getProcessId(),
@@ -196,7 +192,7 @@ class Worker extends AbstractWorker
             ]
         ];
 
-        $this->getIpc()->send($payload);
+        $this->getIpc()->send(1, $payload);
 
         return $this;
     }

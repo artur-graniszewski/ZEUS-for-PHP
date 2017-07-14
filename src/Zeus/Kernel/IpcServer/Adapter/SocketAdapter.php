@@ -26,9 +26,6 @@ final class SocketAdapter implements
     /** @var string */
     protected $namespace;
 
-    /** @var int */
-    protected $channelNumber = 0;
-
     /** @var mixed[] */
     protected $config;
 
@@ -87,32 +84,20 @@ final class SocketAdapter implements
     }
 
     /**
-     * @param int $channelNumber
-     * @return $this
-     */
-    public function useChannelNumber($channelNumber)
-    {
-        $this->checkChannelAvailability($channelNumber);
-
-        $this->channelNumber = $channelNumber;
-
-        return $this;
-    }
-
-    /**
      * Sends a message to the queue.
      *
+     * @param int $channelNumber
      * @param string $message
      * @return $this
      */
-    public function send($message)
+    public function send(int $channelNumber, $message)
     {
-        $this->checkChannelAvailability($this->channelNumber);
+        $this->checkChannelAvailability($channelNumber);
         $message = $this->packMessage($message);
 
-        socket_set_block($this->ipc[$this->channelNumber]);
-        socket_write($this->ipc[$this->channelNumber], $message . "\0", strlen($message) + 1);
-        socket_set_nonblock($this->ipc[$this->channelNumber]);
+        socket_set_block($this->ipc[$channelNumber]);
+        socket_write($this->ipc[$channelNumber], $message . "\0", strlen($message) + 1);
+        socket_set_nonblock($this->ipc[$channelNumber]);
 
         return $this;
     }
@@ -120,22 +105,23 @@ final class SocketAdapter implements
     /**
      * Receives a message from the queue.
      *
+     * @param int $channelNumber
      * @param bool $success
      * @return mixed Received message.
      */
-    public function receive(& $success = false)
+    public function receive(int $channelNumber, & $success = false)
     {
         $message = '';
         $success = false;
-        $this->checkChannelAvailability($this->channelNumber);
+        $this->checkChannelAvailability($channelNumber);
 
-        $readSocket = [$this->ipc[$this->channelNumber]];
+        $readSocket = [$this->ipc[$channelNumber]];
         $writeSocket = $except = [];
 
         $value = @socket_select($readSocket, $writeSocket, $except, 0, 10);
 
         if ($value === false) {
-            throw new \RuntimeException(sprintf('Error %d occurred when receiving data from channel number %d', socket_last_error($this->ipc[$this->channelNumber]), $this->channelNumber));
+            throw new \RuntimeException(sprintf('Error %d occurred when receiving data from channel number %d', socket_last_error($this->ipc[$channelNumber]), $channelNumber));
         }
 
         if ($value === 0) {
@@ -165,19 +151,20 @@ final class SocketAdapter implements
     /**
      * Receives all messages from the queue.
      *
-     * @return mixed[] Received messages.
+     * @param int $channelNumber
+     * @return \mixed[] Received messages.
      */
-    public function receiveAll()
+    public function receiveAll(int $channelNumber)
     {
-        $this->checkChannelAvailability($this->channelNumber);
+        $this->checkChannelAvailability($channelNumber);
 
-        $readSocket = [$this->ipc[$this->channelNumber]];
+        $readSocket = [$this->ipc[$channelNumber]];
         $writeSocket = $except = [];
         $messages = [];
 
         if (@socket_select($readSocket, $writeSocket, $except, 1)) {
             for (;;) {
-                $message = $this->receive($success);
+                $message = $this->receive($channelNumber, $success);
                 if (!$success) {
 
                     break;
@@ -222,8 +209,9 @@ final class SocketAdapter implements
 
     /**
      * @param int $channelNumber
+     * @return $this
      */
-    protected function checkChannelAvailability($channelNumber)
+    public function checkChannelAvailability(int $channelNumber)
     {
         if (!$this->connected) {
             throw new \LogicException("Connection is not established");
@@ -231,6 +219,8 @@ final class SocketAdapter implements
         if (!isset($this->activeChannels[$channelNumber]) || $this->activeChannels[$channelNumber] !== true) {
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
+
+        return $this;
     }
 
     /**
