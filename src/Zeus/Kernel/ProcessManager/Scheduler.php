@@ -314,7 +314,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             }
 
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
-                function(SchedulerEvent $e) {
+                function(SchedulerEvent $e) use ($events) {
                     if (!$e->getParam('server')) {
                         return;
                     }
@@ -329,10 +329,14 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
                 }, SchedulerEvent::PRIORITY_FINALIZE);
 
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
-                function (SchedulerEvent $event) {
+                function (SchedulerEvent $event) use ($events) {
                     if (!$event->getParam('server') || $event->getParam('init_process')) {
                         return;
                     }
+
+                    $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) {
+                        $e->stopPropagation(true);
+                    }, WorkerEvent::PRIORITY_INITIALIZE);
 
                     $pid = $event->getParam('uid');
                     $this->setProcessId($pid);

@@ -340,7 +340,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         if (!$this->isBodyAllowedInRequest($this->request)) {
             if (isset($message[0])) {
                 // method is not allowing to send a body
-                throw new \InvalidArgumentException("Body not allowed in this request", Response::STATUS_CODE_400);
+                throw new \InvalidArgumentException("Body not allowed in this request: $message", Response::STATUS_CODE_400);
             }
 
             $this->requestComplete = true;

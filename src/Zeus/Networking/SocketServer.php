@@ -202,7 +202,7 @@ final class SocketServer
 
         stream_set_blocking($this->socket, true);
         @stream_socket_shutdown($this->socket, STREAM_SHUT_RD);
-        fread($this->socket, 4096);
+//        fread($this->socket, 4096);
         fclose($this->socket);
         $this->socket = null;
         $this->isClosed = true;

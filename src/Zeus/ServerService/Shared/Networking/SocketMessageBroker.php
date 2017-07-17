@@ -6,7 +6,10 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\Kernel\ProcessManager\Worker;
+use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Networking\SocketServer;
 
@@ -22,6 +25,11 @@ use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
  */
 final class SocketMessageBroker
 {
+    protected $isBusy = false;
+
+    /** @var bool */
+    protected $isLeader = false;
+
     protected $oneServerPerWorker = false;
 
     /** @var SocketServer */
@@ -36,7 +44,26 @@ final class SocketMessageBroker
     /** @var SocketStream */
     protected $connection;
 
-    protected $leaderElected = false;
+    /** @var SocketServer */
+    protected $ipcServer;
+
+    /** @var SocketServer */
+    protected $workerServer;
+
+    /** @var SocketStream[] */
+    protected $ipc = [];
+
+    /** @var SocketStream[] */
+    protected $downstream = [];
+
+    /** @var int[] */
+    protected $workers;
+
+    /** @var Selector */
+    protected $selector;
+
+    /** @var SocketStream[] */
+    protected $client = [];
 
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
@@ -51,54 +78,12 @@ final class SocketMessageBroker
     public function attach(EventManagerInterface $events)
     {
         $events = $events->getSharedManager();
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onStart']);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onStart']);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerStart']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop']);
-        $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'onWorkerMessage']);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onLeaderLoop']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
 
         return $this;
-    }
-
-    /**
-     * @param SchedulerEvent $event
-     */
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
-        if ($this->leaderElected) {
-            return;
-        }
-
-        $this->leaderElected = true;
-        /** @var Scheduler $scheduler */
-        $scheduler = $event->getTarget();
-
-        // ask for a session leader...
-        $scheduler->sendMessage(0, "find-leader", "find-leader");
-    }
-
-    /**
-     * @param EventInterface $event
-     */
-    public function onStart(EventInterface $event)
-    {
-        if ($event->getName() === SchedulerEvent::EVENT_SCHEDULER_START) {
-            /** @var Scheduler $scheduler */
-            $scheduler = $event->getTarget();
-
-            $mpm = $scheduler->getMultiProcessingModule();
-            if ($mpm instanceof SharedAddressSpaceInterface || $mpm instanceof SharedInitialAddressSpaceInterface) {
-                $this->createServer(5);
-
-                return;
-            }
-        };
-
-        if (!$this->server && $event->getName() === WorkerEvent::EVENT_WORKER_INIT) {
-            $this->oneServerPerWorker = true;
-            $this->createServer(1);
-        }
     }
 
     /**
@@ -109,10 +94,75 @@ final class SocketMessageBroker
     {
         $this->server = new SocketServer();
         $this->server->setReuseAddress(true);
-        $this->server->setSoTimeout(1000);
+        $this->server->setSoTimeout(1);
         $this->server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
 
         return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function createIpcServer()
+    {
+        $this->ipcServer = new SocketServer();
+        $this->ipcServer->setReuseAddress(false);
+        $this->ipcServer->setSoTimeout(0);
+        $this->ipcServer->bind('0.0.0.0', 1, 3333);
+
+        return $this;
+    }
+
+    /**
+     * @param WorkerEvent $event
+     * @return $this
+     */
+    protected function createWorkerServer(WorkerEvent $event)
+    {
+        $this->workerServer = new SocketServer();
+        $this->workerServer->setReuseAddress(true);
+        $this->workerServer->setSoTimeout(1000);
+        $this->workerServer->bind('0.0.0.0', 1, 0);
+        $uid = $event->getTarget()->getProcessId();
+        $port = $this->workerServer->getLocalPort();
+
+        do {
+            $client = @stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 1);
+            if (!$client) {
+                if (defined("DEBUG")) trigger_error(getmypid() . " CONNECTION WITH LEADER FAILED: $errstr");
+                $this->createIpcServer();
+                $this->isLeader = true;
+                $this->workerServer->close();
+                $this->workerServer = null;
+                $event->getTarget()->setRunning();
+                $this->createServer(1000);
+                $this->selector = new Selector(Selector::OP_READ);
+                if (defined("DEBUG")) trigger_error(getmypid() . " BECAME A LEADER");
+
+                return $this;
+            }
+
+            stream_set_blocking($client, false);
+
+            if (defined("DEBUG")) trigger_error(getmypid() . " NOTIFYING LEADER $uid:$port");
+            stream_set_write_buffer($client, 0);
+            $success = (bool) fwrite($client, "$uid:$port!");
+
+            fflush($client);
+//            fclose($client);
+            $this->ipcClient = $client;
+        } while (!$success);
+
+        return $this;
+    }
+
+    /**
+     */
+    public function onWorkerStart(WorkerEvent $event)
+    {
+        $this->createWorkerServer($event);
+
+        return;
     }
 
     /**
@@ -120,16 +170,189 @@ final class SocketMessageBroker
      * @throws \Throwable|\Exception
      * @throws null
      */
-    public function onWorkerMessage(IpcEvent $event)
+    public function onLeaderLoop(WorkerEvent $event)
     {
-        $name = $event->getParam('type');
-        if ($name !== 'find-leader') {
+        if (!$this->isLeader) {
             return;
         }
-        $message = $event->getParam('message');
 
-        //trigger_error(getmypid() . " MESSAGE RECEIVED " . $message);
+        $this->registerWorkers();
+        $this->unregisterWorkers();
+        $this->addClients();
+        $this->handleClients();
+        $this->disconnectClients();
     }
+
+    protected function addClients()
+    {
+        try {
+            while ($client = $this->server->accept()) {
+                $this->bindToWorker($client);
+            }
+        } catch (SocketTimeoutException $exception) {
+
+        }
+    }
+
+    protected function disconnectClients()
+    {
+        foreach ($this->downstream as $key => $stream) {
+            if (!$stream->isReadable() || !$stream->isWritable()) {
+                if (defined("DEBUG")) trigger_error(getmypid() . " DISCONNECTING WORKER FOR $key");
+                unset($this->downstream[$key]);
+                if (isset($this->client[$key])) {
+                    $this->client[$key]->close();
+                    unset($this->client[$key]);
+                }
+            }
+        }
+
+        foreach ($this->client as $key => $stream) {
+            if (!$stream->isReadable() || !$stream->isWritable()) {
+                if (defined("DEBUG")) trigger_error(getmypid() . " DISCONNECTING CLIENT BOUND TO $key");
+                unset($this->client[$key]);
+                if (isset($this->downstream[$key])) {
+                    $this->downstream[$key]->close();
+                    unset($this->downstream[$key]);
+                }
+            }
+        }
+    }
+
+    protected function handleClients()
+    {
+        if (!$this->selector->select(1100)) {
+            if (!$this->client) {
+                usleep(10000);
+            }
+            return;
+        }
+
+        $streams = $this->selector->getSelectedStreams();
+
+        foreach ($streams as $stream) {
+            $output = null;
+            $data = $stream->read();
+            if (!isset($data[0])) {
+                continue;
+            }
+            $key = array_search($stream, $this->client);
+
+            if ($key !== false) {
+                $output = $this->downstream[$key];
+                $outputName = 'SERVER';
+            }
+
+
+
+            if (!$key && false !== ($key = array_search($stream, $this->downstream))) {
+                $output = $this->client[$key];
+                $outputName = 'CLIENT';
+            }
+
+            if ($output) {
+                if (defined("DEBUG")) trigger_error(getmypid() . " WROTE TO $outputName $key");
+
+                if ($output->isClosed()) {
+                    trigger_error(getmypid() . " WRITE TO $outputName IS NOT POSSIBLE ANYMORE : " . json_encode([$output->isClosed(), $output->isReadable()]));
+                }
+                if (!$output->isWritable()) {
+                    trigger_error(getmypid() . " WRITE TO $outputName IS NOT POSSIBLE YET : " . json_encode([$output->isClosed(), $output->isReadable()]));
+                }
+                $output->write($data)->flush();
+            }
+        }
+    }
+
+    protected function bindToWorker(SocketStream $client)
+    {
+        $downstream = null;
+        foreach ($this->workers as $uid => $port) {
+            if (isset($this->downstream[$uid])) {
+                continue;
+            }
+
+            $socket = @stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 0);
+            if (!$socket) {
+                unset($this->workers[$uid]);
+                continue;
+            }
+            stream_set_blocking($socket, false);
+
+            if ($socket) {
+                $downstream = new SocketStream($socket);
+                $this->downstream[$uid] = $downstream;
+                $this->client[$uid] = $client;
+                $this->selector->register($client);
+                $this->selector->register($downstream);
+                if (defined("DEBUG")) trigger_error(getmypid() . " BOUND DOWNSTREAM $uid WITH CLIENT");
+
+                break;
+            }
+        }
+
+        if (!$downstream) {
+            $downstreams = count($this->downstream);
+            $workers = count($this->workers);
+            throw new \RuntimeException("Connection pool exhausted [$downstreams downstreams active, $workers workers running]");
+        }
+
+        return $downstream;
+    }
+
+    protected function registerWorkers()
+    {
+        try {
+            while ($connection = $this->ipcServer->accept()) {
+                if ($connection->select(3)) {
+                    $in = $connection->read('!');
+                    list($uid, $port) = explode(":", $in);
+
+                    $this->workers[$uid] = $port;
+                    $this->ipc[$uid] = $connection;
+
+                    if (defined("DEBUG")) trigger_error(getmypid() . " ATTACHED WORKER $uid ON PORT $port");
+
+                    continue;
+                }
+
+
+            }
+        } catch (SocketTimeoutException $exception) {
+
+        }
+    }
+
+    protected function unregisterWorkers()
+    {
+        $count = count($this->ipc);
+
+        //if (defined("DEBUG")) trigger_error(getmypid() ." CHECKING $count IPCs");
+
+        foreach ($this->ipc as $uid => $ipc) {
+
+            try {
+                if (!$ipc->isClosed() && $ipc->isWritable()) {
+                    // $ipc->write(' ')->flush();
+                    continue;
+                }
+            } catch (SocketException $exception) {
+            }
+
+            if (defined("DEBUG")) trigger_error(getmypid() . " TERMINATING CONNECTION $uid");
+            $ipc->close();
+            if (isset($this->downstream[$uid])) {
+                $downstream = $this->downstream[$uid];
+                $downstream->close();
+                unset ($this->downstream[$uid]);
+            }
+
+            unset ($this->ipc[$uid]);
+            unset ($this->workers[$uid]);
+        }
+
+    }
+
 
     /**
      * @param WorkerEvent $event
@@ -138,25 +361,34 @@ final class SocketMessageBroker
      */
     public function onWorkerLoop(WorkerEvent $event)
     {
+        if ($this->isLeader) {
+            if ($this->isBusy) {
+                return;
+            }
+            $event->getTarget()->setRunning();
+            $this->isBusy = true;
+            return;
+        }
+
         $exception = null;
 
-        if ($this->oneServerPerWorker && $this->server->isClosed()) {
-            $this->createServer(1);
+        if ($this->workerServer->isClosed()) {
+            $this->createWorkerServer($event);
         }
 
         try {
             if (!$this->connection) {
                 try {
-                    $connection = $this->server->accept();
+                    $connection = $this->workerServer->accept();
                     $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(1);
                     $event->getTarget()->setRunning();
                     if ($this->oneServerPerWorker) {
-                        $this->server->close();
+                        $this->workerServer->close();
                     }
                 } catch (SocketTimeoutException $exception) {
                     $event->getTarget()->setWaiting();
                     if ($this->oneServerPerWorker) {
-                        $this->server->close();
+                        $this->workerServer->close();
                     }
 
                     return;
@@ -206,6 +438,11 @@ final class SocketMessageBroker
     {
         if ($this->oneServerPerWorker && !$this->server->isClosed()) {
             $this->server->close();
+        }
+
+        if ($this->workerServer && !$this->workerServer->isClosed()) {
+            $this->workerServer->close();
+            $this->workerServer = null;
         }
 
         if ($this->connection) {

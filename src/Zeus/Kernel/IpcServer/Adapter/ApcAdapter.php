@@ -170,7 +170,6 @@ final class ApcAdapter implements
 
     /**
      * @param int $channelNumber
-     * @return $this
      */
     public function checkChannelAvailability(int $channelNumber)
     {
@@ -182,7 +181,7 @@ final class ApcAdapter implements
             throw new \LogicException(sprintf('Channel number %d is unavailable', $channelNumber));
         }
 
-        return $this;
+
     }
 
     /**

@@ -67,7 +67,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
             throw new \LogicException("Stream is not readable");
         }
 
-        if (!$this->select(1000)) {
+        if (!$this->select(0)) {
             return false;
         }
 

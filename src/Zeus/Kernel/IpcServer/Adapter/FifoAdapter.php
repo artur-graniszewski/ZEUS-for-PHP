@@ -5,6 +5,7 @@ namespace Zeus\Kernel\IpcServer\Adapter;
 use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
 use Zeus\Kernel\IpcServer\MessageSizeLimitInterface;
 use Zeus\Kernel\IpcServer\NamedLocalConnectionInterface;
+use Zeus\Kernel\IpcServer\SelectableInterface;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
 use Zeus\Networking\Stream\PipeStream;
 
@@ -16,7 +17,8 @@ use Zeus\Networking\Stream\PipeStream;
 final class FifoAdapter implements
     IpcAdapterInterface,
     NamedLocalConnectionInterface,
-    MessageSizeLimitInterface
+    MessageSizeLimitInterface,
+    SelectableInterface
 {
     use MessagePackager;
 
@@ -36,6 +38,9 @@ final class FifoAdapter implements
     protected $connected;
 
     protected static $maxPipeCapacity = null;
+
+    /** @var int */
+    protected $timeout = 0;
 
     /**
      * Creates IPC object.
@@ -179,7 +184,7 @@ final class FifoAdapter implements
             throw new \RuntimeException('Channel number ' . $channelNumber . ' is already closed');
         }
 
-        if (!$this->ipc[$channelNumber]->select(1000)) {
+        if (!$this->ipc[$channelNumber]->select($this->timeout)) {
             return [];
         }
 
@@ -274,5 +279,16 @@ final class FifoAdapter implements
         }
 
         return static::$maxPipeCapacity;
+    }
+
+    /**
+     * @param int $timeout
+     * @return $this
+     */
+    public function setSoTimeout(int $timeout)
+    {
+        $this->timeout = $timeout;
+
+        return $this;
     }
 }

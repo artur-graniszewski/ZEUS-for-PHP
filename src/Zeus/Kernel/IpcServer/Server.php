@@ -42,11 +42,11 @@ class Server implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $this->eventHandles[] = $events->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
-            $this->handleMessages(0);
+            $this->handleMessages(0, 10);
         }, $priority);
 
         $this->eventHandles[] = $events->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function() {
-            $this->handleMessages(1);
+            $this->handleMessages(1, 1);
         }, $priority);
     }
 
@@ -69,15 +69,16 @@ class Server implements ListenerAggregateInterface
      * @param $channelNumber
      * @return $this
      */
-    protected function handleMessages(int $channelNumber)
+    protected function handleMessages(int $channelNumber, int $timeout)
     {
+        if ($this->ipc instanceof SelectableInterface) {
+            $this->ipc->setSoTimeout($timeout);
+        }
+
         /** @var Message[] $messages */
         $messages = $this->ipc->receiveAll($channelNumber);
 
         foreach ($messages as $message) {
-            if (!$message) {
-                var_dump('!', $message);
-            }
             $event = new IpcEvent();
             $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
             $event->setParams($message);

@@ -50,8 +50,8 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     {
         if (!$this->isEof()) {
             stream_set_blocking($this->resource, true);
-            stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
-            fread($this->resource, 4096);
+            @stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
+            //fread($this->resource, 4096);
         }
 
         parent::doClose();
@@ -94,7 +94,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         $write = [$this->resource];
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->resource, $this->writeBuffer);
+            $wrote = @$writeMethod($this->resource, $this->writeBuffer);
 
             // write failed, try to wait a bit
             if ($wrote === 0) {
