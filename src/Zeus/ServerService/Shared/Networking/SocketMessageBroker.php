@@ -2,21 +2,13 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\Worker;
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Networking\SocketServer;
-
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedAddressSpaceInterface;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\SharedInitialAddressSpaceInterface;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
 /**
@@ -60,7 +52,10 @@ final class SocketMessageBroker
     protected $workers;
 
     /** @var Selector */
-    protected $selector;
+    protected $readSelector;
+
+    /** @var Selector */
+    protected $writeSelector;
 
     /** @var SocketStream[] */
     protected $client = [];
@@ -106,7 +101,7 @@ final class SocketMessageBroker
     protected function createIpcServer()
     {
         $this->ipcServer = new SocketServer();
-        $this->ipcServer->setReuseAddress(false);
+        $this->ipcServer->setReuseAddress(true);
         $this->ipcServer->setSoTimeout(0);
         $this->ipcServer->bind('0.0.0.0', 1, 3333);
 
@@ -136,7 +131,8 @@ final class SocketMessageBroker
                 $this->workerServer = null;
                 $event->getTarget()->setRunning();
                 $this->createServer(1000);
-                $this->selector = new Selector(Selector::OP_READ);
+                $this->readSelector = new Selector(Selector::OP_READ);
+                $this->writeSelector = new Selector(Selector::OP_WRITE);
                 if (defined("DEBUG")) trigger_error(getmypid() . " BECAME A LEADER");
 
                 return $this;
@@ -176,11 +172,13 @@ final class SocketMessageBroker
             return;
         }
 
-        $this->registerWorkers();
-        $this->unregisterWorkers();
-        $this->addClients();
-        $this->handleClients();
-        $this->disconnectClients();
+        while (true) {
+            $this->registerWorkers();
+            $this->unregisterWorkers();
+            $this->addClients();
+            $this->handleClients();
+            $this->disconnectClients();
+        }
     }
 
     protected function addClients()
@@ -221,21 +219,18 @@ final class SocketMessageBroker
 
     protected function handleClients()
     {
-        if (!$this->selector->select(1100)) {
+        if (!$this->readSelector->select(1100)) {
             if (!$this->client) {
                 usleep(10000);
             }
             return;
         }
 
-        $streams = $this->selector->getSelectedStreams();
+        $streams = $this->readSelector->getSelectedStreams();
+        $writeStreams = $this->writeSelector->getSelectedStreams();
 
         foreach ($streams as $stream) {
             $output = null;
-            $data = $stream->read();
-            if (!isset($data[0])) {
-                continue;
-            }
             $key = array_search($stream, $this->client);
 
             if ($key !== false) {
@@ -251,14 +246,26 @@ final class SocketMessageBroker
             }
 
             if ($output) {
+                if (!in_array($output, $writeStreams)) {
+                    trigger_error(getmypid() . " POSTPONED WRITE TO $outputName");
+                    continue;
+                }
+
+//
+//
+//                if ($output->isClosed()) {
+//                    trigger_error(getmypid() . " WRITE TO $outputName IS NOT POSSIBLE ANYMORE : " . json_encode([$output->isClosed(), $output->isReadable()]));
+//                }
+//                if (!$output->isWritable()) {
+//                    trigger_error(getmypid() . " WRITE TO $outputName IS NOT POSSIBLE YET : " . json_encode([$output->isClosed(), $output->isReadable()]));
+//                }
+
+                $data = $stream->read();
+                if (!isset($data[0])) {
+                    continue;
+                }
                 if (defined("DEBUG")) trigger_error(getmypid() . " WROTE TO $outputName $key");
 
-                if ($output->isClosed()) {
-                    trigger_error(getmypid() . " WRITE TO $outputName IS NOT POSSIBLE ANYMORE : " . json_encode([$output->isClosed(), $output->isReadable()]));
-                }
-                if (!$output->isWritable()) {
-                    trigger_error(getmypid() . " WRITE TO $outputName IS NOT POSSIBLE YET : " . json_encode([$output->isClosed(), $output->isReadable()]));
-                }
                 $output->write($data)->flush();
             }
         }
@@ -283,8 +290,10 @@ final class SocketMessageBroker
                 $downstream = new SocketStream($socket);
                 $this->downstream[$uid] = $downstream;
                 $this->client[$uid] = $client;
-                $this->selector->register($client);
-                $this->selector->register($downstream);
+                $this->readSelector->register($client);
+                $this->readSelector->register($downstream);
+                $this->writeSelector->register($client);
+                $this->writeSelector->register($downstream);
                 if (defined("DEBUG")) trigger_error(getmypid() . " BOUND DOWNSTREAM $uid WITH CLIENT");
 
                 break;

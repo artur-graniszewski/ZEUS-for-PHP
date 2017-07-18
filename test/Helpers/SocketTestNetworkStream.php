@@ -43,7 +43,7 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
         return $this->remoteAddress;
     }
 
-    public function getServerAddress() : string
+    public function getLocalAddress() : string
     {
         return $this->serverAddress;
     }

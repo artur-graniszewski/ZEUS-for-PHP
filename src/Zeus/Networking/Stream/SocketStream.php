@@ -62,7 +62,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     /**
      * @return string|null Server address (IP) or null if unknown
      */
-    public function getServerAddress() : string
+    public function getLocalAddress() : string
     {
         return @stream_socket_get_name($this->resource, false);
     }

@@ -9,7 +9,7 @@ namespace Zeus\Networking\Stream;
  */
 interface NetworkStreamInterface
 {
-    public function getServerAddress() : string;
+    public function getLocalAddress() : string;
 
     /**
      * Returns the remote address (client IP) where this connection has been established from

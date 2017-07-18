@@ -34,7 +34,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
-    const MAX_KEEP_ALIVE_REQUESTS = 100;
+    const MAX_KEEP_ALIVE_REQUESTS = 1000000;
 
     /** @var \Zeus\Networking\Stream\NetworkStreamInterface */
     protected $connection;
@@ -312,7 +312,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     protected function validateRequestHeaders(NetworkStreamInterface $connection)
     {
-        $this->setHost($this->request, $connection->getServerAddress());
+        $this->setHost($this->request, $connection->getLocalAddress());
         //$this->request->setBasePath(sprintf("%s:%d", $this->request->getUri()->getHost(), $this->request->getUri()->getPort()));
 
         // todo: validate hostname?

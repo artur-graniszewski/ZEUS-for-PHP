@@ -204,10 +204,9 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         $sent = 0;
 
         while ($sent !== $size) {
-            $amount = 1;
             $wrote = $writeMethod($this->resource, $this->writeBuffer);
 
-            if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
+            if ($wrote < 0 || false === $wrote || $this->isEof()) {
                 $this->isWritable = false;
                 $this->isReadable = false;// remove this?
                 $this->close();

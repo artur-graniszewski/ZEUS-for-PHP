@@ -67,7 +67,7 @@ class SocketStreamTest extends AbstractNetworkingTest
         $this->assertInstanceOf(SocketStream::class, $connection);
 
         $this->assertEquals(stream_socket_get_name($this->client, false), $connection->getRemoteAddress(), 'Remote address is incorrect');
-        $this->assertEquals('127.0.0.2:' . $this->port, $connection->getServerAddress(), 'Server address is incorrect');
+        $this->assertEquals('127.0.0.2:' . $this->port, $connection->getLocalAddress(), 'Server address is incorrect');
         fclose($this->client);
     }
 
