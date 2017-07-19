@@ -46,7 +46,7 @@ class Server implements ListenerAggregateInterface
         }, $priority);
 
         $this->eventHandles[] = $events->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function() {
-            $this->handleMessages(1, 1);
+            $this->handleMessages(1, 0);
         }, $priority);
     }
 

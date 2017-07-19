@@ -35,6 +35,9 @@ final class SocketServer
 
     protected $soTimeout = 0;
 
+    /** @var bool */
+    protected $tcpNoDelay;
+
     /**
      * SocketServer constructor.
      * @param int $port
@@ -75,6 +78,26 @@ final class SocketServer
     }
 
     /**
+     * @return bool
+     */
+    public function getTcpNoDelay(): bool
+    {
+        return $this->tcpNoDelay;
+    }
+
+    /**
+     * @param bool $tcpNoDelay
+     * @return $this
+     */
+    public function setTcpNoDelay(bool $tcpNoDelay)
+    {
+        $this->tcpNoDelay = $tcpNoDelay;
+
+        return $this;
+    }
+
+
+    /**
      * @param string $host
      * @param int $backlog
      * @param int $port
@@ -111,6 +134,7 @@ final class SocketServer
             'socket' => [
                 'backlog' => $this->backlog,
                 'so_reuseport' => $this->getReuseAddress(),
+                'tcp_nodelay' => $this->tcpNoDelay,
             ],
         ];
 

@@ -10,7 +10,7 @@ abstract class AbstractPhpResource
     /**
      * @return resource
      */
-    protected function getResource()
+    public function getResource()
     {
         return $this->resource;
     }

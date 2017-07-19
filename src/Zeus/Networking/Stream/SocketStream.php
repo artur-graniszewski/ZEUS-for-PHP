@@ -23,7 +23,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
         parent::__construct($stream);
 
-        $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
+        $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'fwrite';
     }
 
     /**
@@ -51,7 +51,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         if (!$this->isEof()) {
             stream_set_blocking($this->resource, true);
             @stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
-            //fread($this->resource, 4096);
+            fread($this->resource, 4096);
         }
 
         parent::doClose();
@@ -73,52 +73,5 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     public function getRemoteAddress() : string
     {
         return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
-    }
-
-    /**
-     * @param callback $writeMethod
-     * @return $this
-     */
-    protected function doWrite($writeMethod)
-    {
-        if (!$this->isWritable()) {
-            $this->writeBuffer = '';
-
-            return $this;
-        }
-
-        $size = strlen($this->writeBuffer);
-        $sent = 0;
-
-        $read = $except = [];
-        $write = [$this->resource];
-        while ($sent !== $size) {
-            $amount = 1;
-            $wrote = @$writeMethod($this->resource, $this->writeBuffer);
-
-            // write failed, try to wait a bit
-            if ($wrote === 0) {
-                do {
-                    $amount = $this->doSelect($read, $write, $except, 1);
-                } while($amount === 0);
-            }
-
-            if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
-                $this->isWritable = false;
-                $this->isReadable = false;// remove this?
-                $this->close();
-                break;
-            }
-
-            if ($wrote) {
-                $sent += $wrote;
-                $this->writeBuffer = substr($this->writeBuffer, $wrote);
-            }
-        };
-
-        $this->dataSent += $sent;
-        $this->writeBuffer = '';
-
-        return $this;
     }
 }

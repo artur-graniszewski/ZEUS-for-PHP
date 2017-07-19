@@ -59,7 +59,7 @@ class Selector extends AbstractPhpResource
                 $write[] = $resource;
             }
         }
-        $streamsChanged = @stream_select($read, $write, $except, 1, UnitConverter::convertMillisecondsToMicroseconds($timeout));
+        $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged > 0) {
             $streamsChanged = count(array_unique(array_merge($read, $write)));
