@@ -23,7 +23,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
         parent::__construct($stream);
 
-        $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'fwrite';
+        $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
     }
 
     /**

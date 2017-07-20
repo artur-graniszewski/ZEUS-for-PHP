@@ -1,6 +1,7 @@
 <?php
 
 namespace Zeus\Networking\Stream;
+use Zeus\Networking\Exception\SocketException;
 use Zeus\Util\UnitConverter;
 
 /**
@@ -93,7 +94,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         $write = [$this->resource];
         while ($sent !== $size) {
             $amount = 1;
-            $wrote = $writeMethod($this->resource, $this->writeBuffer);
+            $wrote = @$writeMethod($this->resource, $this->writeBuffer);
 
             // write failed, try to wait a bit
             if ($wrote === 0) {
@@ -106,6 +107,9 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
                 $this->isWritable = false;
                 $this->isReadable = false;// remove this?
                 $this->close();
+
+                $error = error_get_last();
+                throw new SocketException(str_replace(["$writeMethod(): ", "\n"], '', $error['message']));
                 break;
             }
 
