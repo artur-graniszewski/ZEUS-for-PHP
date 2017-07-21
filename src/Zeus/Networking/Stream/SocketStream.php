@@ -24,6 +24,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         parent::__construct($stream);
 
         $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
+        $this->readCallback = 'stream_socket_recvfrom';
     }
 
     /**
@@ -48,10 +49,11 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     protected function doClose()
     {
-        if (!$this->isEof()) {
+        if ($this->resource && !$this->isEof()) {
+            $readMethod = $this->readCallback;
             stream_set_blocking($this->resource, true);
             @stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
-            fread($this->resource, 4096);
+            @$readMethod($this->resource, 4096);
         }
 
         parent::doClose();

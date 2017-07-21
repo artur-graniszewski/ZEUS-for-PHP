@@ -34,6 +34,8 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     protected $writeCallback = 'fwrite';
 
+    protected $readCallback = 'stream_get_contents';
+
     protected $peerName;
 
     /**
@@ -125,6 +127,16 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function read(string $ending = '')
     {
+        return $this->doRead($this->readCallback, $ending);
+    }
+
+    /**
+     * @param callable $readMethod
+     * @param string $ending
+     * @return mixed
+     */
+    protected function doRead($readMethod, string $ending = '')
+    {
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
         }
@@ -148,7 +160,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
             }
 
         } else {
-            $data = @stream_get_contents($this->resource, $this->readBufferSize);
+            $data = @$readMethod($this->resource, $this->readBufferSize);
         }
 
         if ($data === false || $this->isEof()) {

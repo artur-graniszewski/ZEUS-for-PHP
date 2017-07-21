@@ -2,6 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 use Zeus\Networking\Exception\SocketException;
+use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Util\UnitConverter;
 
 /**
@@ -11,6 +12,9 @@ use Zeus\Util\UnitConverter;
  */
 abstract class AbstractSelectableStream extends AbstractStream implements SelectableStreamInterface
 {
+    /** @var int */
+    protected $soTimeout = 1000;
+
     /**
      * @param int $timeout Timeout in milliseconds
      * @return bool
@@ -92,15 +96,22 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
         $read = $except = [];
         $write = [$this->resource];
+
+        $timeout = $this->getSoTimeout();
+
         while ($sent !== $size) {
             $amount = 1;
             $wrote = @$writeMethod($this->resource, $this->writeBuffer);
 
             // write failed, try to wait a bit
-            if ($wrote === 0) {
-                do {
-                    $amount = $this->doSelect($read, $write, $except, 1000);
-                } while($amount === 0);
+            if ($timeout > 0 && $wrote >= 0 && $wrote < strlen($this->writeBuffer)) {
+                $amount = $this->doSelect($read, $write, $except, $timeout);
+
+                if ($amount === 0) {
+                    $this->writeBuffer = substr($this->writeBuffer, $wrote);
+                    //return;
+                    throw new SocketTimeoutException(sprintf("Write timeout exceeded, sent %d bytes", $wrote));
+                }
             }
 
             if ($wrote < 0 || false === $wrote || $amount === false || $this->isEof()) {
@@ -108,9 +119,8 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
                 $this->isReadable = false;// remove this?
                 $this->close();
 
-                $error = error_get_last();
-                throw new SocketException(str_replace(["$writeMethod(): ", "\n"], '', $error['message']));
-                break;
+                return;
+                throw new SocketException(sprintf("Stream is not writable anymore, sent %d bytes", $wrote));
             }
 
             if ($wrote) {
@@ -121,6 +131,25 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
         $this->dataSent += $sent;
         $this->writeBuffer = '';
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getSoTimeout() : int
+    {
+        return $this->soTimeout;
+    }
+
+    /**
+     * @param int $milliseconds
+     * @return $this
+     */
+    public function setSoTimeout(int $milliseconds)
+    {
+        $this->soTimeout = $milliseconds;
 
         return $this;
     }

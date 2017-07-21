@@ -2,6 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 
+use Zeus\Networking\Exception\SocketException;
 use Zeus\Util\UnitConverter;
 
 class Selector extends AbstractPhpResource
@@ -12,6 +13,9 @@ class Selector extends AbstractPhpResource
 
     /** @var mixed[] */
     protected $streams = [];
+
+    /** @var resource */
+    protected $selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
 
     /**
      * @param AbstractStream $stream
@@ -34,13 +38,34 @@ class Selector extends AbstractPhpResource
         return key($this->streams);
     }
 
+    public function unregister(AbstractSelectableStream $stream)
+    {
+        $found = false;
+        foreach ($this->streams as $key => $value) {
+            if ($stream === $value[0]) {
+                $found = true;
+                break;
+            }
+        }
+
+        if ($found === false) {
+            throw new SocketException("No such stream registered");
+        }
+
+        unset ($this->streams[$key]);
+        $this->selectedStreams[self::OP_READ] = [];
+        $this->selectedStreams[self::OP_WRITE] = [];
+
+        return $this;
+    }
+
     /**
      * @param int $timeout Timeout in milliseconds
      * @return int
      */
     public function select($timeout = 0)
     {
-        $this->streams = $this->getActiveStreams();
+        //$this->streams = $this->getActiveStreams();
 
         $read = [];
         $write = [];
@@ -59,47 +84,56 @@ class Selector extends AbstractPhpResource
                 $write[] = $resource;
             }
         }
+
+        $result = [self::OP_READ => [], self::OP_WRITE => []];
         $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
-        if ($streamsChanged > 0) {
-            $streamsChanged = count(array_unique(array_merge($read, $write)));
+        if ($streamsChanged === 0) {
+            return 0;
         }
+
+        $streamsChanged = count(array_unique(array_merge($read, $write)));
+
+        foreach ($read as $resource) {
+            $stream = $this->getStreamForResource($resource);
+            $result[self::OP_READ][] = $stream;
+        }
+
+        foreach ($write as $resource) {
+            $stream = $this->getStreamForResource($resource);
+            $result[self::OP_WRITE][] = $stream;
+        }
+
+
+        $this->selectedStreams = $result;
 
         return (int) $streamsChanged;
     }
 
     /**
-     * @return AbstractStream[]
+     * @param int $operation
+     * @return array|AbstractStream[]
      */
-    public function getSelectedStreams() : array
+    public function getSelectedStreams(int $operation = self::OP_ALL) : array
     {
-        $this->streams = $this->getActiveStreams();
+        if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
+            throw new \LogicException("Invalid operation type: " . json_encode($operation));
+        }
 
-        $read = [];
-        $write = [];
-        $except = [];
+        //$this->streams = $this->getActiveStreams();
 
-        foreach ($this->streams as $streamDetails) {
-            /** @var AbstractStream $stream */
-            list($stream, $operation) = $streamDetails;
-            $resource = $stream->getResource();
-
-            if ($operation & self::OP_READ) {
-                $read[] = $resource;
-            }
-
-            if ($operation & self::OP_WRITE) {
-                $write[] = $resource;
+        $result = [];
+        if ($operation & self::OP_READ) {
+            foreach ($this->selectedStreams[self::OP_READ] as $stream) {
+                $result[] = $stream;
             }
         }
 
-        $streamsChanged = @stream_select($read, $write, $except, 0, 0);
-        $result = [];
-
-        if ($streamsChanged > 0) {
-            $resources = array_unique(array_merge($read, $write));
-            foreach ($resources as $resource) {
-                $result[] = $this->getStreamForResource($resource);
+        if ($operation & self::OP_WRITE) {
+            foreach ($this->selectedStreams[self::OP_WRITE] as $stream) {
+                if (!in_array($stream, $result, true)) {
+                    $result[] = $stream;
+                }
             }
         }
 
