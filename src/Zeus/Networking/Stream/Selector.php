@@ -18,11 +18,11 @@ class Selector extends AbstractPhpResource
     protected $selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
 
     /**
-     * @param AbstractStream $stream
+     * @param AbstractSelectableStream $stream
      * @param int $operation
      * @return int
      */
-    public function register(AbstractStream $stream, int $operation = self::OP_ALL) : int
+    public function register(AbstractSelectableStream $stream, int $operation = self::OP_ALL) : int
     {
         if (!$stream instanceof SelectableStreamInterface) {
             $interface = SelectableStreamInterface::class;
@@ -40,23 +40,17 @@ class Selector extends AbstractPhpResource
 
     public function unregister(AbstractSelectableStream $stream)
     {
-        $found = false;
         foreach ($this->streams as $key => $value) {
             if ($stream === $value[0]) {
-                $found = true;
-                break;
+                unset ($this->streams[$key]);
+//                $this->selectedStreams[self::OP_READ] = [];
+//                $this->selectedStreams[self::OP_WRITE] = [];
+
+                return $this;
             }
         }
 
-        if ($found === false) {
-            throw new SocketException("No such stream registered");
-        }
-
-        unset ($this->streams[$key]);
-        $this->selectedStreams[self::OP_READ] = [];
-        $this->selectedStreams[self::OP_WRITE] = [];
-
-        return $this;
+        throw new SocketException("No such stream registered");
     }
 
     /**

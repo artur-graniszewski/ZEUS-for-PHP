@@ -18,12 +18,11 @@ use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
  */
 final class SocketMessageBroker
 {
+    /** @var bool */
     protected $isBusy = false;
 
     /** @var bool */
     protected $isLeader = false;
-
-    protected $oneServerPerWorker = false;
 
     /** @var SocketServer */
     protected $server;
@@ -50,21 +49,15 @@ final class SocketMessageBroker
     protected $downstream = [];
 
     /** @var int[] */
-    protected $workers;
+    protected $workers = [];
 
     /** @var Selector */
-    protected $readSelector;
-
-    /** @var Selector */
-    protected $writeSelector;
-
-    /** @var Selector */
-    protected $ipcSelector;
+    protected $selector;
 
     /** @var SocketStream[] */
     protected $client = [];
 
-    /** @var SocketStream[] */
+    /** @var SocketStream */
     protected $ipcClient;
 
     /** @var SocketStream[] */
@@ -152,18 +145,17 @@ final class SocketMessageBroker
                 $this->workerServer = null;
                 $event->getTarget()->setRunning();
                 $this->createServer(1000);
-                $this->readSelector = new Selector();
-                $this->ipcSelector = new Selector();
+                $this->selector = new Selector();
                 //trigger_error(getmypid() . " BECAME A LEADER");
 
                 return $this;
             }
 
-            stream_set_blocking($client, false);
+            stream_set_blocking($client, true);
             $client = new SocketStream($client);
 
-            trigger_error(getmypid() . " NOTIFYING LEADER $uid:$port");
-            $client->write("$uid:$port!                                                                                                                        ")->flush();
+            //trigger_error(getmypid() . " NOTIFYING LEADER $uid:$port");
+            $client->write("$uid:$port!")->flush();
             $success = true;
             $this->ipcClient = $client;
 
@@ -192,24 +184,18 @@ final class SocketMessageBroker
             return;
         }
 
-        $now = microtime(true);
         while (true) {
             $this->registerWorkers();
-            //trigger_error(sprintf("REGISTER WORKER :  %5f", microtime(true) - $now)); $now = microtime(true);
             $this->unregisterWorkers();
-            //trigger_error(sprintf("UNREGISTER WORKER :  %5f", microtime(true) - $now)); $now = microtime(true);
             $this->addClients();
-            //trigger_error(sprintf("ADD CLIENTS :  %5f", microtime(true) - $now)); $now = microtime(true);
             $this->disconnectClients();
-            //trigger_error(sprintf("CLOSE CLIENTS :  %5f", microtime(true) - $now)); $now = microtime(true);
             $this->handleClients();
-            //trigger_error(sprintf("HANDLE CLIENTS :  %5f", microtime(true) - $now)); $now = microtime(true);
-
-
-            //trigger_error("\n\n\n\n\n");
         }
     }
 
+    /**
+     * @return $this
+     */
     protected function addClients()
     {
         try {
@@ -223,8 +209,13 @@ final class SocketMessageBroker
         } catch (SocketTimeoutException $exception) {
 
         }
+
+        return $this;
     }
 
+    /**
+     * @return $this
+     */
     protected function disconnectClients()
     {
         foreach ($this->client as $key => $stream) {
@@ -238,26 +229,31 @@ final class SocketMessageBroker
                 $this->disconnectClient($key);
             }
         }
+
+        return $this;
     }
 
+    /**
+     * @return $this
+     */
     protected function handleClients()
     {
         if (!$this->client) {
-            usleep(1000);
+            usleep(10000);
 
-            return;
+            return $this;
         }
 
         $now = microtime(true);
         do {
-            if (!$this->readSelector->select(100)) {
-                return;
+            if (!$this->selector->select(10000)) {
+                return $this;
             }
 
-            $streamsToRead = $this->readSelector->getSelectedStreams(Selector::OP_READ);
-            $streamsToWrite = $this->readSelector->getSelectedStreams(Selector::OP_WRITE);
+            $streamsToRead = $this->selector->getSelectedStreams(Selector::OP_READ);
+            $streamsToWrite = $this->selector->getSelectedStreams(Selector::OP_WRITE);
 
-            foreach ($streamsToRead as $stream) {
+            foreach ($streamsToRead as $index => $stream) {
                 $output = null;
                 $key = array_search($stream, $this->client);
 
@@ -270,24 +266,25 @@ final class SocketMessageBroker
                 }
 
                 try {
-                    trigger_error("WRITTING");
-                    $data = $stream->read();
-                    trigger_error("READ $data!");
-                    $output->write($data);
-                    trigger_error("WROTE");
-//                    if (in_array($output, $streamsToWrite) || $output->isClosed()) {
-//                        $data = $stream->read();
-//                        if (!$output->isClosed()) {
-//                            $output->write($data);
-//                        }
-//                    }
+                    if (in_array($output, $streamsToWrite) || $output->isClosed()) {
+                        $data = $stream->read();
+                        if (!$output->isClosed()) {
+                            $output->write($data)->flush();
+                        }
+                    }
                 } catch (\Exception $exception) {
                     $this->disconnectClient($key);
+                    continue 2;
+                }
+
+                if ($stream->isClosed() || $output->isClosed()) {
                     break;
                 }
 
             }
-        } while ($streamsToRead && microtime(true) - $now < 0.01);
+        } while ($streamsToRead && microtime(true) - $now < 1);
+
+        return $this;
     }
 
     /**
@@ -301,7 +298,7 @@ final class SocketMessageBroker
             if (!$stream->isClosed()) {
                 $stream->close();
             }
-            $this->readSelector->unregister($stream);
+            $this->selector->unregister($stream);
             unset ($this->client[$key]);
         }
 
@@ -310,13 +307,17 @@ final class SocketMessageBroker
             if (!$stream->isClosed()) {
                 $stream->close();
             }
-            $this->readSelector->unregister($stream);
+            $this->selector->unregister($stream);
             unset ($this->downstream[$key]);
         }
 
         return $this;
     }
 
+    /**
+     * @param SocketStream $client
+     * @return $this
+     */
     protected function bindToWorker(SocketStream $client)
     {
         $downstream = null;
@@ -336,14 +337,14 @@ final class SocketMessageBroker
                 unset($this->workers[$uid]);
                 continue;
             }
-            stream_set_blocking($socket, false);
+            stream_set_blocking($socket, true);
 
             if ($socket) {
                 $downstream = new SocketStream($socket);
                 $this->downstream[$uid] = $downstream;
                 $this->client[$uid] = $client;
-                $this->readSelector->register($downstream, Selector::OP_ALL);
-                $this->readSelector->register($client, Selector::OP_ALL);
+                $this->selector->register($downstream, Selector::OP_ALL);
+                $this->selector->register($client, Selector::OP_ALL);
 
                 break;
             }
@@ -356,9 +357,12 @@ final class SocketMessageBroker
             $this->connectionQueue[] = $client;
         }
 
-        return $downstream;
+        return $this;
     }
 
+    /**
+     * @return $this
+     */
     protected function registerWorkers()
     {
         try {
@@ -370,7 +374,6 @@ final class SocketMessageBroker
 
                     $this->workers[$uid] = $port;
                     $this->ipc[$uid] = $connection;
-                    $this->ipcSelector->register($connection, Selector::OP_WRITE);
 
                     continue;
                 } else {
@@ -382,8 +385,13 @@ final class SocketMessageBroker
         } catch (SocketTimeoutException $exception) {
 
         }
+
+        return $this;
     }
 
+    /**
+     * @return $this
+     */
     protected function unregisterWorkers()
     {
         foreach ($this->ipc as $uid => $ipc) {
@@ -398,25 +406,13 @@ final class SocketMessageBroker
             }
 
             $ipc->close();
-            if (isset($this->downstream[$uid])) {
-                $downstream = $this->downstream[$uid];
-                $this->readSelector->unregister($downstream);
-                if (!$downstream->isClosed()) {
-                    $downstream->close();
-                }
-                unset ($this->downstream[$uid]);
-
-                if (isset($this->client[$uid]) && !$this->client[$uid]->isClosed()) {
-                    $this->bindToWorker($this->client[$uid]);
-                } else {
-                    unset ($this->client[$uid]);
-                    $this->readSelector->unregister($this->client[$uid]);
-                }
-            }
+            $this->disconnectClient($uid);
 
             unset ($this->ipc[$uid]);
             unset ($this->workers[$uid]);
         }
+
+        return $this;
     }
 
 
@@ -450,14 +446,8 @@ final class SocketMessageBroker
                     $connection = $this->workerServer->accept();
                     $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(1);
                     $event->getTarget()->setRunning();
-                    if ($this->oneServerPerWorker) {
-                        $this->workerServer->close();
-                    }
                 } catch (SocketTimeoutException $exception) {
                     $event->getTarget()->setWaiting();
-                    if ($this->oneServerPerWorker) {
-                        $this->workerServer->close();
-                    }
 
                     return;
                 }
@@ -506,10 +496,6 @@ final class SocketMessageBroker
 
     public function onWorkerExit()
     {
-        if ($this->oneServerPerWorker && !$this->server->isClosed()) {
-            $this->server->close();
-        }
-
         if ($this->workerServer && !$this->workerServer->isClosed()) {
             $this->workerServer->close();
             $this->workerServer = null;
