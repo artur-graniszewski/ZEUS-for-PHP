@@ -79,7 +79,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $this->ttl++;
 
         if ($this->ttl > 10000) {
-            $connection->end();
+            $connection->close();
         }
     }
 
@@ -100,7 +100,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onClose(NetworkStreamInterface $connection)
     {
-        $connection->end();
+        $connection->close();
     }
 
     /**
@@ -110,7 +110,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onError(NetworkStreamInterface $connection, $exception)
     {
-        $connection->end();
+        $connection->close();
     }
 
     /**
@@ -345,7 +345,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
         if ($command === "quit\r\n") {
             $this->buffer = '';
-            $this->connection->end();
+            $this->connection->close();
             return;
         }
 

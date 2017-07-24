@@ -16,13 +16,9 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     protected $isReadable = true;
 
-    protected $isClosing = false;
-
     protected $isClosed = false;
 
     protected $writeBuffer = '';
-
-    protected $readBuffer = '';
 
     protected $writeBufferSize = self::DEFAULT_WRITE_BUFFER_SIZE;
 
@@ -54,23 +50,41 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function isReadable() : bool
     {
-        return $this->isReadable && $this->resource;
+        return $this->isReadable && $this->resource && !$this->isEof();
     }
 
     /**
      * @return $this
+     * @throws \Exception
      */
     public function close()
     {
-        if ($this->isClosing) {
-            return $this;
+        if ($this->isClosed) {
+            throw new \LogicException("Stream already closed");
         }
 
-        $this->flush();
+        $exception = null;
+        try {
+            $this->flush();
+        } catch (\Exception $exception) {
 
-        $this->doClose();
+        }
 
+        $this->isReadable = false;
+        $this->isWritable = false;
         $this->isClosed = true;
+
+        try {
+            $this->doClose();
+        } catch (\Exception $exception) {
+
+        }
+
+        $this->resource = null;
+
+        if ($exception) {
+            throw $exception;
+        }
 
         return $this;
     }
@@ -88,13 +102,8 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     protected function doClose()
     {
-        $this->isClosing = true;
-        $this->isReadable = false;
-        $this->isWritable = false;
-
-        fclose($this->resource);
-
-        $this->resource = null;
+        \fflush($this->resource);
+        \fclose($this->resource);
 
         return $this;
     }
@@ -105,10 +114,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     protected function isEof() : bool
     {
         // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
-        if (feof($this->resource)) {
+        if (\feof($this->resource)) {
             return true;
         }
-        $info = @stream_get_meta_data($this->resource);
+        $info = @\stream_get_meta_data($this->resource);
 
         return $info['eof'] || $info['timed_out'];
     }
@@ -143,15 +152,15 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
         if ($ending !== '') {
             $data = '';
-            $endingSize = strlen($ending);
+            $endingSize = \strlen($ending);
 
             while (!$this->isEof()) {
-                $pos = ftell($this->resource);
+                $pos = \ftell($this->resource);
 
-                $buffer = @stream_get_line($this->resource, $this->readBufferSize, $ending);
+                $buffer = @\stream_get_line($this->resource, $this->readBufferSize, $ending);
                 $data .= $buffer;
 
-                $newPos = ftell($this->resource);
+                $newPos = \ftell($this->resource);
                 if ($newPos === $pos + strlen($buffer) + $endingSize) {
 
                     break;
@@ -161,11 +170,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
         } else {
             $data = @$readMethod($this->resource, $this->readBufferSize);
-        }
-
-        if ($data === false || $this->isEof()) {
-            $this->isReadable = false;
-            $this->close();
         }
 
         $this->dataReceived += strlen($data);
@@ -179,12 +183,14 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function write(string $data)
     {
-        if ($this->isWritable()) {
-            $this->writeBuffer .= $data;
+        if (!$this->isWritable()) {
+            throw new \RuntimeException("Stream is not writable");
+        }
 
-            if (isset($this->writeBuffer[$this->writeBufferSize])) {
-                $this->doWrite($this->writeCallback);
-            }
+        $this->writeBuffer .= $data;
+
+        if (isset($this->writeBuffer[$this->writeBufferSize])) {
+            $this->doWrite($this->writeCallback);
         }
 
         return $this;
@@ -206,49 +212,25 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     protected function doWrite($writeMethod)
     {
-        if (!$this->isWritable()) {
-            $this->writeBuffer = '';
-
-            return $this;
-        }
-
-        $size = strlen($this->writeBuffer);
+        $size = \strlen($this->writeBuffer);
         $sent = 0;
 
         while ($sent !== $size) {
             $wrote = $writeMethod($this->resource, $this->writeBuffer);
 
-            if ($wrote < 0 || false === $wrote || $this->isEof()) {
+            if ($wrote < 0 || false === $wrote) {
                 $this->isWritable = false;
-                $this->isReadable = false;// remove this?
-                $this->close();
                 break;
             }
 
             if ($wrote) {
                 $sent += $wrote;
-                $this->writeBuffer = substr($this->writeBuffer, $wrote);
+                $this->writeBuffer = \substr($this->writeBuffer, $wrote);
             }
         };
 
         $this->dataSent += $sent;
         $this->writeBuffer = '';
-
-        return $this;
-    }
-
-    /**
-     * @param string $data
-     * @return $this
-     */
-    public function end(string $data = '')
-    {
-        if ($this->isWritable()) {
-            $this->write($data);
-            $this->flush();
-        }
-
-        $this->close();
 
         return $this;
     }

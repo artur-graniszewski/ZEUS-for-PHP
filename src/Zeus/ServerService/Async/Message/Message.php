@@ -34,7 +34,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         if ($this->ttl > 500000) {
-            $connection->end();
+            $connection->close();
         }
     }
 
@@ -56,7 +56,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onClose(NetworkStreamInterface $connection)
     {
-        $connection->end();
+        $connection->close();
     }
 
     /**
@@ -66,7 +66,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onError(NetworkStreamInterface $connection, $exception)
     {
-        $connection->end();
+        $connection->close();
     }
 
     /**
@@ -88,7 +88,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
                 if (!ctype_digit($size) || $size < 1) {
                     $connection->write("BAD_REQUEST\n");
-                    $connection->end();
+                    $connection->close();
                     return;
                 }
 
@@ -100,7 +100,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             if (!$pos) {
                 if (!ctype_digit($this->message)) {
                     $connection->write("BAD_REQUEST\n");
-                    $connection->end();
+                    $connection->close();
                     return;
                 }
             }
@@ -110,7 +110,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
             $messageSize = strlen($this->message);
             if ($messageSize > $this->expectedPayloadSize + 1 || $this->message[$messageSize - 1] !== "\n") {
                 $connection->write("CORRUPTED_REQUEST\n");
-                $connection->end();
+                $connection->close();
                 return;
             }
 
@@ -136,14 +136,14 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         if ($connection->isWritable()) {
             if ($exception instanceof UnserializeException) {
                 $connection->write("CORRUPTED_REQUEST\n");
-                $connection->end();
+                $connection->close();
 
                 return;
             }
             $result = serialize($exception ? $exception : $result);
             $size = strlen($result);
             $connection->write("$size:$result\n");
-            $connection->end();
+            $connection->close();
 
             return;
         }

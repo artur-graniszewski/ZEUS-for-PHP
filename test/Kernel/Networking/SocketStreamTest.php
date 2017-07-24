@@ -87,22 +87,6 @@ class SocketStreamTest extends AbstractNetworkingTest
         fclose($this->client);
     }
 
-    /**
-     * @param string $dataToSend
-     * @dataProvider getTestPayload
-     */
-    public function testConnectionEnd($dataToSend)
-    {
-        $this->client = stream_socket_client('tcp://localhost:' . $this->port);
-        stream_set_blocking($this->client, false);
-        $connection = $this->server->accept();
-        $this->assertInstanceOf(SocketStream::class, $connection);
-        $connection->end($dataToSend);
-        $read = stream_socket_recvfrom($this->client, strlen($dataToSend));
-        $this->assertEquals($dataToSend, $read, 'Stream should contain ending message');
-        fclose($this->client);
-    }
-
     public function testDoubleClose()
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);

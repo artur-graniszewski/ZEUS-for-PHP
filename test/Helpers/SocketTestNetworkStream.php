@@ -29,15 +29,6 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
         return $this;
     }
 
-    /**
-     * Close the connection
-     * @param mixed[] $data
-     */
-    public function end($data = [])
-    {
-        $this->isConnectionClosed = true;
-    }
-
     public function getRemoteAddress() : string
     {
         return $this->remoteAddress;

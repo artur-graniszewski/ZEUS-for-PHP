@@ -34,7 +34,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
-    const MAX_KEEP_ALIVE_REQUESTS = 1000000;
+    const MAX_KEEP_ALIVE_REQUESTS = 100;
 
     /** @var \Zeus\Networking\Stream\NetworkStreamInterface */
     protected $connection;
@@ -186,7 +186,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     public function onClose(NetworkStreamInterface $connection)
     {
         $this->requestPhase = static::REQUEST_PHASE_IDLE;
-        $connection->end();
+        $connection->close();
         $this->initNewRequest();
         $this->restartKeepAliveCounter();
         $this->connection = null;
@@ -203,7 +203,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
                 $this->keepAliveTimer--;
 
                 if ($this->keepAliveTimer === 0) {
-                    $connection->end();
+                    $connection->close();
                 }
                 break;
 

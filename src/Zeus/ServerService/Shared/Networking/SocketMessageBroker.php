@@ -3,7 +3,6 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\ProcessManager\Worker;
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\Selector;
@@ -239,7 +238,7 @@ final class SocketMessageBroker
     protected function handleClients()
     {
         if (!$this->client) {
-            usleep(10000);
+            \usleep(10000);
 
             return $this;
         }
@@ -253,36 +252,36 @@ final class SocketMessageBroker
             $streamsToRead = $this->selector->getSelectedStreams(Selector::OP_READ);
             $streamsToWrite = $this->selector->getSelectedStreams(Selector::OP_WRITE);
 
-            foreach ($streamsToRead as $index => $stream) {
+            foreach ($streamsToRead as $index => $input) {
                 $output = null;
-                $key = array_search($stream, $this->client);
+                $key = \array_search($input, $this->client);
 
                 if ($key !== false) {
                     $output = $this->downstream[$key];
                     $outputName = 'SERVER';
-                } else if (false !== ($key = array_search($stream, $this->downstream))) {
+                } else if (false !== ($key = \array_search($input, $this->downstream))) {
                     $output = $this->client[$key];
                     $outputName = 'CLIENT';
                 }
 
                 try {
                     if (in_array($output, $streamsToWrite) || $output->isClosed()) {
-                        $data = $stream->read();
-                        if (!$output->isClosed()) {
+                        $data = $input->read();
+                        //if (!$output->isClosed()) {
                             $output->write($data)->flush();
-                        }
+                        //}
                     }
                 } catch (\Exception $exception) {
                     $this->disconnectClient($key);
                     continue 2;
                 }
 
-                if ($stream->isClosed() || $output->isClosed()) {
+                if ($input->isClosed() || $output->isClosed()) {
                     break;
                 }
 
             }
-        } while ($streamsToRead && microtime(true) - $now < 1);
+        } while ($streamsToRead && \microtime(true) - $now < 1);
 
         return $this;
     }
@@ -296,7 +295,11 @@ final class SocketMessageBroker
         if (isset($this->client[$key])) {
             $stream = $this->client[$key];
             if (!$stream->isClosed()) {
-                $stream->close();
+                try {
+                    $stream->close();
+                } catch (\Exception $exception) {
+
+                }
             }
             $this->selector->unregister($stream);
             unset ($this->client[$key]);
@@ -305,7 +308,11 @@ final class SocketMessageBroker
         if (isset($this->downstream[$key])) {
             $stream = $this->downstream[$key];
             if (!$stream->isClosed()) {
-                $stream->close();
+                try {
+                    $stream->close();
+                } catch (\Exception $exception) {
+
+                }
             }
             $this->selector->unregister($stream);
             unset ($this->downstream[$key]);
@@ -401,11 +408,15 @@ final class SocketMessageBroker
                 if (!$ipc->isClosed() && $ipc->isReadable() && $ipc->isWritable()) {
                     continue;
                 }
-            } catch (SocketException $exception) {
+            } catch (\Exception $exception) {
 
             }
 
-            $ipc->close();
+            try {
+                $ipc->close();
+            } catch (\Exception $exception) {
+
+            }
             $this->disconnectClient($uid);
 
             unset ($this->ipc[$uid]);
@@ -483,7 +494,10 @@ final class SocketMessageBroker
                 }
             }
 
-            $this->connection->close();
+            if (!$this->connection->isClosed()) {
+                $this->connection->flush();
+                $this->connection->close();
+            }
             $this->connection = null;
         }
 

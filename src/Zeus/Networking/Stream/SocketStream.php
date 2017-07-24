@@ -49,14 +49,15 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     protected function doClose()
     {
-        if ($this->resource && !$this->isEof()) {
-            $readMethod = $this->readCallback;
-            stream_set_blocking($this->resource, true);
-            @stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
-            @$readMethod($this->resource, 4096);
-        }
+        $resource = $this->resource;
 
-        parent::doClose();
+        $readMethod = $this->readCallback;
+        \stream_set_blocking($resource, true);
+        \fflush($resource);
+        @stream_socket_shutdown($resource, STREAM_SHUT_RDWR);
+        \stream_set_blocking($resource, false);
+        @$readMethod($resource, 4096);
+        \fclose($resource);
 
         return $this;
     }

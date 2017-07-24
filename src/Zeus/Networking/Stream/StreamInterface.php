@@ -20,6 +20,4 @@ interface StreamInterface
     public function isReadable() : bool;
 
     public function write(string $data);
-
-    public function end(string $data = '');
 }

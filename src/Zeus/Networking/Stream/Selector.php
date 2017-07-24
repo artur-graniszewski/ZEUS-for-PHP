@@ -80,7 +80,7 @@ class Selector extends AbstractPhpResource
         }
 
         $result = [self::OP_READ => [], self::OP_WRITE => []];
-        $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
+        $streamsChanged = @\stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged === 0) {
             return 0;
@@ -113,8 +113,6 @@ class Selector extends AbstractPhpResource
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
         }
-
-        //$this->streams = $this->getActiveStreams();
 
         $result = [];
         if ($operation & self::OP_READ) {
