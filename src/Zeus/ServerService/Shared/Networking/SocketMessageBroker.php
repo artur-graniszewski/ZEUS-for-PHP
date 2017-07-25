@@ -267,9 +267,9 @@ final class SocketMessageBroker
                 try {
                     if (in_array($output, $streamsToWrite) || $output->isClosed()) {
                         $data = $input->read();
-                        //if (!$output->isClosed()) {
+                        if (!$output->isClosed()) {
                             $output->write($data)->flush();
-                        //}
+                        }
                     }
                 } catch (\Exception $exception) {
                     $this->disconnectClient($key);
@@ -344,7 +344,7 @@ final class SocketMessageBroker
                 unset($this->workers[$uid]);
                 continue;
             }
-            stream_set_blocking($socket, true);
+            \stream_set_blocking($socket, true);
 
             if ($socket) {
                 $downstream = new SocketStream($socket);
@@ -377,7 +377,7 @@ final class SocketMessageBroker
                 if ($connection->select(10)) {
                     $in = $connection->read('!');
                     list($uid, $port) = explode(":", $in);
-                    //list($uid, $port) = [$uid, 80];
+                    //list($uid, $port) = [$uid, 10021];
 
                     $this->workers[$uid] = $port;
                     $this->ipc[$uid] = $connection;
@@ -449,7 +449,9 @@ final class SocketMessageBroker
             $this->createWorkerServer($event);
         }
 
-        $this->ipcClient->read();
+        if ($this->ipcClient->select(0)) {
+            $this->ipcClient->read();
+        }
 
         try {
             if (!$this->connection) {

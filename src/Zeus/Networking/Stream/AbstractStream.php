@@ -36,12 +36,12 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     /**
      * SocketConnection constructor.
-     * @param resource $stream
+     * @param resource $resource
      * @param string $peerName
      */
-    public function __construct($stream, string $peerName = null)
+    public function __construct($resource, string $peerName = null)
     {
-        $this->setResource($stream);
+        $this->setResource($resource);
         $this->peerName = $peerName;
     }
 
@@ -157,6 +157,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
             while (!$this->isEof()) {
                 $pos = \ftell($this->resource);
 
+                // @todo: replace this function, as it uses PHP buffers which collide with STREAM_PEEK behaviour
                 $buffer = @\stream_get_line($this->resource, $this->readBufferSize, $ending);
                 $data .= $buffer;
 
@@ -241,6 +242,9 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function setWriteBufferSize(int $size)
     {
+        if ($size < 0) {
+            throw new \OutOfRangeException("Write buffer size must be greater than or equal 0");
+        }
         $this->writeBufferSize = $size;
 
         return $this;
@@ -252,6 +256,9 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function setReadBufferSize(int $size)
     {
+        if ($size <= 0) {
+            throw new \OutOfRangeException("Read buffer size must be greater than 0");
+        }
         $this->readBufferSize = $size;
 
         return $this;

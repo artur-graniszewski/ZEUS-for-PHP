@@ -9,7 +9,7 @@ namespace Zeus\Networking\Stream;
  */
 interface StreamInterface
 {
-    public function __construct($stream);
+    public function __construct($resource);
 
     public function close();
 

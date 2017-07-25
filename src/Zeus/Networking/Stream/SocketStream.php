@@ -14,14 +14,14 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
     /**
      * SocketConnection constructor.
-     * @param resource $stream
+     * @param resource $resource
      * @param string $peerName
      */
-    public function __construct($stream, string $peerName = null)
+    public function __construct($resource, string $peerName = null)
     {
         $this->peerName = $peerName;
 
-        parent::__construct($stream);
+        parent::__construct($resource);
 
         $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
         $this->readCallback = 'stream_socket_recvfrom';
