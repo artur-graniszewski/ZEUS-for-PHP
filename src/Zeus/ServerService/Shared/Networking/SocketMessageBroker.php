@@ -3,7 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Networking\Exception\SocketException;
+use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -117,7 +117,6 @@ final class SocketMessageBroker
     protected function createWorkerServer(WorkerEvent $event)
     {
         $workerServer = new SocketServer();
-        //$workerServer->setReuseAddress(true);
         $workerServer->setSoTimeout(100000);
         $workerServer->setTcpNoDelay(true);
         $workerServer->bind('0.0.0.0', 1, 0);
@@ -346,15 +345,14 @@ final class SocketMessageBroker
             }
             \stream_set_blocking($socket, true);
 
-            if ($socket) {
-                $downstream = new SocketStream($socket);
-                $this->downstream[$uid] = $downstream;
-                $this->client[$uid] = $client;
-                $this->selector->register($downstream, Selector::OP_ALL);
-                $this->selector->register($client, Selector::OP_ALL);
+            $downstream = new SocketStream($socket);
+            $this->downstream[$uid] = $downstream;
+            $this->client[$uid] = $client;
+            $this->selector->register($downstream, Selector::OP_ALL);
+            $this->selector->register($client, Selector::OP_ALL);
 
-                break;
-            }
+            break;
+
         }
 
         if (!$downstream) {
@@ -377,14 +375,14 @@ final class SocketMessageBroker
                 if ($connection->select(10)) {
                     $in = $connection->read('!');
                     list($uid, $port) = explode(":", $in);
-                    //list($uid, $port) = [$uid, 10021];
+                    //list($uid, $port) = [$uid, 80];
 
                     $this->workers[$uid] = $port;
                     $this->ipc[$uid] = $connection;
 
                     continue;
                 } else {
-                    trigger_error(getmypid() . " EMPTY CONNECTION!");
+                    throw new \RuntimeException("Connection is empty");
                 }
 
 

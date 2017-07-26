@@ -6,6 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\IpcServer\SocketStream;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
 /**
@@ -148,6 +149,8 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
             return $this;
         }
 
+        $params = $event->getParams();
+
         $pid = $event->getParam('uid');
         $process->setProcessId($pid);
         $process->setThreadId($event->getParam('threadId', 1));
@@ -155,6 +158,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
         $event = new WorkerEvent();
         $event->setTarget($process);
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setParams($params);
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
         $event->setParam('threadId', $event->getParam('threadId', 1));
@@ -239,5 +243,24 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
         $this->getIpc()->send($channel, $payload);
 
         return $this;
+    }
+
+    /**
+     * @param $ipcAdapter
+     * @return $this
+     */
+    public function setNewIpc($ipcAdapter)
+    {
+        $this->ipcAdapter = $ipcAdapter;
+
+        return $this;
+    }
+
+    /**
+     * @return SocketStream mixed
+     */
+    public function getNewIpc()
+    {
+        return $this->ipcAdapter;
     }
 }
