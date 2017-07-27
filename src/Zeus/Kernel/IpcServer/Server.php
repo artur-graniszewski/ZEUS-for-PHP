@@ -40,6 +40,9 @@ class Server implements ListenerAggregateInterface
     /** @var SocketStream[] */
     protected $ipcStreams = [];
 
+    /** @var mixed[] */
+    protected $queuedMessages = [];
+
     public function __construct()
     {
         $this->event = new IpcEvent();
@@ -126,7 +129,7 @@ class Server implements ListenerAggregateInterface
             throw new \RuntimeException("IPC connection failed");
         }
 
-        \stream_set_blocking($socket, true);
+        \stream_set_blocking($socket, false);
         $ipcStream = new SocketStream($socket);
         $ipcStream->write("$uid!")->flush();
         $this->ipcClient = $ipcStream;
@@ -134,6 +137,9 @@ class Server implements ListenerAggregateInterface
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     private function handleIpcMessages()
     {
         if (!$this->ipcSelector->select(0)) {
@@ -144,54 +150,98 @@ class Server implements ListenerAggregateInterface
 
         foreach ($streams as $stream) {
             $ipc = new \Zeus\Kernel\IpcServer\SocketStream($stream, 0);
+
             try {
                 $messages = $ipc->readAll(true);
+
+                $this->distributeMessages($messages);
             } catch (\Exception $exception) {
                 $stream->close();
                 unset($this->ipcStreams[array_search($stream, $this->ipcStreams)]);
                 $this->ipcSelector->unregister($stream);
                 continue;
             }
-            foreach ($messages as $payload) {
-                $audience = $payload['aud'];
-                $message = $payload['msg'];
-                $senderId = $payload['sid'];
-                $number = $payload['num'];
+        }
 
-                // @todo: do not send message back to the sender
-                // @todo: queue messages if AUDIENCE_AMOUNT > streams #
-                // @todo: implement AUDIENCE_AT_LEAST?
-                // @todo: implement read confirmation?
-                switch ($audience) {
-                    case IpcDriver::AUDIENCE_ALL:
-                        $cids = array_keys($this->ipcStreams);
-                        break;
+        if (count($this->queuedMessages) > 0) {
+            foreach ($this->queuedMessages as $id => $message) {
+                $this->distributeMessages([$message]);
+                unset ($this->queuedMessages[$id]);
+            }
 
-                    case IpcDriver::AUDIENCE_ANY:
-                        $cids = array_rand($this->ipcStreams, 1);
-                        break;
-
-                    case IpcDriver::AUDIENCE_AMOUNT:
-                        $cids = array_rand($this->ipcStreams, $number);
-                        break;
-
-                    case IpcDriver::AUDIENCE_SELECTED:
-                        $cids = $this->ipcStreams[$number];
-                        break;
-
-                    case IpcDriver::AUDIENCE_SERVER:
-                    default:
-                        $cids = [];
-                        break;
-                }
-
-                foreach ($cids as $cid) {
-                    $ipcDriver = new \Zeus\Kernel\IpcServer\SocketStream($this->ipcStreams[$cid], $senderId);
-                    $ipcDriver->send($message, $audience, $number);
-                    trigger_error("SENT $message FROM $senderId TO $cid ($audience)");
-                }
+            if (count($this->queuedMessages) === 0) {
+                $this->queuedMessages = [];
             }
         }
+
+        return $this;
+    }
+
+    /**
+     * @param $messages
+     * @return $this
+     */
+    private function distributeMessages($messages)
+    {
+        foreach ($messages as $payload) {
+            $audience = $payload['aud'];
+            $message = $payload['msg'];
+            $senderId = $payload['sid'];
+            $number = $payload['num'];
+
+            $availableAudience = $this->ipcStreams;
+            // sender is not an audience
+            unset($availableAudience[$senderId]);
+
+            // @todo: implement read confirmation?
+            switch ($audience) {
+                case IpcDriver::AUDIENCE_ALL:
+                    $cids = array_keys($availableAudience);
+                    break;
+
+                case IpcDriver::AUDIENCE_ANY:
+                    if (1 > count($availableAudience)) {
+                        $this->queuedMessages[] = $payload;
+
+                        continue 2;
+                    }
+                    $cids = array_rand($availableAudience, 1);
+
+                    break;
+
+                case IpcDriver::AUDIENCE_AMOUNT:
+                    if ($number > count($availableAudience)) {
+                        $this->queuedMessages[] = $payload;
+
+                        continue 2;
+                    }
+                    $cids = array_rand($availableAudience, $number);
+
+                    break;
+
+                case IpcDriver::AUDIENCE_SELECTED:
+                    $cids = $this->ipcStreams[$number];
+                    break;
+
+                case IpcDriver::AUDIENCE_SERVER:
+                default:
+                    $cids = [];
+                    break;
+            }
+
+            foreach ($cids as $cid) {
+                $ipcDriver = new \Zeus\Kernel\IpcServer\SocketStream($this->ipcStreams[$cid], $senderId);
+                try {
+                    $ipcDriver->send($message, $audience, $number);
+                } catch (\Exception $exception) {
+                    unset($this->ipcStreams[$cid]);
+                    $this->ipcSelector->unregister($this->ipcStreams[$cid]);
+                }
+                //trigger_error("SENT $message FROM $senderId TO $cid ($audience)");
+            }
+        }
+
+        return $this;
     }
 
     /**
@@ -217,7 +267,7 @@ class Server implements ListenerAggregateInterface
             $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
                 $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
                 $this->registerIpc($event->getParam('ipcPort'), $uid);
-                $event->getTarget()->setNewIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
+                $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
             }, $priority);
         }, $priority);
 

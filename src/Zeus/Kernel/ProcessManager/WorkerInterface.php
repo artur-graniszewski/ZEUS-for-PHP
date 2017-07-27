@@ -10,13 +10,13 @@ interface WorkerInterface
     /**
      * @return IpcAdapterInterface
      */
-    public function getIpc();
+    public function getSchedulerIpc();
 
     /**
      * @param IpcAdapterInterface $ipcAdapter
      * @return $this
      */
-    public function setIpc(IpcAdapterInterface $ipcAdapter);
+    public function setSchedulerIpc(IpcAdapterInterface $ipcAdapter);
 
     /**
      * @return EventManagerInterface

@@ -117,7 +117,7 @@ final class SocketMessageBroker
     protected function createWorkerServer(WorkerEvent $event)
     {
         $workerServer = new SocketServer();
-        $workerServer->setSoTimeout(100000);
+        $workerServer->setSoTimeout(1000);
         $workerServer->setTcpNoDelay(true);
         $workerServer->bind('0.0.0.0', 1, 0);
         $port = $workerServer->getLocalPort();
@@ -432,6 +432,7 @@ final class SocketMessageBroker
      */
     public function onWorkerLoop(WorkerEvent $event)
     {
+        static $sent = false;
         if ($this->isLeader) {
             if ($this->isBusy) {
                 return;
@@ -450,6 +451,15 @@ final class SocketMessageBroker
         if ($this->ipcClient->select(0)) {
             $this->ipcClient->read();
         }
+
+//        if (!$sent) {
+//            $event->getTarget()->getIpc()->send('loop from ' . getmypid(), IpcDriver::AUDIENCE_AMOUNT, 2);
+//            $sent = true;
+//        }
+//        $msgs = $event->getTarget()->getIpc()->readAll();
+//        foreach ($msgs as $msg) {
+//            trigger_error(getmypid() . " RECEIVED $msg");
+//        }
 
         try {
             if (!$this->connection) {

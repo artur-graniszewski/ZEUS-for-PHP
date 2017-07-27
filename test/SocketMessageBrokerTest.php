@@ -52,7 +52,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $process = new Worker($event);
         $process->setProcessId(getmypid());
         $process->setConfig($config);
-        $process->setIpc($event->getTarget()->getIpc());
+        $process->setSchedulerIpc($event->getTarget()->getSchedulerIpc());
         $process->attach($events);
 
         $received = null;
@@ -117,7 +117,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $config->setServiceName('test');
         $process = new Worker($event);
         $process->setConfig($config);
-        $process->setIpc($event->getTarget()->getIpc());
+        $process->setSchedulerIpc($event->getTarget()->getSchedulerIpc());
         $process->attach($events);
         $process->setProcessId(getmypid());
 

@@ -59,7 +59,7 @@ class SocketStream extends IpcDriver
     {
         $messages = [];
 
-        while($data = $this->stream->read("\0")) {
+        while ($data = $this->stream->read("\0")) {
             $message = $this->unpackMessage($data);
             $messages[] = $returnRaw ? $message : $message['msg'];
         }

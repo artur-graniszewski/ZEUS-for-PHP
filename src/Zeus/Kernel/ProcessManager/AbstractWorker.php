@@ -135,8 +135,8 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
         $event = new SchedulerEvent();
         $process = clone $this;
 
-        if (!$process->getIpc()->isConnected()) {
-            $process->getIpc()->connect();
+        if (!$process->getSchedulerIpc()->isConnected()) {
+            $process->getSchedulerIpc()->connect();
         }
 
         $event->setTarget($process);
@@ -203,7 +203,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
     /**
      * @return IpcAdapterInterface
      */
-    public function getIpc()
+    public function getSchedulerIpc()
     {
         return $this->ipc;
     }
@@ -212,7 +212,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
      * @param IpcAdapterInterface $ipcAdapter
      * @return $this
      */
-    public function setIpc(IpcAdapterInterface $ipcAdapter)
+    public function setSchedulerIpc(IpcAdapterInterface $ipcAdapter)
     {
         $this->ipc = $ipcAdapter;
 
@@ -240,7 +240,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
             ]
         ];
 
-        $this->getIpc()->send($channel, $payload);
+        $this->getSchedulerIpc()->send($channel, $payload);
 
         return $this;
     }
@@ -249,7 +249,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
      * @param $ipcAdapter
      * @return $this
      */
-    public function setNewIpc($ipcAdapter)
+    public function setIpc($ipcAdapter)
     {
         $this->ipcAdapter = $ipcAdapter;
 
@@ -259,7 +259,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
     /**
      * @return SocketStream mixed
      */
-    public function getNewIpc()
+    public function getIpc()
     {
         return $this->ipcAdapter;
     }

@@ -84,7 +84,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         $this->discipline = $discipline;
         $this->setConfig($config);
-        $this->setIpc($ipcAdapter);
+        $this->setSchedulerIpc($ipcAdapter);
         $this->workerService = $workerService;
         $this->status = new WorkerState($this->getConfig()->getServiceName());
         $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
@@ -299,8 +299,8 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $this->attach($events);
         $events = $events->getSharedManager();
         $this->log(Logger::INFO, "Establishing IPC");
-        if (!$this->getIpc()->isConnected()) {
-            $this->getIpc()->connect();
+        if (!$this->getSchedulerIpc()->isConnected()) {
+            $this->getSchedulerIpc()->connect();
         }
 
         try {
@@ -431,7 +431,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         $this->log(Logger::INFO, "Scheduler terminated");
         $this->log(Logger::INFO, "Stopping IPC");
-        $this->getIpc()->disconnect();
+        $this->getSchedulerIpc()->disconnect();
     }
 
     /**

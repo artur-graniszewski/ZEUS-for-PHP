@@ -81,7 +81,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     {
         $scheduler = $this->getScheduler(1);
         $logger = $scheduler->getLogger();
-        $ipc = $scheduler->getIpc();
+        $ipc = $scheduler->getSchedulerIpc();
 
         $messages = [];
         foreach (["debug", "warn", "err", "alert", "info", "crit", "notice", "emerg"] as $severity) {

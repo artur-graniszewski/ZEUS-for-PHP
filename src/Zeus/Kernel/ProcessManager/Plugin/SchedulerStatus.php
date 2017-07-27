@@ -66,7 +66,7 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public static function getStatus(Scheduler $scheduler)
     {
-        $ipc = $scheduler->getIpc();
+        $ipc = $scheduler->getSchedulerIpc();
 
         $payload = [
             'type' => Message::IS_STATUS_REQUEST,
@@ -133,7 +133,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         $payload['extra']['scheduler_status']['total_traffic'] = 0;
         $payload['extra']['scheduler_status']['start_timestamp'] = $this->startTime;
 
-        $scheduler->getIpc()->send(1, $payload);
+        $scheduler->getSchedulerIpc()->send(1, $payload);
         $this->refreshStatus = false;
     }
 }

@@ -192,7 +192,7 @@ class Worker extends AbstractWorker
             ]
         ];
 
-        $this->getIpc()->send(1, $payload);
+        $this->getSchedulerIpc()->send(1, $payload);
 
         return $this;
     }
