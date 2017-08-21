@@ -50,12 +50,8 @@ class SchedulerFactory implements FactoryInterface
         $scheduler->setEventManager($eventManager);
 
         $ipcServer = new Server();
-        $ipcServer->setIpc($options['ipc_adapter']);
         $ipcServer->setEventManager($eventManager);
         $ipcServer->attach($eventManager);
-
-        // @todo: remove this from here
-        $processService->setSchedulerIpc($scheduler->getSchedulerIpc());
 
         $container->build($config['multiprocessing_module'], ['scheduler' => $scheduler]);
         $this->startPlugins($container, $scheduler, isset($config['plugins']) ? $config['plugins'] : []);

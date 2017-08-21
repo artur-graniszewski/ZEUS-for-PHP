@@ -114,8 +114,8 @@ class SelectorTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
-     * @expectedExceptionMessage Stream class must implement Zeus\Networking\Stream\SelectableStreamInterface
+     * @expectedException \TypeError
+     * @expectedExceptionMessage Argument 1 passed to Zeus\Networking\Stream\Selector::register() must implement interface Zeus\Networking\Stream\SelectableStreamInterface
      */
     public function testStreamArgumentValidation()
     {

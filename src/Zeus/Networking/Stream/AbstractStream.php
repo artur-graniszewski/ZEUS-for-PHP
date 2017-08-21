@@ -132,7 +132,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     /**
      * @param string $ending
-     * @return mixed
+     * @return string|false false if nothing was read, string otherwise
      */
     public function read(string $ending = '')
     {
@@ -185,7 +185,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function write(string $data)
     {
         if (!$this->isWritable()) {
-            throw new \RuntimeException("Stream is not writable");
+            throw new \LogicException("Stream is not writable");
         }
 
         $this->writeBuffer .= $data;

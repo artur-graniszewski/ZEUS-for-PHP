@@ -4,6 +4,7 @@ namespace Zeus\Kernel\ProcessManager;
 
 use Throwable;
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
@@ -192,7 +193,7 @@ class Worker extends AbstractWorker
             ]
         ];
 
-        $this->getSchedulerIpc()->send(1, $payload);
+        $this->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER);
 
         return $this;
     }

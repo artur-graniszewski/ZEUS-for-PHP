@@ -17,6 +17,7 @@ use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
+use Zeus\Kernel\IpcServer\Server;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\ProcessManager\Factory\WorkerFactory;
 use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
@@ -159,6 +160,9 @@ trait ZeusFactories
             'scheduler_name' => 'test-scheduler',
             'logger_adapter' => $logger,
         ]);
+
+        $ipcServer = new Server();
+        $ipcServer->attach($scheduler->getEventManager());
 
         $events = $scheduler->getEventManager()->getSharedManager();
         if ($mainLoopIterations > 0) {

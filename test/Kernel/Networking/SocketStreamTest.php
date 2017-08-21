@@ -87,14 +87,17 @@ class SocketStreamTest extends AbstractNetworkingTest
         fclose($this->client);
     }
 
+    /**
+     * @expectedException \LogicException
+     * @expectedExceptionMessage Stream already closed
+     */
     public function testDoubleClose()
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
         stream_set_blocking($this->client, false);
         $connection = $this->server->accept();
         $connection->close();
-
-        $this->assertInstanceOf(SocketStream::class, $connection->close());
+        $connection->close();
     }
 
     public function testIsReadable()
@@ -121,6 +124,10 @@ class SocketStreamTest extends AbstractNetworkingTest
         $connection->read();
     }
 
+    /**
+     * @expectedException \LogicException
+     * @expectedExceptionMessage Stream is not writable
+     */
     public function testWriteOnClosedConnection()
     {
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
@@ -128,8 +135,7 @@ class SocketStreamTest extends AbstractNetworkingTest
         $connection = $this->server->accept();
         $connection->close();
         $this->assertFalse($connection->isReadable(), 'Connection should not be readable after close');
-        $result = $connection->write("TEST");
-        $this->assertInstanceOf(SocketStream::class, $result);
+        $connection->write("TEST");
     }
 
     public function testWriteToDisconnectedClient()
@@ -166,8 +172,9 @@ class SocketStreamTest extends AbstractNetworkingTest
 
             $read = $connection->read();
             $received .= $read;
-        } while ($read !== false && $received !== $dataToSend && $time + static::TEST_TIMEOUT > time());
-        
+        } while ($received !== $dataToSend && $time + static::TEST_TIMEOUT > time());
+
+        $this->assertEquals(strlen($dataToSend), strlen($received), 'Server should get the same message length as sent by the client');
         $this->assertEquals($dataToSend, $received, 'Server should get the same message as sent by the client');
         fclose($this->client);
     }
@@ -189,8 +196,9 @@ class SocketStreamTest extends AbstractNetworkingTest
         do {
             $read = $connection->read();
             $received .= $read;
-        } while ($read !== false && $received !== $dataToSend && $time + static::TEST_TIMEOUT > time());
+        } while ($received !== $dataToSend && $time + static::TEST_TIMEOUT > time());
 
+        $this->assertEquals(strlen($dataToSend), strlen($received), 'Server should get the same message length as sent by the client');
         $this->assertEquals($dataToSend, $received, 'Server should get the same message as sent by the client');
         fclose($this->client);
     }
@@ -243,6 +251,10 @@ class SocketStreamTest extends AbstractNetworkingTest
         fclose($this->client);
     }
 
+    /**
+     * @expectedException \LogicException
+     * @expectedExceptionMessage Stream is not readable
+     */
     public function testServerReadWhenDisconnected()
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
@@ -268,7 +280,11 @@ class SocketStreamTest extends AbstractNetworkingTest
         $connection->select(1000);
     }
 
-    public function testServerSelectReturnsTrueWhenDisconnected()
+    /**
+     * @expectedException \LogicException
+     * @expectedExceptionMessage Stream is not readable
+     */
+    public function testSelectWhenDisconnected()
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, true);

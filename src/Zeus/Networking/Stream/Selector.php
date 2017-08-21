@@ -22,13 +22,8 @@ class Selector extends AbstractPhpResource
      * @param int $operation
      * @return int
      */
-    public function register(AbstractSelectableStream $stream, int $operation = self::OP_ALL) : int
+    public function register(SelectableStreamInterface $stream, int $operation = self::OP_ALL) : int
     {
-        if (!$stream instanceof SelectableStreamInterface) {
-            $interface = SelectableStreamInterface::class;
-            throw new \LogicException("Stream class must implement $interface");
-        }
-
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
         }
@@ -68,6 +63,11 @@ class Selector extends AbstractPhpResource
         foreach ($this->streams as $streamDetails) {
             /** @var AbstractStream $stream */
             list($stream, $operation) = $streamDetails;
+
+            if ($stream->isClosed()) {
+                continue;
+            }
+
             $resource = $stream->getResource();
 
             if ($operation & self::OP_READ) {

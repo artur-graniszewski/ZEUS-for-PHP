@@ -20,13 +20,8 @@ class Server implements ListenerAggregateInterface
     /** @var bool */
     protected $isConnected = false;
 
-    /** @var IpcAdapterInterface */
-    protected $ipc;
-
     /** @var EventManagerInterface */
     protected $events;
-
-    protected $event;
 
     /** @var SocketServer */
     protected $ipcServer;
@@ -45,7 +40,6 @@ class Server implements ListenerAggregateInterface
 
     public function __construct()
     {
-        $this->event = new IpcEvent();
         $this->ipcSelector = new Selector();
     }
 
@@ -142,7 +136,7 @@ class Server implements ListenerAggregateInterface
      */
     private function handleIpcMessages()
     {
-        if (!$this->ipcSelector->select(0)) {
+        if (!$this->ipcSelector->select(1000)) {
             return $this;
         }
 
@@ -183,6 +177,7 @@ class Server implements ListenerAggregateInterface
      */
     private function distributeMessages($messages)
     {
+        $cids = [];
         foreach ($messages as $payload) {
             $audience = $payload['aud'];
             $message = $payload['msg'];
@@ -224,9 +219,19 @@ class Server implements ListenerAggregateInterface
                     break;
 
                 case IpcDriver::AUDIENCE_SERVER:
+                    $event = new IpcEvent();
+                    $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
+                    $event->setParams($message);
+                    $event->setTarget($this);
+                    $this->getEventManager()->triggerEvent($event);
+                    break;
                 default:
                     $cids = [];
                     break;
+            }
+
+            if (!$cids) {
+                continue;
             }
 
             foreach ($cids as $cid) {
@@ -277,18 +282,6 @@ class Server implements ListenerAggregateInterface
             $this->handleIpcMessages();
         }, $priority);
 
-
-
-
-
-
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
-            $this->handleMessages(0, 10);
-        }, $priority);
-
-        $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function() {
-            $this->handleMessages(1, 0);
-        }, $priority);
     }
 
     /**
@@ -302,32 +295,6 @@ class Server implements ListenerAggregateInterface
         foreach ($this->eventHandles as $handle) {
             $events->detach($handle);
         }
-    }
-
-    /**
-     * Handles messages.
-     *
-     * @param $channelNumber
-     * @return $this
-     */
-    protected function handleMessages(int $channelNumber, int $timeout)
-    {
-        if ($this->ipc instanceof SelectableInterface) {
-            $this->ipc->setSoTimeout($timeout);
-        }
-
-        /** @var Message[] $messages */
-        $messages = $this->ipc->receiveAll($channelNumber);
-
-        foreach ($messages as $message) {
-            $event = new IpcEvent();
-            $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
-            $event->setParams($message);
-            $event->setTarget($this);
-            $this->getEventManager()->triggerEvent($event);
-        }
-
-        return $this;
     }
 
     /**
@@ -355,24 +322,5 @@ class Server implements ListenerAggregateInterface
         }
 
         return $this->events;
-    }
-
-    /**
-     * @param IpcAdapterInterface $ipcAdapter
-     * @return $this
-     */
-    public function setIpc(IpcAdapterInterface $ipcAdapter)
-    {
-        $this->ipc = $ipcAdapter;
-
-        return $this;
-    }
-
-    /**
-     * @return IpcAdapterInterface
-     */
-    public function getIpc()
-    {
-        return $this->ipc;
     }
 }

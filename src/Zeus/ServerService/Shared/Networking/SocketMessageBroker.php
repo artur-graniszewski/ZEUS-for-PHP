@@ -375,7 +375,7 @@ final class SocketMessageBroker
                 if ($connection->select(10)) {
                     $in = $connection->read('!');
                     list($uid, $port) = explode(":", $in);
-                    //list($uid, $port) = [$uid, 80];
+                    //list($uid, $port) = [$uid, 3306];
 
                     $this->workers[$uid] = $port;
                     $this->ipc[$uid] = $connection;

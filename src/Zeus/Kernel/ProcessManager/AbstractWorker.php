@@ -6,6 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
+use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\SocketStream;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
@@ -135,10 +136,6 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
         $event = new SchedulerEvent();
         $process = clone $this;
 
-        if (!$process->getSchedulerIpc()->isConnected()) {
-            $process->getSchedulerIpc()->connect();
-        }
-
         $event->setTarget($process);
         $event->setName(SchedulerEvent::EVENT_WORKER_CREATE);
         if (is_array($startParameters)) {
@@ -240,7 +237,8 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
             ]
         ];
 
-        $this->getSchedulerIpc()->send($channel, $payload);
+        $this->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER
+        );
 
         return $this;
     }
