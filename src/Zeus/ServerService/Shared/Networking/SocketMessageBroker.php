@@ -448,8 +448,13 @@ final class SocketMessageBroker
             $this->createWorkerServer($event);
         }
 
-        if ($this->ipcClient->select(0)) {
-            $this->ipcClient->read();
+        try {
+            if ($this->ipcClient->select(0)) {
+                $this->ipcClient->read();
+            }
+        } catch (\Exception $ex) {
+            // @todo: connection severed, leader died, wait for re-election?
+            trigger_error("CONNECTION SEVERED");
         }
 
 //        if (!$sent) {
@@ -505,7 +510,11 @@ final class SocketMessageBroker
             }
 
             if (!$this->connection->isClosed()) {
-                $this->connection->flush();
+                try {
+                    $this->connection->flush();
+                } catch (\Exception $ex) {
+                    // @todo: handle this case?
+                }
                 $this->connection->close();
             }
             $this->connection = null;

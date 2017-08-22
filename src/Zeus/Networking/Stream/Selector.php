@@ -106,7 +106,7 @@ class Selector extends AbstractPhpResource
 
     /**
      * @param int $operation
-     * @return array|AbstractStream[]
+     * @return array|AbstractSelectableStream[]
      */
     public function getSelectedStreams(int $operation = self::OP_ALL) : array
     {

@@ -161,12 +161,15 @@ trait ZeusFactories
             'logger_adapter' => $logger,
         ]);
 
-        $ipcServer = new Server();
-        $ipcServer->attach($scheduler->getEventManager());
+        $events = $scheduler->getEventManager();
+        $sm = $events->getSharedManager();
 
-        $events = $scheduler->getEventManager()->getSharedManager();
+        $ipcServer = new Server();
+        $ipcServer->setEventManager($events);
+        $ipcServer->attach(new EventManager($sm));
+
         if ($mainLoopIterations > 0) {
-            $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
+            $sm->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {
@@ -179,7 +182,7 @@ trait ZeusFactories
             }, SchedulerEvent::PRIORITY_FINALIZE - 1);
         }
 
-        $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
+        $sm->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
             $e->getTarget()->setSchedulerActive(false);
             $e->stopPropagation(true);
         }, 10000000);

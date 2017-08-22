@@ -119,11 +119,11 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     public function schedulerProcessAmountProvider()
     {
         return [
-            [4, 1, 1, 2],
+            [1, 1, 1, 2],
 
-            [1, 8, 3, 11],
-            [1, 10, 3, 13],
-            [1, 25, 3, 28],
+            [4, 8, 3, 11],
+            [4, 10, 3, 13],
+            [4, 25, 3, 28],
 
             [3, 8, 3, 11],
             [5, 10, 3, 13],
@@ -131,11 +131,11 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
             [4, 8, 3, 11],
             [7, 10, 3, 13],
-            [12, 25, 3, 28],
+            [3, 25, 3, 28],
 
-            [20, 8, 4, 12],
-            [22, 10, 5, 15],
-            [100, 25, 6, 31],
+            [2, 8, 4, 12],
+            [3, 10, 5, 15],
+            [1, 25, 6, 31],
         ];
     }
 
@@ -154,6 +154,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $amountOfScheduledProcesses = 0;
         $processCount = 0;
+        $processes = [];
 
         $em = $scheduler->getEventManager();
         $em->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {$e->stopPropagation(true);}, 100000);
@@ -169,26 +170,28 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         );
 
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
-            function(SchedulerEvent $e) use (&$scheduler) {
+            function(SchedulerEvent $e) use (&$scheduler, $em) {
                 $e->stopPropagation(true);
                 $scheduler->setSchedulerActive(true);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 
         $em->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT,
-            function(WorkerEvent $e) use (&$processCount, $starProcesses) {
+            function(WorkerEvent $e) use (&$processCount, $starProcesses, &$processes) {
                 $process = $e->getTarget();
                 $uid = $process->getProcessId();
-                $process->setWaiting();
+                $processes[] = $process;
+
                 $process->getStatus()->incrementNumberOfFinishedTasks(1000);
 
                 // mark all processes as busy
                 if ($uid - 100000000 <= $starProcesses) {
-                    echo "SET AS BUSY\n";
                     $process->setRunning();
+                } else {
+                    $process->setWaiting();
                 }
                 $e->stopPropagation(true);
-            }, -10000
+            }, WorkerEvent::PRIORITY_FINALIZE + 1
         );
 
         $scheduler->start(false);
@@ -279,13 +282,24 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     public function testProcessErrorHandling()
     {
         $scheduler = $this->getScheduler(1);
+        $logger = new Logger();
+        $mockWriter = new Mock();
+        $scheduler->setLogger($logger);
 
         $amountOfScheduledProcesses = 0;
         $processesCreated = [];
         $processesInitialized = [];
+        $processes = [];
 
         $em = $scheduler->getEventManager();
-        $em->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+
+        $em->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT,
+            function(WorkerEvent $e) use (&$processCount, &$processes, $mockWriter) {
+                $process = $e->getTarget();
+                $processes[] = $process;
+                $process->getLogger()->addWriter($mockWriter);
+            });
+        $em->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, WorkerEvent::PRIORITY_FINALIZE + 1);
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
         $em->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
             function(SchedulerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
@@ -314,9 +328,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }
         );
 
-        $logger = new Logger();
-        $mockWriter = new Mock();
-        $scheduler->setLogger($logger);
         $scheduler->getLogger()->addWriter($mockWriter);
         $mockWriter->setFormatter(new ConsoleLogFormatter(Console::getInstance()));
         $scheduler->start(false);
@@ -327,11 +338,11 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $foundExceptions = [];
         foreach ($mockWriter->events as $event) {
             if (preg_match('~^Exception \(10000\): Exception thrown by ([0-9]+)~', $event['message'], $matches)) {
-                $foundExceptions[] = $matches[1];
+                $foundExceptions[$matches[1]] = $matches[1];
             }
         }
 
-        $this->assertEquals(8, count($foundExceptions), "Logger should have reported 8 errors: " . json_encode($foundExceptions));
+        $this->assertEquals(11, count($foundExceptions), "Logger should have reported 11 errors: " . json_encode($foundExceptions));
     }
 
     public function testProcessShutdownSequence()

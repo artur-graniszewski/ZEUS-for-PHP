@@ -95,7 +95,7 @@ class AsyncPlugin extends AbstractPlugin
             throw new \RuntimeException("Async call failed: unable to issue async call");
         }
 
-        $response = $socket->read("\n");
+        $response = $socket->select(100) ? $socket->read("\n") : false;
         if (!$response || $response !== "PROCESSING") {
             $socket->close();
             throw new \RuntimeException(sprintf("Async call failed, %s", false === $response ? "no response from server" : "server response: " . json_encode($response)));

@@ -500,7 +500,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             return $this;
         }
 
-        $operations = $discipline->manage($this->getConfig(), $this->workers);
+        $operations = $discipline->manage($this->getConfig(), clone $this->workers);
 
         $toTerminate = $operations['terminate'];
         $toSoftTerminate = $operations['soft_terminate'];

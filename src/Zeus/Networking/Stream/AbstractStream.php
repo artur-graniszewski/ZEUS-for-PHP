@@ -149,7 +149,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
         }
-
         if ($ending !== '') {
             $data = '';
             $endingSize = \strlen($ending);
@@ -159,6 +158,11 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
                 // @todo: replace this function, as it uses PHP buffers which collide with STREAM_PEEK behaviour
                 $buffer = @\stream_get_line($this->resource, $this->readBufferSize, $ending);
+
+                if ($buffer === '') {
+                    break;
+                }
+                
                 $data .= $buffer;
 
                 $newPos = \ftell($this->resource);

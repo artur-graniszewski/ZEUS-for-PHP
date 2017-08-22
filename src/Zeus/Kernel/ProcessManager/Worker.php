@@ -33,12 +33,28 @@ class Worker extends AbstractWorker
     public function attach(EventManagerInterface $eventManager)
     {
         $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_RUNNING, function(WorkerEvent $e) {
+                $this->sendStatus($e);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_WAITING, function(WorkerEvent $e) {
+                $this->sendStatus($e);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
+                $this->sendStatus($e);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 2);
+
+            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
+                $this->onExit($e);
+            }, SchedulerEvent::PRIORITY_FINALIZE);
+
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
+
+
+        $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $event->getTarget()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
-
-        $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
-            $this->onExit($e);
-        }, SchedulerEvent::PRIORITY_FINALIZE);
 
         return $this;
     }
@@ -62,9 +78,8 @@ class Worker extends AbstractWorker
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(WorkerState::RUNNING);
-        $this->sendStatus();
         $event->setName(WorkerEvent::EVENT_WORKER_RUNNING);
-        $event->setParams($status->toArray());
+        $event->setParam('status', $status);
         $this->getEventManager()->triggerEvent($event);
 
         return $this;
@@ -90,9 +105,8 @@ class Worker extends AbstractWorker
         $status->setStatusDescription($statusDescription);
         $status->setCode(WorkerState::WAITING);
         $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
-        $event->setParams($status->toArray());
+        $event->setParam('status', $status);
         $this->getEventManager()->triggerEvent($event);
-        $this->sendStatus();
 
         return $this;
     }
@@ -125,7 +139,6 @@ class Worker extends AbstractWorker
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
         $status->setCode(WorkerState::EXITING);
-        $this->sendStatus();
 
         $payload = $status->toArray();
 
@@ -136,7 +149,8 @@ class Worker extends AbstractWorker
         $event = new WorkerEvent();
         $event->setTarget($this);
         $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
-        $event->setParams($payload);
+        $event->setParams($payload); // @todo: remove this line?
+        $event->setParam('status', $status);
 
         $this->getEventManager()->triggerEvent($event);
     }
@@ -176,24 +190,25 @@ class Worker extends AbstractWorker
      * @return $this
      * @todo: move this to an AbstractProcess or a Plugin?
      */
-    protected function sendStatus()
+    protected function sendStatus(WorkerEvent $event)
     {
-        $status = $this->getStatus();
+        $status = $event->getParam('status');
         $status->updateStatus();
+        $process = $event->getTarget();
 
         $payload = [
             'type' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $this->getProcessId(),
-                'threadId' => $this->getThreadId(),
-                'processId' => $this->getProcessId(),
+                'uid' => $process->getProcessId(),
+                'threadId' => $process->getThreadId(),
+                'processId' => $process->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
             ]
         ];
 
-        $this->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER);
+        $process->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER);
 
         return $this;
     }

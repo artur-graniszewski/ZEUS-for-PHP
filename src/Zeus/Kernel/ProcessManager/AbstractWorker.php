@@ -38,6 +38,9 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
     /** @var IpcAdapterInterface */
     protected $ipc;
 
+    /** @var SocketStream */
+    protected $ipcAdapter;
+
     /**
      * @param int $processId
      * @return $this

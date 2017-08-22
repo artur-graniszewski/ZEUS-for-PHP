@@ -5,7 +5,6 @@ namespace Zeus\Kernel\IpcServer;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
@@ -60,16 +59,18 @@ class Server implements ListenerAggregateInterface
     private function addNewIpcClients()
     {
         try {
-            $ipcStream = $this->ipcServer->accept();
+            while (true) {
+                $ipcStream = $this->ipcServer->accept();
 
-            if (!$ipcStream->select(10)) {
-                return $this;
+                if (!$ipcStream->select(10)) {
+                    return $this;
+                }
+
+                $uid = $ipcStream->read('!');
+
+                $this->ipcSelector->register($ipcStream, Selector::OP_READ);
+                $this->ipcStreams[(int)$uid] = $ipcStream;
             }
-
-            $uid = $ipcStream->read('!');
-
-            $this->ipcSelector->register($ipcStream, Selector::OP_READ);
-            $this->ipcStreams[(int) $uid] = $ipcStream;
         } catch (SocketTimeoutException $exception) {
 
         }
@@ -224,6 +225,7 @@ class Server implements ListenerAggregateInterface
                     $event->setParams($message);
                     $event->setTarget($this);
                     $this->getEventManager()->triggerEvent($event);
+
                     break;
                 default:
                     $cids = [];
@@ -262,6 +264,7 @@ class Server implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $sharedManager = $events->getSharedManager();
+
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedManager, $priority) {
             $this->startIpc();
 
@@ -273,7 +276,7 @@ class Server implements ListenerAggregateInterface
                 $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
                 $this->registerIpc($event->getParam('ipcPort'), $uid);
                 $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
-            }, $priority);
+            }, WorkerEvent::PRIORITY_FINALIZE + 2);
         }, $priority);
 
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {

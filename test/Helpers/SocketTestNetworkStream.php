@@ -109,7 +109,7 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
 
     public function close()
     {
-        // TODO: Implement close() method.
+        $this->setIsConnectionClosed(true);
     }
 
     public function isWritable()
