@@ -44,6 +44,8 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
     public function testSubscriberRequestHandling()
     {
+        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
+        stream_set_blocking($server, false);
         $events = new EventManager(new SharedEventManager());
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
@@ -87,14 +89,18 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
-        $client = stream_socket_client('tcp://localhost:' . $this->port);
+        $port = $eventSubscriber->getWorkerServer()->getLocalPort();
+        $client = stream_socket_client("tcp://127.0.0.1:$port", $errno, $errstr, 10, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
-        fwrite($client, $requestString);
+        $wrote = stream_socket_sendto($client, $requestString);
+        $this->assertEquals($wrote, strlen($requestString));
 
         $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
         $events->triggerEvent($event);
+        $wrote = stream_socket_sendto($client, $requestString);
+        $this->assertEquals($wrote, strlen($requestString));
         $events->triggerEvent($event);
 
         fclose($client);
@@ -104,12 +110,13 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $events->triggerEvent($event);
 
         $this->assertEquals($requestString, $received);
-        $this->assertEquals(1, $steps, "Message should be fetched twice");
-        $this->assertEquals(2, $heartBeats, "Heartbeat should be called twice");
+        $this->assertEquals(2, $steps, "Message should be fetched twice");
+        $this->assertEquals(1, $heartBeats, "Heartbeat should be called once between requests");
     }
 
     public function testSubscriberErrorHandling()
     {
+        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
         $events = new EventManager(new SharedEventManager());
         $event = new SchedulerEvent();
         $event->setTarget($this->getScheduler(0));
@@ -145,7 +152,8 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
         $events->triggerEvent($event);
 
-        $client = stream_socket_client('tcp://localhost:' . $this->port);
+        $port = $eventSubscriber->getWorkerServer()->getLocalPort();
+        $client = stream_socket_client("tcp://127.0.0.1:$port", $errno, $errstr, 10, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";

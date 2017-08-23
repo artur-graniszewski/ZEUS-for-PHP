@@ -18,6 +18,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     /**
      * @param int $timeout Timeout in milliseconds
      * @return bool
+     * @throws \Exception
      */
     public function select(int $timeout) : bool
     {

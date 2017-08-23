@@ -23,7 +23,10 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
         parent::__construct($resource);
 
-        $this->writeCallback = defined("HHVM_VERSION") ? 'fwrite' : 'stream_socket_sendto';
+        $this->writeCallback = 'stream_socket_sendto';
+
+        // @todo: why the below function does not work with phpunit tests?
+        // @todo: check performance impact of using stream_get_contents
         $this->readCallback = 'stream_socket_recvfrom';
     }
 
@@ -76,5 +79,57 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     public function getRemoteAddress() : string
     {
         return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
+    }
+
+    /**
+     * @param callable $readMethod
+     * @param string $ending
+     * @return mixed
+     */
+    protected function doRead($readMethod, string $ending = '')
+    {
+        if (!$this->isReadable()) {
+            throw new \LogicException("Stream is not readable");
+        }
+
+        if ($ending !== '') {
+            // @todo: buffer internally until ending is found, return false until ending is found
+            $data = '';
+            $endingSize = \strlen($ending);
+
+            while (!$this->isEof()) {
+                // @todo: add some checks if STREAM_PEEK is supported by $readMethod
+                $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
+
+                if ($buffer === '') {
+                    break;
+                }
+
+                $pos = strpos($buffer, $ending);
+                if (false !== $pos) {
+                    $buffer = substr($buffer, 0, $pos);
+                    $pos += $endingSize;
+                } else {
+                    $pos = \strlen($buffer);
+                }
+
+                @$readMethod($this->resource, $pos);
+
+                $data .= $buffer;
+
+                break;
+            }
+
+        } else {
+            $data = @$readMethod($this->resource, $this->readBufferSize);
+        }
+
+        $this->dataReceived += \strlen($data);
+
+        if ($data === '') {
+            $data = false;
+        }
+
+        return $data;
     }
 }

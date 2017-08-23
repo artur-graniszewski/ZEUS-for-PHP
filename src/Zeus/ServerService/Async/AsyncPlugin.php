@@ -7,6 +7,7 @@ use Zend\Mvc\Controller\Plugin\AbstractPlugin;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\NetworkStreamInterface;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\SelectableStreamInterface;
 use Zeus\Networking\Stream\SocketStream;
 
 // Plugin class
@@ -128,6 +129,7 @@ class AsyncPlugin extends AbstractPlugin
         $this->time = time();
         while ($read) {
             foreach($read as $index => $socket) {
+                /** @var SelectableStreamInterface|AbstractStream $socket */
                 if (!$socket->isReadable()) {
                     throw new \RuntimeException("Async call failed: server connection lost", 1);
                 }
@@ -137,6 +139,11 @@ class AsyncPlugin extends AbstractPlugin
                 }
 
                 $result = $this->doJoin($socket);
+
+                if ($result === null && !$socket->isClosed()) {
+                    continue;
+                }
+
                 $results[$index] = $result;
                 unset($read[$index]);
             }
@@ -176,7 +183,9 @@ class AsyncPlugin extends AbstractPlugin
     {
         $result = $socket->read();
         if ($result === false) {
-            throw new \RuntimeException("Async call failed: server connection lost", 1);
+            //throw new \RuntimeException("Async call failed: server connection lost", 1);
+
+            return null;
         }
 
         if ($result === "CORRUPTED_REQUEST\n") {

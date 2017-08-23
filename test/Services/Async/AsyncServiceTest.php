@@ -35,19 +35,18 @@ class AsyncServiceTest extends PHPUnit_Framework_TestCase
         }, 100
         );
 
-        $service = $sm->build(Service::class,
-            [
+        $service = $sm->build(Service::class, [
                 'service_name' => 'zeus-async-test',
                 'scheduler_adapter' => $scheduler,
                 'logger_adapter' => $logger,
-                'config' =>
-                [
+                'config' => [
                     'service_settings' => [
                         'listen_port' => 0,
                         'listen_address' => '127.0.0.1',
+                    ]
                 ]
             ]
-        ]);
+        );
 
         return $service;
     }

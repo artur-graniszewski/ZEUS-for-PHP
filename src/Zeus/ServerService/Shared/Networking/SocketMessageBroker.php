@@ -3,7 +3,6 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -69,6 +68,17 @@ final class SocketMessageBroker
     }
 
     /**
+     * @param bool $flag
+     * @return $this
+     */
+    public function setIsLeader(bool $flag)
+    {
+        $this->isLeader = $flag;
+
+        return $this;
+    }
+
+    /**
      * @param EventManagerInterface $events
      * @return $this
      */
@@ -81,6 +91,22 @@ final class SocketMessageBroker
         $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
 
         return $this;
+    }
+
+    /**
+     * @return SocketStream
+     */
+    public function getIpcClient()
+    {
+        return $this->ipcClient;
+    }
+
+    /**
+     * @return SocketServer
+     */
+    public function getWorkerServer()
+    {
+        return $this->workerServer;
     }
 
     /**
@@ -127,11 +153,11 @@ final class SocketMessageBroker
 
         $this->workerServer = $workerServer;
 
-        $opts = array(
-            'socket' => array(
+        $opts = [
+            'socket' => [
                 'tcp_nodelay' => true,
-            ),
-        );
+            ],
+        ];
 
         do {
             $client = @stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 10, STREAM_CLIENT_CONNECT, stream_context_create($opts));
@@ -332,11 +358,11 @@ final class SocketMessageBroker
                 continue;
             }
 
-            $opts = array(
-                'socket' => array(
+            $opts = [
+                'socket' => [
                     'tcp_nodelay' => true,
-                ),
-            );
+                ],
+            ];
 
             $socket = @stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
             if (!$socket) {

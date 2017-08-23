@@ -63,6 +63,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         if (!$asMock) {
             /** @var AsyncPlugin $plugin */
             $plugin = $factory($container, AsyncPlugin::class, []);
+            $plugin->setJoinTimeout(2);
 
             return $plugin;
         }
@@ -74,7 +75,10 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $mockBuilder->setConstructorArgs([$config]);
         $mockBuilder->setMethods(['getSocket']);
 
-        return $mockBuilder->getMock();
+        $plugin = $mockBuilder->getMock();
+        $plugin->setJoinTimeout(2);
+
+        return $plugin;
     }
 
     public function testPluginInstantiation()
@@ -190,7 +194,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
         $data = "OK! " . microtime(true);
         $message = serialize($data);
         $size = strlen($message);
-        fwrite($this->client, "PROCESSING\n$size:$message\n");
+        stream_socket_sendto($this->client, "PROCESSING\n$size:$message\n");
         $plugin = $this->getPlugin(true);
         $plugin
             ->expects($this->any())

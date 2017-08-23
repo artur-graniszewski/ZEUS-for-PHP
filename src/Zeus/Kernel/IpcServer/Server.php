@@ -277,14 +277,13 @@ class Server implements ListenerAggregateInterface
                 $this->registerIpc($event->getParam('ipcPort'), $uid);
                 $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
             }, WorkerEvent::PRIORITY_FINALIZE + 2);
-        }, $priority);
 
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
-            $this->addNewIpcClients();
-            $this->removeIpcClients();
-            $this->handleIpcMessages();
+            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
+                $this->addNewIpcClients();
+                $this->removeIpcClients();
+                $this->handleIpcMessages();
+            }, SchedulerEvent::PRIORITY_REGULAR + 1);
         }, $priority);
-
     }
 
     /**
