@@ -28,7 +28,7 @@ class WorkerEvent extends Event
     /**
      * @return Worker
      */
-    public function getTarget()
+    public function getTarget() : Worker
     {
         return parent::getTarget();
     }
@@ -37,7 +37,7 @@ class WorkerEvent extends Event
      * @param bool $stop
      * @return $this
      */
-    public function stopWorker(bool $stop)
+    public function stopWorker(bool $stop) : WorkerEvent
     {
         $this->stopWorker = $stop;
 

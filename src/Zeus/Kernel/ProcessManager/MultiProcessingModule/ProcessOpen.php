@@ -59,7 +59,7 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
     {
         $this->events = $events;
         $events = $events->getSharedManager();
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
+        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerInit'], -9000);
         $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onWorkerWaiting'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
@@ -197,8 +197,10 @@ final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddre
         $applicationPath = $_SERVER['PHP_SELF'];
 
         $type = $event->getParam('server') ? 'scheduler' : 'worker';
+        $serviceName = escapeshellarg($event->getTarget()->getConfig()->getServiceName());
+        $startParams = escapeshellarg(json_encode($event->getParams()));
 
-        $command = sprintf("exec %s %s zeus %s %s", $phpExecutable, $applicationPath, $type, $event->getTarget()->getConfig()->getServiceName());
+        $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
 
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {

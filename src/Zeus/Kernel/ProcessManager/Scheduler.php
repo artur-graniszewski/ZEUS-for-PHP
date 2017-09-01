@@ -298,7 +298,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $events = $this->getEventManager();
         $this->attach($events);
         $events = $events->getSharedManager();
-        $this->log(Logger::INFO, "Establishing IPC");
 
         try {
             if (!$launchAsDaemon) {
@@ -319,6 +318,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
                     if ($e->getParam('init_process')) {
                         $e->stopPropagation(true);
                         $this->setProcessId(getmypid());
+                        $this->log(Logger::INFO, "Establishing IPC");
                         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
                     } else {
                         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);

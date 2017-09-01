@@ -72,11 +72,12 @@ class WorkerController extends AbstractActionController
 
         $action = $params->get(1);
         $serviceName = $params->get(2);
+        $startParams = $params->get(3, '{}');
 
         try {
             switch ($action) {
                 case 'worker':
-                    $this->startWorkerForService($serviceName);
+                    $this->startWorkerForService($serviceName, json_decode($startParams, true));
                     break;
 
                 case 'scheduler':
@@ -129,13 +130,15 @@ class WorkerController extends AbstractActionController
 
     /**
      * @param string $serviceName
+     * @param array $startParams
      */
-    protected function startWorkerForService($serviceName)
+    protected function startWorkerForService($serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
-        $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
+        $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) use ($startParams) {
             $event->stopPropagation(true);
+            $event->setParams(array_merge($event->getParams(), $startParams));
             $event->setParam('init_process', true);
             $event->setParam('uid', getmypid());
             $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
@@ -161,13 +164,14 @@ class WorkerController extends AbstractActionController
 //        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $this->manager->startService($serviceName);
-        $scheduler->getWorkerService()->start();
+        $scheduler->getWorkerService()->start($startParams);
     }
 
     /**
      * @param string $serviceName
+     * @param array $startParams
      */
-    protected function starSchedulerForService($serviceName)
+    protected function starSchedulerForService($serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
         $scheduler = null;
@@ -216,6 +220,9 @@ class WorkerController extends AbstractActionController
         $scheduler->setProcessId(getmypid());
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $schedulerEvent->setTarget($scheduler);
+        if ($startParams) {
+            $schedulerEvent->setParams($startParams);
+        }
         $schedulerEventManager->triggerEvent($schedulerEvent);
     }
 

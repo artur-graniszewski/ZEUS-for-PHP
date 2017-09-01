@@ -265,18 +265,24 @@ class Server implements ListenerAggregateInterface
     {
         $sharedManager = $events->getSharedManager();
 
+        $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+            $ipcPort = $event->getParam('ipcPort');
+
+            if (!$ipcPort) {
+                return;
+            }
+
+            $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
+            $this->registerIpc($ipcPort, $uid);
+            $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
+        }, WorkerEvent::PRIORITY_INITIALIZE);
+
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedManager, $priority) {
             $this->startIpc();
 
             $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
-
-            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
-                $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
-                $this->registerIpc($event->getParam('ipcPort'), $uid);
-                $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
-            }, WorkerEvent::PRIORITY_FINALIZE + 2);
 
             $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
                 $this->addNewIpcClients();

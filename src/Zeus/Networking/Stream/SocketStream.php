@@ -107,7 +107,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
                 $pos = strpos($buffer, $ending);
                 if (false !== $pos) {
-                    $buffer = substr($buffer, 0, $pos);
+                    $buffer = \substr($buffer, 0, $pos);
                     $pos += $endingSize;
                 } else {
                     $pos = \strlen($buffer);

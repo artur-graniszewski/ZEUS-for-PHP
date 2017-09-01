@@ -398,7 +398,7 @@ final class SocketMessageBroker
     {
         try {
             while ($connection = $this->ipcServer->accept()) {
-                if ($connection->select(10)) {
+                if ($connection->select(100)) {
                     $in = $connection->read('!');
                     list($uid, $port) = explode(":", $in);
                     //list($uid, $port) = [$uid, 3306];

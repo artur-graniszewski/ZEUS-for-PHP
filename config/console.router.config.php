@@ -7,7 +7,7 @@ return [
     'routes' => [
         'zeus-service' => [
             'options' => [
-                'route' => 'zeus (start|list|status|stop) [<service>]',
+                'route' => 'zeus (start|list|status|stop) [<service>] [<jsonstartparams>]',
                 'defaults' => [
                     'controller' => MainController::class
                 ]
@@ -16,7 +16,7 @@ return [
 
         'zeus-process' => [
             'options' => [
-                'route' => 'zeus (scheduler|worker) [<service>]',
+                'route' => 'zeus (scheduler|worker) [<service>] [<jsonstartparams>]',
                 'defaults' => [
                     'controller' => WorkerController::class
                 ]
