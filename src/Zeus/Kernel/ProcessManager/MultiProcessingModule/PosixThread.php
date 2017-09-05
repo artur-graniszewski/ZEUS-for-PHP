@@ -46,7 +46,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
         $events = $events->getSharedManager();
 
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, 1000);
+        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, -9000);
@@ -152,7 +152,13 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
         $type = $event->getParam('server') ? 'scheduler' : 'worker';
 
-        $argv = [$applicationPath, 'zeus', $type, $event->getTarget()->getConfig()->getServiceName()];
+        $argv = [
+            $applicationPath,
+            'zeus',
+            $type,
+            $event->getTarget()->getConfig()->getServiceName(),
+            json_encode($event->getParams())
+        ];
 
         $thread = new class extends \Worker {
             public $server;
