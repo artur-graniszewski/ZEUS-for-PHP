@@ -162,8 +162,8 @@ class Worker extends AbstractWorker
     {
         $exception = null;
         $this->setWaiting();
-        // @todo: whi this clone is needed in case of pthreads? they should inherit nothing
-        $status = clone $this->getStatus();
+        // @todo: why this clone is needed in case of pthreads? they should inherit nothing
+        $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
