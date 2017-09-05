@@ -160,7 +160,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
             json_encode($event->getParams())
         ];
 
-        $thread = new class extends \Worker {
+        $thread = new class extends \Thread {
             public $server;
             public $argv;
             public $id;
