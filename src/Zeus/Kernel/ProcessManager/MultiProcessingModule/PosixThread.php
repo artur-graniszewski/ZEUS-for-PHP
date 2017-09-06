@@ -99,15 +99,16 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
             }
             if ($thread->isTerminated()) {
                 $this->threads[$threadId] = null;
+                $this->threadIpcs[$threadId] = null;
+                $this->threads = array_filter($this->threads);
+                $this->threadIpcs = array_filter($this->threadIpcs);
 
                 $newEvent = new SchedulerEvent();
                 $newEvent->setParam('uid', $threadId);
                 $newEvent->setParam('threadId', $threadId);
-                $event->setParam('processId', getmypid());
+                $newEvent->setParam('processId', getmypid());
                 $newEvent->setName(SchedulerEvent::EVENT_WORKER_TERMINATED);
                 $this->events->triggerEvent($newEvent);
-                unset ($this->threads[$threadId]);
-                unset($this->threadIpcs[$threadId]);
             }
         }
     }
@@ -235,7 +236,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function onSchedulerInit(SchedulerEvent $event)
     {
-        static::$id = ZEUS_THREAD_ID;
+        static::$id = \ZEUS_THREAD_ID;
     }
 
     /**

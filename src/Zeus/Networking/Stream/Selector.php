@@ -37,7 +37,8 @@ class Selector extends AbstractPhpResource
     {
         foreach ($this->streams as $key => $value) {
             if ($stream === $value[0]) {
-                unset ($this->streams[$key]);
+                $this->streams[$key] = null;
+                $this->streams = array_filter($this->streams);
 //                $this->selectedStreams[self::OP_READ] = [];
 //                $this->selectedStreams[self::OP_WRITE] = [];
 

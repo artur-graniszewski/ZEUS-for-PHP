@@ -167,7 +167,7 @@ class Worker extends AbstractWorker
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
-            $this->collectCycles();
+            //$this->collectCycles();
             $exception = null;
             try {
                 $event = new WorkerEvent();
