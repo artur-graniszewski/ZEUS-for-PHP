@@ -544,7 +544,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-
             if (!$this->isSchedulerActive()) {
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
             }

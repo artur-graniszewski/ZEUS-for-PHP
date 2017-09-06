@@ -126,6 +126,7 @@ class Server implements ListenerAggregateInterface
 
         \stream_set_blocking($socket, false);
         $ipcStream = new SocketStream($socket);
+        $ipcStream->setOption(SO_KEEPALIVE, 1);
         $ipcStream->write("$uid!")->flush();
         $this->ipcClient = $ipcStream;
 

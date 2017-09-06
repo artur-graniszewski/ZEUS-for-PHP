@@ -208,13 +208,13 @@ final class SocketMessageBroker
             return;
         }
 
-        while (true) {
+        //while (true) {
             $this->registerWorkers();
             $this->unregisterWorkers();
             $this->addClients();
             $this->disconnectClients();
             $this->handleClients();
-        }
+        //}
     }
 
     /**

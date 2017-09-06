@@ -7,6 +7,7 @@ use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Networking\Stream\SocketStream;
 use Zeus\ServerService\ManagerEvent;
 
 final class PosixThread implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -23,7 +24,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
     protected $threads = [];
 
     /** @var SocketServer[] */
-    protected $threadIpcs = [];
+    protected $ipcServers = [];
 
     /** @var int */
     protected static $id = 0;
@@ -64,7 +65,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function isPipeBroken()
     {
-        $stream = @stream_socket_client('tcp://' . static::LOOPBACK_INTERFACE . ':' . ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
+        $stream = @stream_socket_client('tcp://' . static::LOOPBACK_INTERFACE . ':' . \ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
 
         if ($stream) {
             fclose($stream);
@@ -74,7 +75,13 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function onWorkerLoop(WorkerEvent $event)
     {
-        if ($this->isPipeBroken()) {
+        if (!isset($this->ipc)) {
+            $stream = @stream_socket_client('tcp://127.0.0.1:' . ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
+            $this->ipc = new SocketStream($stream);
+        }
+
+        if (!$this->ipc->isReadable() || !$this->ipc->isWritable()) {
+            trigger_error("SCHEDULER PIPE IS BROKEN, WORKER WILL NOW EXIT");
             $event->stopWorker(true);
             return;
         }
@@ -85,23 +92,33 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         if ($this->isPipeBroken()) {
             $event = new SchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', $this->ppid);
-            $event->setParam('processId', $this->ppid);
+            $event->setParam('uid', getmypid());
+            $event->setParam('processId', getmypid());
+            $event->setParam('threadId', 1);
             $this->events->triggerEvent($event);
+
             return;
         }
 
         foreach ($this->threads as $threadId => $thread) {
+            if (isset($this->ipcConnections[$threadId])) {
+                continue;
+            }
+
             try {
-                $this->threadIpcs[$threadId]->accept();
+                $connection = $this->ipcServers[$threadId]->accept();
+                $this->ipcConnections[$threadId] = $connection;
             } catch (SocketTimeoutException $exception) {
                 // @todo: verify if nothing to do?
             }
             if ($thread->isTerminated()) {
+
                 $this->threads[$threadId] = null;
-                $this->threadIpcs[$threadId] = null;
+                $this->ipcServers[$threadId] = null;
+                $this->ipcConnections[$threadId] = null;
                 $this->threads = array_filter($this->threads);
-                $this->threadIpcs = array_filter($this->threadIpcs);
+                $this->ipcServers = array_filter($this->ipcServers);
+                $this->ipcConnections = array_filter($this->ipcConnections);
 
                 $newEvent = new SchedulerEvent();
                 $newEvent->setParam('uid', $threadId);
@@ -147,7 +164,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
     }
 
-    protected function startProcess(SchedulerEvent $event)
+    protected function startWorker(SchedulerEvent $event)
     {
         $applicationPath = $_SERVER['PHP_SELF'];
 
@@ -191,6 +208,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
                     }
 
                     unset ($SERVER);
+               
                     require_once($_SERVER[\'SCRIPT_NAME\']);
                 ?>';
 
@@ -202,17 +220,11 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
         };
 
         static::$id++;
-        $socketServer = new SocketServer(0, 5, static::LOOPBACK_INTERFACE);
-        $socketServer->setSoTimeout(1000);
-        $this->threadIpcs[static::$id] = $socketServer;
+        $socketServer = new SocketServer(0, 500, static::LOOPBACK_INTERFACE);
+        $socketServer->setSoTimeout(100);
+        $this->ipcServers[static::$id] = $socketServer;
         $port = $socketServer->getLocalPort();
 
-        $stream = @stream_socket_client('tcp://' . static::LOOPBACK_INTERFACE . ':' . $port, $errno, $errstr, 1);
-        if ($stream === false) {
-
-            throw new \RuntimeException("Could not bind new thread to the Scheduler pipe");
-        }
-        fclose($stream);
 
         $thread->server = $_SERVER;
         $thread->argv = $argv;
@@ -227,7 +239,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function onWorkerCreate(SchedulerEvent $event)
     {
-        $pid = $this->startProcess($event);
+        $pid = $this->startWorker($event);
 
         $event->setParam('uid', $pid);
         $event->setParam('processId', getmypid());
@@ -250,8 +262,8 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
             return $this;
         }
 
-        if ($this->threadIpcs[$pid]->isBound()) {
-            $this->threadIpcs[$pid]->close();
+        if ($this->ipcServers[$pid]->isBound()) {
+            $this->ipcServers[$pid]->close();
         }
 
         return $this;
