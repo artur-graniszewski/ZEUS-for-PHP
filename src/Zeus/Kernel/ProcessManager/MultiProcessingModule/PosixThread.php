@@ -89,12 +89,19 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function onSchedulerLoop(SchedulerEvent $event)
     {
-        if ($this->isPipeBroken()) {
+        if (!isset($this->ipc)) {
+            $stream = @stream_socket_client('tcp://127.0.0.1:' . \ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
+            $this->ipc = new SocketStream($stream);
+        }
+
+        if (!$this->ipc->isReadable() || !$this->ipc->isWritable()) {
+            //trigger_error("SCHEDULER PIPE IS BROKEN, SCHEDULER WILL NOW EXIT");
             $event = new SchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $event->setParam('uid', getmypid());
             $event->setParam('processId', getmypid());
             $event->setParam('threadId', 1);
+            $event->setParam('exception', new \RuntimeException("Scheduler pipe is broken"));
             $this->events->triggerEvent($event);
 
             return;
