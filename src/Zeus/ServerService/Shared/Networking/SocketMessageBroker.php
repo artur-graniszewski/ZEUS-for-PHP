@@ -380,6 +380,7 @@ final class SocketMessageBroker
             \stream_set_blocking($socket, true);
 
             $downstream = new SocketStream($socket);
+            $downstream->setOption(SO_KEEPALIVE, 1);
             $this->downstream[$uid] = $downstream;
             $this->client[$uid] = $client;
             $this->readSelector->register($downstream, Selector::OP_READ);

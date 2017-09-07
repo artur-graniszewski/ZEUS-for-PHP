@@ -2,7 +2,7 @@
 
 namespace Zeus\Networking\Exception;
 
-class SocketTimeoutException extends \RuntimeException
+class SocketTimeoutException extends SocketException
 {
 
 }

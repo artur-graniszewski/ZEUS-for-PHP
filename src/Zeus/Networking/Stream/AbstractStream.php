@@ -34,6 +34,8 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     protected $peerName;
 
+    protected $isBlocking = true;
+
     /**
      * SocketConnection constructor.
      * @param resource $resource
@@ -51,6 +53,28 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function isReadable() : bool
     {
         return $this->isReadable && $this->resource && !$this->isEof();
+    }
+
+    public function isBlocking() : bool
+    {
+        return $this->isBlocking;
+    }
+
+    /**
+     * @param bool $isBlocking
+     * @return $this
+     */
+    public function setBlocking(bool $isBlocking)
+    {
+        $result = stream_set_blocking($this->resource, $isBlocking);
+
+        if (!$result) {
+            throw new \RuntimeException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
+        }
+
+        $this->isBlocking = $isBlocking;
+
+        return $this;
     }
 
     /**

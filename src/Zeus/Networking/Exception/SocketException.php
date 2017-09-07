@@ -2,7 +2,7 @@
 
 namespace Zeus\Networking\Exception;
 
-class SocketException extends \RuntimeException
+class SocketException extends StreamException
 {
 
 }
