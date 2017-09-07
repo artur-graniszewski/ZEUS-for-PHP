@@ -409,6 +409,8 @@ final class SocketMessageBroker
     {
         try {
             while ($connection = $this->ipcServer->accept()) {
+                // @todo: remove setBlocking(), now its needed in ZeusTest\SocketMessageBrokerTest unit tests, otherwise they hang
+                $connection->setBlocking(false);
                 if ($connection->select(100)) {
                     $in = $connection->read('!');
                     list($uid, $port) = explode(":", $in);
@@ -507,6 +509,8 @@ final class SocketMessageBroker
             if (!$this->connection) {
                 try {
                     $connection = $this->workerServer->accept();
+                    // @todo: remove setBlocking(), now its needed in ZeusTest\SocketMessageBrokerTest unit tests, otherwise they hang
+                    $connection->setBlocking(false);
                     $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(1);
                     $event->getTarget()->setRunning();
                 } catch (SocketTimeoutException $exception) {
