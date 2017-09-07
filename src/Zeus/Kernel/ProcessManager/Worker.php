@@ -138,6 +138,7 @@ class Worker extends AbstractWorker
         // process is terminating, time to live equals zero
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
+        trigger_error("EXITING");
         $status->setCode(WorkerState::EXITING);
 
         $payload = $status->toArray();
@@ -209,8 +210,12 @@ class Worker extends AbstractWorker
             ]
         ];
 
-        $process->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER);
-
+        try {
+            $process->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER);
+        } catch (\Exception $ex) {
+            $event->stopWorker(true);
+            $event->setParam('exception', $ex);
+        }
         return $this;
     }
 

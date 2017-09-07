@@ -492,8 +492,11 @@ final class SocketMessageBroker
                 $this->ipcClient->read();
             }
         } catch (\Exception $ex) {
-            // @todo: connection severed, leader died, wait for re-election?
-            trigger_error("CONNECTION SEVERED");
+            // @todo: connection severed, leader died, exit
+            //trigger_error("CONNECTION SEVERED");
+            $event->stopWorker(true);
+
+            return;
         }
 
 //        if (!$sent) {

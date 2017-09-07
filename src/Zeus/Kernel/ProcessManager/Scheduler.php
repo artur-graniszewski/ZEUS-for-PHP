@@ -232,9 +232,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             throw new ProcessManagerException("Scheduler not running: " . $fileName, ProcessManagerException::SCHEDULER_NOT_RUNNING);
         }
 
-        $pid = (int) $pid;
-
-        $this->stopWorker($pid, true);
         $this->setSchedulerActive(false);
         $schedulerExited = false;
         $this->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $event) use (&$schedulerExited) {
@@ -242,8 +239,11 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
+        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
+
         $time = time() + 3;
         while (time() < $time && $schedulerExited === false) {
+
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         }
 
