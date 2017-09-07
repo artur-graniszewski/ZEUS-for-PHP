@@ -23,7 +23,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
     /** @var int Parent PID */
     public $ppid;
 
-    /** @var \Worker[] */
+    /** @var \Thread[] */
     protected $threads = [];
 
     /** @var SocketServer[] */

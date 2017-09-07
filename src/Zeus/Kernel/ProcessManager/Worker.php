@@ -138,7 +138,6 @@ class Worker extends AbstractWorker
         // process is terminating, time to live equals zero
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
-        trigger_error("EXITING");
         $status->setCode(WorkerState::EXITING);
 
         $payload = $status->toArray();
