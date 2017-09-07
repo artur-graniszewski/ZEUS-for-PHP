@@ -50,7 +50,7 @@ final class SocketMessageBroker
     protected $workers = [];
 
     /** @var Selector */
-    protected $selector;
+    protected $readSelector;
 
     /** @var SocketStream[] */
     protected $client = [];
@@ -60,6 +60,9 @@ final class SocketMessageBroker
 
     /** @var SocketStream[] */
     protected $connectionQueue = [];
+
+    /** @var Selector */
+    protected $writeSelector;
 
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
@@ -169,7 +172,8 @@ final class SocketMessageBroker
                 $this->workerServer = null;
                 $event->getTarget()->setRunning();
                 $this->createServer(1000);
-                $this->selector = new Selector();
+                $this->readSelector = new Selector();
+                $this->writeSelector = new Selector();
                 //trigger_error(getmypid() . " BECAME A LEADER");
 
                 return $this;
@@ -270,12 +274,14 @@ final class SocketMessageBroker
 
         $now = microtime(true);
         do {
-            if (!$this->selector->select(10000)) {
+            if (!$this->readSelector->select(10000)) {
                 return $this;
             }
 
-            $streamsToRead = $this->selector->getSelectedStreams(Selector::OP_READ);
-            $streamsToWrite = $this->selector->getSelectedStreams(Selector::OP_WRITE);
+            $streamsToRead = $this->readSelector->getSelectedStreams(Selector::OP_READ);
+
+            $this->writeSelector->select(0);
+            $streamsToWrite = $this->writeSelector->getSelectedStreams(Selector::OP_WRITE);
 
             foreach ($streamsToRead as $index => $input) {
                 $output = null;
@@ -326,7 +332,8 @@ final class SocketMessageBroker
 
                 }
             }
-            $this->selector->unregister($stream);
+            $this->readSelector->unregister($stream);
+            $this->writeSelector->unregister($stream);
             unset ($this->client[$key]);
         }
 
@@ -339,7 +346,8 @@ final class SocketMessageBroker
 
                 }
             }
-            $this->selector->unregister($stream);
+            $this->readSelector->unregister($stream);
+            $this->writeSelector->unregister($stream);
             unset ($this->downstream[$key]);
         }
 
@@ -374,8 +382,10 @@ final class SocketMessageBroker
             $downstream = new SocketStream($socket);
             $this->downstream[$uid] = $downstream;
             $this->client[$uid] = $client;
-            $this->selector->register($downstream, Selector::OP_ALL);
-            $this->selector->register($client, Selector::OP_ALL);
+            $this->readSelector->register($downstream, Selector::OP_READ);
+            $this->readSelector->register($client, Selector::OP_READ);
+            $this->writeSelector->register($downstream, Selector::OP_WRITE);
+            $this->writeSelector->register($client, Selector::OP_WRITE);
 
             break;
 
@@ -427,7 +437,7 @@ final class SocketMessageBroker
     {
         foreach ($this->ipc as $uid => $ipc) {
             try {
-                $ipc->write(' ')->flush();
+                //$ipc->write(' ')->flush();
 
                 if (!$ipc->isClosed() && $ipc->isReadable() && $ipc->isWritable()) {
                     continue;

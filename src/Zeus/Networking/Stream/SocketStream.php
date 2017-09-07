@@ -102,6 +102,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
                 $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
 
                 if ($buffer === '') {
+                    @$readMethod($this->resource, 0);
                     break;
                 }
 

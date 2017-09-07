@@ -179,7 +179,7 @@ final class SocketServer
             throw new SocketTimeoutException('Socket timed out');
         }
 
-        stream_set_blocking($newSocket, false);
+        stream_set_blocking($newSocket, true);
 
         if (function_exists('stream_set_chunk_size')) {
             //stream_set_chunk_size($newSocket, 1);
