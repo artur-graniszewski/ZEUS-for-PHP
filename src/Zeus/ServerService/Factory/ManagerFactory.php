@@ -43,6 +43,8 @@ final class ManagerFactory implements FactoryInterface
         $configs = $config['zeus_process_manager']['services'];
         $services = [];
 
+        $vmName = defined('HHVM_VERSION') ? 'HHVM' : 'PHP';
+        $mainLogger->notice(sprintf("Running on %s-%s using %s %s", php_uname('s'), php_uname('r'), $vmName, phpversion()));
         $mainLogger->info("Scanning configuration for services...");
         $manager = new $requestedName($options ? $options : []);
         $manager->setLogger($mainLogger);

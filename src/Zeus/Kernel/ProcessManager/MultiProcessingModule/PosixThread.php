@@ -11,11 +11,13 @@ use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\ServerService\ManagerEvent;
 
-final class PosixThread implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
+final class PosixThread extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     use GarbageCollector;
 
     const LOOPBACK_INTERFACE = '127.0.0.1';
+
+    const MIN_STABLE_PHP_VERSION = '7.2.0';
 
     /** @var EventManagerInterface */
     protected $events;
@@ -96,7 +98,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
         // @todo: investigate why PHP must have a stderr stream open for each thread, otherwise thread may hang on exit
         file_put_contents("php://stderr", "");
-
+        file_put_contents("php://stdout", "");
 
         if (!isset($this->ipc)) {
             $stream = @stream_socket_client('tcp://127.0.0.1:' . \ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
@@ -156,7 +158,7 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
             $event->setParam('uid', getmypid());
             $event->setParam('processId', getmypid());
             $event->setParam('threadId', \ZEUS_THREAD_ID);
-            $event->setParam('exception', new \RuntimeException("Scheduler pipe is broken"));
+            //$event->setParam('exception', new \RuntimeException("Scheduler pipe is broken"));
             $this->events->triggerEvent($event);
 
         }
@@ -286,6 +288,9 @@ final class PosixThread implements MultiProcessingModuleInterface, SeparateAddre
 
     protected function onSchedulerInit(SchedulerEvent $event)
     {
+        if (version_compare(phpversion(), self::MIN_STABLE_PHP_VERSION, "<")) {
+            $this->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
+        }
         static::$id = \ZEUS_THREAD_ID;
     }
 

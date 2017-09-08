@@ -3,10 +3,11 @@
 namespace ZeusTest\Helpers;
 
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\ProcessManager\MultiProcessingModule\AbstractModule;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleInterface;
 
-class DummyMpm implements MultiProcessingModuleInterface
+class DummyMpm extends AbstractModule implements MultiProcessingModuleInterface
 {
 
     /**

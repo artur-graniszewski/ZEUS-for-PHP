@@ -241,7 +241,10 @@ final class Manager
     public function startServices($serviceNames)
     {
         $plugins = $this->getPluginRegistry()->count();
-        $this->logger->info(sprintf("Starting Server Service Manager with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+        $this->logger->info(sprintf("Service Manager started with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+
+        $this->logger->notice(sprintf("Starting %d service%s: %s", count($serviceNames), count($serviceNames) !== 1 ? 's' : '', implode(", ", $serviceNames)));
+
 
         $event = $this->getEvent();
 
@@ -284,7 +287,7 @@ final class Manager
      */
     public function stopServices($services, $mustBeRunning)
     {
-        $this->logger->debug(sprintf("Stopping services"));
+        $this->logger->info(sprintf("Stopping services"));
         $servicesAmount = 0;
         $servicesStopped = 0;
         foreach ($services as $service) {
@@ -303,7 +306,7 @@ final class Manager
             $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
         }
 
-        $this->logger->info(sprintf("Stopped %d service(s)", $servicesStopped));
+        $this->logger->notice(sprintf("Stopped %d service(s)", $servicesStopped));
 
         return $servicesAmount - $servicesStopped;
     }

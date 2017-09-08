@@ -10,7 +10,7 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBr
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
-final class ProcessOpen implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
+final class ProcessOpen extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;

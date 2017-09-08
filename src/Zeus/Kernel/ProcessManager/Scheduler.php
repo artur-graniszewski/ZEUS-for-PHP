@@ -370,7 +370,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
     protected function onSchedulerStart()
     {
-        $this->log(Logger::INFO, "Scheduler started");
+        $this->log(Logger::NOTICE, "Scheduler started");
         $this->createWorkers($this->getConfig()->getStartProcesses());
 
         $this->mainLoop();
@@ -426,7 +426,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         $this->waitForWorkersToStop();
 
-        $this->log(Logger::INFO, "Scheduler terminated");
+        $this->log(Logger::NOTICE, "Scheduler terminated");
         $this->log(Logger::INFO, "Stopping IPC");
     }
 

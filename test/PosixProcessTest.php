@@ -5,6 +5,8 @@ namespace ZeusTest;
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\SharedEventManager;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
@@ -60,7 +62,9 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler(1);
         $sm->setFactory(PosixProcess::class, MultiProcessingModuleFactory::class);
         /** @var PosixProcess $service */
-        $service = $sm->build(PosixProcess::class, ['scheduler' => $scheduler, 'scheduler_event' => new SchedulerEvent()]);
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
+        $service = $sm->build(PosixProcess::class, ['scheduler' => $scheduler, 'scheduler_event' => new SchedulerEvent(), 'logger_adapter' => $logger]);
         $this->assertInstanceOf(PosixProcess::class, $service);
 
         $eventLaunched = false;

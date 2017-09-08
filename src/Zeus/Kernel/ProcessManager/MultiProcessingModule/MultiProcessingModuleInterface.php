@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerInterface;
 
 interface MultiProcessingModuleInterface
 {
@@ -11,6 +12,8 @@ interface MultiProcessingModuleInterface
      * @return mixed
      */
     public function attach(EventManagerInterface $events);
+
+    public function setLogger(LoggerInterface $logger);
 
     /**
      * @return MultiProcessingModuleCapabilities
