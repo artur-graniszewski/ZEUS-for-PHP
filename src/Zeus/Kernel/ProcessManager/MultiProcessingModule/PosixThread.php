@@ -74,6 +74,10 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
     protected function onWorkerLoop(WorkerEvent $event)
     {
+        // @todo: investigate why PHP must have a stderr stream open for each thread, otherwise thread may hang on exit
+        file_put_contents("php://stderr", "");
+        file_put_contents("php://stdout", "");
+
         if (!isset($this->ipc)) {
             $stream = @stream_socket_client('tcp://127.0.0.1:' . \ZEUS_THREAD_CONN_PORT, $errno, $errstr, 1);
 
@@ -307,6 +311,10 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
         if ($this->ipcServers[$pid]->isBound()) {
             $this->ipcServers[$pid]->close();
+            if (isset($this->ipcConnections[$pid])) {
+                $this->ipcConnections[$pid]->close();
+                unset($this->ipcConnections[$pid]);
+            }
             unset($this->ipcServers[$pid]);
         }
 

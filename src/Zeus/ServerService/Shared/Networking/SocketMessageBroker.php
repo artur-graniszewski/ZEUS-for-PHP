@@ -493,7 +493,6 @@ final class SocketMessageBroker
             }
         } catch (\Exception $ex) {
             // @todo: connection severed, leader died, exit
-            //trigger_error("CONNECTION SEVERED");
             $event->stopWorker(true);
 
             return;

@@ -599,10 +599,20 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     protected function waitForWorkersToStop()
     {
         // wait for workers
-        $time = time() + 3;
+        $timeout = time() + 5;
 
-        while (time() < $time && count($this->workers) > 0) {
+        $lastCount = 0;
+        $lastTime = time();
+        while (($newTime = time()) < $timeout && ($newCount = count($this->workers)) > 0) {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+
+            if ($newCount !== $lastCount && $newTime !== $lastTime) {
+                $this->logger->debug(sprintf("Waiting for %d workers to terminate", $newCount));
+            }
+
+            $lastTime = $newTime;
+
+            $lastCount = $newCount;
         }
 
         return $this;
