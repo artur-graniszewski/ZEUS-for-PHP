@@ -280,7 +280,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      * @param bool $useSoftTermination
      * @return $this
      */
-    protected function stopWorker($uid, $useSoftTermination)
+    protected function stopWorker(int $uid, bool $useSoftTermination)
     {
         if (!isset($this->processes[$uid])) {
             $this->getLogger()->warn("Trying to stop already detached process $uid");
