@@ -225,6 +225,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      */
     public function stop()
     {
+        $this->logger->debug("Stopping scheduler");
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
 
         $pid = @file_get_contents($fileName);
@@ -233,21 +234,8 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         }
 
         $this->setSchedulerActive(false);
-        $schedulerExited = false;
-        $this->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $event) use (&$schedulerExited) {
-            $schedulerExited = true;
-            $event->stopPropagation(true);
-        }, SchedulerEvent::PRIORITY_REGULAR + 1);
+        $this->stopWorker($pid, true);
 
-        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
-
-        $time = time() + 3;
-        while (time() < $time && $schedulerExited === false) {
-
-            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-        }
-
-        $this->log(Logger::INFO, "Scheduler stopped");
         unlink($fileName);
 
         return $this;
@@ -424,10 +412,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             }
         }
 
-        $this->waitForWorkersToStop();
-
         $this->log(Logger::NOTICE, "Scheduler terminated");
-        $this->log(Logger::INFO, "Stopping IPC");
     }
 
     /**
@@ -544,9 +529,9 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-            if (!$this->isSchedulerActive()) {
-                $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            }
+//            if (!$this->isSchedulerActive()) {
+//                $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
+//            }
         } while ($this->isSchedulerActive());
 
         return $this;

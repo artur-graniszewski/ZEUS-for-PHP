@@ -132,17 +132,27 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->readPipes();
     }
 
-    public function onSchedulerLoop(SchedulerEvent $event)
+    protected function checkProcesses()
     {
         $this->readPipes();
+
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
+            $event = new SchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_WORKER_TERMINATED);
             $event->setParam('uid', $pid);
+            $event->setParam('threadId', 1);
             $this->events->triggerEvent($event);
         }
 
-        $this->onWorkerLoop();
+        $this->getPcntlBridge()->pcntlSignalDispatch();
+
+        return $this;
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+        $this->checkProcesses();
     }
 
     protected function readPipes()
@@ -242,20 +252,21 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     }
 
     /**
-     * @param int $pid
+     * @param int $uid
      * @param bool $useSoftTermination
      * @return $this
      */
-    protected function stopWorker($pid, $useSoftTermination)
+    protected function stopWorker($uid, $useSoftTermination)
     {
-        $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
+        $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
 
-        $process = $this->processes[$pid];
+        if (!isset($this->processes[$uid])) {
+            $this->getLogger()->warn("Trying to stop already detached process $uid");
 
-        // @todo: This should NOT be necessary!
-        if (!$process) {
             return $this;
         }
+
+        $process = $this->processes[$uid];
 
         foreach($process['pipes'] as $pipe) {
             if (is_resource($pipe)) {
@@ -265,7 +276,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
         proc_terminate($process['resource']);
 
-        $this->processes[$pid] = null;
+        $this->processes[$uid] = null;
 
         return $this;
     }
