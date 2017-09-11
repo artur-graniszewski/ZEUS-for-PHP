@@ -29,6 +29,8 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     public function __construct()
     {
         $this->ppid = getmypid();
+
+        parent::__construct();
     }
 
     /**
@@ -60,7 +62,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->events = $events;
         $events = $events->getSharedManager();
         $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerInit'], -9000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onWorkerWaiting'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
@@ -92,7 +94,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         return $isSupported;
     }
 
-
     /**
      * @param EventInterface $event
      */
@@ -101,14 +102,14 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
     }
 
-
     public function onSchedulerTerminate()
     {
-        $event = new SchedulerEvent();
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-        $event->setParam('uid', getmypid());
-        $event->setParam('processId', getmypid());
-        $this->events->triggerEvent($event);
+//        $event = new SchedulerEvent();
+//        $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
+//        $event->setParam('uid', getmypid());
+//        $event->setParam('processId', getmypid());
+//        $event->setParam('threadId', 1);
+//        $this->events->triggerEvent($event);
     }
 
     public function onWorkerRunning()
@@ -116,33 +117,30 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->getPcntlBridge()->pcntlSigprocmask(SIG_BLOCK, [SIGTERM]);
     }
 
-    public function onWorkerLoop()
+    public function onWorkerLoop(WorkerEvent $event)
     {
         $this->getPcntlBridge()->pcntlSignalDispatch();
+        $this->checkPipe();
     }
 
     public function onWorkerWaiting()
     {
         $this->getPcntlBridge()->pcntlSigprocmask(SIG_UNBLOCK, [SIGTERM]);
-        $this->onWorkerLoop();
+        $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
     public function onKernelLoop()
     {
-        $this->readPipes();
+        $this->checkProcessPipes();
     }
 
     protected function checkProcesses()
     {
-        $this->readPipes();
+        $this->checkProcessPipes();
 
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $event = new SchedulerEvent();
-            $event->setName(SchedulerEvent::EVENT_WORKER_TERMINATED);
-            $event->setParam('uid', $pid);
-            $event->setParam('threadId', 1);
-            $this->events->triggerEvent($event);
+            $this->raiseWorkerExitedEvent($pid, $pid, 1);
         }
 
         $this->getPcntlBridge()->pcntlSignalDispatch();
@@ -153,9 +151,10 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     public function onSchedulerLoop(SchedulerEvent $event)
     {
         $this->checkProcesses();
+        $this->checkPipe();
     }
 
-    protected function readPipes()
+    protected function checkProcessPipes()
     {
         $stdin = $stderr = [];
         foreach ($this->processes as $process) {
@@ -175,8 +174,10 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         return $this;
     }
 
-    public function onWorkerInit()
+    public function onWorkerInit(WorkerEvent $event)
     {
+        $this->setConnectionPort($event->getParam('connectionPort'));
+
         $pcntl = $this->getPcntlBridge();
         // we are the new process
         $pcntl->pcntlSignal(SIGTERM, SIG_DFL);
@@ -188,8 +189,26 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
     public function onSchedulerStop()
     {
+        $this->checkPipe();
         $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
-        $this->onWorkerLoop();
+        $this->getPcntlBridge()->pcntlSignalDispatch();
+
+        parent::onSchedulerStop();
+
+        $this->checkWorkers();
+        foreach ($this->processes as $uid => $worker) {
+            $this->stopWorker($uid, true);
+        }
+
+        while ($this->processes) {
+            $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
+            $this->getPcntlBridge()->pcntlSignalDispatch();
+            $this->checkWorkers();
+
+            if ($this->processes) {
+                sleep(1);
+            }
+        }
     }
 
     protected function startWorker(SchedulerEvent $event)
@@ -233,22 +252,27 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
     public function onWorkerCreate(SchedulerEvent $event)
     {
+        $pipe = $this->createPipe();
+        $event->setParam('connectionPort', $pipe->getLocalPort());
         $pid = $this->startWorker($event);
+        $this->registerWorker($pid, $pipe);
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
         $event->setParam('threadId', 1);
     }
 
-    public function onSchedulerInit()
+    public function onSchedulerInit(SchedulerEvent $event)
     {
+        $this->setConnectionPort($event->getParam('connectionPort'));
+
         $pcntl = $this->getPcntlBridge();
-        $onTaskTerminate = function() { $this->onSchedulerTerminate(); };
+        $onTerminate = function() { $this->onSchedulerTerminate(); };
         //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);
-        $pcntl->pcntlSignal(SIGTERM, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGQUIT, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGTSTP, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGINT, $onTaskTerminate);
-        $pcntl->pcntlSignal(SIGHUP, $onTaskTerminate);
+        $pcntl->pcntlSignal(SIGTERM, $onTerminate);
+        $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
+        $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
+        $pcntl->pcntlSignal(SIGINT, $onTerminate);
+        $pcntl->pcntlSignal(SIGHUP, $onTerminate);
     }
 
     /**
@@ -258,12 +282,16 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     protected function stopWorker($uid, $useSoftTermination)
     {
-        $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
-
         if (!isset($this->processes[$uid])) {
             $this->getLogger()->warn("Trying to stop already detached process $uid");
 
             return $this;
+        }
+
+        if ($useSoftTermination) {
+            $this->unregisterWorker($uid);
+        } else {
+            $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
         }
 
         $process = $this->processes[$uid];

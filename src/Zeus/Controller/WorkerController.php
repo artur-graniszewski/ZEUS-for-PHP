@@ -81,7 +81,7 @@ class WorkerController extends AbstractActionController
                     break;
 
                 case 'scheduler':
-                    $this->starSchedulerForService($serviceName);
+                    $this->starSchedulerForService($serviceName, json_decode($startParams, true));
                     break;
             }
         } catch (\Throwable $exception) {
@@ -203,17 +203,6 @@ class WorkerController extends AbstractActionController
                     return;
                 }
             }, 2000);
-
-            // @todo: below is a thread code
-//            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP,
-//                function(SchedulerEvent $event) use ($scheduler) {
-//                    trigger_error(\Thread::getCurrentThreadId() . " S LOOP");
-//                    if (!file_exists($scheduler->getPidFile()) || file_get_contents($scheduler->getPidFile()) != getmypid()) {
-//                        echo "CLOSE SCHEDULER!\n";
-//                        $scheduler->setSchedulerActive(false);
-//                    }
-//                }, ProcessEvent::PRIORITY_FINALIZE + 1);
-
         });
 
         $this->manager->startService($serviceName);
@@ -223,9 +212,9 @@ class WorkerController extends AbstractActionController
         if ($startParams) {
             $schedulerEvent->setParams($startParams);
         }
+
         $schedulerEventManager->triggerEvent($schedulerEvent);
     }
-
 
     /**
      * @param ServerServiceInterface[] $services

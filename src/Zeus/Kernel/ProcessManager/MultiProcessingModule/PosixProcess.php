@@ -27,6 +27,8 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     public function __construct()
     {
         $this->ppid = getmypid();
+
+        parent::__construct();
     }
 
     /**

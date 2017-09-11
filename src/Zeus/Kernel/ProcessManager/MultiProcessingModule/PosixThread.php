@@ -190,13 +190,14 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
         static::$id++;
 
-        $port = $this->registerWorker(static::$id);
+        $pipe = $this->createPipe();
+        $this->registerWorker(static::$id, $pipe);
 
         $this->collectCycles();
         $thread->server = $_SERVER;
         $thread->argv = $argv;
         $thread->id = static::$id;
-        $thread->ipcPort = $port;
+        $thread->ipcPort = $pipe->getLocalPort();
         $thread->start(PTHREADS_INHERIT_NONE);
 
         $this->workers[static::$id] = $thread;

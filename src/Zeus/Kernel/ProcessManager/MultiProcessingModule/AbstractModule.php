@@ -197,15 +197,25 @@ abstract class AbstractModule
 
     /**
      * @param int $uid
-     * @return int
+     * @param SocketServer $pipe
+     * @return $this
      */
-    protected function registerWorker(int $uid)
+    protected function registerWorker(int $uid, SocketServer $pipe)
+    {
+        $this->ipcServers[$uid] = $pipe;
+
+        return $this;
+    }
+
+    /**
+     * @return SocketServer
+     */
+    protected function createPipe()
     {
         $socketServer = new SocketServer(0, 500, static::LOOPBACK_INTERFACE);
         $socketServer->setSoTimeout(10);
-        $this->ipcServers[$uid] = $socketServer;
 
-        return $socketServer->getLocalPort();
+        return $socketServer;
     }
 
     protected function onSchedulerStop()
