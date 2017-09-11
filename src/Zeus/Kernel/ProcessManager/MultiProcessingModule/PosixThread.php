@@ -5,12 +5,8 @@ namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PThreads\ThreadBootstrap;
-use Zeus\Networking\Exception\SocketTimeoutException;
-use Zeus\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\Networking\Stream\Selector;
-use Zeus\Networking\Stream\SocketStream;
 use Zeus\ServerService\ManagerEvent;
 
 final class PosixThread extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -52,10 +48,16 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, WorkerEvent::PRIORITY_FINALIZE);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
 
         return $this;
+    }
+
+    protected function onWorkerInit()
+    {
+        $this->setConnectionPort(\ZEUS_THREAD_CONN_PORT);
     }
 
     protected function onServiceStop()
@@ -216,6 +218,8 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         if (version_compare((float) phpversion(), self::MIN_STABLE_PHP_VERSION, "<")) {
             $this->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
         }
+
+        $this->setConnectionPort(\ZEUS_THREAD_CONN_PORT);
         static::$id = \ZEUS_THREAD_ID;
     }
 

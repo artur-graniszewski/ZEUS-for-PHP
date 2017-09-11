@@ -120,9 +120,10 @@ abstract class AbstractModule
     {
         if (!$this->isTerminating) {
             if (!isset($this->ipc)) {
-                $stream = @stream_socket_client('tcp://127.0.0.1:' . $this->getConnectionPort(), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
+                $stream = @stream_socket_client(sprintf('tcp://%s:%d', static::LOOPBACK_INTERFACE, $this->getConnectionPort()), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
 
                 if (!$stream) {
+                    $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getConnectionPort());
                     $this->isTerminating = true;
                 } else {
                     $this->ipc = new SocketStream($stream);
@@ -215,8 +216,15 @@ abstract class AbstractModule
     /**
      * @return int
      */
-    protected function getConnectionPort()
+    protected function getConnectionPort() : int
     {
         return $this->connectionPort;
+    }
+
+    protected function setConnectionPort(int $port)
+    {
+        $this->connectionPort = $port;
+
+        return $this;
     }
 }
