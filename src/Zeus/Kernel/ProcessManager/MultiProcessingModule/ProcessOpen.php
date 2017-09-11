@@ -9,6 +9,7 @@ use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\ServerService\ManagerEvent;
 
 final class ProcessOpen extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
@@ -21,16 +22,48 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
 
-    protected $processes = [];
+    protected $workers = [];
+
+    protected $stdOut;
+
+    protected $stdErr;
+
+    /**
+     * @param bool $throwException
+     * @return bool
+     * @throws \Exception
+     */
+    public static function isSupported($throwException = false)
+    {
+        $isSupported = function_exists('proc_open');
+
+        if (!$isSupported && $throwException) {
+            throw new \RuntimeException(sprintf("proc_open() is required by %s but disabled in PHP",
+                    static::class
+                )
+            );
+        }
+
+        return $isSupported;
+    }
 
     /**
      * PosixDriver constructor.
      */
     public function __construct()
     {
+        $this->stdOut = @fopen('php://stdout', 'w');
+        $this->stdErr = @fopen('php://stderr', 'w');
+
         $this->ppid = getmypid();
 
         parent::__construct();
+    }
+
+    public function __destruct()
+    {
+        @fclose($this->stdOut);
+        @fclose($this->stdErr);
     }
 
     /**
@@ -59,39 +92,29 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     public function attach(EventManagerInterface $events)
     {
-        $this->events = $events;
+        parent::attach($events);
+
         $events = $events->getSharedManager();
+
         $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onWorkerWaiting'], -9000);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onProcessInit'], -9000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
+        $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
 
         return $this;
     }
 
-    /**
-     * @param bool $throwException
-     * @return bool
-     * @throws \Exception
-     */
-    public static function isSupported($throwException = false)
+    public function onServiceStop()
     {
-        $isSupported = function_exists('proc_open');
-
-        if (!$isSupported && $throwException) {
-            throw new \RuntimeException(sprintf("proc_open() is required by %s but disabled in PHP",
-                    static::class
-                )
-            );
+        while ($this->workers) {
+            $this->checkWorkers();
+            usleep(10000);
         }
-
-        return $isSupported;
     }
 
     /**
@@ -102,62 +125,61 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
     }
 
-    public function onSchedulerTerminate()
-    {
-//        $event = new SchedulerEvent();
-//        $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-//        $event->setParam('uid', getmypid());
-//        $event->setParam('processId', getmypid());
-//        $event->setParam('threadId', 1);
-//        $this->events->triggerEvent($event);
-    }
-
-    public function onWorkerRunning()
-    {
-        $this->getPcntlBridge()->pcntlSigprocmask(SIG_BLOCK, [SIGTERM]);
-    }
-
     public function onWorkerLoop(WorkerEvent $event)
     {
-        $this->getPcntlBridge()->pcntlSignalDispatch();
         $this->checkPipe();
+
+        if ($this->isTerminating()) {
+            $event->stopWorker(true);
+            $event->stopPropagation(true);
+        }
     }
 
-    public function onWorkerWaiting()
+    protected function checkWorkers()
     {
-        $this->getPcntlBridge()->pcntlSigprocmask(SIG_UNBLOCK, [SIGTERM]);
-        $this->getPcntlBridge()->pcntlSignalDispatch();
-    }
-
-    public function onKernelLoop()
-    {
-        $this->checkProcessPipes();
-    }
-
-    protected function checkProcesses()
-    {
+        parent::checkWorkers();
         $this->checkProcessPipes();
 
         // catch other potential signals to avoid race conditions
-        while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $this->raiseWorkerExitedEvent($pid, $pid, 1);
-        }
+        while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
+            $this->checkProcessPipes();
+            @fclose($this->workers[$pid]['resource']);
 
-        $this->getPcntlBridge()->pcntlSignalDispatch();
+            $this->unregisterWorker($pid);
+            $this->raiseWorkerExitedEvent($pid, $pid, 1);
+            unset ($this->workers[$pid]);
+        }
 
         return $this;
     }
 
+    public function onKernelLoop(SchedulerEvent $event)
+    {
+        $this->checkWorkers();
+    }
+
     public function onSchedulerLoop(SchedulerEvent $event)
     {
-        $this->checkProcesses();
+        $wasExiting = $this->isTerminating();
+
+        $this->checkWorkers();
         $this->checkPipe();
+
+        if ($this->isTerminating() && !$wasExiting) {
+            $event->stopPropagation();
+            $event = new SchedulerEvent();
+            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
+            $event->setParam('uid', getmypid());
+            $event->setParam('processId', getmypid());
+            $event->setParam('threadId', 1);
+            $this->events->triggerEvent($event);
+        }
     }
 
     protected function checkProcessPipes()
     {
         $stdin = $stderr = [];
-        foreach ($this->processes as $process) {
+        foreach ($this->workers as $process) {
             if (isset($process['pipes'][1])) {
                 $stdin[] = $process['pipes'][1];
                 $stderr[] = $process['pipes'][2];
@@ -167,46 +189,45 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $streams = array_merge($stdin, $stderr);
         if ($streams && stream_select($streams, $null, $null, 0)) {
             foreach ($streams as $stream) {
-                fpassthru($stream);
+                if (in_array($stream, $stdin)) {
+                    $output = $this->stdOut;
+                } else {
+                    $output = $this->stdErr;
+                }
+
+                $outputArray = [$output];
+                if (stream_select($null, $outputArray, $null, 0)) {
+                    fwrite($output, fread($stream, 16384));
+                }
             }
+
+            //$streams = array_merge($stdin, $stderr);
         }
 
         return $this;
     }
 
-    public function onWorkerInit(WorkerEvent $event)
+    public function onProcessInit(EventInterface $event)
     {
         $this->setConnectionPort($event->getParam('connectionPort'));
-
-        $pcntl = $this->getPcntlBridge();
-        // we are the new process
-        $pcntl->pcntlSignal(SIGTERM, SIG_DFL);
-        $pcntl->pcntlSignal(SIGINT, SIG_DFL);
-        $pcntl->pcntlSignal(SIGHUP, SIG_DFL);
-        $pcntl->pcntlSignal(SIGQUIT, SIG_DFL);
-        $pcntl->pcntlSignal(SIGTSTP, SIG_DFL);
     }
 
     public function onSchedulerStop()
     {
         $this->checkPipe();
-        $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
-        $this->getPcntlBridge()->pcntlSignalDispatch();
 
         parent::onSchedulerStop();
 
         $this->checkWorkers();
-        foreach ($this->processes as $uid => $worker) {
+        foreach ($this->workers as $uid => $worker) {
             $this->stopWorker($uid, true);
         }
 
-        while ($this->processes) {
-            $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
-            $this->getPcntlBridge()->pcntlSignalDispatch();
+        while ($this->workers) {
             $this->checkWorkers();
 
-            if ($this->processes) {
-                sleep(1);
+            if ($this->workers) {
+                usleep(1000);
             }
         }
     }
@@ -239,10 +260,10 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $status = proc_get_status($process);
         $pid = $status['pid'];
 
-        stream_set_blocking($pipes[0], false);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-        $this->processes[$pid] = [
+//        stream_set_blocking($pipes[0], false);
+//        stream_set_blocking($pipes[1], false);
+//        stream_set_blocking($pipes[2], false);
+        $this->workers[$pid] = [
             'resource' => $process,
             'pipes' => $pipes
         ];
@@ -261,20 +282,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $event->setParam('threadId', 1);
     }
 
-    public function onSchedulerInit(SchedulerEvent $event)
-    {
-        $this->setConnectionPort($event->getParam('connectionPort'));
-
-        $pcntl = $this->getPcntlBridge();
-        $onTerminate = function() { $this->onSchedulerTerminate(); };
-        //pcntl_sigprocmask(SIG_BLOCK, [SIGCHLD]);
-        $pcntl->pcntlSignal(SIGTERM, $onTerminate);
-        $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
-        $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
-        $pcntl->pcntlSignal(SIGINT, $onTerminate);
-        $pcntl->pcntlSignal(SIGHUP, $onTerminate);
-    }
-
     /**
      * @param int $uid
      * @param bool $useSoftTermination
@@ -282,29 +289,41 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     protected function stopWorker(int $uid, bool $useSoftTermination)
     {
-        if (!isset($this->processes[$uid])) {
+        if ($useSoftTermination) {
+            parent::stopWorker($uid, $useSoftTermination);
+
+            return $this;
+        } else {
+            $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
+        }
+
+        if (!isset($this->workers[$uid])) {
             $this->getLogger()->warn("Trying to stop already detached process $uid");
 
             return $this;
         }
 
-        if ($useSoftTermination) {
-            $this->unregisterWorker($uid);
-        } else {
-            $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
-        }
+        return $this;
+        $process = $this->workers[$uid];
 
-        $process = $this->processes[$uid];
+        $this->closeProcessPipes($uid);
+
+        proc_terminate($process['resource']);
+
+        $this->workers[$uid] = null;
+
+        return $this;
+    }
+
+    protected function closeProcessPipes(int $uid)
+    {
+        $process = $this->workers[$uid];
 
         foreach($process['pipes'] as $pipe) {
             if (is_resource($pipe)) {
                 fclose($pipe);
             }
         }
-
-        proc_terminate($process['resource']);
-
-        $this->processes[$uid] = null;
 
         return $this;
     }

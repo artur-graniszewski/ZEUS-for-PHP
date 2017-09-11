@@ -403,7 +403,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         $this->setSchedulerActive(false);
 
-        $this->log(Logger::INFO, "Terminating Scheduler");
+        $this->log(Logger::INFO, "Terminating scheduled workers");
 
         if ($this->workers) {
             foreach (array_keys($this->workers->toArray()) as $pid) {
@@ -529,9 +529,6 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-//            if (!$this->isSchedulerActive()) {
-//                $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
-//            }
         } while ($this->isSchedulerActive());
 
         return $this;

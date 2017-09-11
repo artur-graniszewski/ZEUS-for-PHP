@@ -148,6 +148,10 @@ class WorkerController extends AbstractActionController
             $event->stopPropagation(true);
         }, 1);
 
+        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
+            $event->stopPropagation(true);
+        }, 1);
+
         $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function() {
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
@@ -181,6 +185,10 @@ class WorkerController extends AbstractActionController
         /** @var EventManager $schedulerEventManager */
         $schedulerEventManager = null;
         $this->manager->getEventManager()->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
+            $event->stopPropagation(true);
+        }, 1);
+
+        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
             $event->stopPropagation(true);
         }, 1);
 

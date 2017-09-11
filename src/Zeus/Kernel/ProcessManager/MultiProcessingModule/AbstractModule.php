@@ -81,7 +81,7 @@ abstract class AbstractModule
                 if (isset($this->ipcServers[$uid])) {
                     $connection = $this->ipcServers[$uid]->accept();
                     $this->ipcConnections[$uid] = $connection;
-                    $this->ipcSelector->register($connection);
+                    $this->ipcSelector->register($connection, Selector::OP_READ);
                 }
             } catch (SocketTimeoutException $exception) {
                 // @todo: verify if nothing to do?
@@ -132,7 +132,7 @@ abstract class AbstractModule
             } else {
                 try {
                     $this->ipc->select(0);
-                    $this->ipc->write(" ")->flush();
+                    $this->ipc->write("!")->flush();
                 } catch (\Exception $exception) {
                     $this->isTerminating = true;
                 }

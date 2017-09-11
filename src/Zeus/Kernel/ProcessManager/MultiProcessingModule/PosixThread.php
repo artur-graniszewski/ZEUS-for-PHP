@@ -33,6 +33,25 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     protected static $id = 0;
 
     /**
+     * @param bool $throwException
+     * @return bool
+     * @throws \Exception
+     */
+    public static function isSupported($throwException = false)
+    {
+        $isSupported = class_exists(\Thread::class);
+
+        if (!$isSupported && $throwException) {
+            throw new \RuntimeException(sprintf("pthreads extension is required by %s but disabled in PHP",
+                    static::class
+                )
+            );
+        }
+
+        return $isSupported;
+    }
+
+    /**
      * @param EventManagerInterface $events
      * @return $this
      */
@@ -45,12 +64,11 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, WorkerEvent::PRIORITY_FINALIZE);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE);
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
 
         return $this;
     }
@@ -62,11 +80,9 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
     protected function onServiceStop()
     {
-        $this->stopWorker(1, true);
-
         while ($this->workers) {
             $this->checkWorkers();
-            usleep(100);
+            usleep(10000);
         }
     }
 
@@ -127,25 +143,6 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
-    /**
-     * @param bool $throwException
-     * @return bool
-     * @throws \Exception
-     */
-    public static function isSupported($throwException = false)
-    {
-        $isSupported = class_exists(\Thread::class);
-
-        if (!$isSupported && $throwException) {
-            throw new \RuntimeException(sprintf("pthreads extension is required by %s but disabled in PHP",
-                    static::class
-                )
-            );
-        }
-
-        return $isSupported;
-    }
-
     protected function onSchedulerStop()
     {
         parent::onSchedulerStop();
@@ -159,7 +156,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
             $this->checkWorkers();
 
             if ($this->workers) {
-                sleep(1);
+                usleep(10000);
             }
         }
     }
