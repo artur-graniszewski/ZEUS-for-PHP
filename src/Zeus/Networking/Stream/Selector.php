@@ -14,10 +14,12 @@ class Selector extends AbstractPhpResource
     /** @var mixed[] */
     protected $streams = [];
     protected $streamResources = [self::OP_READ => [], self::OP_WRITE => []];
-    protected $streamOps = [];
 
-    /** @var resource */
+    /** @var mixed[] */
     protected $selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
+
+    /** @var mixed[] */
+    protected $selectedResources = [self::OP_READ => [], self::OP_WRITE => []];
 
     /**
      * @param SelectableStreamInterface $stream
@@ -34,7 +36,6 @@ class Selector extends AbstractPhpResource
         $resourceId = (int) $resource;
 
         $this->streams[$resourceId] = $stream;
-        $this->streamOps[$resourceId] = $operation;
 
         if ($operation & self::OP_READ) {
             $this->streamResources[self::OP_READ][$resourceId] = $resource;
@@ -56,7 +57,6 @@ class Selector extends AbstractPhpResource
         }
 
         unset ($this->streams[$resourceId]);
-        unset ($this->streamOps[$resourceId]);
         unset ($this->streamResources[self::OP_READ][$resourceId]);
         unset ($this->streamResources[self::OP_WRITE][$resourceId]);
     }
@@ -67,6 +67,13 @@ class Selector extends AbstractPhpResource
      */
     public function select($timeout = 0) : int
     {
+        foreach($this->streams as $key => $stream) {
+            if ($stream->isClosed()) {
+                unset ($this->streamResources[self::OP_READ][$key]);
+                unset ($this->streamResources[self::OP_WRITE][$key]);
+            }
+        }
+
         $read = $this->streamResources[self::OP_READ];
         $write = $this->streamResources[self::OP_WRITE];
         $except = [];
@@ -84,21 +91,10 @@ class Selector extends AbstractPhpResource
             $uniqueStreams = $read ? $read : $write;
         }
 
+        $this->selectedResources = $uniqueStreams;
+        $this->selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
+
         $streamsChanged = count($uniqueStreams);
-
-        foreach ($read as $resource) {
-            $resourceId = (int) $resource;
-            $stream = $this->streams[$resourceId];
-            $result[self::OP_READ][] = $stream;
-        }
-
-        foreach ($write as $resource) {
-            $resourceId = (int) $resource;
-            $stream = $this->streams[$resourceId];
-            $result[self::OP_WRITE][] = $stream;
-        }
-
-        $this->selectedStreams = $result;
 
         return (int) $streamsChanged;
     }
@@ -112,6 +108,23 @@ class Selector extends AbstractPhpResource
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
         }
+
+        $result = [];
+
+        foreach ($this->selectedResources as $resource) {
+            $resourceId = (int) $resource;
+            $stream = $this->streams[$resourceId];
+
+            if (isset($this->streamResources[self::OP_READ][$resourceId])) {
+                $result[self::OP_READ][] = $stream;
+            }
+
+            if (isset($this->streamResources[self::OP_WRITE][$resourceId])) {
+                $result[self::OP_WRITE][] = $stream;
+            }
+        }
+
+        $this->selectedStreams = $result;
 
         $result = [];
         if ($operation & self::OP_READ) {
