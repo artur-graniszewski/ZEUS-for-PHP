@@ -88,41 +88,52 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     protected function doRead($readMethod, string $ending = '')
     {
+        if ($ending === '') {
+            $data = @$readMethod($this->resource, $this->readBufferSize);
+
+            if (false === $data || "" === $data) {
+                if (!$this->isReadable()) {
+                    throw new \LogicException("Stream is not readable");
+                }
+
+                $data = false;
+            } else {
+                $this->dataReceived += \strlen($data);
+            }
+
+            return $data;
+        }
+
         if (!$this->isReadable()) {
             throw new \LogicException("Stream is not readable");
         }
 
-        if ($ending !== '') {
-            // @todo: buffer internally until ending is found, return false until ending is found
-            $data = '';
-            $endingSize = \strlen($ending);
+        // @todo: buffer internally until ending is found, return false until ending is found
+        $data = '';
+        $endingSize = \strlen($ending);
 
-            while (!$this->isEof()) {
-                // @todo: add some checks if STREAM_PEEK is supported by $readMethod
-                $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
+        while (!$this->isEof()) {
+            // @todo: add some checks if STREAM_PEEK is supported by $readMethod
+            $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
 
-                if ($buffer === '') {
-                    @$readMethod($this->resource, 0);
-                    break;
-                }
-
-                $pos = strpos($buffer, $ending);
-                if (false !== $pos) {
-                    $buffer = \substr($buffer, 0, $pos);
-                    $pos += $endingSize;
-                } else {
-                    $pos = \strlen($buffer);
-                }
-
-                @$readMethod($this->resource, $pos);
-
-                $data .= $buffer;
-
+            if ($buffer === '') {
+                @$readMethod($this->resource, 0);
                 break;
             }
 
-        } else {
-            $data = @$readMethod($this->resource, $this->readBufferSize);
+            $pos = \strpos($buffer, $ending);
+            if (false !== $pos) {
+                $buffer = \substr($buffer, 0, $pos);
+                $pos += $endingSize;
+            } else {
+                $pos = \strlen($buffer);
+            }
+
+            @$readMethod($this->resource, $pos);
+
+            $data .= $buffer;
+
+            break;
         }
 
         $this->dataReceived += \strlen($data);

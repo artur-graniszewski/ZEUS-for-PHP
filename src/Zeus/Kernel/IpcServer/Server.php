@@ -292,6 +292,11 @@ class Server implements ListenerAggregateInterface
             $this->handleIpcMessages();
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
+        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() {
+            $this->startIpc();
+        }, SchedulerEvent::PRIORITY_REGULAR + 1);
+
+
         $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $ipcPort = $event->getParam('ipcPort');
 

@@ -48,7 +48,10 @@ final class SocketMessageBroker
     protected $downstream = [];
 
     /** @var int[] */
-    protected $workers = [];
+    protected $availableWorkers = [];
+
+    /** @var int[] */
+    protected $busyWorkers = [];
 
     /** @var Selector */
     protected $readSelector;
@@ -207,6 +210,7 @@ final class SocketMessageBroker
 
             stream_set_blocking($client, true);
             $client = new SocketStream($client);
+            $client->setOption(SO_KEEPALIVE, 1);
 
             //trigger_error(getmypid() . " NOTIFYING LEADER $uid:$port");
             $client->write("$uid:$port!")->flush();
@@ -223,8 +227,6 @@ final class SocketMessageBroker
     public function onWorkerStart(WorkerEvent $event)
     {
         $this->createWorkerServer($event);
-
-        return;
     }
 
     /**
@@ -238,31 +240,46 @@ final class SocketMessageBroker
             return;
         }
 
-        //while (true) {
-            $this->registerWorkers();
-            $this->unregisterWorkers();
-            $this->addClients();
-            $this->disconnectClients();
-            $this->handleClients();
-        //}
+        $this->registerWorkers();
+        $this->unregisterWorkers();
+        $this->addClients();
+        $this->disconnectClients();
+        $this->handleClients();
     }
 
+    protected function adjustTimeout()
+    {
+        if (!$this->client) {
+            $this->server->setSoTimeout(10000);
+        } else {
+            $this->server->setSoTimeout(0);
+        }
+
+        return $this;
+    }
     /**
      * @return $this
      */
     protected function addClients()
     {
-        try {
-            while (count($this->workers) > 0 && $client = $this->server->accept()) {
-                $this->bindToWorker($client);
-            }
-            foreach ($this->connectionQueue as $key => $client) {
-                unset($this->connectionQueue[$key]);
-                $this->bindToWorker($client);
-            }
-        } catch (SocketTimeoutException $exception) {
+        $connectionCounter = 30;
 
+        while ($connectionCounter-- && count($this->availableWorkers)) {
+            try {
+                $client = $this->server->accept();
+                $this->bindToWorker($client);
+                $this->adjustTimeout();
+            } catch (SocketTimeoutException $exception) {
+                break;
+            }
         }
+
+        foreach ($this->connectionQueue as $key => $client) {
+            unset($this->connectionQueue[$key]);
+            $this->bindToWorker($client);
+        }
+
+        $this->adjustTimeout();
 
         return $this;
     }
@@ -293,7 +310,6 @@ final class SocketMessageBroker
     protected function handleClients()
     {
         if (!$this->client) {
-            \usleep(10000);
 
             return $this;
         }
@@ -375,6 +391,8 @@ final class SocketMessageBroker
             $this->readSelector->unregister($stream);
             $this->writeSelector->unregister($stream);
             unset ($this->downstream[$key]);
+            $this->availableWorkers[$key] = $this->busyWorkers[$key];
+            unset($this->busyWorkers[$key]);
         }
 
         return $this;
@@ -386,12 +404,7 @@ final class SocketMessageBroker
      */
     protected function bindToWorker(SocketStream $client)
     {
-        $downstream = null;
-        foreach ($this->workers as $uid => $port) {
-            if (isset($this->downstream[$uid])) {
-                continue;
-            }
-
+        foreach ($this->availableWorkers as $uid => $port) {
             $opts = [
                 'socket' => [
                     'tcp_nodelay' => true,
@@ -400,7 +413,7 @@ final class SocketMessageBroker
 
             $socket = @stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
             if (!$socket) {
-                unset($this->workers[$uid]);
+                unset($this->availableWorkers[$uid]);
                 continue;
             }
             \stream_set_blocking($socket, true);
@@ -408,19 +421,20 @@ final class SocketMessageBroker
             $downstream = new SocketStream($socket);
             $downstream->setOption(SO_KEEPALIVE, 1);
             $this->downstream[$uid] = $downstream;
+            $this->busyWorkers[$uid] = $port;
+            unset($this->availableWorkers[$uid]);
             $this->client[$uid] = $client;
             $this->readSelector->register($downstream, Selector::OP_READ);
             $this->readSelector->register($client, Selector::OP_READ);
             $this->writeSelector->register($downstream, Selector::OP_WRITE);
             $this->writeSelector->register($client, Selector::OP_WRITE);
 
-            break;
-
+            return $this;
         }
 
-        if (!$downstream) {
+        if (!$this->availableWorkers) {
             $downstreams = count($this->downstream);
-            $workers = count($this->workers);
+            $workers = count($this->availableWorkers);
             $this->getLogger()->warn("Connection pool exhausted [$downstreams downstreams active, $workers workers running], connection queuing in effect");
             $this->connectionQueue[] = $client;
         }
@@ -442,7 +456,7 @@ final class SocketMessageBroker
                     list($uid, $port) = explode(":", $in);
                     //list($uid, $port) = [$uid, 3306];
 
-                    $this->workers[$uid] = $port;
+                    $this->availableWorkers[$uid] = $port;
                     $this->ipc[$uid] = $connection;
 
                     continue;
@@ -483,7 +497,8 @@ final class SocketMessageBroker
             $this->disconnectClient($uid);
 
             unset ($this->ipc[$uid]);
-            unset ($this->workers[$uid]);
+            unset ($this->availableWorkers[$uid]);
+            unset ($this->busyWorkers[$uid]);
         }
 
         return $this;

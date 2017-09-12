@@ -13,6 +13,8 @@ class Selector extends AbstractPhpResource
 
     /** @var mixed[] */
     protected $streams = [];
+    protected $streamResources = [self::OP_READ => [], self::OP_WRITE => []];
+    protected $streamOps = [];
 
     /** @var resource */
     protected $selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
@@ -28,55 +30,46 @@ class Selector extends AbstractPhpResource
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
         }
 
-        $this->streams[] = [$stream, $operation];
+        $resource = $stream->getResource();
+        $resourceId = (int) $resource;
 
-        return key($this->streams);
+        $this->streams[$resourceId] = $stream;
+        $this->streamOps[$resourceId] = $operation;
+
+        if ($operation & self::OP_READ) {
+            $this->streamResources[self::OP_READ][$resourceId] = $resource;
+        }
+
+        if ($operation & self::OP_WRITE) {
+            $this->streamResources[self::OP_WRITE][$resourceId] = $resource;
+        }
+
+        return $resourceId;
     }
 
     public function unregister(AbstractSelectableStream $stream)
     {
-        foreach ($this->streams as $key => $value) {
-            if ($stream === $value[0]) {
-                $this->streams[$key] = null;
-                $this->streams = array_filter($this->streams);
+        $resourceId = array_search($stream, $this->streams);
 
-                return $this;
-            }
+        if ($resourceId === false) {
+            throw new SocketException("No such stream registered: $resourceId");
         }
 
-        throw new SocketException("No such stream registered");
+        unset ($this->streams[$resourceId]);
+        unset ($this->streamOps[$resourceId]);
+        unset ($this->streamResources[self::OP_READ][$resourceId]);
+        unset ($this->streamResources[self::OP_WRITE][$resourceId]);
     }
 
     /**
      * @param int $timeout Timeout in milliseconds
      * @return int
      */
-    public function select($timeout = 0)
+    public function select($timeout = 0) : int
     {
-        //$this->streams = $this->getActiveStreams();
-
-        $read = [];
-        $write = [];
+        $read = $this->streamResources[self::OP_READ];
+        $write = $this->streamResources[self::OP_WRITE];
         $except = [];
-
-        foreach ($this->streams as $streamDetails) {
-            /** @var AbstractStream $stream */
-            list($stream, $operation) = $streamDetails;
-
-            if ($stream->isClosed()) {
-                continue;
-            }
-
-            $resource = $stream->getResource();
-
-            if ($operation & self::OP_READ) {
-                $read[] = $resource;
-            }
-
-            if ($operation & self::OP_WRITE) {
-                $write[] = $resource;
-            }
-        }
 
         $result = [self::OP_READ => [], self::OP_WRITE => []];
         $streamsChanged = @\stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
@@ -85,18 +78,25 @@ class Selector extends AbstractPhpResource
             return 0;
         }
 
-        $streamsChanged = count(array_unique(array_merge($read, $write)));
+        if ($read && $write) {
+            $uniqueStreams = array_unique(array_merge($read, $write));
+        } else {
+            $uniqueStreams = $read ? $read : $write;
+        }
+
+        $streamsChanged = count($uniqueStreams);
 
         foreach ($read as $resource) {
-            $stream = $this->getStreamForResource($resource);
+            $resourceId = (int) $resource;
+            $stream = $this->streams[$resourceId];
             $result[self::OP_READ][] = $stream;
         }
 
         foreach ($write as $resource) {
-            $stream = $this->getStreamForResource($resource);
+            $resourceId = (int) $resource;
+            $stream = $this->streams[$resourceId];
             $result[self::OP_WRITE][] = $stream;
         }
-
 
         $this->selectedStreams = $result;
 
@@ -105,7 +105,7 @@ class Selector extends AbstractPhpResource
 
     /**
      * @param int $operation
-     * @return array|SelectableStreamInterface[]
+     * @return SelectableStreamInterface[]
      */
     public function getSelectedStreams(int $operation = self::OP_ALL) : array
     {
@@ -115,36 +115,13 @@ class Selector extends AbstractPhpResource
 
         $result = [];
         if ($operation & self::OP_READ) {
-            foreach ($this->selectedStreams[self::OP_READ] as $stream) {
-                $result[] = $stream;
-            }
+            $result += $this->selectedStreams[self::OP_READ];
         }
 
         if ($operation & self::OP_WRITE) {
-            foreach ($this->selectedStreams[self::OP_WRITE] as $stream) {
-                if (!in_array($stream, $result, true)) {
-                    $result[] = $stream;
-                }
-            }
+            $result += $this->selectedStreams[self::OP_WRITE];
         }
 
         return $result;
-    }
-
-    /**
-     * @param resource $resource
-     * @return AbstractStream
-     */
-    private function getStreamForResource($resource)
-    {
-        foreach ($this->streams as $streamDetails) {
-            /** @var AbstractStream $stream */
-            list($stream) = $streamDetails;
-            if ($stream->getResource() === $resource) {
-                return $streamDetails[0];
-            }
-        }
-
-        throw new \LogicException("No stream found for the resource $resource");
     }
 }
