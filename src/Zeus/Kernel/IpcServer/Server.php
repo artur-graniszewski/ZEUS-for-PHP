@@ -141,13 +141,32 @@ class Server implements ListenerAggregateInterface
      */
     private function handleIpcMessages()
     {
-        if (!$this->ipcSelector->select(1000)) {
+        $selector = clone $this->ipcSelector;
+        $event = new IpcEvent();
+        $event->setName(IpcEvent::EVENT_HANDLING_MESSAGES);
+        $event->setParam('selector', $selector);
+        $event->setTarget($this);
+        $this->getEventManager()->triggerEvent($event);
+
+        if (!$selector->select(1000)) {
             return $this;
         }
 
-        $streams = $this->ipcSelector->getSelectedStreams(Selector::OP_READ);
+        $streams = $selector->getSelectedStreams(Selector::OP_READ);
 
         foreach ($streams as $stream) {
+            /** @var SocketStream $stream */;
+            if ($stream->getLocalAddress() !== $this->ipcServer->getLocalAddress()) {
+                $event = new IpcEvent();
+                $event->setName(IpcEvent::EVENT_STREAM_READABLE);
+                $event->setParam('selector', $selector);
+                $event->setParam('stream', $stream);
+                $event->setTarget($this);
+                $this->getEventManager()->triggerEvent($event);
+
+                continue;
+            }
+
             $ipc = new \Zeus\Kernel\IpcServer\SocketStream($stream, 0);
 
             try {
@@ -158,6 +177,7 @@ class Server implements ListenerAggregateInterface
                 $stream->close();
                 unset($this->ipcStreams[array_search($stream, $this->ipcStreams)]);
                 $this->ipcSelector->unregister($stream);
+                $selector->unregister($stream);
                 continue;
             }
         }
@@ -268,6 +288,9 @@ class Server implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $sharedManager = $events->getSharedManager();
+        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function() {
+            $this->handleIpcMessages();
+        }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
         $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $ipcPort = $event->getParam('ipcPort');

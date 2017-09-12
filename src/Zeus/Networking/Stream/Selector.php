@@ -18,7 +18,7 @@ class Selector extends AbstractPhpResource
     protected $selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
 
     /**
-     * @param AbstractSelectableStream $stream
+     * @param SelectableStreamInterface $stream
      * @param int $operation
      * @return int
      */
@@ -39,8 +39,6 @@ class Selector extends AbstractPhpResource
             if ($stream === $value[0]) {
                 $this->streams[$key] = null;
                 $this->streams = array_filter($this->streams);
-//                $this->selectedStreams[self::OP_READ] = [];
-//                $this->selectedStreams[self::OP_WRITE] = [];
 
                 return $this;
             }
@@ -107,7 +105,7 @@ class Selector extends AbstractPhpResource
 
     /**
      * @param int $operation
-     * @return array|AbstractSelectableStream[]
+     * @return array|SelectableStreamInterface[]
      */
     public function getSelectedStreams(int $operation = self::OP_ALL) : array
     {
@@ -148,25 +146,5 @@ class Selector extends AbstractPhpResource
         }
 
         throw new \LogicException("No stream found for the resource $resource");
-    }
-
-    /**
-     * @return AbstractStream[]
-     */
-    private function getActiveStreams() : array
-    {
-        $streams = [];
-
-        foreach ($this->streams as $streamDetails) {
-            /** @var AbstractStream $stream */
-            list($stream) = $streamDetails;
-            if ($stream->isClosed()) {
-                continue;
-            }
-
-            $streams[] = $streamDetails;
-        }
-
-        return $streams;
     }
 }

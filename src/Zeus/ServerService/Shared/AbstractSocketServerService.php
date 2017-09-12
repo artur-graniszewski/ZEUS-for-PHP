@@ -16,9 +16,10 @@ class AbstractSocketServerService extends AbstractServerService
     {
         $this->logger->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
 
-        $subscriber = new SocketMessageBroker($config, $messageComponent);
-        $subscriber->attach($this->scheduler->getEventManager());
+        $broker = new SocketMessageBroker($config, $messageComponent);
+        $broker->attach($this->scheduler->getEventManager());
+        $broker->setLogger($this->logger);
 
-        return $subscriber;
+        return $broker;
     }
 }

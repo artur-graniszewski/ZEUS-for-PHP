@@ -14,7 +14,6 @@ use Zeus\Kernel\ProcessManager\Scheduler;
 use Zeus\Kernel\ProcessManager\Worker;
 use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
 
-
 class SchedulerFactory implements FactoryInterface
 {
     use PluginFactory;

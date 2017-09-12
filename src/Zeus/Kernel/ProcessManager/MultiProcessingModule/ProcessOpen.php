@@ -4,11 +4,15 @@ namespace Zeus\Kernel\ProcessManager\MultiProcessingModule;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Networking\Stream\SelectableStreamInterface;
+use Zeus\Networking\Stream\Selector;
+use Zeus\Networking\Stream\SocketStream;
 use Zeus\ServerService\ManagerEvent;
 
 final class ProcessOpen extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -24,9 +28,17 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
     protected $workers = [];
 
-    protected $stdOut;
+    protected $stdout;
 
-    protected $stdErr;
+    protected $stderr;
+
+    /** @var SelectableStreamInterface[] */
+    protected $stdOutStreams = [];
+
+    /** @var SelectableStreamInterface[] */
+    protected $stdErrStreams = [];
+
+    protected $pipeBuffer = [];
 
     /**
      * @param bool $throwException
@@ -52,8 +64,8 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     public function __construct()
     {
-        $this->stdOut = @fopen('php://stdout', 'w');
-        $this->stdErr = @fopen('php://stderr', 'w');
+        $this->stdout = @fopen('php://stdout', 'w');
+        $this->stderr = @fopen('php://stderr', 'w');
 
         $this->ppid = getmypid();
 
@@ -62,8 +74,8 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
     public function __destruct()
     {
-        @fclose($this->stdOut);
-        @fclose($this->stdErr);
+        @fclose($this->stdout);
+        @fclose($this->stderr);
     }
 
     /**
@@ -105,6 +117,8 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
         $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
         $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
+        $events->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
+        $events->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->onIpcReadable($e); }, -9000);
 
         return $this;
     }
@@ -135,19 +149,50 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
+    /**
+     * @param int $uid
+     * @param bool $forceFlush
+     * @return $this
+     */
+    protected function flushBuffers(int $uid, bool $forceFlush)
+    {
+        foreach (['stdout', 'stderr'] as $type) {
+            if (!isset($this->pipeBuffer[$uid][$type])) {
+                continue;
+
+            }
+
+            if ($forceFlush) {
+                fwrite($this->$type, $this->pipeBuffer[$uid][$type]);
+                $this->pipeBuffer[$uid][$type] = '';
+            } else {
+                if (($pos = strrpos($this->pipeBuffer[$uid][$type], "\n")) !== false) {
+                    fwrite($this->$type, substr($this->pipeBuffer[$uid][$type], 0, $pos + 1));
+                    $this->pipeBuffer[$uid][$type] = substr($this->pipeBuffer[$uid][$type], $pos + 1);
+                }
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
     protected function checkWorkers()
     {
         parent::checkWorkers();
-        $this->checkProcessPipes();
 
         // catch other potential signals to avoid race conditions
         while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $this->checkProcessPipes();
             @fclose($this->workers[$pid]['resource']);
 
             $this->unregisterWorker($pid);
             $this->raiseWorkerExitedEvent($pid, $pid, 1);
             unset ($this->workers[$pid]);
+
+            $this->flushBuffers($pid, false);
+            unset ($this->pipeBuffer[$pid]);
         }
 
         return $this;
@@ -176,37 +221,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
-    protected function checkProcessPipes()
-    {
-        $stdin = $stderr = [];
-        foreach ($this->workers as $process) {
-            if (isset($process['pipes'][1])) {
-                $stdin[] = $process['pipes'][1];
-                $stderr[] = $process['pipes'][2];
-            }
-        }
-
-        $streams = array_merge($stdin, $stderr);
-        if ($streams && stream_select($streams, $null, $null, 0)) {
-            foreach ($streams as $stream) {
-                if (in_array($stream, $stdin)) {
-                    $output = $this->stdOut;
-                } else {
-                    $output = $this->stdErr;
-                }
-
-                $outputArray = [$output];
-                if (stream_select($null, $outputArray, $null, 0)) {
-                    fwrite($output, fread($stream, 16384));
-                }
-            }
-
-            //$streams = array_merge($stdin, $stderr);
-        }
-
-        return $this;
-    }
-
     public function onProcessInit(EventInterface $event)
     {
         $this->setConnectionPort($event->getParam('connectionPort'));
@@ -232,7 +246,11 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
-    protected function startWorker(SchedulerEvent $event)
+    /**
+     * @param SchedulerEvent $event
+     * @return int
+     */
+    protected function startWorker(SchedulerEvent $event) : int
     {
         $descriptors = [
             0 => ['pipe', 'r'], // stdin
@@ -260,13 +278,15 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $status = proc_get_status($process);
         $pid = $status['pid'];
 
-//        stream_set_blocking($pipes[0], false);
-//        stream_set_blocking($pipes[1], false);
-//        stream_set_blocking($pipes[2], false);
+        stream_set_blocking($pipes[0], false);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
         $this->workers[$pid] = [
             'resource' => $process,
             'pipes' => $pipes
         ];
+        $this->pipeBuffer[$pid] = ['stdout' => '', 'stderr' => ''];
 
         return $pid;
     }
@@ -304,17 +324,21 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         }
 
         return $this;
-        $process = $this->workers[$uid];
-
-        $this->closeProcessPipes($uid);
-
-        proc_terminate($process['resource']);
-
-        $this->workers[$uid] = null;
-
-        return $this;
+//        $process = $this->workers[$uid];
+//
+//        $this->closeProcessPipes($uid);
+//
+//        proc_terminate($process['resource']);
+//
+//        $this->workers[$uid] = null;
+//
+//        return $this;
     }
 
+    /**
+     * @param int $uid
+     * @return $this
+     */
     protected function closeProcessPipes(int $uid)
     {
         $process = $this->workers[$uid];
@@ -337,5 +361,46 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);
 
         return $capabilities;
+    }
+
+    private function onIpcSelect(IpcEvent $event)
+    {
+        /** @var Selector $selector */
+        $selector = $event->getParam('selector');
+
+        $this->stdErrStreams = [];
+        $this->stdOutStreams = [];
+
+        // @todo: recreate these arrays once a while to make sure they wont saturate the memory after a long run
+        foreach ($this->workers as $uid => $worker) {
+            $this->stdOutStreams[$uid] = new SocketStream($worker['pipes'][1]);
+            $this->stdErrStreams[$uid] = new SocketStream($worker['pipes'][2]);
+            $selector->register($this->stdOutStreams[$uid], Selector::OP_READ);
+            $selector->register($this->stdErrStreams[$uid], Selector::OP_READ);
+        }
+    }
+
+    private function onIpcReadable(IpcEvent $event)
+    {
+        /** @var SocketStream $stream */
+        $stream = $event->getParam('stream');
+
+        if (!in_array($stream, array_merge($this->stdOutStreams, $this->stdErrStreams))) {
+            return;
+        }
+
+        if (in_array($stream, $this->stdOutStreams)) {
+            $outputType = 'stdout';
+            $uid = array_search($stream, $this->stdOutStreams);
+        } else {
+            $outputType = 'stderr';
+            $uid = array_search($stream, $this->stdErrStreams);
+        }
+
+        $stream->setBlocking(false);
+        $data = fread($stream->getResource(), 32768);
+        $this->pipeBuffer[$uid][$outputType] .= $data;
+
+        $this->flushBuffers($uid, false);
     }
 }

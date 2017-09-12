@@ -3,6 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerInterface;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -64,6 +65,9 @@ final class SocketMessageBroker
     /** @var Selector */
     protected $writeSelector;
 
+    /** @var LoggerInterface */
+    private $logger;
+
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
         $this->config = $config;
@@ -110,6 +114,28 @@ final class SocketMessageBroker
     public function getWorkerServer()
     {
         return $this->workerServer;
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return $this
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    /**
+     * @return LoggerInterface
+     */
+    public function getLogger() : LoggerInterface
+    {
+        if (!isset($this->logger)) {
+            throw new \LogicException("Logger not available");
+        }
+        return $this->logger;
     }
 
     /**
@@ -395,7 +421,7 @@ final class SocketMessageBroker
         if (!$downstream) {
             $downstreams = count($this->downstream);
             $workers = count($this->workers);
-            trigger_error("Connection pool exhausted [$downstreams downstreams active, $workers workers running], connection queuing in effect");
+            $this->getLogger()->warn("Connection pool exhausted [$downstreams downstreams active, $workers workers running], connection queuing in effect");
             $this->connectionQueue[] = $client;
         }
 

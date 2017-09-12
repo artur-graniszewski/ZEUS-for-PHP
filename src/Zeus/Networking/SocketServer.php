@@ -253,9 +253,9 @@ final class SocketServer
     /**
      * @return null|string
      */
-    public function getLocalSocketAddress() : string
+    public function getLocalAddress() : string
     {
-        return $this->host;
+        return $this->host . ($this->port ? ':' . $this->port : '');
     }
 
     /**

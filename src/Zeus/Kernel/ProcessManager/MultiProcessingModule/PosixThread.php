@@ -7,7 +7,6 @@ use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\MultiProcessingModule\PThreads\ThreadBootstrap;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\ServerService\ManagerEvent;
 
 final class PosixThread extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
@@ -67,7 +66,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit(); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         return $this;
