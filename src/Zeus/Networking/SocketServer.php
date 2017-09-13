@@ -292,4 +292,9 @@ final class SocketServer
 
         return $this;
     }
+
+    public function getResource()
+    {
+        return $this->socket;
+    }
 }

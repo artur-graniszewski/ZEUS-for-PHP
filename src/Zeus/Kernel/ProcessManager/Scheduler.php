@@ -540,9 +540,15 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     public function kernelLoop()
     {
         while ($this->isSchedulerActive()) {
+            $time = microtime(true);
             $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
+            $diff = microtime(true) - $time;
 
-            usleep(1000);
+            if ($diff < 0.1) {
+                $diff = 1 - $diff;
+                // wait for 0.1 sec
+                usleep($diff * 100000);
+            }
         }
 
         return $this;

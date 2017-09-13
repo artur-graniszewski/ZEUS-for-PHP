@@ -37,6 +37,9 @@ class Server implements ListenerAggregateInterface
     /** @var mixed[] */
     protected $queuedMessages = [];
 
+    /** @var float */
+    protected $lastTick;
+
     public function __construct()
     {
         $this->ipcSelector = new Selector();
@@ -127,8 +130,8 @@ class Server implements ListenerAggregateInterface
             throw new \RuntimeException("IPC connection failed");
         }
 
-        \stream_set_blocking($socket, false);
         $ipcStream = new SocketStream($socket);
+        $ipcStream->setBlocking(false);
         $ipcStream->setOption(SO_KEEPALIVE, 1);
         $ipcStream->write("$uid!")->flush();
         $this->ipcClient = $ipcStream;
@@ -148,7 +151,12 @@ class Server implements ListenerAggregateInterface
         $event->setTarget($this);
         $this->getEventManager()->triggerEvent($event);
 
-        if (!$selector->select(1000)) {
+        $lastTick = $this->lastTick;
+        $this->lastTick = microtime(true);
+        $diff = microtime($this->lastTick) - $lastTick;
+
+        $wait = $diff < 0.1 ? (0.1 - $diff) * 10 : 100;
+        if (!$selector->select($wait)) {
             return $this;
         }
 

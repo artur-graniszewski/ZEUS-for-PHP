@@ -247,6 +247,9 @@ final class SocketMessageBroker
         $this->handleClients();
     }
 
+    /**
+     * @return $this
+     */
     protected function adjustTimeout()
     {
         if (!$this->client) {
@@ -262,7 +265,7 @@ final class SocketMessageBroker
      */
     protected function addClients()
     {
-        $connectionCounter = 30;
+        $connectionCounter = 10;
 
         while ($connectionCounter-- && count($this->availableWorkers)) {
             try {
@@ -316,9 +319,13 @@ final class SocketMessageBroker
 
         $now = microtime(true);
         do {
-            if (!$this->readSelector->select(10000)) {
+            if (!$this->readSelector->select(1000)) {
                 return $this;
             }
+
+            $this->adjustTimeout();
+            $this->registerWorkers();
+            $this->addClients();
 
             $streamsToRead = $this->readSelector->getSelectedStreams(Selector::OP_READ);
 
@@ -432,7 +439,7 @@ final class SocketMessageBroker
             return $this;
         }
 
-        if (!$this->availableWorkers) {
+        if (!$this->busyWorkers) {
             $downstreams = count($this->downstream);
             $workers = count($this->availableWorkers);
             $this->getLogger()->warn("Connection pool exhausted [$downstreams downstreams active, $workers workers running], connection queuing in effect");

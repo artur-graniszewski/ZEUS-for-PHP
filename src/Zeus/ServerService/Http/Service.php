@@ -76,7 +76,7 @@ class Service extends AbstractSocketServerService
         //$defaultPorts = ['http' => 80, 'https' => 443];
         //$port = isset($defaultPorts[$uri->getScheme()]) && $defaultPorts[$uri->getScheme()] == $uri->getPort() ? '' : ':' . $uri->getPort();
         //$hostString = sprintf("%s%s", $uri->getHost(), $port);
-        
+
         $this->logger->$priority(sprintf('%s - - "%s %s HTTP/%s" %d %d "%s" "%s"',
             $httpRequest->getMetadata('remoteAddress'),
             $httpRequest->getMethod(),
