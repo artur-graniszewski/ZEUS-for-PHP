@@ -3,6 +3,7 @@
 namespace Zeus\Networking\Stream;
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\Exception\StreamException;
 use Zeus\Util\UnitConverter;
 
 /**
@@ -23,7 +24,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     public function select(int $timeout) : bool
     {
         if (!$this->isReadable()) {
-            throw new \LogicException("Stream is not readable");
+            throw new StreamException("Stream is not readable");
         }
 
         $write = $except = [];

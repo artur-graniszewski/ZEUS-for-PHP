@@ -111,7 +111,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
+     * @expectedException \Zeus\Networking\Exception\StreamException
      * @expectedExceptionMessage Stream is not readable
      */
     public function testExceptionWhenReadingOnClosedConnection()
@@ -252,7 +252,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
+     * @expectedException \Zeus\Networking\Exception\StreamException
      * @expectedExceptionMessage Stream is not readable
      */
     public function testServerReadWhenDisconnected()
@@ -267,7 +267,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
+     * @expectedException \Zeus\Networking\Exception\StreamException
      * @expectedExceptionMessage Stream is not readable
      */
     public function testServerSelectThrowsExceptionWhenDisconnected()
@@ -281,7 +281,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
+     * @expectedException \Zeus\Networking\Exception\StreamException
      * @expectedExceptionMessage Stream is not readable
      */
     public function testSelectWhenDisconnected()

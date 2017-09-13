@@ -2,6 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 use Zeus\Networking\Exception\SocketException;
+use Zeus\Networking\Exception\StreamException;
 
 /**
  * Class SocketStream
@@ -89,7 +90,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
             if (false === $data || "" === $data) {
                 if (!$this->isReadable()) {
-                    throw new \LogicException("Stream is not readable");
+                    throw new StreamException("Stream is not readable");
                 }
 
                 $data = false;
@@ -101,7 +102,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         }
 
         if (!$this->isReadable()) {
-            throw new \LogicException("Stream is not readable");
+            throw new StreamException("Stream is not readable");
         }
 
         // @todo: buffer internally until ending is found, return false until ending is found
