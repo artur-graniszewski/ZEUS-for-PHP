@@ -250,11 +250,12 @@ final class SocketMessageBroker
     {
         $queueSize = count($this->connectionQueue);
         try {
-            //$client = true;
-            //while ($client) {
+            $client = true;
+            $connectionLimit = 10;
+            while ($client && $connectionLimit-- > 0) {
                 $client = $this->upstreamServer->accept();
                 $this->bindToWorker($client);
-            //}
+            }
         } catch (SocketTimeoutException $exception) {
         }
 
@@ -266,7 +267,7 @@ final class SocketMessageBroker
         if (count($this->connectionQueue) > $queueSize) {
             $queued = count($this->connectionQueue);
             $workers = count($this->busyWorkers);
-            $this->getLogger()->warn("Connection pool exhausted, connection queuing in effect [$queued downstreams queued, $workers downstreams active]");
+            $this->getLogger()->warn("Connection pool is full, queuing in effect [$queued downstreams queued, $workers downstreams active]");
         } else if ($queueSize > 0 && !$this->connectionQueue) {
             $available = count($this->availableWorkers);
             $workers = count($this->busyWorkers);
@@ -308,7 +309,7 @@ final class SocketMessageBroker
 
         $now = \microtime(true);
         do {
-            if (!$this->readSelector->select(1000)) {
+            if (!$this->readSelector->select(0)) {
                 return $this;
             }
 
@@ -350,22 +351,26 @@ final class SocketMessageBroker
                         continue;
                     }
 
-                    if (!$output->isWritable() || \in_array($output, $streamsToWrite)) {
+                    if ($output->isClosed() || \in_array($output, $streamsToWrite)) {
                         $data = $input->read();
-                        if ($output->isWritable() && isset($data[0])) {
-                            $output->write($data)->flush();
-                            if (!$output->isReadable() || !$output->isWritable()) {
-                                $this->disconnectClient($key);
-                                continue;
-                            }
+
+                        if (!isset($data[0])) {
+                            continue;
                         }
+
+                        if (!$output->isReadable() || !$output->isWritable()) {
+                            $this->disconnectClient($key);
+                            continue;
+                        }
+
+                        $output->write($data)->flush();
                     }
                 } catch (\Exception $exception) {
                     $this->disconnectClient($key);
                     break;
                 }
             }
-        } while ($streamsToRead && \microtime(true) - $now < 0.1);
+        } while ($streamsToRead && (\microtime(true) - $now < 0.1));
 
         return $this;
     }
@@ -473,9 +478,9 @@ final class SocketMessageBroker
                     $this->ipc[$uid] = $connection;
 
                     continue;
-                } else {
-                    throw new \RuntimeException("Connection is empty");
                 }
+
+                throw new \RuntimeException("Downstream connection is broken");
             }
         } catch (SocketTimeoutException $exception) {
 
@@ -491,7 +496,7 @@ final class SocketMessageBroker
     {
         foreach ($this->ipc as $uid => $ipc) {
             try {
-                $ipc->write(' ')->flush();
+                //$ipc->write(' ')->flush();
 
                 if (!$ipc->isClosed() && $ipc->isReadable() && $ipc->isWritable()) {
                     continue;
