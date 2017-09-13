@@ -143,7 +143,7 @@ final class SocketServer
             ],
         ];
 
-        $context = stream_context_create($opts);
+        $context = \stream_context_create($opts);
 
         if (!$this->host) {
             $this->host = '0.0.0.0';
@@ -158,11 +158,11 @@ final class SocketServer
 
         if ($this->port === 0) {
             $socketName = \stream_socket_get_name($this->resource, false);
-            $parts = explode(":", $socketName);
+            $parts = \explode(":", $socketName);
 
-            end($parts);
+            \end($parts);
 
-            $this->port = (int) current($parts);
+            $this->port = (int) \current($parts);
         }
 
         $this->isBound = true;
@@ -198,8 +198,8 @@ final class SocketServer
             throw new SocketException("Socket must be bound first");
         }
 
-        $socket = socket_import_stream($this->resource);
-        socket_set_option($socket, SOL_SOCKET, $option, $value);
+        $socket = \socket_import_stream($this->resource);
+        \socket_set_option($socket, SOL_SOCKET, $option, $value);
 
         return $this;
     }
@@ -213,8 +213,8 @@ final class SocketServer
             throw new \LogicException("Server already stopped");
         }
 
-        stream_set_blocking($this->resource, true);
-        @stream_socket_shutdown($this->resource, STREAM_SHUT_RD);
+        @\stream_set_blocking($this->resource, true);
+        @\stream_socket_shutdown($this->resource, STREAM_SHUT_RD);
 //        fread($this->socket, 4096);
         fclose($this->resource);
         $this->resource = null;

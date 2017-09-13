@@ -240,7 +240,7 @@ final class FifoAdapter implements
      */
     public function isSupported()
     {
-        return function_exists('posix_mkfifo');
+        return \function_exists('posix_mkfifo');
     }
 
     /**
@@ -272,7 +272,7 @@ final class FifoAdapter implements
                 $size = $size << 1;
             }
 
-            fclose($ipc);
+            \fclose($ipc);
             @unlink($fileName);
 
             static::$maxPipeCapacity = $size;
