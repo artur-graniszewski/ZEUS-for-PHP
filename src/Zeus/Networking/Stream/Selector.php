@@ -16,7 +16,7 @@ class Selector extends AbstractPhpResource
     protected $streamResources = [self::OP_READ => [], self::OP_WRITE => []];
 
     /** @var mixed[] */
-    protected $selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
+    protected $selectedStreams = [];
 
     /** @var mixed[] */
     protected $selectedResources = [self::OP_READ => [], self::OP_WRITE => []];
@@ -109,10 +109,14 @@ class Selector extends AbstractPhpResource
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
         }
 
-        $result = [];
+        $result = [self::OP_READ => [], self::OP_WRITE => []];
 
         foreach ($this->selectedResources as $resource) {
             $resourceId = (int) $resource;
+            if (!isset($this->streams[$resourceId])) {
+                // stream was unregistered before executing getSelectedStreams()
+                continue;
+            }
             $stream = $this->streams[$resourceId];
 
             if (isset($this->streamResources[self::OP_READ][$resourceId])) {
