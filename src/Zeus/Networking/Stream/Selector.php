@@ -5,7 +5,7 @@ namespace Zeus\Networking\Stream;
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Util\UnitConverter;
 
-class Selector extends AbstractPhpResource
+class Selector
 {
     const OP_READ = 1;
     const OP_WRITE = 2;
@@ -26,7 +26,7 @@ class Selector extends AbstractPhpResource
      * @param int $operation
      * @return int
      */
-    public function register(SelectableStreamInterface $stream, int $operation = self::OP_ALL) : int
+    public function register(SelectableStreamInterface $stream, int $operation = self::OP_ALL)
     {
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
@@ -44,13 +44,11 @@ class Selector extends AbstractPhpResource
         if ($operation & self::OP_WRITE) {
             $this->streamResources[self::OP_WRITE][$resourceId] = $resource;
         }
-
-        return $resourceId;
     }
 
     public function unregister(AbstractSelectableStream $stream)
     {
-        $resourceId = array_search($stream, $this->streams);
+        $resourceId = \array_search($stream, $this->streams);
 
         if ($resourceId === false) {
             throw new SocketException("No such stream registered: $resourceId");
@@ -78,7 +76,6 @@ class Selector extends AbstractPhpResource
         $write = $this->streamResources[self::OP_WRITE];
         $except = [];
 
-        $result = [self::OP_READ => [], self::OP_WRITE => []];
         $streamsChanged = @\stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged === 0) {
@@ -86,7 +83,7 @@ class Selector extends AbstractPhpResource
         }
 
         if ($read && $write) {
-            $uniqueStreams = array_unique(array_merge($read, $write));
+            $uniqueStreams = \array_unique(\array_merge($read, $write));
         } else {
             $uniqueStreams = $read ? $read : $write;
         }
@@ -94,7 +91,7 @@ class Selector extends AbstractPhpResource
         $this->selectedResources = $uniqueStreams;
         $this->selectedStreams = [self::OP_READ => [], self::OP_WRITE => []];
 
-        $streamsChanged = count($uniqueStreams);
+        $streamsChanged = \count($uniqueStreams);
 
         return (int) $streamsChanged;
     }

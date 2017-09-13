@@ -35,7 +35,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
     public function tearDown()
     {
-        $server = $this->service->getServer();
+        $server = $this->service->getUpstreamServer();
 
         if ($server && !$server->isClosed()) {
             $server->close();

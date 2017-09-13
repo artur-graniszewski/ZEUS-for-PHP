@@ -7,6 +7,19 @@ abstract class AbstractPhpResource
     /** @var resource */
     protected $resource;
 
+    /** @var int */
+    protected $streamId;
+
+    /**
+     * SocketConnection constructor.
+     * @param resource $resource
+     * @param string $peerName
+     */
+    public function __construct($resource, string $peerName = null)
+    {
+        $this->setResource($resource);
+    }
+
     /**
      * @return resource
      */
@@ -16,18 +29,20 @@ abstract class AbstractPhpResource
     }
 
     /**
+     * @return int
+     */
+    public function getResourceId() : int
+    {
+        return $this->streamId;
+    }
+
+    /**
      * @param resource $resource
      * @return $this
      */
     protected function setResource($resource)
     {
-        if (function_exists('stream_set_read_buffer')) {
-            //\stream_set_read_buffer($resource, 0);
-        }
-        if (function_exists('stream_set_write_buffer')) {
-            //\stream_set_write_buffer($resource, 0);
-        }
-
+        $this->streamId = (int) $resource;
         $this->resource = $resource;
 
         return $this;

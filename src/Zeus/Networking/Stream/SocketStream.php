@@ -10,8 +10,6 @@ use Zeus\Networking\Exception\SocketException;
  */
 final class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
-    protected $peerName;
-
     /**
      * SocketConnection constructor.
      * @param resource $resource
@@ -19,9 +17,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     public function __construct($resource, string $peerName = null)
     {
-        $this->peerName = $peerName;
-
-        parent::__construct($resource);
+        parent::__construct($resource, $peerName);
 
         $this->writeCallback = 'stream_socket_sendto';
 

@@ -155,7 +155,7 @@ class Server implements ListenerAggregateInterface
         $this->lastTick = microtime(true);
         $diff = microtime($this->lastTick) - $lastTick;
 
-        $wait = $diff < 0.1 ? (0.1 - $diff) * 10 : 100;
+        $wait = $diff < 0.1 ? (0.1 - $diff) * 100 : 100;
         if (!$selector->select($wait)) {
             return $this;
         }

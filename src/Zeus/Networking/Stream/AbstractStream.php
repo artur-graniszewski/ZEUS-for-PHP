@@ -2,6 +2,8 @@
 
 namespace Zeus\Networking\Stream;
 
+use Zeus\Networking\Exception\StreamException;
+
 /**
  * Class AbstractStream
  * @package Zeus\ServerService\Shared\Networking
@@ -43,7 +45,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function __construct($resource, string $peerName = null)
     {
-        $this->setResource($resource);
+        parent::__construct($resource, $peerName);
         $this->peerName = $peerName;
     }
 
@@ -66,7 +68,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function setBlocking(bool $isBlocking)
     {
-        $result = stream_set_blocking($this->resource, $isBlocking);
+        $result = \stream_set_blocking($this->resource, $isBlocking);
 
         if (!$result) {
             throw new \RuntimeException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
@@ -171,7 +173,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     protected function doRead($readMethod, string $ending = '')
     {
         if (!$this->isReadable()) {
-            throw new \LogicException("Stream is not readable");
+            throw new StreamException("Stream is not readable");
         }
 
         if ($ending !== '') {

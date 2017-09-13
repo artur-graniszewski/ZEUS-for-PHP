@@ -1,8 +1,10 @@
 <?php
 
 namespace Zeus\Networking;
+
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\Stream\SelectableStreamInterface;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Util\UnitConverter;
 
@@ -13,7 +15,7 @@ use Zeus\Util\UnitConverter;
 final class SocketServer
 {
     /** @var resource */
-    protected $socket;
+    protected $resource;
 
     /** @var int */
     protected $port = -1;
@@ -37,6 +39,9 @@ final class SocketServer
 
     /** @var bool */
     protected $tcpNoDelay;
+
+    /** @var SelectableStreamInterface */
+    protected $socketObject;
 
     /**
      * SocketServer constructor.
@@ -146,15 +151,13 @@ final class SocketServer
 
         $uri = 'tcp://' . $this->host . ':' . $this->port;
 
-        $this->socket = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN, $context);
-        if (false === $this->socket) {
-            throw new \RuntimeException("Could not bind to $uri: $errstr", $errno);
+        $this->resource = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN, $context);
+        if (false === $this->resource) {
+            throw new SocketException("Could not bind to $uri: $errstr", $errno);
         }
 
-        stream_set_blocking($this->socket, 0);
-
         if ($this->port === 0) {
-            $socketName = stream_socket_get_name($this->socket, false);
+            $socketName = \stream_socket_get_name($this->resource, false);
             $parts = explode(":", $socketName);
 
             end($parts);
@@ -174,23 +177,9 @@ final class SocketServer
     {
         $timeout = UnitConverter::convertMillisecondsToSeconds($this->getSoTimeout());
 
-        $newSocket = @stream_socket_accept($this->socket, $timeout, $peerName);
+        $newSocket = @\stream_socket_accept($this->resource, $timeout, $peerName);
         if (!$newSocket) {
             throw new SocketTimeoutException('Socket timed out');
-        }
-
-        stream_set_blocking($newSocket, true);
-
-        if (function_exists('stream_set_chunk_size')) {
-            //stream_set_chunk_size($newSocket, 1);
-        }
-
-        if (function_exists('stream_set_read_buffer')) {
-            //stream_set_read_buffer($newSocket, 0);
-        }
-
-        if (function_exists('stream_set_write_buffer')) {
-            //stream_set_write_buffer($newSocket, 0);
         }
 
         $connection = new SocketStream($newSocket, $peerName);
@@ -205,11 +194,11 @@ final class SocketServer
      */
     public function setOption(int $option, $value)
     {
-        if (!$this->socket) {
+        if (!$this->resource) {
             throw new SocketException("Socket must be bound first");
         }
 
-        $socket = socket_import_stream($this->socket);
+        $socket = socket_import_stream($this->resource);
         socket_set_option($socket, SOL_SOCKET, $option, $value);
 
         return $this;
@@ -220,15 +209,15 @@ final class SocketServer
      */
     public function close()
     {
-        if (!$this->socket) {
+        if (!$this->resource) {
             throw new \LogicException("Server already stopped");
         }
 
-        stream_set_blocking($this->socket, true);
-        @stream_socket_shutdown($this->socket, STREAM_SHUT_RD);
+        stream_set_blocking($this->resource, true);
+        @stream_socket_shutdown($this->resource, STREAM_SHUT_RD);
 //        fread($this->socket, 4096);
-        fclose($this->socket);
-        $this->socket = null;
+        fclose($this->resource);
+        $this->resource = null;
         $this->isClosed = true;
 
         return $this;
@@ -293,8 +282,12 @@ final class SocketServer
         return $this;
     }
 
-    public function getResource()
+    public function getSocket() : SelectableStreamInterface
     {
-        return $this->socket;
+        if (!$this->socketObject) {
+            $this->socketObject = new SocketStream($this->resource);
+        }
+
+        return $this->socketObject;
     }
 }
