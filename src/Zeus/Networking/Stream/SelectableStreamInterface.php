@@ -7,7 +7,7 @@ namespace Zeus\Networking\Stream;
  * @package Zeus\Networking
  * @internal
  */
-interface SelectableStreamInterface
+interface SelectableStreamInterface extends StreamInterface
 {
     /**
      * @param int $timeout

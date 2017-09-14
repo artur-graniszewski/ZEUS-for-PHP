@@ -12,6 +12,14 @@ use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 
+use function count;
+use function array_keys;
+use function array_rand;
+use function array_search;
+use function microtime;
+use function stream_socket_client;
+use function get_called_class;
+
 class Server implements ListenerAggregateInterface
 {
     protected $eventHandles;
@@ -124,7 +132,7 @@ class Server implements ListenerAggregateInterface
             ],
         ];
 
-        $socket = @\stream_socket_client('tcp://127.0.0.1:' . $ipcPort, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $socket = @stream_socket_client('tcp://127.0.0.1:' . $ipcPort, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
 
         if (!$socket) {
             throw new \RuntimeException("IPC connection failed");

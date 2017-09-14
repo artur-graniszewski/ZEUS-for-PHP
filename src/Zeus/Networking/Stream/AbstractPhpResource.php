@@ -2,7 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 
-abstract class AbstractPhpResource
+abstract class AbstractPhpResource implements ResourceInterface
 {
     /** @var resource */
     protected $resource;

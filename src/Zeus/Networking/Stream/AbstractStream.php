@@ -4,6 +4,16 @@ namespace Zeus\Networking\Stream;
 
 use Zeus\Networking\Exception\StreamException;
 
+use function strlen;
+use function substr;
+use function stream_set_blocking;
+use function stream_get_meta_data;
+use function stream_get_line;
+use function fclose;
+use function fflush;
+use function ftell;
+use function feof;
+
 /**
  * Class AbstractStream
  * @package Zeus\ServerService\Shared\Networking
@@ -68,10 +78,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function setBlocking(bool $isBlocking)
     {
-        $result = \stream_set_blocking($this->resource, $isBlocking);
+        $result = stream_set_blocking($this->resource, $isBlocking);
 
         if (!$result) {
-            throw new \RuntimeException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
+            throw new StreamException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
         }
 
         $this->isBlocking = $isBlocking;
@@ -86,7 +96,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function close()
     {
         if ($this->isClosed) {
-            throw new \LogicException("Stream already closed");
+            throw new StreamException("Stream already closed");
         }
 
         $exception = null;
@@ -128,8 +138,8 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     protected function doClose()
     {
-        \fflush($this->resource);
-        \fclose($this->resource);
+        fflush($this->resource);
+        fclose($this->resource);
 
         return $this;
     }
@@ -140,10 +150,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     protected function isEof() : bool
     {
         // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
-        if (\feof($this->resource)) {
+        if (feof($this->resource)) {
             return true;
         }
-        $info = @\stream_get_meta_data($this->resource);
+        $info = @stream_get_meta_data($this->resource);
 
         return $info['eof'] || $info['timed_out'];
     }
@@ -160,7 +170,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param string $ending
      * @return string|false false if nothing was read, string otherwise
      */
-    public function read(string $ending = '')
+    public function read(string $ending = '') : string
     {
         return $this->doRead($this->readCallback, $ending);
     }
@@ -170,7 +180,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      * @param string $ending
      * @return mixed
      */
-    protected function doRead($readMethod, string $ending = '')
+    protected function doRead($readMethod, string $ending = '') : string
     {
         if (!$this->isReadable()) {
             throw new StreamException("Stream is not readable");
@@ -178,13 +188,13 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
         if ($ending !== '') {
             $data = '';
-            $endingSize = \strlen($ending);
+            $endingSize = strlen($ending);
 
             while (!$this->isEof()) {
-                $pos = \ftell($this->resource);
+                $pos = ftell($this->resource);
 
                 // @todo: replace this function, as it uses PHP buffers which collide with STREAM_PEEK behaviour
-                $buffer = @\stream_get_line($this->resource, $this->readBufferSize, $ending);
+                $buffer = @stream_get_line($this->resource, $this->readBufferSize, $ending);
 
                 if ($buffer === '') {
                     break;
@@ -192,7 +202,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
                 $data .= $buffer;
 
-                $newPos = \ftell($this->resource);
+                $newPos = ftell($this->resource);
                 if ($newPos === $pos + strlen($buffer) + $endingSize) {
 
                     break;
@@ -206,7 +216,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
         $this->dataReceived += strlen($data);
 
-        return $data;
+        return $data === false ? '' : $data;
     }
 
     /**
@@ -244,7 +254,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     protected function doWrite($writeMethod)
     {
-        $size = \strlen($this->writeBuffer);
+        $size = strlen($this->writeBuffer);
         $sent = 0;
 
         while ($sent !== $size) {
@@ -257,7 +267,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
             if ($wrote) {
                 $sent += $wrote;
-                $this->writeBuffer = \substr($this->writeBuffer, $wrote);
+                $this->writeBuffer = substr($this->writeBuffer, $wrote);
             }
         };
 

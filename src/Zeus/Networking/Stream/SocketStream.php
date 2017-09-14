@@ -1,8 +1,19 @@
 <?php
 
 namespace Zeus\Networking\Stream;
+
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\StreamException;
+
+use function stream_socket_get_name;
+use function socket_import_stream;
+use function socket_set_option;
+use function stream_set_blocking;
+use function fflush;
+use function fclose;
+use function strlen;
+use function strpos;
+use function substr;
 
 /**
  * Class SocketStream
@@ -52,12 +63,12 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         $resource = $this->resource;
 
         $readMethod = $this->readCallback;
-        \stream_set_blocking($resource, true);
-        \fflush($resource);
+        stream_set_blocking($resource, true);
+        fflush($resource);
         @stream_socket_shutdown($resource, STREAM_SHUT_RDWR);
-        \stream_set_blocking($resource, false);
+        stream_set_blocking($resource, false);
         @$readMethod($resource, 4096);
-        \fclose($resource);
+        fclose($resource);
 
         return $this;
     }
@@ -81,9 +92,9 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     /**
      * @param callable $readMethod
      * @param string $ending
-     * @return mixed
+     * @return string
      */
-    protected function doRead($readMethod, string $ending = '')
+    protected function doRead($readMethod, string $ending = '') : string
     {
         if ($ending === '') {
             $data = @$readMethod($this->resource, $this->readBufferSize);
@@ -93,9 +104,9 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
                     throw new StreamException("Stream is not readable");
                 }
 
-                $data = false;
+                $data = '';
             } else {
-                $this->dataReceived += \strlen($data);
+                $this->dataReceived += strlen($data);
             }
 
             return $data;
@@ -107,7 +118,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
 
         // @todo: buffer internally until ending is found, return false until ending is found
         $data = '';
-        $endingSize = \strlen($ending);
+        $endingSize = strlen($ending);
 
         while (!$this->isEof()) {
             // @todo: add some checks if STREAM_PEEK is supported by $readMethod
@@ -118,12 +129,12 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
                 break;
             }
 
-            $pos = \strpos($buffer, $ending);
+            $pos = strpos($buffer, $ending);
             if (false !== $pos) {
-                $buffer = \substr($buffer, 0, $pos);
+                $buffer = substr($buffer, 0, $pos);
                 $pos += $endingSize;
             } else {
-                $pos = \strlen($buffer);
+                $pos = strlen($buffer);
             }
 
             @$readMethod($this->resource, $pos);
@@ -133,12 +144,8 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
             break;
         }
 
-        $this->dataReceived += \strlen($data);
+        $this->dataReceived += strlen($data);
 
-        if ($data === '') {
-            $data = false;
-        }
-
-        return $data;
+        return $data === false ? '' : $data;
     }
 }

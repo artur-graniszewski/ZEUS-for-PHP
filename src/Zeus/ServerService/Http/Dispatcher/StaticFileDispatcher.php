@@ -8,6 +8,18 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\MimeType;
 
+use function file_exists;
+use function fopen;
+use function implode;
+use function rtrim;
+use function getcwd;
+use function realpath;
+use function substr;
+use function strlen;
+use function readfile;
+use function is_dir;
+use function preg_match;
+
 class StaticFileDispatcher implements DispatcherInterface
 {
     /** @var DispatcherInterface */

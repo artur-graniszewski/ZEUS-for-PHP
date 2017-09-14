@@ -16,7 +16,19 @@ use Zend\Http\Header\ContentEncoding;
 use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Header\Vary;
 use Zend\Http\Response\Stream as Response;
-use Zend\Validator\Hostname as HostnameValidator;
+
+use function is_callable;
+use function strlen;
+use function ob_start;
+use function ob_end_flush;
+use function function_exists;
+use function preg_match;
+use function in_array;
+use function deflate_init;
+use function deflate_add;
+use function fclose;
+use function is_resource;
+use function gmdate;
 
 class Message implements MessageComponentInterface, HeartBeatMessageInterface
 {

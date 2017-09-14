@@ -4,6 +4,13 @@ namespace Zeus\ServerService\Http\Message\Helper;
 
 use Zeus\ServerService\Http\Message\Request;
 
+use function strpos;
+use function is_array;
+use function parse_str;
+use function substr;
+use function strlen;
+use function array_merge;
+
 trait PostData
 {
     protected function parseRequestPostData(Request $request)

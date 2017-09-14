@@ -11,6 +11,14 @@ use Zeus\Networking\SocketServer;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
+use function microtime;
+use function stream_socket_client;
+use function count;
+use function in_array;
+use function array_search;
+use function explode;
+use function time;
+
 /**
  * Class SocketMessageBroker
  * @internal
@@ -195,7 +203,7 @@ final class SocketMessageBroker
             ],
         ];
 
-        $leaderPipe = @\stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $leaderPipe = @stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
         if ($leaderPipe) {
             $leaderPipe = new SocketStream($leaderPipe);
             $leaderPipe->setOption(SO_KEEPALIVE, 1);
@@ -218,6 +226,7 @@ final class SocketMessageBroker
     }
 
     /**
+     * @param WorkerEvent $event
      */
     public function onWorkerStart(WorkerEvent $event)
     {
@@ -307,7 +316,7 @@ final class SocketMessageBroker
             return $this;
         }
 
-        $now = \microtime(true);
+        $now = microtime(true);
         do {
             if (!$this->readSelector->select(0)) {
                 return $this;
@@ -330,13 +339,13 @@ final class SocketMessageBroker
                     continue;
                 }
 
-                $key = \array_search($input, $this->upstreams);
+                $key = array_search($input, $this->upstreams);
 
                 if ($key !== false) {
                     $output = $this->downstream[$key];
                     $outputName = 'SERVER';
                 } else {
-                    $key = \array_search($input, $this->downstream);
+                    $key = array_search($input, $this->downstream);
                     if (!$key) {
                         //$this->readSelector->unregister($input);
                         continue;
@@ -370,7 +379,7 @@ final class SocketMessageBroker
                     break;
                 }
             }
-        } while ($streamsToRead && (\microtime(true) - $now < 0.1));
+        } while ($streamsToRead && (microtime(true) - $now < 0.1));
 
         return $this;
     }
@@ -427,7 +436,7 @@ final class SocketMessageBroker
                 ],
             ];
 
-            $socket = @\stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+            $socket = @stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
             if (!$socket) {
                 unset($this->availableWorkers[$uid]);
                 continue;
@@ -462,17 +471,15 @@ final class SocketMessageBroker
     {
         $streams = $this->readSelector->getSelectedStreams(Selector::OP_READ);
 
-        if (!\in_array($this->downstreamServer->getSocket(), $streams)) {
+        if (!in_array($this->downstreamServer->getSocket(), $streams)) {
             return $this;
         }
 
         try {
             while ($connection = $this->downstreamServer->accept()) {
-                // @todo: remove setBlocking(), now its needed in ZeusTest\SocketMessageBrokerTest unit tests, otherwise they hang
-                //$connection->setBlocking(false);
                 if ($connection->select(100)) {
                     $in = $connection->read('!');
-                    list($uid, $port) = \explode(":", $in);
+                    list($uid, $port) = explode(":", $in);
 
                     $this->availableWorkers[$uid] = $port;
                     $this->ipc[$uid] = $connection;

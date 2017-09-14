@@ -1,0 +1,10 @@
+<?php
+
+namespace Zeus\Networking\Stream;
+
+interface ResourceInterface
+{
+    public function getResource();
+
+    public function getResourceId() : int;
+}

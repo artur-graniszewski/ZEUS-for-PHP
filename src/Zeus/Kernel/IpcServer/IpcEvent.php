@@ -23,7 +23,7 @@ class IpcEvent extends Event
     }
 
     /**
-     * @return Worker
+     * @return mixed
      */
     public function getTarget()
     {

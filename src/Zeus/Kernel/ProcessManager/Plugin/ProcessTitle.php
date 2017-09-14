@@ -9,6 +9,11 @@ use Zeus\Kernel\ProcessManager\Helper\AddUnitsToNumbers;
 use Zeus\Kernel\ProcessManager\WorkerEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 
+use function cli_set_process_title;
+use function function_exists;
+use function strtolower;
+use function preg_replace;
+
 class ProcessTitle implements ListenerAggregateInterface
 {
     use AddUnitsToNumbers;

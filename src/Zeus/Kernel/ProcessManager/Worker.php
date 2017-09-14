@@ -9,6 +9,8 @@ use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\ProcessManager\Helper\GarbageCollector;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
 
+use function time;
+
 /**
  * Class Worker
  * @package Zeus\Kernel\ProcessManager
@@ -162,7 +164,6 @@ class Worker extends AbstractWorker
     {
         $exception = null;
         $this->setWaiting();
-        // @todo: why this clone is needed in case of pthreads? they should inherit nothing
         $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
@@ -188,6 +189,7 @@ class Worker extends AbstractWorker
     }
 
     /**
+     * @param WorkerEvent $event
      * @return $this
      * @todo: move this to an AbstractProcess or a Plugin?
      */

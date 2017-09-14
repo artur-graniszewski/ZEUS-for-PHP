@@ -31,7 +31,7 @@ class SchedulerEvent extends Event
     /**
      * @return Scheduler
      */
-    public function getTarget()
+    public function getTarget() : Scheduler
     {
         return parent::getTarget();
     }

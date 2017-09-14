@@ -62,6 +62,7 @@ class SchedulerStatus implements ListenerAggregateInterface
     }
 
     /**
+     * @param Scheduler $scheduler
      * @return mixed[]
      */
     public static function getStatus(Scheduler $scheduler)

@@ -7,6 +7,18 @@ use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\SelectableStreamInterface;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Util\UnitConverter;
+use function stream_socket_accept;
+use function stream_socket_server;
+use function stream_socket_get_name;
+use function stream_set_blocking;
+use function stream_context_create;
+use function stream_socket_shutdown;
+use function socket_import_stream;
+use function socket_set_option;
+use function fclose;
+use function end;
+use function explode;
+use function current;
 
 /**
  * Class SocketServer
@@ -111,7 +123,7 @@ final class SocketServer
     public function bind(string $host, int $backlog = null, int $port = -1)
     {
         if ($this->isBound()) {
-            throw new \LogicException("Server already bound");
+            throw new SocketException("Server already bound");
         }
 
         $this->host = $host;
@@ -122,7 +134,7 @@ final class SocketServer
         if ($port >= 0) {
             $this->port = $port;
         } else if ($this->port < 0) {
-            throw new \LogicException("Can't bind to $host: no port specified");
+            throw new SocketException("Can't bind to $host: no port specified");
         }
 
         $this->createServer();
@@ -143,7 +155,7 @@ final class SocketServer
             ],
         ];
 
-        $context = \stream_context_create($opts);
+        $context = stream_context_create($opts);
 
         if (!$this->host) {
             $this->host = '0.0.0.0';
@@ -157,12 +169,12 @@ final class SocketServer
         }
 
         if ($this->port === 0) {
-            $socketName = \stream_socket_get_name($this->resource, false);
-            $parts = \explode(":", $socketName);
+            $socketName = stream_socket_get_name($this->resource, false);
+            $parts = explode(":", $socketName);
 
-            \end($parts);
+            end($parts);
 
-            $this->port = (int) \current($parts);
+            $this->port = (int) current($parts);
         }
 
         $this->isBound = true;
@@ -177,7 +189,7 @@ final class SocketServer
     {
         $timeout = UnitConverter::convertMillisecondsToSeconds($this->getSoTimeout());
 
-        $newSocket = @\stream_socket_accept($this->resource, $timeout, $peerName);
+        $newSocket = @stream_socket_accept($this->resource, $timeout, $peerName);
         if (!$newSocket) {
             throw new SocketTimeoutException('Socket timed out');
         }
@@ -198,8 +210,8 @@ final class SocketServer
             throw new SocketException("Socket must be bound first");
         }
 
-        $socket = \socket_import_stream($this->resource);
-        \socket_set_option($socket, SOL_SOCKET, $option, $value);
+        $socket = socket_import_stream($this->resource);
+        socket_set_option($socket, SOL_SOCKET, $option, $value);
 
         return $this;
     }
@@ -210,11 +222,11 @@ final class SocketServer
     public function close()
     {
         if (!$this->resource) {
-            throw new \LogicException("Server already stopped");
+            throw new SocketException("Server already stopped");
         }
 
-        @\stream_set_blocking($this->resource, true);
-        @\stream_socket_shutdown($this->resource, STREAM_SHUT_RD);
+        @stream_set_blocking($this->resource, true);
+        @stream_socket_shutdown($this->resource, STREAM_SHUT_RD);
 //        fread($this->socket, 4096);
         fclose($this->resource);
         $this->resource = null;

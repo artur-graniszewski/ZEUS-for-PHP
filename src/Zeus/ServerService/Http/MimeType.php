@@ -2,6 +2,13 @@
 
 namespace Zeus\ServerService\Http;
 
+use function tempnam;
+use function fopen;
+use function fwrite;
+use function fclose;
+use function unlink;
+use function pathinfo;
+
 class MimeType
 {
     protected static $mimeTypes = [

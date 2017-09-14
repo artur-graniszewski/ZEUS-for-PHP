@@ -5,6 +5,15 @@ namespace Zeus\ServerService\Http\Message;
 use Zend\Stdlib\Parameters;
 use Zend\Http\Request as ZendRequest;
 
+use function preg_match_all;
+use function preg_match;
+use function parse_url;
+use function parse_str;
+use function strlen;
+use function strtolower;
+use function substr;
+
+
 class Request extends ZendRequest
 {
     protected $headersOverview = [];

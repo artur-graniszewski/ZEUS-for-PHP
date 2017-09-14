@@ -5,6 +5,9 @@ namespace Zeus\Kernel\ProcessManager\Scheduler\Discipline;
 use Zeus\Kernel\ProcessManager\ConfigInterface;
 use Zeus\Kernel\ProcessManager\Scheduler\WorkerCollection;
 use Zeus\Kernel\ProcessManager\Status\WorkerState;
+use function min;
+use function microtime;
+use function array_slice;
 
 class LruDiscipline implements DisciplineInterface
 {
@@ -29,10 +32,6 @@ class LruDiscipline implements DisciplineInterface
         $processesToTerminate = $this->getProcessesToTerminate($processes, $config, $statusSummary);
         $processesToCreate = $this->getAmountOfProcessesToCreate($processes, $config, $statusSummary);
 
-//        $r = $statusSummary[WorkerState::WAITING];;
-//        $t = count($processesToTerminate);
-//        $c = $processesToCreate;
-//        //trigger_error("R: $r, T: $t, C: $c");
         return [
             'create' => $processesToCreate,
             'terminate' => [],

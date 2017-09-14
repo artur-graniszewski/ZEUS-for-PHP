@@ -7,15 +7,17 @@ namespace Zeus\Networking\Stream;
  * @package Zeus\Networking
  * @internal
  */
-interface StreamInterface
+interface StreamInterface extends ResourceInterface
 {
     public function __construct($resource);
 
     public function close();
 
+    public function isClosed() : bool;
+
     public function isWritable() : bool;
 
-    public function read(string $ending = '');
+    public function read(string $ending = '') : string;
 
     public function isReadable() : bool;
 

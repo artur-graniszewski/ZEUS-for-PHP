@@ -5,6 +5,8 @@ namespace Zeus\ServerService\Http\Message\Helper;
 use Zend\Http\Request;
 use Zend\Http\Response;
 
+use function ctype_digit;
+
 trait RegularEncoding
 {
     private $contentReceived = 0;

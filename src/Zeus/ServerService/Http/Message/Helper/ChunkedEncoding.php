@@ -5,6 +5,12 @@ namespace Zeus\ServerService\Http\Message\Helper;
 use Zend\Http\Request;
 use Zend\Http\Response;
 
+use function preg_match;
+use function strlen;
+use function strpos;
+use function substr;
+use function hexdec;
+
 trait ChunkedEncoding
 {
     private $buffer = null;

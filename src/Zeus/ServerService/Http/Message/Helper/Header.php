@@ -6,6 +6,11 @@ use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Request;
 use Zend\Validator\Hostname as HostnameValidator;
 
+use function preg_match;
+use function substr;
+use function strpos;
+use function strlen;
+
 trait Header
 {
     /** @var mixed[] */

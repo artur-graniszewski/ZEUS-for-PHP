@@ -1,10 +1,16 @@
 <?php
 
 namespace Zeus\Networking\Stream;
+
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Util\UnitConverter;
+
+use function error_clear_last;
+use function error_get_last;
+use function stream_select;
+use function strlen;
 
 /**
  * Class AbstractSelectableStream
@@ -35,7 +41,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
             return $result === 1;
 
-        } catch (\exception $exception) {
+        } catch (\Exception $exception) {
             $this->isReadable = false;
 
             throw $exception;
@@ -51,18 +57,18 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
      */
     protected function doSelect(& $read, & $write, & $except, $timeout) : int
     {
-        @\error_clear_last();
-        $result = @\stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
+        error_clear_last();
+        $result = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
         if ($result !== false) {
             return $result;
         }
 
-        $error = \error_get_last();
+        $error = error_get_last();
         if (strstr($error['message'], 'Interrupted system call')) {
             return 0;
         }
 
-        throw new \RuntimeException("Stream select failed: " . $error['message']);
+        throw new StreamException("Stream select failed: " . $error['message']);
     }
 
     /**

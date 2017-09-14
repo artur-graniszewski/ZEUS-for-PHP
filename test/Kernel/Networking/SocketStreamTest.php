@@ -88,7 +88,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
+     * @expectedException \Zeus\Networking\Exception\StreamException
      * @expectedExceptionMessage Stream already closed
      */
     public function testDoubleClose()

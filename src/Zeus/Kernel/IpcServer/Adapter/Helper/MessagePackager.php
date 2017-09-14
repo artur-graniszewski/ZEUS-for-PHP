@@ -2,6 +2,14 @@
 
 namespace Zeus\Kernel\IpcServer\Adapter\Helper;
 
+use function stripslashes;
+use function addslashes;
+use function unserialize;
+use function serialize;
+use function is_object;
+use function strpos;
+use function is_array;
+
 trait MessagePackager
 {
     /**
