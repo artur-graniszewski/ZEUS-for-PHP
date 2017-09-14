@@ -599,8 +599,7 @@ final class SocketMessageBroker
             }
             $this->connection->select(100);
 
-            $data = false;
-            while ($data !== '' && $this->connection->isReadable()) {
+            while ($this->connection->isReadable() && $this->connection->select(0)) {
                 $data = $this->connection->read();
                 if ($data !== '') {
                     $this->message->onMessage($this->connection, $data);

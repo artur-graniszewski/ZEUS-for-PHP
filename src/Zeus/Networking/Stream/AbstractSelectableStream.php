@@ -73,39 +73,21 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
     /**
      * @param callback $writeMethod
-     * @return $this
+     * @return int
      */
-    protected function doWrite($writeMethod)
+    protected function doWrite($writeMethod) : int
     {
         $size = strlen($this->writeBuffer);
         $sent = 0;
 
-        $read = $except = [];
-        $write = [$this->resource];
-
-        $timeout = $this->getSoTimeout();
-
         while ($sent !== $size) {
-            $amount = 1;
-            $toWrite = strlen($this->writeBuffer);
             $wrote = @$writeMethod($this->resource, $this->writeBuffer);
 
-            // write failed, try to wait a bit
-            if ($timeout > 0 && $wrote >= 0 && $wrote < strlen($this->writeBuffer)) {
-                $amount = $this->doSelect($read, $write, $except, $timeout);
-
-                if ($amount === 0) {
-                    $this->writeBuffer = substr($this->writeBuffer, $wrote);
-                    throw new SocketTimeoutException(sprintf("Write timeout exceeded, sent %d bytes", $wrote));
-                }
-            }
-
-            if ($wrote < 0 || false === $wrote || $amount === false) {
-                //if ( || $this->isEof())
+            if ($wrote < 0 || false === $wrote) {
                 $this->isWritable = false;
 
                 if ($wrote < strlen($this->writeBuffer)) {
-                    throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $wrote), $toWrite));
+                    throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
                 }
             }
 
@@ -118,7 +100,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         $this->dataSent += $sent;
         $this->writeBuffer = '';
 
-        return $this;
+        return $sent;
     }
 
     /**

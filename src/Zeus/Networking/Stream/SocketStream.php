@@ -99,12 +99,9 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         if ($ending === '') {
             $data = @$readMethod($this->resource, $this->readBufferSize);
 
-            if (false === $data || "" === $data) {
-                if (!$this->isReadable()) {
-                    throw new StreamException("Stream is not readable");
-                }
-
-                $data = '';
+            if (false === $data || ("" == $data && $this->isEof())) {
+                $this->isReadable = false;
+                throw new StreamException("Stream is not readable");
             } else {
                 $this->dataReceived += strlen($data);
             }
@@ -120,7 +117,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         $data = '';
         $endingSize = strlen($ending);
 
-        while (!$this->isEof()) {
+        while (!$this->isEof() && $this->select(0)) {
             // @todo: add some checks if STREAM_PEEK is supported by $readMethod
             $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
 

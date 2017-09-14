@@ -125,7 +125,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
+     * @expectedException \Zeus\Networking\Exception\StreamException
      * @expectedExceptionMessage Stream is not writable
      */
     public function testWriteOnClosedConnection()
@@ -263,7 +263,6 @@ class SocketStreamTest extends AbstractNetworkingTest
         fclose($this->client);
         $connection->read();
         $this->assertFalse($connection->isReadable(), 'Stream should not be readable when disconnected');
-        $this->assertFalse($connection->isWritable(), 'Stream should not be writable when disconnected');
     }
 
     /**

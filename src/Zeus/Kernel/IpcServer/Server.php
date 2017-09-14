@@ -73,7 +73,7 @@ class Server implements ListenerAggregateInterface
             while (true) {
                 $ipcStream = $this->ipcServer->accept();
                 // @todo: remove setBlocking(), now its needed in ZeusTest\SchedulerTest unit tests, otherwise they hang
-                $ipcStream->setBlocking(false);
+                $ipcStream->setBlocking(true);
                 $ipcStream->setOption(SO_KEEPALIVE, 1);
 
                 if (!$ipcStream->select(10)) {
@@ -163,7 +163,7 @@ class Server implements ListenerAggregateInterface
         $this->lastTick = microtime(true);
         $diff = microtime($this->lastTick) - $lastTick;
 
-        $wait = $diff < 0.1 ? (0.1 - $diff) * 100 : 100;
+        $wait = (int) ($diff < 0.1 ? (0.1 - $diff) * 1000 : 100);
         if (!$selector->select($wait)) {
             return $this;
         }

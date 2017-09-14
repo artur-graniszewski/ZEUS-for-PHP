@@ -226,7 +226,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function write(string $data)
     {
         if (!$this->isWritable()) {
-            throw new \LogicException("Stream is not writable");
+            throw new StreamException("Stream is not writable");
         }
 
         $this->writeBuffer .= $data;
@@ -245,14 +245,18 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     {
         $this->doWrite($this->writeCallback);
 
+        if (isset($this->writeBuffer[0])) {
+            throw new StreamException(sprintf("Flush incomplete, %d bytes left in the write buffer", strlen($this->writeBuffer)));
+        }
+
         return $this;
     }
 
     /**
      * @param callback $writeMethod
-     * @return $this
+     * @return int
      */
-    protected function doWrite($writeMethod)
+    protected function doWrite($writeMethod) : int
     {
         $size = strlen($this->writeBuffer);
         $sent = 0;
@@ -274,7 +278,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         $this->dataSent += $sent;
         $this->writeBuffer = '';
 
-        return $this;
+        return $sent;
     }
 
     /**
