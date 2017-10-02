@@ -4,6 +4,9 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
+use Zeus\Kernel\IpcServer\IpcDriver;
+use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -50,7 +53,7 @@ final class SocketMessageBroker
     protected $workerServer;
 
     /** @var SocketStream[] */
-    protected $ipc = [];
+    protected $workerPipe = [];
 
     /** @var SocketStream[] */
     protected $downstream = [];
@@ -75,6 +78,7 @@ final class SocketMessageBroker
 
     /** @var Selector */
     protected $writeSelector;
+    protected $uid;
 
     /** @var LoggerInterface */
     private $logger;
@@ -107,6 +111,8 @@ final class SocketMessageBroker
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onLeaderLoop']);
         $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
+        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'leaderElection'], SchedulerEvent::PRIORITY_FINALIZE);
+        $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'leaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
 
         return $this;
     }
@@ -116,7 +122,50 @@ final class SocketMessageBroker
      */
     public function getLeaderPipe()
     {
+        if ($this->leaderPipe) {
+            return $this->leaderPipe;
+        }
+
+        $opts = [
+            'socket' => [
+                'tcp_nodelay' => true,
+            ],
+        ];
+
+        $leaderPipe = @stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        if ($leaderPipe) {
+            $port = $this->workerServer->getLocalPort();
+            $uid = $this->uid;
+
+            $leaderPipe = new SocketStream($leaderPipe);
+            $leaderPipe->setOption(SO_KEEPALIVE, 1);
+            $leaderPipe->write("$uid:$port!")->flush();
+            $this->leaderPipe = $leaderPipe;
+        }
+
         return $this->leaderPipe;
+    }
+
+    public function leaderElection(SchedulerEvent $event)
+    {
+        //$this->getLogger()->debug("Leader election started");
+        $event->getTarget()->getIpc()->send(new ElectionMessage(), IpcDriver::AUDIENCE_ANY);
+    }
+
+    public function leaderElected(IpcEvent $event)
+    {
+        $message = $event->getParams();
+
+        if ($message instanceof ElectionMessage) {
+            $this->getLogger()->debug("Becoming pool leader");
+            $this->readSelector = new Selector();
+            $this->writeSelector = new Selector();
+            $this->startDownstreamServer();
+            $this->isLeader = true;
+            $this->workerServer->close();
+            $this->workerServer = null;
+            $this->startUpstreamServer(1000);
+        }
     }
 
     /**
@@ -190,39 +239,9 @@ final class SocketMessageBroker
         $workerServer->setSoTimeout(0);
         $workerServer->setTcpNoDelay(true);
         $workerServer->bind('127.0.0.1', 1, 0);
-        $port = $workerServer->getLocalPort();
-
         $worker = $event->getTarget();
-        $uid = $worker->getThreadId() > 1 ? $worker->getThreadId() : $worker->getProcessId();
-
+        $this->uid = $worker->getThreadId() > 1 ? $worker->getThreadId() : $worker->getProcessId();
         $this->workerServer = $workerServer;
-
-        $opts = [
-            'socket' => [
-                'tcp_nodelay' => true,
-            ],
-        ];
-
-        $leaderPipe = @stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
-        if ($leaderPipe) {
-            $leaderPipe = new SocketStream($leaderPipe);
-            $leaderPipe->setOption(SO_KEEPALIVE, 1);
-            $leaderPipe->write("$uid:$port!")->flush();
-            $this->leaderPipe = $leaderPipe;
-
-            return $this;
-        }
-
-        $this->readSelector = new Selector();
-        $this->writeSelector = new Selector();
-        $this->startDownstreamServer();
-        $this->isLeader = true;
-        $this->workerServer->close();
-        $this->workerServer = null;
-        $event->getTarget()->setRunning();
-        $this->startUpstreamServer(1000);
-
-        return $this;
     }
 
     /**
@@ -482,7 +501,7 @@ final class SocketMessageBroker
                     list($uid, $port) = explode(":", $in);
 
                     $this->availableWorkers[$uid] = $port;
-                    $this->ipc[$uid] = $connection;
+                    $this->workerPipe[$uid] = $connection;
 
                     continue;
                 }
@@ -501,7 +520,7 @@ final class SocketMessageBroker
      */
     protected function unregisterWorkers()
     {
-        foreach ($this->ipc as $uid => $ipc) {
+        foreach ($this->workerPipe as $uid => $ipc) {
             try {
                 //$ipc->write(' ')->flush();
 
@@ -519,7 +538,7 @@ final class SocketMessageBroker
             }
             $this->disconnectClient($uid);
 
-            unset ($this->ipc[$uid]);
+            unset ($this->workerPipe[$uid]);
             unset ($this->availableWorkers[$uid]);
             unset ($this->busyWorkers[$uid]);
         }
@@ -549,6 +568,12 @@ final class SocketMessageBroker
             $this->createWorkerServer($event);
         }
 
+        $leaderPipe = $this->getLeaderPipe();
+
+        if (!$leaderPipe) {
+            return;
+        }
+
         try {
             if ($this->leaderPipe->select(0)) {
                 $this->leaderPipe->read();
@@ -559,16 +584,6 @@ final class SocketMessageBroker
 
             return;
         }
-
-//        static $sent = false;
-//        if (!$sent) {
-//            $event->getTarget()->getIpc()->send('loop from ' . getmypid(), IpcDriver::AUDIENCE_AMOUNT, 2);
-//            $sent = true;
-//        }
-//        $msgs = $event->getTarget()->getIpc()->readAll();
-//        foreach ($msgs as $msg) {
-//            trigger_error(getmypid() . " RECEIVED $msg");
-//        }
 
         try {
             if (!$this->connection) {

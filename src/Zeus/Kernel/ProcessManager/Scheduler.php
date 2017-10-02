@@ -114,9 +114,12 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($events) {
+            $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
+            $this->onSchedulerStart();
+
+        }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
@@ -133,6 +136,10 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         $message = $event->getParams();
 
+        if (!is_array($message)) {
+            return;
+
+        }
         switch ($message['type']) {
             case Message::IS_STATUS:
                 $details = $message['extra'];

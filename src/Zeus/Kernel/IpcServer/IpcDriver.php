@@ -9,6 +9,7 @@ abstract class IpcDriver
     const AUDIENCE_SERVER = 'aud_srv';
     const AUDIENCE_SELECTED = 'aud_sel';
     const AUDIENCE_AMOUNT = 'aud_num';
+    const AUDIENCE_SELF = 'aud_self';
 
     /**
      * @param $message

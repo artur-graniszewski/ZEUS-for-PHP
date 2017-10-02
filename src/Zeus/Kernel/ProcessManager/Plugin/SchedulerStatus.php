@@ -38,14 +38,20 @@ class SchedulerStatus implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 100)
     {
         $events = $events->getSharedManager();
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->init($e);}, $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) use ($events, $priority) {
+            $this->init($e);
+            $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
+        }, $priority);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop();}, $priority);
-        $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
     }
 
     protected function onProcessMessage(IpcEvent $event)
     {
         $message = $event->getParams();
+
+        if (!is_array($message)) {
+            return;
+        }
 
         switch ($message['type']) {
             case Message::IS_STATUS_REQUEST:
