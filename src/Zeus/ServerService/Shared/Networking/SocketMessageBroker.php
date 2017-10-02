@@ -608,6 +608,8 @@ final class SocketMessageBroker
                 $this->onHeartBeat($event);
             }
 
+            $this->onHeartBeat($event);
+
             // nothing wrong happened, data was handled, resume main event
             if ($this->connection->isReadable() && $this->connection->isWritable()) {
                 return;
