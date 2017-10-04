@@ -32,9 +32,6 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         parent::__construct($resource, $peerName);
 
         $this->writeCallback = 'stream_socket_sendto';
-
-        // @todo: why the below function does not work with phpunit tests?
-        // @todo: check performance impact of using stream_get_contents
         $this->readCallback = 'stream_socket_recvfrom';
     }
 
@@ -63,11 +60,12 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         $resource = $this->resource;
 
         $readMethod = $this->readCallback;
-        stream_set_blocking($resource, true);
         fflush($resource);
-        @stream_socket_shutdown($resource, STREAM_SHUT_RDWR);
+        stream_socket_shutdown($resource, STREAM_SHUT_RDWR);
         stream_set_blocking($resource, false);
-        @$readMethod($resource, 4096);
+        while (strlen(@$readMethod($resource, 8192)) > 0) {
+            // read...
+        };
         fclose($resource);
 
         return $this;
@@ -96,6 +94,10 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
      */
     protected function doRead($readMethod, string $ending = '') : string
     {
+        if (!$this->isReadable) {
+            throw new StreamException("Stream is not readable");
+        }
+
         if ($ending === '') {
             $data = @$readMethod($this->resource, $this->readBufferSize);
 
@@ -107,10 +109,6 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
             }
 
             return $data;
-        }
-
-        if (!$this->isReadable()) {
-            throw new StreamException("Stream is not readable");
         }
 
         // @todo: buffer internally until ending is found, return false until ending is found

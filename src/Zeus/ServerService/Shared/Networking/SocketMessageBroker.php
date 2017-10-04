@@ -8,6 +8,7 @@ use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\ProcessManager\SchedulerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Networking\SocketServer;
@@ -90,17 +91,6 @@ final class SocketMessageBroker
     }
 
     /**
-     * @param bool $flag
-     * @return $this
-     */
-    public function setIsLeader(bool $flag)
-    {
-        $this->isLeader = $flag;
-
-        return $this;
-    }
-
-    /**
      * @param EventManagerInterface $events
      * @return $this
      */
@@ -108,8 +98,13 @@ final class SocketMessageBroker
     {
         $events = $events->getSharedManager();
         $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerStart'], WorkerEvent::PRIORITY_REGULAR);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onLeaderLoop']);
+        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function($event) {
+            if ($this->isLeader && !$this->isBusy) {
+                $event->getTarget()->setRunning();
+                $this->isBusy = true;
+            }
+            $this->isLeader ? $this->onLeaderLoop($event) : $this->onWorkerLoop($event);
+        });
         $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'leaderElection'], SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'leaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
@@ -148,7 +143,6 @@ final class SocketMessageBroker
 
     public function leaderElection(SchedulerEvent $event)
     {
-        //$this->getLogger()->debug("Leader election started");
         $event->getTarget()->getIpc()->send(new ElectionMessage(), IpcDriver::AUDIENCE_ANY);
     }
 
@@ -207,8 +201,9 @@ final class SocketMessageBroker
         $server = new SocketServer();
         $server->setReuseAddress(true);
         $server->setSoTimeout(0);
+        $server->setTcpNoDelay(true);
         $server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
-
+        $this->readSelector->register($server->getSocket(), Selector::OP_READ);
         $this->upstreamServer = $server;
 
         return $this;
@@ -222,6 +217,7 @@ final class SocketMessageBroker
         $server = new SocketServer();
         $server->setReuseAddress(true);
         $server->setSoTimeout(0);
+        $server->setTcpNoDelay(true);
         $server->bind('127.0.0.1', 300, 3333);
         $this->readSelector->register($server->getSocket(), Selector::OP_READ);
         $this->downstreamServer = $server;
@@ -235,13 +231,13 @@ final class SocketMessageBroker
      */
     protected function createWorkerServer(WorkerEvent $event)
     {
-        $workerServer = new SocketServer();
-        $workerServer->setSoTimeout(0);
-        $workerServer->setTcpNoDelay(true);
-        $workerServer->bind('127.0.0.1', 1, 0);
+        $server = new SocketServer();
+        $server->setSoTimeout(0);
+        $server->setTcpNoDelay(true);
+        $server->bind('127.0.0.1', 1, 0);
         $worker = $event->getTarget();
         $this->uid = $worker->getThreadId() > 1 ? $worker->getThreadId() : $worker->getProcessId();
-        $this->workerServer = $workerServer;
+        $this->workerServer = $server;
     }
 
     /**
@@ -259,10 +255,6 @@ final class SocketMessageBroker
      */
     public function onLeaderLoop(WorkerEvent $event)
     {
-        if (!$this->isLeader) {
-            return;
-        }
-
         $this->readSelector->select(1000);
         $this->registerWorkers();
         $this->unregisterWorkers();
@@ -374,10 +366,10 @@ final class SocketMessageBroker
                 }
 
                 try {
-                    if (!$input->isReadable()) {
-                        $this->disconnectClient($key);
-                        continue;
-                    }
+//                    if (!$input->isReadable()) {
+//                        $this->disconnectClient($key);
+//                        continue;
+//                    }
 
                     if ($output->isClosed() || \in_array($output, $streamsToWrite)) {
                         $data = $input->read();
@@ -522,18 +514,17 @@ final class SocketMessageBroker
     {
         foreach ($this->workerPipe as $uid => $ipc) {
             try {
-                //$ipc->write(' ')->flush();
+                $ipc->write('')->flush();
 
-                if (!$ipc->isClosed() && $ipc->isReadable() && $ipc->isWritable()) {
-                    continue;
-                }
-            } catch (\Exception $exception) {
+                continue;
+
+            } catch (StreamException $exception) {
 
             }
 
             try {
                 $ipc->close();
-            } catch (\Exception $exception) {
+            } catch (StreamException $exception) {
 
             }
             $this->disconnectClient($uid);
@@ -553,15 +544,6 @@ final class SocketMessageBroker
      */
     public function onWorkerLoop(WorkerEvent $event)
     {
-        if ($this->isLeader) {
-            if ($this->isBusy) {
-                return;
-            }
-            $event->getTarget()->setRunning();
-            $this->isBusy = true;
-            return;
-        }
-
         $exception = null;
 
         if ($this->workerServer->isClosed()) {
@@ -581,8 +563,7 @@ final class SocketMessageBroker
         } catch (\Exception $ex) {
             // @todo: connection severed, leader died, exit
             $event->stopWorker(true);
-
-            return;
+            throw new \RuntimeException("Connection with session leader is broken, exiting");
         }
 
         try {
@@ -591,8 +572,6 @@ final class SocketMessageBroker
                     if ($this->workerServer->getSocket()->select(1000)) {
                         $event->getTarget()->setRunning();
                         $connection = $this->workerServer->accept();
-                        // @todo: remove setBlocking(), now its needed in ZeusTest\SocketMessageBrokerTest unit tests, otherwise they hang
-                        $connection->setBlocking(false);
                         $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(1);
 
                     } else {
@@ -614,7 +593,7 @@ final class SocketMessageBroker
             }
             $this->connection->select(100);
 
-            while ($this->connection->isReadable() && $this->connection->select(0)) {
+            while ($this->connection->select(0)) {
                 $data = $this->connection->read();
                 if ($data !== '') {
                     $this->message->onMessage($this->connection, $data);
@@ -629,6 +608,8 @@ final class SocketMessageBroker
             if ($this->connection->isReadable() && $this->connection->isWritable()) {
                 return;
             }
+        } catch (StreamException $streamException) {
+            $this->onHeartBeat($event);
         } catch (\Throwable $exception) {
         }
 

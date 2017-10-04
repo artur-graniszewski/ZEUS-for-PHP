@@ -64,7 +64,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     public function isReadable() : bool
     {
-        return $this->isReadable && $this->resource && !$this->isEof();
+        return $this->isReadable && $this->resource && ($this->isReadable = !$this->isEof());
     }
 
     public function isBlocking() : bool
