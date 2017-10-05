@@ -3,7 +3,7 @@
 namespace Zeus\ServerService;
 
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\Kernel\Scheduler;
 
 interface ServerServiceInterface
 {

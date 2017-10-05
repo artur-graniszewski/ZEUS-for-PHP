@@ -3,7 +3,7 @@
 namespace Zeus\ServerService\Shared;
 
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\Kernel\Scheduler;
 use Zeus\ServerService\ServerServiceInterface;
 
 abstract class AbstractServerService implements ServerServiceInterface

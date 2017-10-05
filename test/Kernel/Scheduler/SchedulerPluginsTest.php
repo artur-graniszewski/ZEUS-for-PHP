@@ -3,8 +3,8 @@
 namespace ZeusTest\Kernel\Scheduler;
 
 use PHPUnit_Framework_TestCase;
-use Zeus\Kernel\ProcessManager\Plugin\DropPrivileges;
-use Zeus\Kernel\ProcessManager\WorkerEvent;
+use Zeus\Kernel\Scheduler\Plugin\DropPrivileges;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -14,7 +14,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @param mixed[] $plugin
-     * @return \Zeus\Kernel\ProcessManager\Scheduler
+     * @return \Zeus\Kernel\Scheduler
      */
     protected function getSchedulerWithPlugin(array $plugin)
     {

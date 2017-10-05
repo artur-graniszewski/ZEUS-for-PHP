@@ -7,13 +7,13 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\MultiProcessingModuleCapabilities;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 
-use Zeus\Kernel\ProcessManager\WorkerEvent;
-use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use ZeusTest\Helpers\PcntlMockBridge;
 use ZeusTest\Helpers\ZeusFactories;
 

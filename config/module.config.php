@@ -9,22 +9,22 @@ use Zeus\Controller\WorkerController;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
 use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixThread;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\ProcessOpen;
-use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen;
+use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
-use Zeus\Kernel\ProcessManager\Factory\SchedulerFactory;
-use Zeus\Kernel\ProcessManager\Factory\WorkerFactory;
-use Zeus\Kernel\ProcessManager\Scheduler\Discipline\Factory\LruDisciplineFactory;
-use Zeus\Kernel\ProcessManager\Scheduler\Discipline\LruDiscipline;
-use Zeus\Kernel\ProcessManager\Plugin\ProcessTitle;
+use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
+use Zeus\Kernel\Scheduler\Factory\WorkerFactory;
+use Zeus\Kernel\Scheduler\Discipline\Factory\LruDisciplineFactory;
+use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
+use Zeus\Kernel\Scheduler\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
-use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\Worker;
+use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
@@ -117,7 +117,7 @@ return $config = [
                     ProcessTitle::class,
                     SchedulerStatus::class,
                     /*
-                    \Zeus\Kernel\ProcessManager\Plugin\DropPrivileges::class => [
+                    \Zeus\Kernel\Scheduler\Plugin\DropPrivileges::class => [
                         'user' => 'www-data',
                         'group' => 'www-data',
                     ]

@@ -1,7 +1,7 @@
 <?php
 
 namespace ZeusTest\Helpers;
-use Zeus\Kernel\ProcessManager\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 
 /**
  */

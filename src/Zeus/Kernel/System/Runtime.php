@@ -4,7 +4,7 @@ namespace Zeus\Kernel\System;
 
 /**
  * Class Runtime
- * @package Zeus\Kernel\ProcessManager\System
+ * @package Zeus\Kernel\Scheduler\System
  * @internal
  * @codeCoverageIgnore
  */

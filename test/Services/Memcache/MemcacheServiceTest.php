@@ -12,7 +12,7 @@ use Zend\Cache\Storage\PluginManager;
 
 use Zend\ServiceManager\ServiceManager;
 
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;
 use ZeusTest\Helpers\ZeusFactories;

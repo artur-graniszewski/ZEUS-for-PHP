@@ -5,8 +5,8 @@ namespace Zeus\ServerService;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\ProcessManager\Helper\PluginRegistry;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 
 final class Manager
 {

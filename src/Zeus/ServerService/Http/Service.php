@@ -7,8 +7,8 @@ use Zend\Http\Response;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
-use Zeus\Kernel\ProcessManager\Worker;
-use Zeus\Kernel\ProcessManager\WorkerEvent;
+use Zeus\Kernel\Scheduler\Worker;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;

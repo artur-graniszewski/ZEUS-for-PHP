@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use Zeus\Kernel\ProcessManager\Config;
+use Zeus\Kernel\Scheduler\Config;
 use ZeusTest\Helpers\AbstractConfigTestHelper;
 
 class HttpConfigTest extends AbstractConfigTestHelper

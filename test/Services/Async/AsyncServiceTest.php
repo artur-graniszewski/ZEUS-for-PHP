@@ -5,7 +5,7 @@ namespace ZeusTest\Services\Async;
 use PHPUnit_Framework_TestCase;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
 use Zend\ServiceManager\ServiceManager;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use ZeusTest\Helpers\ZeusFactories;

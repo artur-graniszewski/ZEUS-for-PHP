@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\ServerServiceInterface;
 use Zeus\ServerService\Shared\AbstractServerService;
 

@@ -7,7 +7,7 @@ use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zeus\Kernel\ProcessManager\Status\SchedulerStatusView;
+use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
 use Zeus\ServerService\ServerServiceInterface;

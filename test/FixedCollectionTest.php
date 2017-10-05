@@ -3,7 +3,7 @@
 namespace ZeusTest;
 
 use PHPUnit_Framework_TestCase;
-use Zeus\Kernel\ProcessManager\Shared\FixedCollection;
+use Zeus\Kernel\Scheduler\Shared\FixedCollection;
 
 class FixedCollectionTest extends PHPUnit_Framework_TestCase
 {

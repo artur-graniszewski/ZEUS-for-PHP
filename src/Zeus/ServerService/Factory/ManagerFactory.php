@@ -8,14 +8,14 @@ use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\Kernel\ProcessManager\Helper\PluginFactory;
+use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
-use Zeus\Kernel\ProcessManager\Scheduler;
+use Zeus\Kernel\Scheduler;
 use Zeus\ServerService\ServerServiceInterface;
 
 /**
  * Class ManagerFactory
- * @package Zeus\Kernel\ProcessManager\Factory
+ * @package Zeus\Kernel\Scheduler\Factory
  * @internal
  */
 final class ManagerFactory implements FactoryInterface

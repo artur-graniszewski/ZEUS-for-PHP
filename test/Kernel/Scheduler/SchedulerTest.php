@@ -9,10 +9,10 @@ use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\ServiceManager;
-use Zeus\Kernel\ProcessManager\Exception\ProcessManagerException;
-use Zeus\Kernel\ProcessManager\WorkerEvent;
-use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\Exception\ProcessManagerException;
+use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use ZeusTest\Helpers\ZeusFactories;
 

@@ -2,8 +2,8 @@
 
 namespace Zeus\ServerService\Async;
 
-use Zeus\Kernel\ProcessManager\Worker;
-use Zeus\Kernel\ProcessManager\WorkerEvent;
+use Zeus\Kernel\Scheduler\Worker;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\AbstractSocketServerService;

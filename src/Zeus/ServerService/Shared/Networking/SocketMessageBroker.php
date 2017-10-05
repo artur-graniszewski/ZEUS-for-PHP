@@ -6,13 +6,13 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Networking\SocketServer;
-use Zeus\Kernel\ProcessManager\WorkerEvent;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
 use function microtime;

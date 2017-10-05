@@ -6,10 +6,10 @@ use PHPUnit_Framework_TestCase;
 use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
-use Zeus\Kernel\ProcessManager\Plugin\SchedulerStatus;
-use Zeus\Kernel\ProcessManager\Scheduler;
-use Zeus\Kernel\ProcessManager\SchedulerEvent;
-use Zeus\Kernel\ProcessManager\Status\SchedulerStatusView;
+use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
+use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
 

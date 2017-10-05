@@ -3,7 +3,7 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zend\EventManager\Event;
-use Zeus\Kernel\ProcessManager\Worker;
+use Zeus\Kernel\Scheduler\Worker;
 
 class IpcEvent extends Event
 {
