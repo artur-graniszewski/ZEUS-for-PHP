@@ -12,7 +12,6 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\PipeStream;
-use Zeus\Networking\Stream\SelectableStreamInterface;
 use Zeus\Networking\Stream\Selector;
 use Zeus\ServerService\ManagerEvent;
 

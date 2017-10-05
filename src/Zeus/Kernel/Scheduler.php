@@ -70,7 +70,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param bool $schedulerActive
      * @return $this
      */
-    public function setSchedulerActive($schedulerActive)
+    public function setSchedulerActive(bool $schedulerActive)
     {
         $this->schedulerActive = $schedulerActive;
 
@@ -165,26 +165,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
                 }
 
                 break;
-
-            case Message::IS_MESSAGE:
-                $this->logMessage($message);
-                break;
         }
-    }
-
-    /**
-     * Logs server messages.
-     *
-     * @param mixed[] $message
-     * @return $this
-     */
-    protected function logMessage($message)
-    {
-        $extra = $message['extra'];
-        $extra['service_name'] = sprintf("%s-%d", $this->getConfig()->getServiceName(), $extra['uid']);
-        $this->log($message['priority'], $message['message'], $extra);
-
-        return $this;
     }
 
     /**
@@ -193,7 +174,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param mixed[] $extra
      * @return $this
      */
-    protected function log($priority, $message, $extra = [])
+    protected function log($priority, $message, $extra = []) : Scheduler
     {
         if (!isset($extra['service_name'])) {
             $extra['service_name'] = $this->getConfig()->getServiceName();
@@ -232,7 +213,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      *
      * @return $this
      */
-    public function stop()
+    public function stop() : Scheduler
     {
         $this->logger->debug("Stopping scheduler");
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
@@ -358,7 +339,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param \Throwable $exception
      * @return $this
      */
-    protected function handleException(\Throwable $exception)
+    protected function handleException(\Throwable $exception) : Scheduler
     {
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
 
@@ -378,7 +359,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param bool $isSoftStop
      * @return $this
      */
-    protected function stopWorker(int $uid, bool $isSoftStop)
+    protected function stopWorker(int $uid, bool $isSoftStop) : Scheduler
     {
         $this->triggerEvent(SchedulerEvent::EVENT_WORKER_TERMINATE, ['uid' => $uid, 'soft' => $isSoftStop]);
 
@@ -430,7 +411,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param int $count Number of processes to create.
      * @return $this
      */
-    protected function createWorkers(int $count)
+    protected function createWorkers(int $count) : Scheduler
     {
         if ($count === 0) {
             return $this;
@@ -461,11 +442,12 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
     /**
      * @param SchedulerEvent $event
+     * @return $this
      */
-    protected function addNewWorker(SchedulerEvent $event)
+    protected function addNewWorker(SchedulerEvent $event) : Scheduler
     {
         if ($event->getParam('server')) {
-            return;
+            return $this;
         }
 
         $pid = $event->getParam('uid');
@@ -480,6 +462,8 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
             'cpu_usage' => 0,
             'status_description' => '',
         ];
+
+        return $this;
     }
 
     /**
@@ -488,7 +472,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param DisciplineInterface $discipline
      * @return $this
      */
-    protected function manageWorkers(DisciplineInterface $discipline)
+    protected function manageWorkers(DisciplineInterface $discipline) : Scheduler
     {
         if (!$this->isSchedulerActive()) {
             return $this;
@@ -512,7 +496,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param $isSoftTermination
      * @return $this
      */
-    protected function stopWorkers(array $processIds, bool $isSoftTermination)
+    protected function stopWorkers(array $processIds, bool $isSoftTermination) : Scheduler
     {
         $now = microtime(true);
 
@@ -534,7 +518,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      *
      * @return $this
      */
-    protected function mainLoop()
+    protected function mainLoop() : Scheduler
     {
         do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
@@ -546,7 +530,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /**
      * @return $this
      */
-    public function kernelLoop()
+    public function kernelLoop() : Scheduler
     {
         while ($this->isSchedulerActive()) {
             $time = microtime(true);
@@ -575,7 +559,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param MultiProcessingModuleInterface $driver
      * @return $this
      */
-    public function setMultiProcessingModule(MultiProcessingModuleInterface $driver)
+    public function setMultiProcessingModule(MultiProcessingModuleInterface $driver) : Scheduler
     {
         $this->multiProcessingModule = $driver;
 
@@ -588,30 +572,5 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     public function getMultiProcessingModule() : MultiProcessingModuleInterface
     {
         return $this->multiProcessingModule;
-    }
-
-    /**
-     * @return $this
-     */
-    protected function waitForWorkersToStop()
-    {
-        // wait for workers
-        $timeout = time() + 5;
-
-        $lastCount = 0;
-        $lastTime = time();
-        while (($newTime = time()) < $timeout && ($newCount = count($this->workers)) > 0) {
-            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-
-            if ($newCount !== $lastCount && $newTime !== $lastTime) {
-                $this->logger->debug(sprintf("Waiting for %d workers to terminate", $newCount));
-            }
-
-            $lastTime = $newTime;
-
-            $lastCount = $newCount;
-        }
-
-        return $this;
     }
 }
