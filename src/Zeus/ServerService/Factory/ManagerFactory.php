@@ -7,7 +7,6 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\Kernel\Scheduler;
@@ -57,7 +56,6 @@ final class ManagerFactory implements FactoryInterface
             $services[$serviceName] = function() use ($serviceConfig, $container, $mainLogger) {
                 $serviceAdapter = $serviceConfig['service_adapter'];
                 $serviceName = $serviceConfig['service_name'];
-                $ipcAdapter = $container->build(IpcAdapterInterface::class, ['service_name' => $serviceName, 'logger_adapter' => $mainLogger]);
 
                 if (!is_subclass_of($serviceAdapter, ServerServiceInterface::class)) {
                     throw new \RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
@@ -70,8 +68,7 @@ final class ManagerFactory implements FactoryInterface
                 $scheduler = $container->build(Scheduler::class, [
                     'scheduler_name' => $serviceConfig['scheduler_name'],
                     'service_name' => $serviceName,
-                    'logger_adapter' => $serviceLogger,
-                    'ipc_adapter' => $ipcAdapter
+                    'logger_adapter' => $serviceLogger
                     ]
                 );
 
@@ -83,7 +80,6 @@ final class ManagerFactory implements FactoryInterface
                     'scheduler_adapter' => $scheduler,
                     'config' => $serviceConfig,
                     'logger_adapter' => $serviceLogger,
-                    'ipc_adapter' => $ipcAdapter,
                     'service_name' => $serviceName
                 ]);
 

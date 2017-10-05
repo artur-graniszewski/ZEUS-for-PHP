@@ -4,6 +4,7 @@ namespace Zeus\Kernel\Scheduler\Plugin;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler;
@@ -73,7 +74,7 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public static function getStatus(Scheduler $scheduler)
     {
-        $ipc = $scheduler->getSchedulerIpc();
+        $ipc = $scheduler->getIpc();
 
         $payload = [
             'type' => Message::IS_STATUS_REQUEST,
@@ -84,11 +85,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             ]
         ];
 
-        if (!$ipc->isConnected()) {
-            $ipc->connect();
-        }
-
-        $ipc->send(1, $payload);
+        $ipc->send($payload, IpcDriver::AUDIENCE_SERVER);
 
         $timeout = 5;
         $result = null;

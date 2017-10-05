@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\IpcServer\Adapter\Helper;
+namespace Zeus\Kernel\IpcServer;
 
 use function stripslashes;
 use function addslashes;

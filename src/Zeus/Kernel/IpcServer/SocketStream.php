@@ -2,7 +2,7 @@
 
 namespace Zeus\Kernel\IpcServer;
 
-use Zeus\Kernel\IpcServer\Adapter\Helper\MessagePackager;
+use Zeus\Kernel\IpcServer\MessagePackager;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
 

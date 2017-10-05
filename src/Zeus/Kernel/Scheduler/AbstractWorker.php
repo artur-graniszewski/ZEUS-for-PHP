@@ -5,7 +5,6 @@ namespace Zeus\Kernel\Scheduler;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\SocketStream;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
@@ -34,9 +33,6 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
 
     /** @var ConfigInterface */
     protected $config;
-
-    /** @var IpcAdapterInterface */
-    protected $ipc;
 
     /** @var SocketStream */
     protected $ipcAdapter;
@@ -198,25 +194,6 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
         }
 
         return $this->events;
-    }
-
-    /**
-     * @return IpcAdapterInterface
-     */
-    public function getSchedulerIpc()
-    {
-        return $this->ipc;
-    }
-
-    /**
-     * @param IpcAdapterInterface $ipcAdapter
-     * @return $this
-     */
-    public function setSchedulerIpc(IpcAdapterInterface $ipcAdapter)
-    {
-        $this->ipc = $ipcAdapter;
-
-        return $this;
     }
 
 

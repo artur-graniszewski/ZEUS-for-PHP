@@ -6,9 +6,6 @@ use Zend\Mvc\Service\EventManagerFactory;
 use Zeus\Controller\MainController;
 use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Controller\WorkerController;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
-use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
@@ -59,8 +56,6 @@ return $config = [
     'service_manager' => [
         'factories' => [
             'zeus-event-manager' => EventManagerFactory::class,
-            IpcLoggerInterface::class => IpcLoggerFactory::class,
-            IpcAdapterInterface::class => IpcServerFactory::class,
             LoggerInterface::class => LoggerFactory::class,
             Scheduler::class => SchedulerFactory::class,
             Worker::class => WorkerFactory::class,
@@ -72,7 +67,6 @@ return $config = [
             MemcacheService::class => MemcacheFactory::class,
         ],
         'abstract_factories' => [
-            IpcAdapterAbstractFactory::class,
             AbstractServerServiceFactory::class,
         ],
     ],

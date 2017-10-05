@@ -5,6 +5,7 @@ namespace ZeusTest\Helpers;
 use ReflectionProperty;
 use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zend\Mvc\Service\EventManagerFactory;
 use Zend\Mvc\Service\ModuleManagerFactory;
 use Zend\Mvc\Service\ServiceListenerFactory;
@@ -13,11 +14,7 @@ use Zend\ServiceManager\ServiceManager;
 use Zend\Stdlib\ArrayUtils;
 use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Controller\MainController;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
-use Zeus\Kernel\IpcServer\Adapter\SocketAdapter;
-use Zeus\Kernel\IpcServer\Factory\IpcAdapterAbstractFactory;
-use Zeus\Kernel\IpcServer\Factory\IpcServerFactory;
-use Zeus\Kernel\IpcServer\Server;
+use Zeus\Kernel\IpcServer;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\Scheduler\Factory\WorkerFactory;
 use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
@@ -29,9 +26,7 @@ use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
-use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
 use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
-use Zeus\ServerService\Shared\Logger\IpcLogWriter;
 use Zend\Router;
 
 trait ZeusFactories
@@ -43,12 +38,9 @@ trait ZeusFactories
     public function getServiceManager(array $customConfig = [])
     {
         $sm = new ServiceManager();
-        $sm->addAbstractFactory(IpcAdapterAbstractFactory::class);
         $sm->addAbstractFactory(AbstractServerServiceFactory::class);
         $sm->setFactory(Scheduler::class, SchedulerFactory::class);
         $sm->setFactory(Worker::class, WorkerFactory::class);
-        $sm->setFactory(IpcAdapterInterface::class, IpcServerFactory::class);
-        $sm->setFactory(IpcLoggerInterface::class, IpcLoggerFactory::class);
         $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
         $sm->setFactory(MainControllerMock::class, ControllerFactory::class);
         $sm->setFactory(MainController::class, ControllerFactory::class);
@@ -146,16 +138,12 @@ trait ZeusFactories
         $sm = $serviceManager ?  $serviceManager : $this->getServiceManager();
 
         $this->clearSharedEventManager($sm);
-
-        $ipcAdapter = $sm->build(SocketAdapter::class, ['service_name' => 'test-service']);
         $logger = new Logger();
-        $ipcWriter = new IpcLogWriter();
-        $ipcWriter->setIpcAdapter($ipcAdapter);
-        $logger->addWriter($ipcWriter);
+        $writer = new Noop();
+        $logger->addWriter($writer);
 
         /** @var Scheduler $scheduler */
         $scheduler = $sm->build(Scheduler::class, [
-            'ipc_adapter' => $ipcAdapter,
             'service_name' => 'test-service',
             'scheduler_name' => 'test-scheduler',
             'logger_adapter' => $logger,
@@ -164,7 +152,7 @@ trait ZeusFactories
         $events = $scheduler->getEventManager();
         $sm = $events->getSharedManager();
 
-        $ipcServer = new Server();
+        $ipcServer = new IpcServer();
         $ipcServer->setEventManager($events);
         $ipcServer->attach(new EventManager($sm));
 

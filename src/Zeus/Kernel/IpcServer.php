@@ -1,10 +1,12 @@
 <?php
 
-namespace Zeus\Kernel\IpcServer;
+namespace Zeus\Kernel;
 
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\Kernel\IpcServer\IpcDriver;
+use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
@@ -20,7 +22,7 @@ use function microtime;
 use function stream_socket_client;
 use function get_called_class;
 
-class Server implements ListenerAggregateInterface
+class IpcServer implements ListenerAggregateInterface
 {
     protected $eventHandles;
 

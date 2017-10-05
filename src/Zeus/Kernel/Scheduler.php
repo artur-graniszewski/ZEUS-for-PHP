@@ -5,7 +5,6 @@ namespace Zeus\Kernel;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
-use Zeus\Kernel\IpcServer\Adapter\IpcAdapterInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\AbstractWorker;
 use Zeus\Kernel\Scheduler\ConfigInterface;
@@ -82,14 +81,12 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * Scheduler constructor.
      * @param ConfigInterface $config
      * @param AbstractWorker $workerService
-     * @param IpcAdapterInterface $ipcAdapter
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, AbstractWorker $workerService, IpcAdapterInterface $ipcAdapter, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, AbstractWorker $workerService, DisciplineInterface $discipline)
     {
         $this->discipline = $discipline;
         $this->setConfig($config);
-        $this->setSchedulerIpc($ipcAdapter);
         $this->workerService = $workerService;
         $this->status = new WorkerState($this->getConfig()->getServiceName());
         $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());

@@ -7,7 +7,7 @@ use Interop\Container\Exception\ContainerException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
-use Zeus\Kernel\IpcServer\Server;
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\Config;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\Kernel\Scheduler;
@@ -44,11 +44,11 @@ class SchedulerFactory implements FactoryInterface
         /** @var Worker $processService */
         $processService = $container->build(Worker::class, ['logger_adapter' => $logger, 'scheduler_config' => $configObject]);
 
-        $scheduler = new Scheduler($configObject, $processService, $options['ipc_adapter'], $schedulerDiscipline);
+        $scheduler = new Scheduler($configObject, $processService, $schedulerDiscipline);
         $scheduler->setLogger($logger);
         $scheduler->setEventManager($eventManager);
 
-        $ipcServer = new Server();
+        $ipcServer = new IpcServer();
         $ipcServer->setEventManager($eventManager);
         $ipcServer->attach($eventManager);
 
