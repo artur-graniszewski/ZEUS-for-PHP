@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Kernel\Ipc;
 
 use PHPUnit_Framework_TestCase;
 use Zend\Log\Logger;

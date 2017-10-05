@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Services;
 
 use PHPUnit_Framework_TestCase;
 use Zend\EventManager\EventManager;
@@ -34,18 +34,19 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         parent::setUp();
-        $tmpDir = __DIR__ . '/tmp';
+        $tmpDir = (__DIR__ . '/../tmp');
 
         if (!file_exists($tmpDir)) {
             mkdir($tmpDir);
         }
-        file_put_contents(__DIR__ . '/tmp/test.log', '');
+        file_put_contents($tmpDir . '/test.log', '');
     }
 
     public function tearDown()
     {
-        unlink(__DIR__ . '/tmp/test.log');
-        rmdir(__DIR__ . '/tmp');
+        $tmpDir = realpath(__DIR__ . '/../tmp');
+        unlink($tmpDir . '/test.log');
+        rmdir($tmpDir);
         parent::tearDown();
     }
 
@@ -56,7 +57,7 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         $manager->registerService('test-service', $service, true);
         $manager->startServices(['test-service']);
 
-        $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
+        $logEntries = file_get_contents(__DIR__ . '/../tmp/test.log');
         $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STARTED'));
     }
 
@@ -67,7 +68,7 @@ class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
         $manager->registerService('test-service', $service, true);
         $manager->startService('test-service');
 
-        $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
+        $logEntries = file_get_contents(__DIR__ . '/../tmp/test.log');
         $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STARTED'));
     }
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Kernel\Scheduler;
 
 use PHPUnit_Framework_TestCase;
 use Zeus\Kernel\ProcessManager\Plugin\DropPrivileges;

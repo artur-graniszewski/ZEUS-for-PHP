@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest;
+namespace ZeusTest\Kernel\Scheduler;
 
 use Zeus\Kernel\ProcessManager\Config;
 use ZeusTest\Helpers\AbstractConfigTestHelper;
