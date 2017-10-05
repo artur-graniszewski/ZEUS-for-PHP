@@ -20,7 +20,7 @@ use function substr;
  * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
-final class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
+class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
     /**
      * SocketConnection constructor.
@@ -72,14 +72,6 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
     }
 
     /**
-     * @return string|null Server address (IP) or null if unknown
-     */
-    public function getLocalAddress() : string
-    {
-        return @stream_socket_get_name($this->resource, false);
-    }
-
-    /**
      * @return string|null Remote address (client IP) or null if unknown
      */
     public function getRemoteAddress() : string
@@ -101,7 +93,7 @@ final class SocketStream extends AbstractSelectableStream implements NetworkStre
         if ($ending === '') {
             $data = @$readMethod($this->resource, $this->readBufferSize);
 
-            if (false === $data || ("" == $data && $this->isEof())) {
+            if ((false === $data || "" == $data) && $this->isEof()) {
                 $this->isReadable = false;
                 throw new StreamException("Stream is not readable");
             } else {

@@ -10,9 +10,10 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Stream\PipeStream;
 use Zeus\Networking\Stream\SelectableStreamInterface;
 use Zeus\Networking\Stream\Selector;
-use Zeus\Networking\Stream\SocketStream;
 use Zeus\ServerService\ManagerEvent;
 
 final class ProcessOpen extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
@@ -32,10 +33,10 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
     protected $stderr;
 
-    /** @var SelectableStreamInterface[] */
+    /** @var PipeStream[] */
     protected $stdOutStreams = [];
 
-    /** @var SelectableStreamInterface[] */
+    /** @var PipeStream[] */
     protected $stdErrStreams = [];
 
     protected $pipeBuffer = [];
@@ -278,14 +279,18 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $status = proc_get_status($process);
         $pid = $status['pid'];
 
-        stream_set_blocking($pipes[0], false);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
         $this->workers[$pid] = [
             'resource' => $process,
-            'pipes' => $pipes
         ];
+
+        try {
+            $this->stdOutStreams[$pid] = new PipeStream($pipes[1]);
+            $this->stdOutStreams[$pid]->setBlocking(false);
+            $this->stdErrStreams[$pid] = new PipeStream($pipes[2]);
+            $this->stdErrStreams[$pid]->setBlocking(false);
+        } catch (StreamException $ex) {
+
+        }
         $this->pipeBuffer[$pid] = ['stdout' => '', 'stderr' => ''];
 
         return $pid;
@@ -324,15 +329,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         }
 
         return $this;
-//        $process = $this->workers[$uid];
-//
-//        $this->closeProcessPipes($uid);
-//
-//        proc_terminate($process['resource']);
-//
-//        $this->workers[$uid] = null;
-//
-//        return $this;
     }
 
     /**
@@ -341,14 +337,25 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     protected function closeProcessPipes(int $uid)
     {
-        $process = $this->workers[$uid];
+        try {
+            $this->stdErrStreams[$uid]->close();
+        } catch (StreamException $ex) {
 
-        foreach($process['pipes'] as $pipe) {
-            if (is_resource($pipe)) {
-                fclose($pipe);
-            }
         }
 
+        try {
+            $this->stdOutStreams[$uid]->close();
+        } catch (StreamException $ex) {
+
+        }
+
+        unset ($this->stdErrStreams[$uid]);
+        unset ($this->stdOutStreams[$uid]);
+        $tmpArray = $this->stdErrStreams;
+        $this->stdErrStreams = $tmpArray;
+
+        $tmpArray = $this->stdOutStreams;
+        $this->stdOutStreams = $tmpArray;
         return $this;
     }
 
@@ -368,13 +375,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         /** @var Selector $selector */
         $selector = $event->getParam('selector');
 
-        $this->stdErrStreams = [];
-        $this->stdOutStreams = [];
-
-        // @todo: recreate these arrays once a while to make sure they wont saturate the memory after a long run
         foreach ($this->workers as $uid => $worker) {
-            $this->stdOutStreams[$uid] = new SocketStream($worker['pipes'][1]);
-            $this->stdErrStreams[$uid] = new SocketStream($worker['pipes'][2]);
             $selector->register($this->stdOutStreams[$uid], Selector::OP_READ);
             $selector->register($this->stdErrStreams[$uid], Selector::OP_READ);
         }
@@ -382,12 +383,8 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
     private function onIpcReadable(IpcEvent $event)
     {
-        /** @var SocketStream $stream */
+        /** @var PipeStream $stream */
         $stream = $event->getParam('stream');
-
-        if (!in_array($stream, array_merge($this->stdOutStreams, $this->stdErrStreams))) {
-            return;
-        }
 
         if (in_array($stream, $this->stdOutStreams)) {
             $outputType = 'stdout';
@@ -397,9 +394,15 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
             $uid = array_search($stream, $this->stdErrStreams);
         }
 
-        $stream->setBlocking(false);
-        $data = fread($stream->getResource(), 32768);
-        $this->pipeBuffer[$uid][$outputType] .= $data;
+        try {
+            while ($data = $stream->read()) {
+                $this->pipeBuffer[$uid][$outputType] .= $data;
+            }
+        } catch (StreamException $exception) {
+            if (!$stream->isReadable()) {
+                $this->closeProcessPipes($uid);
+            }
+        }
 
         $this->flushBuffers($uid, false);
     }

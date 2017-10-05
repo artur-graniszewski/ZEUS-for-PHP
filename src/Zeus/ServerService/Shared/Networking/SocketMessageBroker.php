@@ -390,7 +390,7 @@ final class SocketMessageBroker
                     break;
                 }
             }
-        } while ($streamsToRead && (microtime(true) - $now < 0.1));
+        } while ($streamsToRead && (microtime(true) - $now < 0.01));
 
         return $this;
     }

@@ -49,6 +49,14 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     }
 
     /**
+     * @return string|null Server address (IP) or null if unknown
+     */
+    public function getLocalAddress() : string
+    {
+        return @stream_socket_get_name($this->resource, false);
+    }
+
+    /**
      * @param resource[] $read
      * @param resource[] $write
      * @param resource[] $except
