@@ -4,6 +4,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
@@ -52,23 +53,23 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     }
 
     /**
-     * @param EventManagerInterface $events
+     * @param EventManagerInterface $eventManager
      * @return $this
      */
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $eventManager)
     {
-        $this->events = $events;
+        $this->events = $eventManager;
 
-        $events = $events->getSharedManager();
-        $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessCreate'], 1000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onProcessLoop']);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onProcessRunning']);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
+        $sharedEventManager = $eventManager->getSharedManager();
+        $sharedEventManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
+        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessCreate'], 1000);
+        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
+        $sharedEventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate']);
+        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onProcessLoop']);
+        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onProcessRunning']);
+        $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
+        $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
+        $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
 
         return $this;
     }

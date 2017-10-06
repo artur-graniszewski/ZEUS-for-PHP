@@ -5,8 +5,8 @@ namespace Zeus\Kernel;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
-use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\IpcServer\SocketStream as IpcSocketStream;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
@@ -24,6 +24,13 @@ use function get_called_class;
 
 class IpcServer implements ListenerAggregateInterface
 {
+    const AUDIENCE_ALL = 'aud_all';
+    const AUDIENCE_ANY = 'aud_any';
+    const AUDIENCE_SERVER = 'aud_srv';
+    const AUDIENCE_SELECTED = 'aud_sel';
+    const AUDIENCE_AMOUNT = 'aud_num';
+    const AUDIENCE_SELF = 'aud_self';
+
     protected $eventHandles;
 
     /** @var bool */
@@ -35,7 +42,7 @@ class IpcServer implements ListenerAggregateInterface
     /** @var SocketServer */
     protected $ipcServer;
 
-    /** @var SocketStream */
+    /** @var IpcServer\SocketStream */
     protected $ipcClient;
 
     /** @var Selector */
@@ -53,6 +60,12 @@ class IpcServer implements ListenerAggregateInterface
     public function __construct()
     {
         $this->ipcSelector = new Selector();
+    }
+
+    public function send($message, $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
+    {
+        $this->ipcClient->send($message, $audience);
+        return $this;
     }
 
     /**
@@ -144,7 +157,7 @@ class IpcServer implements ListenerAggregateInterface
         $ipcStream->setBlocking(false);
         $ipcStream->setOption(SO_KEEPALIVE, 1);
         $ipcStream->write("$uid!")->flush();
-        $this->ipcClient = $ipcStream;
+        $this->ipcClient = new IpcSocketStream($ipcStream, $uid);
 
         return $this;
     }
@@ -186,7 +199,7 @@ class IpcServer implements ListenerAggregateInterface
                 continue;
             }
 
-            $ipc = new \Zeus\Kernel\IpcServer\SocketStream($stream, 0);
+            $ipc = new IpcSocketStream($stream, 0);
 
             try {
                 $messages = $ipc->readAll(true);
@@ -215,12 +228,12 @@ class IpcServer implements ListenerAggregateInterface
         return $this;
     }
 
-    public function onWorkerLoop(WorkerEvent $event)
+    private function onWorkerLoop(WorkerEvent $event)
     {
-        $messages = $event->getTarget()->getIpc()->readAll(true);
+        $messages = $this->ipcClient->readAll(true);
 
         foreach ($messages as $key => $payload) {
-            $messages[$key]['aud'] = IpcDriver::AUDIENCE_SELF;
+            $messages[$key]['aud'] = static::AUDIENCE_SELF;
         }
 
         $this->distributeMessages($messages);
@@ -232,7 +245,6 @@ class IpcServer implements ListenerAggregateInterface
      */
     private function distributeMessages($messages)
     {
-        $cids = [];
         foreach ($messages as $payload) {
             $audience = $payload['aud'];
             $message = $payload['msg'];
@@ -248,11 +260,11 @@ class IpcServer implements ListenerAggregateInterface
 
             // @todo: implement read confirmation?
             switch ($audience) {
-                case IpcDriver::AUDIENCE_ALL:
+                case self::AUDIENCE_ALL:
                     $cids = array_keys($availableAudience);
                     break;
 
-                case IpcDriver::AUDIENCE_ANY:
+                case self::AUDIENCE_ANY:
                     if (1 > count($availableAudience)) {
                         $this->queuedMessages[] = $payload;
 
@@ -263,7 +275,7 @@ class IpcServer implements ListenerAggregateInterface
 
                     break;
 
-                case IpcDriver::AUDIENCE_AMOUNT:
+                case self::AUDIENCE_AMOUNT:
                     if ($number > count($availableAudience)) {
                         $this->queuedMessages[] = $payload;
 
@@ -273,12 +285,12 @@ class IpcServer implements ListenerAggregateInterface
 
                     break;
 
-                case IpcDriver::AUDIENCE_SELECTED:
+                case self::AUDIENCE_SELECTED:
                     $cids = [$this->ipcStreams[$number]];
                     break;
 
-                case IpcDriver::AUDIENCE_SERVER:
-                case IpcDriver::AUDIENCE_SELF:
+                case self::AUDIENCE_SERVER:
+                case self::AUDIENCE_SELF:
                     $event = new IpcEvent();
                     $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
                     $event->setParams($message);
@@ -297,7 +309,7 @@ class IpcServer implements ListenerAggregateInterface
             }
 
             foreach ($cids as $cid) {
-                $ipcDriver = new \Zeus\Kernel\IpcServer\SocketStream($this->ipcStreams[$cid], $senderId);
+                $ipcDriver = new IpcSocketStream($this->ipcStreams[$cid], $senderId);
                 try {
                     $ipcDriver->send($message, $audience, $number);
                 } catch (\Exception $exception) {
@@ -333,7 +345,7 @@ class IpcServer implements ListenerAggregateInterface
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
 
-        $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
+        $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $event) { $this->onWorkerLoop($event); }, -9000);
 
         $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $ipcPort = $event->getParam('ipcPort');
@@ -344,16 +356,16 @@ class IpcServer implements ListenerAggregateInterface
 
             $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
             $this->registerIpc($ipcPort, $uid);
-            $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
+            $event->getTarget()->setIpc($this);
         }, WorkerEvent::PRIORITY_INITIALIZE);
 
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {
             $this->startIpc();
             $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
             $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
-            $event->getTarget()->setIpc(new \Zeus\Kernel\IpcServer\SocketStream($this->ipcClient, $uid));
+            $event->getTarget()->setIpc($this);
 
-            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
+            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
 

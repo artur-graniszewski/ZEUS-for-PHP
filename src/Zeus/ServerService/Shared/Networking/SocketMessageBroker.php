@@ -4,6 +4,7 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -143,7 +144,7 @@ final class SocketMessageBroker
 
     public function leaderElection(SchedulerEvent $event)
     {
-        $event->getTarget()->getIpc()->send(new ElectionMessage(), IpcDriver::AUDIENCE_ANY);
+        $event->getTarget()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_ANY);
     }
 
     public function leaderElected(IpcEvent $event)

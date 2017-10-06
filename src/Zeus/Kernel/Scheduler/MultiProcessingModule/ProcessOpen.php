@@ -99,26 +99,26 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     }
 
     /**
-     * @param EventManagerInterface $events
+     * @param EventManagerInterface $eventManager
      * @return $this
      */
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $eventManager)
     {
-        parent::attach($events);
+        parent::attach($eventManager);
 
-        $events = $events->getSharedManager();
+        $eventManager = $eventManager->getSharedManager();
 
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onProcessInit'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
-        $events->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
-        $events->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
-        $events->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
-        $events->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->onIpcReadable($e); }, -9000);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $eventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
+        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onProcessInit'], -9000);
+        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
+        $eventManager->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
+        $eventManager->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
+        $eventManager->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
+        $eventManager->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->onIpcReadable($e); }, -9000);
 
         return $this;
     }
@@ -337,13 +337,17 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     protected function closeProcessPipes(int $uid)
     {
         try {
-            $this->stdErrStreams[$uid]->close();
+            if (isset($this->stdErrStreams[$uid])) {
+                $this->stdErrStreams[$uid]->close();
+            }
         } catch (StreamException $ex) {
 
         }
 
         try {
-            $this->stdOutStreams[$uid]->close();
+            if (isset($this->stdOutStreams[$uid])) {
+                $this->stdOutStreams[$uid]->close();
+            }
         } catch (StreamException $ex) {
 
         }

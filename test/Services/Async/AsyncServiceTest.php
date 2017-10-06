@@ -6,6 +6,7 @@ use PHPUnit_Framework_TestCase;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use ZeusTest\Helpers\ZeusFactories;
@@ -30,7 +31,7 @@ class AsyncServiceTest extends PHPUnit_Framework_TestCase
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',
-            SchedulerEvent::EVENT_WORKER_CREATE, function (SchedulerEvent $event) use ($events) {
+            WorkerEvent::EVENT_WORKER_CREATE, function (SchedulerEvent $event) use ($events) {
             $event->setParam("uid", 123456789);
         }, 100
         );

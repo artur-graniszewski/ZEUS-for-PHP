@@ -49,6 +49,7 @@ class SchedulerFactory implements FactoryInterface
         $scheduler->setEventManager($eventManager);
 
         $ipcServer = new IpcServer();
+        $eventManager = $container->build('zeus-event-manager');
         $ipcServer->setEventManager($eventManager);
         $ipcServer->attach($eventManager);
 

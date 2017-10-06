@@ -16,6 +16,7 @@ use Zeus\Kernel\Scheduler\ProcessInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
+use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -110,20 +111,20 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
      * @param EventManagerInterface $events
      * @return $this
      */
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $eventManager)
     {
-        $events = $events->getSharedManager();
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($events) {
-            $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
+        $sharedEventManager = $eventManager->getSharedManager();
+        $this->eventHandles[] = $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
+        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedEventManager) {
+            $this->eventHandles[] = $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
             $this->onSchedulerStart();
 
         }, SchedulerEvent::PRIORITY_FINALIZE);
 
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
+        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
             $this->manageWorkers($this->discipline);
         });
@@ -138,10 +139,12 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     {
         $message = $event->getParams();
 
-        if (!is_array($message)) {
+        if (!($message instanceof StatusMessage)) {
             return;
-
         }
+
+        $message = $message->getParams();
+
         switch ($message['type']) {
             case Message::IS_STATUS:
                 $details = $message['extra'];
@@ -287,7 +290,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
                 return $this;
             }
 
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
                 function(SchedulerEvent $e) use ($events) {
                     if (!$e->getParam('server')) {
                         return;
@@ -303,7 +306,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
                     }
                 }, SchedulerEvent::PRIORITY_FINALIZE);
 
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE,
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
                 function (SchedulerEvent $event) use ($events) {
                     if (!$event->getParam('server') || $event->getParam('init_process')) {
                         return;

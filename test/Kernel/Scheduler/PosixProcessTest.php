@@ -87,7 +87,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
     {
         return [
             [
-                SchedulerEvent::EVENT_WORKER_CREATE,
+                WorkerEvent::EVENT_WORKER_CREATE,
                 123412341234, 123412341234,
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -97,7 +97,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
             ],
 
             [
-                SchedulerEvent::EVENT_WORKER_CREATE,
+                WorkerEvent::EVENT_WORKER_CREATE,
                 false, getmypid(),
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],

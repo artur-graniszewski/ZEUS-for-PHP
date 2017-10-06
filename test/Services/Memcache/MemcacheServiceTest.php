@@ -53,7 +53,7 @@ class MemcacheServiceTest extends PHPUnit_Framework_TestCase
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',
-            SchedulerEvent::EVENT_WORKER_CREATE, function (SchedulerEvent $event) use ($events) {
+            WorkerEvent::EVENT_WORKER_CREATE, function (SchedulerEvent $event) use ($events) {
             $event->setParam("uid", 123456789);
         }, 100
         );

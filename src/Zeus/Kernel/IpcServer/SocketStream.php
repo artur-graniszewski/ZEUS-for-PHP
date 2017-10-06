@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\IpcServer;
 
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\MessagePackager;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
@@ -14,13 +15,13 @@ class SocketStream extends IpcDriver
     protected $stream;
 
     /** @var int */
-    protected $sid;
+    protected $senderId;
 
     use MessagePackager;
 
     public function __construct($stream, $senderId)
     {
-        $this->sid = $senderId;
+        $this->senderId = $senderId;
 
         $this->stream = $stream;
     }
@@ -31,10 +32,10 @@ class SocketStream extends IpcDriver
      * @param int $number
      * @return $this
      */
-    public function send($message, $audience = self::AUDIENCE_ALL, int $number = 0)
+    public function send($message, $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
     {
         $payload = [
-            'sid' => $this->sid,
+            'sid' => $this->senderId,
             'aud' => $audience,
             'msg' => $message,
             'num' => $number,

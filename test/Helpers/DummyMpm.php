@@ -11,11 +11,11 @@ class DummyMpm extends AbstractModule implements MultiProcessingModuleInterface
 {
 
     /**
-     * @param EventManagerInterface $events
+     * @param EventManagerInterface $eventManager
      * @return $this
      * @return mixed
      */
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $eventManager)
     {
         // TODO: Implement attach() method.
 

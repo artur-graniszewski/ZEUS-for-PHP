@@ -14,6 +14,7 @@ class WorkerEvent extends Event
 
     const EVENT_WORKER_MESSAGE = 'workerMessage';
 
+    const EVENT_WORKER_CREATE = 'workerCreate';
     const EVENT_WORKER_INIT = 'workerStarted';
     const EVENT_WORKER_EXIT = 'workerExit';
 
@@ -28,7 +29,7 @@ class WorkerEvent extends Event
     /**
      * @return Worker
      */
-    public function getTarget() : Worker
+    public function getTarget() : WorkerInterface
     {
         return parent::getTarget();
     }

@@ -10,6 +10,7 @@ use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
 
@@ -70,7 +71,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $status = new SchedulerStatus();
         $status->attach($em);
 
-        $em->attach(SchedulerEvent::EVENT_WORKER_CREATE,
+        $em->attach(WorkerEvent::EVENT_WORKER_CREATE,
             function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
                 $amountOfScheduledProcesses++;
 

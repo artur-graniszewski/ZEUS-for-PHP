@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\SocketStream;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
@@ -136,7 +137,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
         $process = clone $this;
 
         $event->setTarget($process);
-        $event->setName(SchedulerEvent::EVENT_WORKER_CREATE);
+        $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
         if (is_array($startParameters)) {
             $event->setParams($startParameters);
         }
@@ -175,10 +176,11 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
      */
     public function setEventManager(EventManagerInterface $events)
     {
-        $events->setIdentifiers(array(
+        $events->setIdentifiers([
             __CLASS__,
             get_called_class(),
-        ));
+        ]);
+
         $this->events = $events;
 
         return $this;
@@ -217,7 +219,7 @@ abstract class AbstractWorker implements ProcessInterface, ThreadInterface, Work
             ]
         ];
 
-        $this->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER
+        $this->getIpc()->send($payload, IpcServer::AUDIENCE_SERVER
         );
 
         return $this;

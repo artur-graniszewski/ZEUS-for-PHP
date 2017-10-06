@@ -136,7 +136,7 @@ class WorkerController extends AbstractActionController
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
-        $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) use ($startParams) {
+        $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) use ($startParams) {
             $event->stopPropagation(true);
             $event->setParams(array_merge($event->getParams(), $startParams));
             $event->setParam('init_process', true);
@@ -198,7 +198,7 @@ class WorkerController extends AbstractActionController
             /** @var Scheduler $scheduler */
             $scheduler = $service->getScheduler();
 
-            $scheduler->getEventManager()->getSharedManager()->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $_schedulerEvent)
+            $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $_schedulerEvent)
             use (& $schedulerEventManager, & $schedulerEvent) {
                 $schedulerEvent = $_schedulerEvent;
                 $_schedulerEvent->getTarget()->setProcessId(getmypid());

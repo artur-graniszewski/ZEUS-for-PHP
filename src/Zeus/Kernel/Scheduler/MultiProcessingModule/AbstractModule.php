@@ -49,9 +49,9 @@ abstract class AbstractModule
         $this->ipcSelector = new Selector();
     }
 
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $eventManager)
     {
-        $this->events = $events;
+        $this->events = $eventManager;
     }
 
     public function isTerminating()

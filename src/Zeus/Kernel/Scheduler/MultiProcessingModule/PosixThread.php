@@ -51,23 +51,23 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     }
 
     /**
-     * @param EventManagerInterface $events
+     * @param EventManagerInterface $eventManager
      * @return $this
      */
-    public function attach(EventManagerInterface $events)
+    public function attach(EventManagerInterface $eventManager)
     {
-        parent::attach($events);
+        parent::attach($eventManager);
 
-        $events = $events->getSharedManager();
+        $eventManager = $eventManager->getSharedManager();
 
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit(); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
+        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
+        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit(); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         return $this;
     }

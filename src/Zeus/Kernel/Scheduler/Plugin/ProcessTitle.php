@@ -43,7 +43,7 @@ class ProcessTitle implements ListenerAggregateInterface
     {
         if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
             $events = $events->getSharedManager();
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessStarting'], $priority);
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessStarting'], $priority);
             $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting'], $priority);
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate'], $priority);
             $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onProcessRunning'], $priority);

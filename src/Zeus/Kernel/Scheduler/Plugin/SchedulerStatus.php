@@ -4,6 +4,7 @@ namespace Zeus\Kernel\Scheduler\Plugin;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
@@ -85,7 +86,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             ]
         ];
 
-        $ipc->send($payload, IpcDriver::AUDIENCE_SERVER);
+        $ipc->send($payload, IpcServer::AUDIENCE_SERVER);
 
         $timeout = 5;
         $result = null;

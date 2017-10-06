@@ -4,9 +4,11 @@ namespace Zeus\Kernel\Scheduler;
 
 use Throwable;
 use Zend\EventManager\EventManagerInterface;
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
+use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 use function time;
@@ -34,27 +36,28 @@ class Worker extends AbstractWorker
      */
     public function attach(EventManagerInterface $eventManager)
     {
-        $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
-            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_RUNNING, function(WorkerEvent $e) {
+        $eventManager = $this->getEventManager();
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use ($eventManager) {
+            $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_WAITING, function(WorkerEvent $e) {
+            $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
+            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 2);
 
-            $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
+            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
                 $this->onExit($e);
             }, SchedulerEvent::PRIORITY_FINALIZE);
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
 
-        $this->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $event->getTarget()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
 
@@ -211,8 +214,10 @@ class Worker extends AbstractWorker
             ]
         ];
 
+        $message = new StatusMessage($payload);
+
         try {
-            $process->getIpc()->send($payload, IpcDriver::AUDIENCE_SERVER);
+            $process->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (\Exception $ex) {
             $event->stopWorker(true);
             $event->setParam('exception', $ex);

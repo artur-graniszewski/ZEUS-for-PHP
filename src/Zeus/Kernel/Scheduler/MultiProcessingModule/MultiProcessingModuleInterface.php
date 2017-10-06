@@ -8,10 +8,10 @@ use Zend\Log\LoggerInterface;
 interface MultiProcessingModuleInterface
 {
     /**
-     * @param EventManagerInterface $events
+     * @param EventManagerInterface $eventManager
      * @return mixed
      */
-    public function attach(EventManagerInterface $events);
+    public function attach(EventManagerInterface $eventManager);
 
     public function setLogger(LoggerInterface $logger);
 
