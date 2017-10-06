@@ -5,7 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\Scheduler\Exception\ProcessManagerException;
+use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -272,7 +272,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
         $process = proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {
-            throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::WORKER_NOT_STARTED);
+            throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
         }
 
         $status = proc_get_status($process);

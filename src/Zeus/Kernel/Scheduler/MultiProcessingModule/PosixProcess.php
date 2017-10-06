@@ -4,7 +4,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
-use Zeus\Kernel\Scheduler\Exception\ProcessManagerException;
+use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -175,7 +175,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
 
         switch ($pid) {
             case -1:
-                throw new ProcessManagerException("Could not create a descendant process", ProcessManagerException::WORKER_NOT_STARTED);
+                throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
             case 0:
                 // we are the new process
                 $pcntl->pcntlSignal(SIGTERM, SIG_DFL);

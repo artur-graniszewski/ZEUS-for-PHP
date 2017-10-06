@@ -9,7 +9,7 @@ use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\ServiceManager;
-use Zeus\Kernel\Scheduler\Exception\ProcessManagerException;
+use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -44,7 +44,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             $this->getScheduler();
         } catch (\Exception $e) {
             $this->assertInstanceOf(ServiceNotCreatedException::class, $e);
-            $this->assertInstanceOf(ProcessManagerException::class, $e->getPrevious());
+            $this->assertInstanceOf(SchedulerException::class, $e->getPrevious());
         }
     }
 
@@ -444,6 +444,6 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler->start(true);
 
         $this->assertTrue($exitDetected, "Scheduler should shutdown when it can't create PID file");
-        $this->assertInstanceOf(ProcessManagerException::class, $exception, "Exception should be returned in SchedulerEvent");
+        $this->assertInstanceOf(SchedulerException::class, $exception, "Exception should be returned in SchedulerEvent");
     }
 }

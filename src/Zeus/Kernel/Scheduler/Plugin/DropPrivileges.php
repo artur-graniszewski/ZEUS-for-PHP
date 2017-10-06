@@ -67,7 +67,7 @@ class DropPrivileges implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $this->eventHandles[] = $events->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function() {
-            $this->onProcessInit();
+            $this->onWorkerInit();
         }, $priority);
     }
 
@@ -84,7 +84,7 @@ class DropPrivileges implements ListenerAggregateInterface
         }
     }
 
-    protected function onProcessInit()
+    protected function onWorkerInit()
     {
         $this->setGroup($this->gid, false);
         $this->setUser($this->uid, false);

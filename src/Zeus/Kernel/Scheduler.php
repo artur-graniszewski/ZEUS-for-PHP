@@ -8,7 +8,7 @@ use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\AbstractWorker;
 use Zeus\Kernel\Scheduler\ConfigInterface;
-use Zeus\Kernel\Scheduler\Exception\ProcessManagerException;
+use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
@@ -220,7 +220,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         $pid = @file_get_contents($fileName);
         if (!$pid) {
-            throw new ProcessManagerException("Scheduler not running: " . $fileName, ProcessManagerException::SCHEDULER_NOT_RUNNING);
+            throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
         }
 
         $this->setSchedulerActive(false);
@@ -318,7 +318,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
                     $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
                     if (!@file_put_contents($fileName, $pid)) {
-                        throw new ProcessManagerException(sprintf("Could not write to PID file: %s, aborting", $fileName), ProcessManagerException::LOCK_FILE_ERROR);
+                        throw new SchedulerException(sprintf("Could not write to PID file: %s, aborting", $fileName), SchedulerException::LOCK_FILE_ERROR);
                     }
 
                     $this->kernelLoop();

@@ -2,7 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\Exception;
 
-class ProcessManagerException extends \RuntimeException
+class SchedulerException extends \RuntimeException
 {
     const SCHEDULER_NOT_STARTED = 1;
     const LOCK_FILE_ERROR = 2;
