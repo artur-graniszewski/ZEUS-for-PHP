@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\Scheduler;
 
 use Zend\EventManager\Event;
+use Zeus\Kernel\Scheduler;
 
 /**
  * @package Zeus\Kernel\Scheduler
@@ -27,21 +28,9 @@ class SchedulerEvent extends Event
     const INTERNAL_EVENT_KERNEL_STOP = 'kernelStop';
 
     /**
-     * @param WorkerInterface $target
-     * @throws \LogicException
+     * @return Scheduler
      */
-    public function setTarget($target)
-    {
-        if (!($target instanceof WorkerInterface)) {
-            throw new \LogicException("Target must be an instance of a WorkerInterface");
-        }
-        parent::setTarget($target);
-    }
-
-    /**
-     * @return WorkerInterface
-     */
-    public function getTarget() : WorkerInterface
+    public function getTarget() : Scheduler
     {
         return parent::getTarget();
     }

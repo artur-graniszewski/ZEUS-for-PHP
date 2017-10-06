@@ -55,7 +55,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $scheduler->setSchedulerActive(false);
         $scheduler->start(false);
 
-        $this->assertEquals(getmypid(), $scheduler->getProcessId());
+        $this->assertFalse($scheduler->isSchedulerActive());
     }
 
     public function testMainLoopIteration()

@@ -23,13 +23,15 @@ class WorkerEvent extends Event
     const EVENT_WORKER_RUNNING = 'workerRunning';
     const EVENT_WORKER_WAITING = 'workerWaiting';
 
+    const EVENT_WORKER_TERMINATED = 'workerTerminated';
+
     /** @var bool */
     protected $stopWorker = false;
 
     /**
      * @return Worker
      */
-    public function getTarget() : WorkerInterface
+    public function getTarget() : Worker
     {
         return parent::getTarget();
     }

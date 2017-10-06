@@ -3,9 +3,10 @@
 namespace Zeus\Kernel\Scheduler;
 
 use Throwable;
+use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
@@ -18,16 +19,229 @@ use function time;
  * @package Zeus\Kernel\Scheduler
  * @internal
  */
-class Worker extends AbstractWorker
+class Worker
 {
     use GarbageCollector;
 
+    /** @var WorkerState */
+    protected $status;
+
+    /** @var int */
+    protected $processId;
+
+    /** @var int */
+    protected $threadId = 1;
+
+    /** @var EventManagerInterface */
+    protected $events;
+
+    /** @var LoggerInterface */
+    protected $logger;
+
+    /** @var ConfigInterface */
+    protected $config;
+
+    /** @var IpcServer */
+    protected $ipcAdapter;
+
     /**
-     * Worker constructor.
+     * @param int $processId
+     * @return $this
      */
-    public function __construct()
+    public function setProcessId(int $processId)
     {
-        set_exception_handler([$this, 'terminate']);
+        $this->processId = $processId;
+
+        return $this;
+    }
+
+    /**
+     * @param int $threadId
+     * @return $this
+     */
+    public function setThreadId(int $threadId)
+    {
+        $this->threadId = $threadId;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getThreadId(): int
+    {
+        return $this->threadId;
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return $this
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    /**
+     * @return LoggerInterface
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+
+    /**
+     * @return int
+     */
+    public function getProcessId() : int
+    {
+        return $this->processId;
+    }
+
+    /**
+     * @return WorkerState
+     */
+    public function getStatus()
+    {
+        if (!$this->status) {
+            $this->status = new WorkerState($this->getConfig()->getServiceName());
+            $this->status->setProcessId($this->getProcessId());
+        }
+
+        return $this->status;
+    }
+
+    /**
+     * @return ConfigInterface
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+    /**
+     * @param ConfigInterface $config
+     * @return $this
+     */
+    public function setConfig(ConfigInterface $config)
+    {
+        $this->config = $config;
+
+        return $this;
+    }
+
+    /**
+     * @param mixed $startParameters
+     * @return $this
+     */
+    public function start($startParameters = null)
+    {
+        $event = new SchedulerEvent();
+        $process = clone $this;
+
+        $event->setTarget($process);
+        $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
+        if (is_array($startParameters)) {
+            $event->setParams($startParameters);
+        }
+        $this->getEventManager()->triggerEvent($event);
+        if (!$event->getParam('init_process')) {
+            return $this;
+        }
+
+        $params = $event->getParams();
+
+        $pid = $event->getParam('uid');
+        $process->setProcessId($pid);
+        $process->setThreadId($event->getParam('threadId', 1));
+
+        $event = new WorkerEvent();
+        $event->setTarget($process);
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setParams($params);
+        $event->setParam('uid', $pid);
+        $event->setParam('processId', $pid);
+        $event->setParam('threadId', $event->getParam('threadId', 1));
+        $this->getEventManager()->triggerEvent($event);
+
+        return $this;
+    }
+
+    /**
+     * @param EventManagerInterface $events
+     * @return $this
+     */
+    public function setEventManager(EventManagerInterface $events)
+    {
+        $events->setIdentifiers([
+            __CLASS__,
+            get_called_class(),
+        ]);
+
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * @return EventManagerInterface
+     */
+    public function getEventManager()
+    {
+        if (null === $this->events) {
+            $this->setEventManager(new EventManager());
+        }
+
+        return $this->events;
+    }
+
+
+    /**
+     * @param int $channel
+     * @param string $type
+     * @param mixed|mixed[] $message
+     * @return $this
+     * @todo: move this to an AbstractProcess or a Plugin?
+     */
+    public function sendMessage(int $channel, string $type, $message)
+    {
+        $payload = [
+            'type' => $type,
+            'message' => $message,
+            'extra' => [
+                'uid' => $this->getProcessId(),
+                'threadId' => $this->getThreadId(),
+                'processId' => $this->getProcessId(),
+                'logger' => __CLASS__,
+            ]
+        ];
+
+        $this->getIpc()->send($payload, IpcServer::AUDIENCE_SERVER
+        );
+
+        return $this;
+    }
+
+    /**
+     * @param $ipcAdapter
+     * @return $this
+     */
+    public function setIpc($ipcAdapter)
+    {
+        $this->ipcAdapter = $ipcAdapter;
+
+        return $this;
+    }
+
+    /**
+     * @return IpcServer
+     */
+    public function getIpc()
+    {
+        return $this->ipcAdapter;
     }
 
     /**
@@ -38,6 +252,8 @@ class Worker extends AbstractWorker
     {
         $eventManager = $this->getEventManager();
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use ($eventManager) {
+            set_exception_handler([$this, 'terminate']);
+
             $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
@@ -136,7 +352,7 @@ class Worker extends AbstractWorker
     /**
      * @param \Throwable|null $exception
      */
-    protected function terminate(Throwable $exception = null)
+    protected function terminate(\Throwable $exception = null)
     {
         $status = $this->getStatus();
 
@@ -180,11 +396,12 @@ class Worker extends AbstractWorker
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 
-                if ($event->isWorkerStopping()) {
-                    break;
-                }
             } catch (\Throwable $exception) {
                 $this->reportException($exception);
+            }
+
+            if ($event->isWorkerStopping()) {
+                break;
             }
         }
 

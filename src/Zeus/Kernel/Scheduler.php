@@ -2,17 +2,18 @@
 
 namespace Zeus\Kernel;
 
+use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
+use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\Scheduler\AbstractWorker;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
-use Zeus\Kernel\Scheduler\ProcessInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
@@ -26,7 +27,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
  * @package Zeus\Kernel\Scheduler
  * @internal
  */
-final class Scheduler extends AbstractWorker implements EventsCapableInterface, ProcessInterface
+final class Scheduler implements EventsCapableInterface
 {
     use PluginRegistry;
     use GarbageCollector;
@@ -40,7 +41,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /** @var WorkerState */
     protected $schedulerStatus;
 
-    /** @var AbstractWorker */
+    /** @var Worker */
     protected $workerService;
 
     protected $discipline;
@@ -51,6 +52,97 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /** @var MultiProcessingModuleInterface */
     protected $multiProcessingModule;
 
+    /** @var EventManagerInterface */
+    protected $events;
+    protected $config;
+    protected $logger;
+    protected $ipcAdapter;
+
+    /**
+     * @param $ipcAdapter
+     * @return $this
+     */
+    public function setIpc(IpcServer $ipcAdapter)
+    {
+        $this->ipcAdapter = $ipcAdapter;
+
+        return $this;
+    }
+
+    /**
+     * @return IpcServer mixed
+     */
+    public function getIpc()
+    {
+        return $this->ipcAdapter;
+    }
+
+    /**
+     * @param EventManagerInterface $events
+     * @return $this
+     */
+    public function setEventManager(EventManagerInterface $events)
+    {
+        $events->setIdentifiers([
+            __CLASS__,
+            get_called_class(),
+        ]);
+
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * @return EventManagerInterface
+     */
+    public function getEventManager()
+    {
+        if (null === $this->events) {
+            $this->setEventManager(new EventManager());
+        }
+
+        return $this->events;
+    }
+
+    /**
+     * @return ConfigInterface
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return $this
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    /**
+     * @return \Zend\Log\LoggerInterface
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+
+    /**
+     * @param ConfigInterface $config
+     * @return $this
+     */
+    public function setConfig(ConfigInterface $config)
+    {
+        $this->config = $config;
+
+        return $this;
+    }
+
     /**
      * @return bool
      */
@@ -60,7 +152,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     }
 
     /**
-     * @return AbstractWorker
+     * @return Worker
      */
     public function getWorkerService()
     {
@@ -81,10 +173,10 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
     /**
      * Scheduler constructor.
      * @param ConfigInterface $config
-     * @param AbstractWorker $workerService
+     * @param Worker $workerService
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, AbstractWorker $workerService, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, Worker $workerService, DisciplineInterface $discipline)
     {
         $this->discipline = $discipline;
         $this->setConfig($config);
@@ -282,7 +374,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
         try {
             if (!$launchAsDaemon) {
-                $this->setProcessId(getmypid());
+                //$this->setProcessId(getmypid());
                 $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
                 $this->kernelLoop();
@@ -298,7 +390,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
 
                     if ($e->getParam('init_process')) {
                         $e->stopPropagation(true);
-                        $this->setProcessId(getmypid());
+                        //$this->setProcessId(getmypid());
                         $this->log(Logger::INFO, "Establishing IPC");
                         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
                     } else {
@@ -317,7 +409,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
                     }, WorkerEvent::PRIORITY_INITIALIZE);
 
                     $pid = $event->getParam('uid');
-                    $this->setProcessId($pid);
+                    //$this->setProcessId($pid);
 
                     $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
                     if (!@file_put_contents($fileName, $pid)) {
@@ -392,6 +484,7 @@ final class Scheduler extends AbstractWorker implements EventsCapableInterface, 
         if ($exception) {
             $status = $exception->getCode();
             $this->log(Logger::ERR, sprintf("Exception (%d): %s in %s:%d", $status, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
+            $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
         }
 
         $this->setSchedulerActive(false);
