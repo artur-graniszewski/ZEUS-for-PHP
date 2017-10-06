@@ -176,11 +176,6 @@ class Worker
      */
     public function setEventManager(EventManagerInterface $events)
     {
-        $events->setIdentifiers([
-            __CLASS__,
-            get_called_class(),
-        ]);
-
         $this->events = $events;
 
         return $this;

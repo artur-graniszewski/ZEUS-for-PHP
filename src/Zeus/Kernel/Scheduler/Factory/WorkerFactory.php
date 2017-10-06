@@ -28,10 +28,9 @@ class WorkerFactory implements FactoryInterface
     {
         $schedulerConfig = $options['scheduler_config'];
         $process = new Worker();
-        $eventManager = $container->build('zeus-event-manager');
         $process->setLogger($options['logger_adapter']);
-        $process->setEventManager($eventManager);
-        $process->attach($eventManager);
+        $process->setEventManager($options['event_manager']);
+        $process->attach($options['event_manager']);
         $process->setConfig($schedulerConfig);
 
         return $process;

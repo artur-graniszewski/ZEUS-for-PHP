@@ -206,17 +206,17 @@ final class Scheduler implements EventsCapableInterface
     public function attach(EventManagerInterface $eventManager)
     {
         $sharedEventManager = $eventManager->getSharedManager();
-        $this->eventHandles[] = $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedEventManager) {
             $this->eventHandles[] = $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
             $this->onSchedulerStart();
 
         }, SchedulerEvent::PRIORITY_FINALIZE);
 
-        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
             $this->manageWorkers($this->discipline);
         });

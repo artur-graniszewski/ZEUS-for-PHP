@@ -41,10 +41,14 @@ class SchedulerFactory implements FactoryInterface
         $schedulerDiscipline =
             isset($config['scheduler_discipline']) ? $container->get($config['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        /** @var Worker $processService */
-        $processService = $container->build(Worker::class, ['logger_adapter' => $logger, 'scheduler_config' => $configObject]);
+        /** @var Worker $workerService */
+        $workerService = $container->build(Worker::class, [
+            'logger_adapter' => $logger,
+            'scheduler_config' => $configObject,
+            'event_manager' => $eventManager
+        ]);
 
-        $scheduler = new Scheduler($configObject, $processService, $schedulerDiscipline);
+        $scheduler = new Scheduler($configObject, $workerService, $schedulerDiscipline);
         $scheduler->setLogger($logger);
         $scheduler->setEventManager($eventManager);
 
