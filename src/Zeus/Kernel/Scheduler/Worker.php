@@ -44,6 +44,9 @@ class Worker
     /** @var IpcServer */
     protected $ipcAdapter;
 
+    /** @var bool */
+    protected $isTerminating = false;
+
     /**
      * @param int $processId
      * @return $this
@@ -53,6 +56,25 @@ class Worker
         $this->processId = $processId;
 
         return $this;
+    }
+
+    /**
+     * @param bool $isTerminating
+     * @return $this
+     */
+    public function setIsTerminating(bool $isTerminating)
+    {
+        $this->isTerminating = $isTerminating;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isTerminating() : bool
+    {
+        return $this->isTerminating;
     }
 
     /**
@@ -140,9 +162,9 @@ class Worker
     public function start($startParameters = null)
     {
         $event = new SchedulerEvent();
-        $process = clone $this;
+        $worker = clone $this;
 
-        $event->setTarget($process);
+        $event->setTarget($worker);
         $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
         if (is_array($startParameters)) {
             $event->setParams($startParameters);
@@ -155,11 +177,11 @@ class Worker
         $params = $event->getParams();
 
         $pid = $event->getParam('uid');
-        $process->setProcessId($pid);
-        $process->setThreadId($event->getParam('threadId', 1));
+        $worker->setProcessId($pid);
+        $worker->setThreadId($event->getParam('threadId', 1));
 
         $event = new WorkerEvent();
-        $event->setTarget($process);
+        $event->setTarget($worker);
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams($params);
         $event->setParam('uid', $pid);
@@ -333,7 +355,8 @@ class Worker
      */
     protected function reportException(Throwable $exception)
     {
-        $this->getLogger()->err(sprintf("Exception (%d): %s in %s on line %d",
+        $this->getLogger()->err(sprintf("%s (%d): %s in %s on line %d",
+            get_class($exception),
             $exception->getCode(),
             addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
             $exception->getFile(),
@@ -391,6 +414,9 @@ class Worker
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 
+            } catch (\Error $exception) {
+                $this->reportException($exception);
+                $this->terminate();
             } catch (\Throwable $exception) {
                 $this->reportException($exception);
             }

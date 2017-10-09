@@ -348,12 +348,13 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
+        $posixProcess = new PosixProcess();
         $posixProcess->attach($em);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $em->triggerEvent($event);
 
+        $event = new WorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
         $em->triggerEvent($event);
 

@@ -342,7 +342,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $foundExceptions = [];
         foreach ($mockWriter->events as $event) {
-            if (preg_match('~^Exception \(10000\): Exception thrown by ([0-9]+)~', $event['message'], $matches)) {
+            if (preg_match('~^RuntimeException \(10000\): Exception thrown by ([0-9]+)~', $event['message'], $matches)) {
                 $foundExceptions[$matches[1]] = $matches[1];
             }
         }

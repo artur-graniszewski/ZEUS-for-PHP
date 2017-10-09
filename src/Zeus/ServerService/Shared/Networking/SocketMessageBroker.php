@@ -105,7 +105,7 @@ final class SocketMessageBroker
                 $this->isBusy = true;
             }
             $this->isLeader ? $this->onLeaderLoop($event) : $this->onWorkerLoop($event);
-        });
+        }, WorkerEvent::PRIORITY_REGULAR);
         $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
         $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'leaderElection'], SchedulerEvent::PRIORITY_FINALIZE);
         $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'leaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
