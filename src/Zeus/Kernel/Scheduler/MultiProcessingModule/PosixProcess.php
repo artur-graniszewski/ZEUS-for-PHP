@@ -118,7 +118,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
 
     public function onSchedulerTerminate()
     {
-        $event = new SchedulerEvent();
+        $event = $this->getSchedulerEvent();
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
         $event->setParam('uid', getmypid());
         $event->setParam('processId', getmypid());
@@ -156,7 +156,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     {
         // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $event = new SchedulerEvent();
+            $event = $this->getSchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_WORKER_TERMINATED);
             $event->setParam('uid', $pid);
             $event->setParam('threadId', $oldEvent->getParam('threadId'));
@@ -167,7 +167,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $this->getPcntlBridge()->pcntlSignalDispatch();
 
         if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
-            $event = new SchedulerEvent();
+            $event = $this->getSchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $event->setParam('uid', $this->ppid);
             $event->setParam('threadId', 1);

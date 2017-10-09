@@ -8,6 +8,7 @@ use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer;
+
 use Zeus\Kernel\Scheduler\Config;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\Kernel\Scheduler;
@@ -41,23 +42,28 @@ class SchedulerFactory implements FactoryInterface
         $schedulerDiscipline =
             isset($config['scheduler_discipline']) ? $container->get($config['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        /** @var Worker $workerService */
-        $workerService = $container->build(Worker::class, [
+        /** @var Worker $processService */
+        $processService = $container->build(Worker::class, [
             'logger_adapter' => $logger,
             'scheduler_config' => $configObject,
             'event_manager' => $eventManager
         ]);
 
-        $scheduler = new Scheduler($configObject, $workerService, $schedulerDiscipline);
+        $scheduler = new Scheduler($configObject, $eventManager, $processService, $schedulerDiscipline);
         $scheduler->setLogger($logger);
         $scheduler->setEventManager($eventManager);
 
         $ipcServer = new IpcServer();
-        $eventManager = $container->build('zeus-event-manager');
         $ipcServer->setEventManager($eventManager);
         $ipcServer->attach($eventManager);
 
-        $container->build($config['multiprocessing_module'], ['scheduler' => $scheduler, 'logger_adapter' => $logger]);
+        $driver = $container->build($config['multiprocessing_module'], [
+            'scheduler_event' => $scheduler->getSchedulerEvent(),
+            'logger_adapter' => $logger,
+            'event_manager' => $eventManager
+        ]);
+
+        $scheduler->setMultiProcessingModule($driver);
         $this->startPlugins($container, $scheduler, isset($config['plugins']) ? $config['plugins'] : []);
 
         return $scheduler;

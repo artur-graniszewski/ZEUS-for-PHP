@@ -1,12 +1,11 @@
 <?php
 
 namespace Zeus\Kernel\Scheduler;
-use Zend\EventManager\Event;
 
 /**
  * @package Zeus\Kernel\Scheduler
  */
-class WorkerEvent extends Event
+class WorkerEvent extends SchedulerEvent
 {
     const PRIORITY_FINALIZE = -100000;
     const PRIORITY_INITIALIZE = 50000;
@@ -26,25 +25,30 @@ class WorkerEvent extends Event
     const EVENT_WORKER_TERMINATED = 'workerTerminated';
 
     /** @var bool */
-    protected $stopWorker = false;
+    private $stopWorker = false;
+
+    /** @var Worker */
+    private $worker;
 
     /**
      * @return Worker
      */
-    public function getTarget() : Worker
+    public function getWorker() : Worker
     {
-        return parent::getTarget();
+        return $this->worker;
+    }
+
+    public function setWorker(Worker $worker)
+    {
+        $this->worker = $worker;
     }
 
     /**
      * @param bool $stop
-     * @return $this
      */
-    public function stopWorker(bool $stop) : WorkerEvent
+    public function stopWorker(bool $stop)
     {
         $this->stopWorker = $stop;
-
-        return $this;
     }
 
     public function isWorkerStopping() : bool

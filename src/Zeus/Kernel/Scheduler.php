@@ -36,7 +36,7 @@ final class Scheduler implements EventsCapableInterface
     protected $workers = [];
 
     /** @var bool */
-    protected $schedulerActive = true;
+    protected $isSchedulerTerminating = false;
 
     /** @var WorkerState */
     protected $schedulerStatus;
@@ -57,6 +57,9 @@ final class Scheduler implements EventsCapableInterface
     protected $config;
     protected $logger;
     protected $ipcAdapter;
+
+    /** @var SchedulerEvent */
+    protected $schedulerEvent;
 
     /**
      * @param $ipcAdapter
@@ -89,8 +92,6 @@ final class Scheduler implements EventsCapableInterface
         ]);
 
         $this->events = $events;
-
-        return $this;
     }
 
     /**
@@ -103,6 +104,18 @@ final class Scheduler implements EventsCapableInterface
         }
 
         return $this->events;
+    }
+
+    public function setSchedulerEvent(SchedulerEvent $event)
+    {
+        $this->schedulerEvent = $event;
+
+        return $this;
+    }
+
+    public function getSchedulerEvent() : SchedulerEvent
+    {
+        return clone $this->schedulerEvent;
     }
 
     /**
@@ -125,7 +138,7 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @return \Zend\Log\LoggerInterface
+     * @return LoggerInterface
      */
     public function getLogger()
     {
@@ -146,9 +159,9 @@ final class Scheduler implements EventsCapableInterface
     /**
      * @return bool
      */
-    public function isSchedulerActive()
+    public function isTerminating()
     {
-        return $this->schedulerActive;
+        return $this->isSchedulerTerminating;
     }
 
     /**
@@ -160,12 +173,12 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @param bool $schedulerActive
+     * @param bool $stopScheduler
      * @return $this
      */
-    public function setSchedulerActive(bool $schedulerActive)
+    public function stopScheduler(bool $stopScheduler)
     {
-        $this->schedulerActive = $schedulerActive;
+        $this->isSchedulerTerminating = $stopScheduler;
 
         return $this;
     }
@@ -173,11 +186,18 @@ final class Scheduler implements EventsCapableInterface
     /**
      * Scheduler constructor.
      * @param ConfigInterface $config
+     * @param EventManagerInterface $eventManager
      * @param Worker $workerService
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, Worker $workerService, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, EventManagerInterface $eventManager, Worker $workerService, DisciplineInterface $discipline)
     {
+        $event = new SchedulerEvent();
+        $event->setTarget($this);
+        $event->setScheduler($this);
+        $this->setSchedulerEvent($event);
+
+        $this->setEventManager($eventManager);
         $this->discipline = $discipline;
         $this->setConfig($config);
         $this->workerService = $workerService;
@@ -208,10 +228,10 @@ final class Scheduler implements EventsCapableInterface
         $sharedEventManager = $eventManager->getSharedManager();
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedEventManager) {
-            $this->eventHandles[] = $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);});
+            $this->eventHandles[] = $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
             $this->onSchedulerStart();
 
         }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -227,7 +247,7 @@ final class Scheduler implements EventsCapableInterface
     /**
      * @param IpcEvent $event
      */
-    protected function onWorkerMessage(IpcEvent $event)
+    protected function onIpcMessage(IpcEvent $event)
     {
         $message = $event->getParams();
 
@@ -287,7 +307,7 @@ final class Scheduler implements EventsCapableInterface
     /**
      * @param SchedulerEvent $event
      */
-    protected function onWorkerTerminated(SchedulerEvent $event)
+    protected function onWorkerExited(SchedulerEvent $event)
     {
         $id = $event->getParam('uid');
         $this->log(Logger::DEBUG, "Worker $id exited");
@@ -318,7 +338,7 @@ final class Scheduler implements EventsCapableInterface
             throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
         }
 
-        $this->setSchedulerActive(false);
+        $this->stopScheduler(true);
         $this->stopWorker($pid, true);
 
         unlink($fileName);
@@ -346,8 +366,7 @@ final class Scheduler implements EventsCapableInterface
     {
         $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
-        $event = new SchedulerEvent();
-        $event->setTarget($this);
+        $event = $this->getSchedulerEvent();
         $event->setParams($extraData);
         $event->setName($eventName);
         $events->triggerEvent($event);
@@ -363,7 +382,6 @@ final class Scheduler implements EventsCapableInterface
      */
     public function start($launchAsDaemon = false)
     {
-        $this->getMultiProcessingModule()->attach($this->getEventManager());
         $plugins = $this->getPluginRegistry()->count();
         $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
         $this->collectCycles();
@@ -474,7 +492,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function onShutdown(SchedulerEvent $event)
     {
-        if (!$this->isSchedulerActive()) {
+        if ($this->isTerminating()) {
             return;
         }
 
@@ -487,7 +505,7 @@ final class Scheduler implements EventsCapableInterface
             $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
         }
 
-        $this->setSchedulerActive(false);
+        $this->stopScheduler(true);
 
         $this->log(Logger::INFO, "Terminating scheduled workers");
 
@@ -533,7 +551,7 @@ final class Scheduler implements EventsCapableInterface
         $process->setProcessId($event->getParam('uid'));
         $process->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
-        $this->setSchedulerActive(false);
+        $this->stopScheduler(true);
     }
 
     /**
@@ -570,7 +588,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function manageWorkers(DisciplineInterface $discipline) : Scheduler
     {
-        if (!$this->isSchedulerActive()) {
+        if ($this->isTerminating()) {
             return $this;
         }
 
@@ -618,7 +636,7 @@ final class Scheduler implements EventsCapableInterface
     {
         do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-        } while ($this->isSchedulerActive());
+        } while (!$this->isTerminating());
 
         return $this;
     }
@@ -628,7 +646,7 @@ final class Scheduler implements EventsCapableInterface
      */
     public function kernelLoop() : Scheduler
     {
-        while ($this->isSchedulerActive()) {
+        while (!$this->isTerminating()) {
             $time = microtime(true);
             $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
             $diff = microtime(true) - $time;

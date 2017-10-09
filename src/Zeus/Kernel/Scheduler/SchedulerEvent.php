@@ -27,11 +27,19 @@ class SchedulerEvent extends Event
     const INTERNAL_EVENT_KERNEL_START = 'kernelStart';
     const INTERNAL_EVENT_KERNEL_STOP = 'kernelStop';
 
+    /** @var Scheduler */
+    private $scheduler;
+
     /**
      * @return Scheduler
      */
-    public function getTarget()
+    public function getScheduler() : Scheduler
     {
-        return parent::getTarget();
+        return $this->scheduler;
+    }
+
+    public function setScheduler(Scheduler $scheduler)
+    {
+        $this->scheduler = $scheduler;
     }
 }

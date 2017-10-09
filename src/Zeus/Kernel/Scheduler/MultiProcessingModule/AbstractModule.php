@@ -23,6 +23,9 @@ abstract class AbstractModule
     /** @var int */
     protected $connectionPort;
 
+    /** @var SchedulerEvent */
+    protected $schedulerEvent;
+
     /** @var bool */
     private $isTerminating = false;
 
@@ -42,8 +45,22 @@ abstract class AbstractModule
     private $logger;
 
     /**
-     * PosixDriver constructor.
+     * @param SchedulerEvent $event
      */
+    public function setSchedulerEvent(SchedulerEvent $event)
+    {
+        $this->schedulerEvent = $event;
+    }
+
+    public function getSchedulerEvent() : SchedulerEvent
+    {
+        if (!$this->schedulerEvent) {
+            throw new \LogicException("Scheduler event not set");
+        }
+
+        return clone $this->schedulerEvent;
+    }
+
     public function __construct()
     {
         $this->ipcSelector = new Selector();
@@ -154,7 +171,7 @@ abstract class AbstractModule
 
     protected function raiseWorkerExitedEvent($uid, $processId, $threadId)
     {
-        $newEvent = new SchedulerEvent();
+        $newEvent = $this->getSchedulerEvent();
         $newEvent->setParam('uid', $uid);
         $newEvent->setParam('threadId', $threadId);
         $newEvent->setParam('processId', $processId);

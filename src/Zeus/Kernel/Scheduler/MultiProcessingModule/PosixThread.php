@@ -133,7 +133,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
         if ($this->isTerminating() && !$wasExiting) {
             $event->stopPropagation();
-            $event = new SchedulerEvent();
+            $event = $this->getSchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
             $event->setParam('uid', getmypid());
             $event->setParam('processId', getmypid());

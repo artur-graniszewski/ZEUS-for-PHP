@@ -215,33 +215,6 @@ class Worker
         return $this->events;
     }
 
-
-    /**
-     * @param int $channel
-     * @param string $type
-     * @param mixed|mixed[] $message
-     * @return $this
-     * @todo: move this to an AbstractProcess or a Plugin?
-     */
-    public function sendMessage(int $channel, string $type, $message)
-    {
-        $payload = [
-            'type' => $type,
-            'message' => $message,
-            'extra' => [
-                'uid' => $this->getProcessId(),
-                'threadId' => $this->getThreadId(),
-                'processId' => $this->getProcessId(),
-                'logger' => __CLASS__,
-            ]
-        ];
-
-        $this->getIpc()->send($payload, IpcServer::AUDIENCE_SERVER
-        );
-
-        return $this;
-    }
-
     /**
      * @param $ipcAdapter
      * @return $this

@@ -10,7 +10,6 @@ use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
-
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -64,7 +63,11 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         /** @var PosixProcess $service */
         $logger = new Logger();
         $logger->addWriter(new Noop());
-        $service = $sm->build(PosixProcess::class, ['scheduler' => $scheduler, 'scheduler_event' => new SchedulerEvent(), 'logger_adapter' => $logger]);
+        $service = $sm->build(PosixProcess::class, [
+            'scheduler_event' => new SchedulerEvent(),
+            'logger_adapter' => $logger,
+            'event_manager' => $scheduler->getEventManager()
+        ]);
         $this->assertInstanceOf(PosixProcess::class, $service);
 
         $eventLaunched = false;
@@ -196,6 +199,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
         $posixProcess = new PosixProcess();
+        $posixProcess->setSchedulerEvent($event);
         $posixProcess->attach($em);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
@@ -237,7 +241,8 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
+        $posixProcess = new PosixProcess();
+        $posixProcess->setSchedulerEvent($event);
         $posixProcess->attach($em);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
@@ -265,7 +270,8 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
+        $posixProcess = new PosixProcess();
+        $posixProcess->setSchedulerEvent($event);
         $posixProcess->attach($em);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);

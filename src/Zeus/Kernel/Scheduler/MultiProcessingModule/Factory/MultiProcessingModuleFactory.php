@@ -32,12 +32,14 @@ class MultiProcessingModuleFactory implements FactoryInterface
         /** @var LoggerInterface $logger */
         $logger = $options['logger_adapter'];
 
-        /** @var Scheduler $scheduler */
-        $scheduler = $options['scheduler'];
+        $eventManager = $options['event_manager'];
+        $schedulerEvent = $options['scheduler_event'];
+
         /** @var MultiProcessingModuleInterface $driver */
         $driver = new $requestedName();
         $driver->setLogger($logger);
-        $scheduler->setMultiProcessingModule($driver);
+        $driver->setSchedulerEvent($schedulerEvent);
+        $driver->attach($eventManager);
         $logger->info(sprintf("Using %s MPM module", substr($requestedName, strrpos($requestedName, '\\')+1)));
 
         return $driver;
