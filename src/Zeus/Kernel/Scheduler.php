@@ -563,7 +563,7 @@ final class Scheduler implements EventsCapableInterface
         if ($event->getParam('server')) {
             return $this;
         }
-
+        
         $pid = $event->getParam('uid');
 
         $this->workers[$pid] = [

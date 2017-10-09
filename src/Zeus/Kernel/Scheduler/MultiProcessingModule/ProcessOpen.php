@@ -108,7 +108,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
         $eventManager = $eventManager->getSharedManager();
 
-        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
         $eventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);

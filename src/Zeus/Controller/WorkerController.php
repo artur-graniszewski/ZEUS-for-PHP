@@ -214,7 +214,7 @@ class WorkerController extends AbstractActionController
         });
 
         $this->manager->startService($serviceName);
-        $scheduler->setProcessId(getmypid());
+        //$scheduler->setProcessId(getmypid());
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $schedulerEvent->setTarget($scheduler);
         if ($startParams) {

@@ -60,7 +60,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
         $eventManager = $eventManager->getSharedManager();
 
-        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
         $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
         $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -135,7 +135,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
             $event->stopPropagation();
             $event = $this->getSchedulerEvent();
             $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', getmypid());
+            $event->setParam('uid', \ZEUS_THREAD_ID);
             $event->setParam('processId', getmypid());
             $event->setParam('threadId', \ZEUS_THREAD_ID);
             $this->events->triggerEvent($event);
