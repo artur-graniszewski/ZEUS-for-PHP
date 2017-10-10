@@ -55,6 +55,11 @@ class WorkerController extends AbstractActionController
         return $this;
     }
 
+    public function getManager() : Manager
+    {
+        return $this->manager;
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -85,13 +90,14 @@ class WorkerController extends AbstractActionController
                     break;
             }
         } catch (\Throwable $exception) {
-            $this->logger->err(sprintf("Exception (%d): %s in %s on line %d",
+            $this->getLogger()->err(sprintf("%s (%d): %s in %s on line %d",
+                get_class($exception),
                 $exception->getCode(),
                 addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
                 $exception->getFile(),
                 $exception->getLine()
             ));
-            $this->logger->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+            $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
             $this->doExit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
     }
@@ -134,9 +140,10 @@ class WorkerController extends AbstractActionController
      */
     protected function startWorkerForService($serviceName, array $startParams = [])
     {
+        $serviceEventManager = $this->manager->getEventManager();
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
-        $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) use ($startParams) {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) use ($startParams) {
             $event->stopPropagation(true);
             $event->setParams(array_merge($event->getParams(), $startParams));
             $event->setParam('init_process', true);
@@ -144,28 +151,18 @@ class WorkerController extends AbstractActionController
             $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         }, 100000);
 
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
+        $serviceEventManager->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
             $event->stopPropagation(true);
         }, 1);
 
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
+        $serviceEventManager->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
             $event->stopPropagation(true);
         }, 1);
 
-        $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function() {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function() {
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        // @todo: below is a thread code
-//        $scheduler->getEventManager()->getSharedManager()->attach('*', ProcessEvent::EVENT_PROCESS_LOOP,
-//            function(ProcessEvent $event) use ($scheduler) {
-//
-//            trigger_error(\Thread::getCurrentThreadId() . " LOOP " . posix_getpid());
-//            if (!file_exists($scheduler->getPidFile()) || file_get_contents($scheduler->getPidFile()) != getmypid()) {
-//                echo "CLOSE THREAD!\n";
-//                $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(100000);
-//            }
-//        }, ProcessEvent::PRIORITY_FINALIZE + 1);
 
         $this->manager->startService($serviceName);
         $scheduler->getWorkerService()->start($startParams);
@@ -178,34 +175,28 @@ class WorkerController extends AbstractActionController
     protected function starSchedulerForService($serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
-        $scheduler = null;
+        $scheduler = $this->manager->getService($serviceName)->getScheduler();
 
-        /** @var SchedulerEvent $schedulerEvent */
-        $schedulerEvent = null;
         /** @var EventManager $schedulerEventManager */
         $schedulerEventManager = null;
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
+        $serviceEventManager = $this->manager->getEventManager();
+        $serviceEventManager->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
             $event->stopPropagation(true);
         }, 1);
 
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
+        $serviceEventManager->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
             $event->stopPropagation(true);
         }, 1);
 
-        $this->manager->getEventManager()->attach(ManagerEvent::EVENT_SERVICE_START, function(ManagerEvent $event)
-        use (& $scheduler, & $schedulerEventManager, & $schedulerEvent) {
-            $service = $event->getService();
-            /** @var Scheduler $scheduler */
-            $scheduler = $service->getScheduler();
+        $serviceEventManager->attach(ManagerEvent::EVENT_SERVICE_START, function(ManagerEvent $event)
+        use (& $scheduler, & $schedulerEventManager) {
 
-            $scheduler->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $_schedulerEvent)
-            use (& $schedulerEventManager, & $schedulerEvent) {
-                $schedulerEvent = $_schedulerEvent;
-                $_schedulerEvent->getTarget()->setProcessId(getmypid());
-                $schedulerEventManager = $_schedulerEvent->getTarget()->getEventManager();
-                if ($_schedulerEvent->getParam('server')) {
+            $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $schedulerEvent)
+            use (& $schedulerEventManager) {
+                $schedulerEventManager = $schedulerEvent->getTarget()->getEventManager();
+                if ($schedulerEvent->getParam('server')) {
 
-                    $_schedulerEvent->stopPropagation(true);
+                    $schedulerEvent->stopPropagation(true);
                     DynamicPriorityFilter::resetPriority();
 
                     return;
@@ -214,9 +205,9 @@ class WorkerController extends AbstractActionController
         });
 
         $this->manager->startService($serviceName);
-        //$scheduler->setProcessId(getmypid());
+
+        $schedulerEvent = $scheduler->getSchedulerEvent();
         $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
-        $schedulerEvent->setTarget($scheduler);
         if ($startParams) {
             $schedulerEvent->setParams($startParams);
         }
@@ -246,9 +237,9 @@ class WorkerController extends AbstractActionController
     }
 
     /**
-     * @return LoggerInterface|Logger
+     * @return LoggerInterface
      */
-    public function getLogger()
+    public function getLogger() : LoggerInterface
     {
         return $this->logger;
     }
@@ -257,7 +248,7 @@ class WorkerController extends AbstractActionController
      * @param LoggerInterface $logger
      * @return $this
      */
-    public function setLogger($logger)
+    public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
 

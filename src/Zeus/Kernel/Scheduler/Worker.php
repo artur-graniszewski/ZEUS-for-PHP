@@ -409,17 +409,17 @@ class Worker
      */
     protected function sendStatus(WorkerEvent $event)
     {
-        $status = $event->getParam('status');
+        $status = $event->getTarget()->getStatus();
         $status->updateStatus();
-        $process = $event->getTarget();
+        $worker = $event->getTarget();
 
         $payload = [
             'type' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $process->getProcessId(),
-                'threadId' => $process->getThreadId(),
-                'processId' => $process->getProcessId(),
+                'uid' => $worker->getProcessId(),
+                'threadId' => $worker->getThreadId(),
+                'processId' => $worker->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
             ]
@@ -428,7 +428,7 @@ class Worker
         $message = new StatusMessage($payload);
 
         try {
-            $process->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
+            $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (\Exception $ex) {
             $event->stopWorker(true);
             $event->setParam('exception', $ex);

@@ -176,6 +176,7 @@ trait ZeusFactories
         }, 10000000);
 
         $scheduler->stopScheduler(false);
+        $scheduler->setIpc($ipcServer);
 
         return $scheduler;
     }

@@ -97,18 +97,17 @@ final class SocketMessageBroker
      */
     public function attach(EventManagerInterface $events)
     {
-        $events = $events->getSharedManager();
-        $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerStart'], WorkerEvent::PRIORITY_REGULAR);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function($event) {
+        $events->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerStart'], WorkerEvent::PRIORITY_REGULAR);
+        $events->attach(WorkerEvent::EVENT_WORKER_LOOP, function($event) {
             if ($this->isLeader && !$this->isBusy) {
                 $event->getTarget()->setRunning();
                 $this->isBusy = true;
             }
             $this->isLeader ? $this->onLeaderLoop($event) : $this->onWorkerLoop($event);
         }, WorkerEvent::PRIORITY_REGULAR);
-        $events->attach('*', WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
-        $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'leaderElection'], SchedulerEvent::PRIORITY_FINALIZE);
-        $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'leaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
+        $events->attach(WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'leaderElection'], SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'leaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
 
         return $this;
     }
@@ -144,7 +143,7 @@ final class SocketMessageBroker
 
     public function leaderElection(SchedulerEvent $event)
     {
-        $event->getTarget()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_ANY);
+        $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_ANY);
     }
 
     public function leaderElected(IpcEvent $event)

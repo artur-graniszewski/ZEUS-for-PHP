@@ -46,16 +46,16 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
     {
         $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
         stream_set_blocking($server, false);
-        $events = new EventManager(new SharedEventManager());
-        $event = new SchedulerEvent();
-        $event->setTarget($this->getScheduler(0));
+        $scheduler = $this->getScheduler(0);
+        $events = $scheduler->getEventManager();
+        $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
-        $process = new Worker($event);
-        $process->setProcessId(getmypid());
-        $process->setConfig($config);
-        $process->setIpc($event->getTarget()->getIpc());
-        $process->attach($events);
+        $worker = new Worker();
+        $worker->setProcessId(getmypid());
+        $worker->setConfig($config);
+        $worker->setIpc($event->getScheduler()->getIpc());
+        $worker->attach($events);
 
         $received = null;
         $steps = 0;
@@ -80,11 +80,15 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
+        $events->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+            $event->stopPropagation(true);
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
+
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
         $events->triggerEvent($event);
 
         $event = new WorkerEvent();
-        $event->setTarget($process);
+        $event->setTarget($worker);
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
@@ -98,6 +102,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($wrote, strlen($requestString));
 
         $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
+        $event->setTarget($worker);
         $events->triggerEvent($event);
         $wrote = stream_socket_sendto($client, $requestString);
         $this->assertEquals($wrote, strlen($requestString));
@@ -105,8 +110,9 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
         fclose($client);
 
-        $event = new SchedulerEvent();
+        $event = new WorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
+        $event->setTarget($worker);
         $events->triggerEvent($event);
 
         $this->assertEquals($requestString, $received);
@@ -117,12 +123,12 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
     public function testSubscriberErrorHandling()
     {
         $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
-        $events = new EventManager(new SharedEventManager());
-        $event = new SchedulerEvent();
-        $event->setTarget($this->getScheduler(0));
+        $scheduler = $this->getScheduler(0);
+        $events = $scheduler->getEventManager();
+        $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
-        $process = new Worker($event);
+        $process = new Worker();
         $process->setConfig($config);
         $process->setIpc($event->getTarget()->getIpc());
         $process->attach($events);

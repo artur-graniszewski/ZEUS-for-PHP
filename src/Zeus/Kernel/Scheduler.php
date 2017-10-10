@@ -62,7 +62,7 @@ final class Scheduler implements EventsCapableInterface
     protected $schedulerEvent;
 
     /**
-     * @param $ipcAdapter
+     * @param IpcServer $ipcAdapter
      * @return $this
      */
     public function setIpc(IpcServer $ipcAdapter)
@@ -75,7 +75,7 @@ final class Scheduler implements EventsCapableInterface
     /**
      * @return IpcServer mixed
      */
-    public function getIpc()
+    public function getIpc() : IpcServer
     {
         return $this->ipcAdapter;
     }
@@ -106,6 +106,10 @@ final class Scheduler implements EventsCapableInterface
         return $this->events;
     }
 
+    /**
+     * @param SchedulerEvent $event
+     * @return $this
+     */
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
@@ -113,6 +117,9 @@ final class Scheduler implements EventsCapableInterface
         return $this;
     }
 
+    /**
+     * @return SchedulerEvent
+     */
     public function getSchedulerEvent() : SchedulerEvent
     {
         return clone $this->schedulerEvent;
@@ -230,8 +237,8 @@ final class Scheduler implements EventsCapableInterface
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
-        $this->eventHandles[] = $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedEventManager) {
-            $this->eventHandles[] = $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
+        $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedEventManager) {
             $this->onSchedulerStart();
 
         }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -257,29 +264,24 @@ final class Scheduler implements EventsCapableInterface
 
         $message = $message->getParams();
 
-        switch ($message['type']) {
-            case Message::IS_STATUS:
-                $details = $message['extra'];
-                $pid = $details['uid'];
-                $threadId = $details['threadId'];
+        $details = $message['extra'];
+        $pid = $details['uid'];
+        $threadId = $details['threadId'];
 
-                if ($threadId > 1) {
-                    $pid = $threadId;
-                }
+        if ($threadId > 1) {
+            $pid = $threadId;
+        }
 
-                /** @var WorkerState $processStatus */
-                $processStatus = $message['extra']['status'];
+        /** @var WorkerState $processStatus */
+        $processStatus = $message['extra']['status'];
 
-                // process status changed, update this information server-side
-                if (isset($this->workers[$pid])) {
-                    if ($this->workers[$pid]['code'] !== $processStatus['code']) {
-                        $processStatus['time'] = microtime(true);
-                    }
+        // worker status changed, update this information server-side
+        if (isset($this->workers[$pid])) {
+            if ($this->workers[$pid]['code'] !== $processStatus['code']) {
+                $processStatus['time'] = microtime(true);
+            }
 
-                    $this->workers[$pid] = $processStatus;
-                }
-
-                break;
+            $this->workers[$pid] = $processStatus;
         }
     }
 
@@ -362,7 +364,7 @@ final class Scheduler implements EventsCapableInterface
      * @param mixed[]$extraData
      * @return $this
      */
-    protected function triggerEvent(string $eventName, array $extraData = [])
+    protected function triggerEvent(string $eventName, array $extraData = []) : Scheduler
     {
         $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
@@ -380,7 +382,7 @@ final class Scheduler implements EventsCapableInterface
      * @param bool $launchAsDaemon Run this server as a daemon?
      * @return $this
      */
-    public function start($launchAsDaemon = false)
+    public function start($launchAsDaemon = false) : Scheduler
     {
         $plugins = $this->getPluginRegistry()->count();
         $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
@@ -427,7 +429,6 @@ final class Scheduler implements EventsCapableInterface
                     }, WorkerEvent::PRIORITY_INITIALIZE);
 
                     $pid = $event->getParam('uid');
-                    //$this->setProcessId($pid);
 
                     $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
                     if (!@file_put_contents($fileName, $pid)) {
@@ -462,7 +463,7 @@ final class Scheduler implements EventsCapableInterface
     protected function onSchedulerStart()
     {
         $this->log(Logger::NOTICE, "Scheduler started");
-        $this->createWorkers($this->getConfig()->getStartProcesses());
+        $this->startWorkers($this->getConfig()->getStartProcesses());
 
         $this->mainLoop();
     }
@@ -525,7 +526,7 @@ final class Scheduler implements EventsCapableInterface
      * @param int $count Number of processes to create.
      * @return $this
      */
-    protected function createWorkers(int $count) : Scheduler
+    protected function startWorkers(int $count) : Scheduler
     {
         if ($count === 0) {
             return $this;
@@ -563,7 +564,7 @@ final class Scheduler implements EventsCapableInterface
         if ($event->getParam('server')) {
             return $this;
         }
-        
+
         $pid = $event->getParam('uid');
 
         $this->workers[$pid] = [
@@ -598,7 +599,7 @@ final class Scheduler implements EventsCapableInterface
         $toSoftTerminate = $operations['soft_terminate'];
         $toCreate = $operations['create'];
 
-        $this->createWorkers($toCreate);
+        $this->startWorkers($toCreate);
         $this->stopWorkers($toTerminate, false);
         $this->stopWorkers($toSoftTerminate, true);
 
@@ -606,15 +607,15 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @param int[] $processIds
+     * @param int[] $workerUids
      * @param $isSoftTermination
      * @return $this
      */
-    protected function stopWorkers(array $processIds, bool $isSoftTermination) : Scheduler
+    protected function stopWorkers(array $workerUids, bool $isSoftTermination) : Scheduler
     {
         $now = microtime(true);
 
-        foreach ($processIds as $processId) {
+        foreach ($workerUids as $processId) {
             $processStatus = $this->workers[$processId];
             $processStatus['code'] = WorkerState::TERMINATED;
             $processStatus['time'] = $now;
