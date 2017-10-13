@@ -165,7 +165,7 @@ class WorkerController extends AbstractActionController
 
 
         $this->manager->startService($serviceName);
-        $scheduler->getWorkerService()->start($startParams);
+        $scheduler->getMultiProcessingModule()->startWorker($startParams);
     }
 
     /**

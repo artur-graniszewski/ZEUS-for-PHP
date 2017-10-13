@@ -177,6 +177,8 @@ trait ZeusFactories
 
         $scheduler->stopScheduler(false);
         $scheduler->setIpc($ipcServer);
+        $scheduler->getMultiProcessingModule()->attach($events);
+        $scheduler->getMultiProcessingModule()->setSchedulerEvent($scheduler->getSchedulerEvent());
 
         return $scheduler;
     }

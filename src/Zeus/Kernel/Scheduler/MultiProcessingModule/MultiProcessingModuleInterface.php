@@ -22,4 +22,8 @@ interface MultiProcessingModuleInterface
     public function getCapabilities();
 
     public function setSchedulerEvent(SchedulerEvent $schedulerEvent);
+
+    public function startWorker($startParameters = null);
+
+    public function stopWorker(int $uid, bool $useSoftTermination);
 }

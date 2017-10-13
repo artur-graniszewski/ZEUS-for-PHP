@@ -19,7 +19,6 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
-use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
 /**
@@ -394,7 +393,6 @@ final class Scheduler implements EventsCapableInterface
 
         try {
             if (!$launchAsDaemon) {
-                //$this->setProcessId(getmypid());
                 $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
                 $this->kernelLoop();
@@ -440,7 +438,7 @@ final class Scheduler implements EventsCapableInterface
                 , SchedulerEvent::PRIORITY_FINALIZE
             );
 
-            $this->workerService->start(['server' => true]);
+            $this->getMultiProcessingModule()->startWorker(['server' => true]);
 
         } catch (\Throwable $exception) {
             $this->handleException($exception);
@@ -475,7 +473,7 @@ final class Scheduler implements EventsCapableInterface
      */
     protected function stopWorker(int $uid, bool $isSoftStop) : Scheduler
     {
-        $this->triggerEvent(SchedulerEvent::EVENT_WORKER_TERMINATE, ['uid' => $uid, 'soft' => $isSoftStop]);
+        $this->getMultiProcessingModule()->stopWorker($uid, $isSoftStop);
 
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
@@ -533,7 +531,7 @@ final class Scheduler implements EventsCapableInterface
         }
 
         for ($i = 0; $i < $count; ++$i) {
-            $this->workerService->start();
+            $this->getMultiProcessingModule()->startWorker();
         }
 
         return $this;

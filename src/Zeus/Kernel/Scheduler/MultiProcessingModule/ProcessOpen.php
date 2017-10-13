@@ -136,7 +136,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     public function onWorkerTerminate(EventInterface $event)
     {
-        $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
+        $this->onStopWorker($event->getParam('uid'), $event->getParam('soft', false));
     }
 
     public function onWorkerLoop(WorkerEvent $event)
@@ -144,7 +144,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->checkPipe();
 
         if ($this->isTerminating()) {
-            $event->stopWorker(true);
+            $event->onStopWorker(true);
             $event->stopPropagation(true);
         }
     }
@@ -250,7 +250,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      * @param SchedulerEvent $event
      * @return int
      */
-    protected function startWorker(SchedulerEvent $event) : int
+    public function createProcess(SchedulerEvent $event) : int
     {
         $descriptors = [
             0 => ['pipe', 'r'], // stdin
@@ -299,7 +299,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     {
         $pipe = $this->createPipe();
         $event->setParam('connectionPort', $pipe->getLocalPort());
-        $pid = $this->startWorker($event);
+        $pid = $this->createProcess($event);
         $this->registerWorker($pid, $pipe);
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
@@ -311,10 +311,10 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      * @param bool $useSoftTermination
      * @return $this
      */
-    protected function stopWorker(int $uid, bool $useSoftTermination)
+    public function onStopWorker(int $uid, bool $useSoftTermination)
     {
         if ($useSoftTermination) {
-            parent::stopWorker($uid, $useSoftTermination);
+            parent::onStopWorker($uid, $useSoftTermination);
 
             return $this;
         } else {

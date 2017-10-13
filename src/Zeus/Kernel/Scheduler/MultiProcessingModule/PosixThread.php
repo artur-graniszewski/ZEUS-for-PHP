@@ -168,7 +168,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
     }
 
-    protected function startWorker(SchedulerEvent $event)
+    protected function createThread(SchedulerEvent $event)
     {
         $applicationPath = $_SERVER['PHP_SELF'];
 
@@ -203,7 +203,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
     protected function onWorkerCreate(SchedulerEvent $event)
     {
-        $pid = $this->startWorker($event);
+        $pid = $this->createThread($event);
 
         $event->setParam('uid', $pid);
         $event->setParam('processId', getmypid());

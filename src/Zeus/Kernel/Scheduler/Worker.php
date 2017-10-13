@@ -156,43 +156,6 @@ class Worker
     }
 
     /**
-     * @param mixed $startParameters
-     * @return $this
-     */
-    public function start($startParameters = null)
-    {
-        $event = new SchedulerEvent();
-        $worker = clone $this;
-
-        $event->setTarget($worker);
-        $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
-        if (is_array($startParameters)) {
-            $event->setParams($startParameters);
-        }
-        $this->getEventManager()->triggerEvent($event);
-        if (!$event->getParam('init_process')) {
-            return $this;
-        }
-
-        $params = $event->getParams();
-
-        $pid = $event->getParam('uid');
-        $worker->setProcessId($pid);
-        $worker->setThreadId($event->getParam('threadId', 1));
-
-        $event = new WorkerEvent();
-        $event->setTarget($worker);
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
-        $event->setParams($params);
-        $event->setParam('uid', $pid);
-        $event->setParam('processId', $pid);
-        $event->setParam('threadId', $event->getParam('threadId', 1));
-        $this->getEventManager()->triggerEvent($event);
-
-        return $this;
-    }
-
-    /**
      * @param EventManagerInterface $events
      * @return $this
      */

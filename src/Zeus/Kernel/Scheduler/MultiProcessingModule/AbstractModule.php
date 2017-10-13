@@ -11,7 +11,7 @@ use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 
-abstract class AbstractModule
+abstract class AbstractModule implements MultiProcessingModuleInterface
 {
     const LOOPBACK_INTERFACE = '127.0.0.1';
 
@@ -184,7 +184,7 @@ abstract class AbstractModule
      * @param bool $useSoftTermination
      * @return $this
      */
-    protected function stopWorker(int $uid, bool $useSoftTermination)
+    public function onStopWorker(int $uid, bool $useSoftTermination)
     {
         if (!isset($this->ipcServers[$uid])) {
             $this->getLogger()->warn("Trying to stop already detached thread $uid");
@@ -194,6 +194,16 @@ abstract class AbstractModule
         $this->unregisterWorker($uid);
 
         return $this;
+    }
+
+    public function stopWorker(int $uid, bool $isSoftStop)
+    {
+        $newEvent = $this->getSchedulerEvent();
+        $newEvent->setParam('uid', $uid);
+        $newEvent->setParam('soft', $isSoftStop);
+        $newEvent->setName(SchedulerEvent::EVENT_WORKER_TERMINATE);
+
+        $this->events->triggerEvent($newEvent);
     }
 
     protected function unregisterWorker(int $uid)
@@ -253,5 +263,36 @@ abstract class AbstractModule
         $this->connectionPort = $port;
 
         return $this;
+    }
+
+    public function startWorker($startParameters = null)
+    {
+        $event = $this->getSchedulerEvent();
+        $worker = clone $event->getScheduler()->getWorkerService();
+
+        $event->setTarget($worker);
+        $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
+        if (is_array($startParameters)) {
+            $event->setParams($startParameters);
+        }
+        $this->events->triggerEvent($event);
+        if (!$event->getParam('init_process')) {
+            return $this;
+        }
+
+        $params = $event->getParams();
+
+        $pid = $event->getParam('uid');
+        $worker->setProcessId($pid);
+        $worker->setThreadId($event->getParam('threadId', 1));
+
+        $event = new WorkerEvent();
+        $event->setTarget($worker);
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setParams($params);
+        $event->setParam('uid', $pid);
+        $event->setParam('processId', $pid);
+        $event->setParam('threadId', $event->getParam('threadId', 1));
+        $this->events->triggerEvent($event);
     }
 }
