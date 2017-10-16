@@ -13,6 +13,8 @@ use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 use function time;
+use function addcslashes;
+use function get_class;
 
 /**
  * Class Worker

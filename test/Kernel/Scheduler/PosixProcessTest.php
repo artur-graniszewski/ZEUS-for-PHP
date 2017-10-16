@@ -75,6 +75,10 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use (&$eventLaunched) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
+
         $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
             $eventLaunched = true;
             $event->stopPropagation(true);

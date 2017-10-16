@@ -161,13 +161,13 @@ trait ZeusFactories
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {
-                    $e->getTarget()->stopScheduler(true);
+                    $e->getScheduler()->stopScheduler(true);
                 }
 
                 if ($loopCallback) {
-                    $loopCallback($e->getTarget());
+                    $loopCallback($e->getScheduler());
                 }
-            }, SchedulerEvent::PRIORITY_FINALIZE - 1);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         }
 
         $sm->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {

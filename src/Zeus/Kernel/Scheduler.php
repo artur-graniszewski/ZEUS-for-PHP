@@ -217,12 +217,12 @@ final class Scheduler implements EventsCapableInterface
             $this->removePlugin($plugin);
         }
 
-//        if ($this->eventHandles) {
-//            $events = $this->getEventManager();
-//            foreach ($this->eventHandles as $handle) {
-//                $events->detach($handle);
-//            }
-//        }
+        if ($this->eventHandles) {
+            $events = $this->getEventManager();
+            foreach ($this->eventHandles as $handle) {
+                $events->detach($handle);
+            }
+        }
     }
 
     /**
@@ -237,10 +237,7 @@ final class Scheduler implements EventsCapableInterface
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() use ($sharedEventManager) {
-            $this->onSchedulerStart();
-
-        }, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() { $this->onSchedulerStart(); }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
@@ -331,7 +328,7 @@ final class Scheduler implements EventsCapableInterface
      */
     public function stop() : Scheduler
     {
-        $this->logger->debug("Stopping scheduler");
+        $this->getLogger()->debug("Stopping scheduler");
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
 
         $pid = @file_get_contents($fileName);
@@ -389,18 +386,20 @@ final class Scheduler implements EventsCapableInterface
 
         $events = $this->getEventManager();
         $this->attach($events);
-        $events = $events->getSharedManager();
 
         try {
             if (!$launchAsDaemon) {
                 $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
+                $this->startWorkers($this->getConfig()->getStartProcesses());
+                $this->mainLoop();
+                // @fixme: kernelLoop() should be merged with mainLoop()
                 $this->kernelLoop();
 
                 return $this;
             }
 
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
+            $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_WORKER_CREATE,
                 function(SchedulerEvent $e) use ($events) {
                     if (!$e->getParam('server')) {
                         return;
@@ -408,21 +407,22 @@ final class Scheduler implements EventsCapableInterface
 
                     if ($e->getParam('init_process')) {
                         $e->stopPropagation(true);
-                        //$this->setProcessId(getmypid());
                         $this->log(Logger::INFO, "Establishing IPC");
                         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
+                        $this->startWorkers($this->getConfig()->getStartProcesses());
+                        $this->mainLoop();
                     } else {
                         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
                     }
                 }, SchedulerEvent::PRIORITY_FINALIZE);
 
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
+            $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_WORKER_CREATE,
                 function (SchedulerEvent $event) use ($events) {
                     if (!$event->getParam('server') || $event->getParam('init_process')) {
                         return;
                     }
 
-                    $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) {
+                    $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) {
                         $e->stopPropagation(true);
                     }, WorkerEvent::PRIORITY_INITIALIZE);
 
@@ -461,9 +461,6 @@ final class Scheduler implements EventsCapableInterface
     protected function onSchedulerStart()
     {
         $this->log(Logger::NOTICE, "Scheduler started");
-        $this->startWorkers($this->getConfig()->getStartProcesses());
-
-        $this->mainLoop();
     }
 
     /**
@@ -531,7 +528,11 @@ final class Scheduler implements EventsCapableInterface
         }
 
         for ($i = 0; $i < $count; ++$i) {
-            $this->getMultiProcessingModule()->startWorker();
+            try {
+                $this->getMultiProcessingModule()->startWorker();
+            } catch (\Throwable $e) {
+                var_dump($e->getMessage()); die();
+            }
         }
 
         return $this;
