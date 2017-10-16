@@ -528,11 +528,7 @@ final class Scheduler implements EventsCapableInterface
         }
 
         for ($i = 0; $i < $count; ++$i) {
-            try {
-                $this->getMultiProcessingModule()->startWorker();
-            } catch (\Throwable $e) {
-                var_dump($e->getMessage()); die();
-            }
+            $this->getMultiProcessingModule()->startWorker();
         }
 
         return $this;
