@@ -233,7 +233,7 @@ final class Scheduler implements EventsCapableInterface
     {
         $sharedEventManager = $eventManager->getSharedManager();
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
@@ -535,17 +535,17 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @param SchedulerEvent $event
+     * @param WorkerEvent $event
      */
-    protected function onWorkerCreate(SchedulerEvent $event)
+    protected function onWorkerCreate(WorkerEvent $event)
     {
         if (!$event->getParam('init_process') || $event->getParam('server')) {
             return;
         }
 
-        $process = $this->workerService;
-        $process->setProcessId($event->getParam('uid'));
-        $process->setThreadId($event->getParam('threadId', 1));
+        $worker = $event->getWorker();
+        $worker->setProcessId($event->getParam('uid'));
+        $worker->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
         $this->stopScheduler(true);
     }

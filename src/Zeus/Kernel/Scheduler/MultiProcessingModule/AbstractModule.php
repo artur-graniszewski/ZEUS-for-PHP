@@ -26,6 +26,9 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     /** @var SchedulerEvent */
     protected $schedulerEvent;
 
+    /** @var WorkerEvent */
+    protected $workerEvent;
+
     /** @var bool */
     private $isTerminating = false;
 
@@ -61,6 +64,23 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return clone $this->schedulerEvent;
     }
 
+    /**
+     * @param WorkerEvent $event
+     */
+    public function setWorkerEvent(WorkerEvent $event)
+    {
+        $this->workerEvent = $event;
+    }
+
+    public function getWorkerEvent() : WorkerEvent
+    {
+        if (!$this->workerEvent) {
+            throw new \LogicException("Worker event not set");
+        }
+
+        return clone $this->workerEvent;
+    }
+
     public function __construct()
     {
         $this->ipcSelector = new Selector();
@@ -69,6 +89,12 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     public function attach(EventManagerInterface $eventManager)
     {
         $this->events = $eventManager;
+        $this->events->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) {
+            $worker = clone $e->getWorker();
+            $e->setWorker($worker);
+            $e->setTarget($worker);
+            $worker->attach($this->events);
+        }, WorkerEvent::PRIORITY_INITIALIZE + 10);
     }
 
     public function isTerminating()
@@ -267,11 +293,9 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     public function startWorker($startParameters = null)
     {
-        $event = $this->getSchedulerEvent();
-        $worker = clone $event->getScheduler()->getWorkerService();
-
-        $event->setTarget($worker);
+        $event = $this->getWorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
+
         if (is_array($startParameters)) {
             $event->setParams($startParameters);
         }
@@ -283,16 +307,19 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $params = $event->getParams();
 
         $pid = $event->getParam('uid');
+        $event = $this->getWorkerEvent();
+        // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldnt be cloned
+        $worker = $event->getWorker();
         $worker->setProcessId($pid);
+
         $worker->setThreadId($event->getParam('threadId', 1));
 
-        $event = new WorkerEvent();
-        $event->setTarget($worker);
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams($params);
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
         $event->setParam('threadId', $event->getParam('threadId', 1));
+        $event->setTarget($worker);
         $this->events->triggerEvent($event);
     }
 }

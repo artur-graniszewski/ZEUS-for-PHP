@@ -229,7 +229,7 @@ class Worker
 
 
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
-            $event->getTarget()->mainLoop();
+            $event->getWorker()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
 
         return $this;
@@ -277,6 +277,7 @@ class Worker
 
         $event = new WorkerEvent();
         $event->setTarget($this);
+        $event->setWorker($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(WorkerState::WAITING);
@@ -348,6 +349,7 @@ class Worker
             try {
                 $event = new WorkerEvent();
                 $event->setTarget($this);
+                $event->setWorker($this);
                 $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);

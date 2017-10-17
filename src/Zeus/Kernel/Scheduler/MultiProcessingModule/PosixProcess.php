@@ -61,6 +61,8 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
      */
     public function attach(EventManagerInterface $eventManager)
     {
+        parent::attach($eventManager);
+
         $this->events = $eventManager;
 
         $sharedEventManager = $eventManager->getSharedManager();
@@ -182,7 +184,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    public function onWorkerCreate(SchedulerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $pcntl = $this->getPcntlBridge();
         $pid = $pcntl->pcntlFork();
@@ -210,6 +212,8 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
         $event->setParam('threadId', 1);
+        $event->getWorker()->setProcessId($pid);
+        $event->getWorker()->setThreadId(1);
     }
 
     public function onSchedulerInit()

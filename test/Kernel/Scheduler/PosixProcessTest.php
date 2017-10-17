@@ -65,6 +65,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $logger->addWriter(new Noop());
         $service = $sm->build(PosixProcess::class, [
             'scheduler_event' => new SchedulerEvent(),
+            'worker_event' => new WorkerEvent(),
             'logger_adapter' => $logger,
             'event_manager' => $scheduler->getEventManager()
         ]);
@@ -133,8 +134,9 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $pcntlMock = new PcntlMockBridge();
         $pcntlMock->setForkResult($forcedForkValue);
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
+        $event = new WorkerEvent();
+        $event->setWorker(new Scheduler\Worker());
+        $posixProcess = new PosixProcess();
         $posixProcess->attach($em);
 
         $event->setName($initialEventType);

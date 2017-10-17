@@ -27,12 +27,12 @@ class WorkerFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $schedulerConfig = $options['scheduler_config'];
-        $process = new Worker();
-        $process->setLogger($options['logger_adapter']);
-        $process->setEventManager($options['event_manager']);
-        $process->attach($options['event_manager']);
-        $process->setConfig($schedulerConfig);
+        $worker = new Worker();
+        $worker->setLogger($options['logger_adapter']);
+        $worker->setEventManager($options['event_manager']);
+        $worker->setConfig($schedulerConfig);
+        $worker->setIpc($options['ipc_server']);
 
-        return $process;
+        return $worker;
     }
 }

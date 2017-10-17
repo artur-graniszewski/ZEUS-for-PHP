@@ -180,6 +180,17 @@ trait ZeusFactories
         $scheduler->getMultiProcessingModule()->attach($events);
         $scheduler->getMultiProcessingModule()->setSchedulerEvent($scheduler->getSchedulerEvent());
 
+        $worker = $scheduler->getWorkerService();
+        $worker->setEventManager($events);
+        $worker->setIpc($scheduler->getIpc());
+        $worker->setLogger($logger);
+        $worker->setConfig($scheduler->getConfig());
+        $worker->setProcessId(getmypid());
+        $workerEvent = new Scheduler\WorkerEvent();
+        $workerEvent->setWorker($worker);
+        $workerEvent->setTarget($worker);
+        $scheduler->getMultiProcessingModule()->setWorkerEvent($workerEvent);
+
         return $scheduler;
     }
 

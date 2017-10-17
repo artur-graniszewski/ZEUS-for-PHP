@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 
 interface MultiProcessingModuleInterface
 {
@@ -26,4 +27,6 @@ interface MultiProcessingModuleInterface
     public function startWorker($startParameters = null);
 
     public function stopWorker(int $uid, bool $useSoftTermination);
+
+    public function setWorkerEvent(WorkerEvent $workerEvent);
 }
