@@ -12,7 +12,7 @@ class SocketStream extends IpcDriver
     /**
      * @var AbstractStream
      */
-    protected $stream;
+    public $stream;
 
     /** @var int */
     protected $senderId;

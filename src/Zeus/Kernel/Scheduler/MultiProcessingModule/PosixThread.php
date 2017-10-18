@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadBootstrap;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
@@ -201,13 +202,16 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return static::$id;
     }
 
-    protected function onWorkerCreate(SchedulerEvent $event)
+    protected function onWorkerCreate(WorkerEvent $event)
     {
         $pid = $this->createThread($event);
 
         $event->setParam('uid', $pid);
         $event->setParam('processId', getmypid());
         $event->setParam('threadId', $pid);
+        $worker = $event->getWorker();
+        $worker->setThreadId($pid);
+        $worker->setProcessId(getmypid());
     }
 
     protected function onSchedulerInit(SchedulerEvent $event)

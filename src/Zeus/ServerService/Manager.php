@@ -264,7 +264,6 @@ final class Manager
         foreach ($serviceNames as $serviceName) {
             $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_START,
                 function () use ($serviceName, $managerTime, $phpTime, $engine) {
-
                     $this->servicesRunning++;
                     $this->logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
 

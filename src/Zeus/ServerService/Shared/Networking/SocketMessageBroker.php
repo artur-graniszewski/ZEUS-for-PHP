@@ -98,9 +98,9 @@ final class SocketMessageBroker
     public function attach(EventManagerInterface $events)
     {
         $events->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerStart'], WorkerEvent::PRIORITY_REGULAR);
-        $events->attach(WorkerEvent::EVENT_WORKER_LOOP, function($event) {
+        $events->attach(WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $event) {
             if ($this->isLeader && !$this->isBusy) {
-                $event->getTarget()->setRunning();
+                $event->getWorker()->setRunning();
                 $this->isBusy = true;
             }
             $this->isLeader ? $this->onLeaderLoop($event) : $this->onWorkerLoop($event);
@@ -143,7 +143,8 @@ final class SocketMessageBroker
 
     public function leaderElection(SchedulerEvent $event)
     {
-        $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_ANY);
+        $this->getLogger()->debug("Electing pool leader");
+        $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_AMOUNT, 1);
     }
 
     public function leaderElected(IpcEvent $event)
@@ -235,7 +236,7 @@ final class SocketMessageBroker
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
         $server->bind('127.0.0.1', 1, 0);
-        $worker = $event->getTarget();
+        $worker = $event->getWorker();
         $this->uid = $worker->getThreadId() > 1 ? $worker->getThreadId() : $worker->getProcessId();
         $this->workerServer = $server;
     }

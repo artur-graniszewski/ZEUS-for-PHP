@@ -78,7 +78,9 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             throw new \LogicException("Worker event not set");
         }
 
-        return clone $this->workerEvent;
+        $workerEvent = clone $this->workerEvent;
+        $workerEvent->setParams([]);
+        return $workerEvent;
     }
 
     public function __construct()
@@ -95,6 +97,24 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             $e->setTarget($worker);
             $worker->attach($this->events);
         }, WorkerEvent::PRIORITY_INITIALIZE + 10);
+
+        $this->events->attach(WorkerEvent::EVENT_WORKER_INIT, function (WorkerEvent $e) use ($eventManager) {
+            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $e) {
+                $this->onExit($e);
+            }, SchedulerEvent::PRIORITY_FINALIZE);
+        }, WorkerEvent::PRIORITY_INITIALIZE);
+    }
+
+    /**
+     * @param WorkerEvent $event
+     */
+    private function onExit(WorkerEvent $event)
+    {
+        /** @var \Exception $exception */
+        $exception = $event->getParam('exception');
+
+        $status = $exception ? $exception->getCode(): 0;
+        exit($status);
     }
 
     public function isTerminating()
@@ -213,7 +233,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     public function onStopWorker(int $uid, bool $useSoftTermination)
     {
         if (!isset($this->ipcServers[$uid])) {
-            $this->getLogger()->warn("Trying to stop already detached thread $uid");
+            $this->getLogger()->warn("Trying to stop already detached worker $uid");
             return $this;
         }
 

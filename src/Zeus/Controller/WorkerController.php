@@ -97,7 +97,7 @@ class WorkerController extends AbstractActionController
                 $exception->getFile(),
                 $exception->getLine()
             ));
-            $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+            $this->getLogger()->err(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
             $this->doExit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
     }
@@ -140,32 +140,26 @@ class WorkerController extends AbstractActionController
      */
     protected function startWorkerForService($serviceName, array $startParams = [])
     {
-        $serviceEventManager = $this->manager->getEventManager();
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) use ($startParams) {
-            $event->stopPropagation(true);
-            $event->setParams(array_merge($event->getParams(), $startParams));
-            $event->setParam('init_process', true);
-            $event->setParam('uid', getmypid());
-            $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        }, 100000);
-
-        $serviceEventManager->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
-            $event->stopPropagation(true);
-        }, 1);
-
-        $serviceEventManager->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
-            $event->stopPropagation(true);
-        }, 1);
 
         $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function() {
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-
-        $this->manager->startService($serviceName);
-        $scheduler->getMultiProcessingModule()->startWorker($startParams);
+        $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
+        $event->getWorker()->setEventManager($scheduler->getEventManager());
+        $event->getWorker()->attach($scheduler->getEventManager());
+        $event->setTarget($event->getWorker());
+        $event->getWorker()->setProcessId(getmypid());
+        $event->getWorker()->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $event->setParams(array_merge($event->getParams(), $startParams));
+        $event->setParams($startParams);
+        $event->setParam('uid', getmypid());
+        $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $event->setParam('processId', getmypid());
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $scheduler->getEventManager()->triggerEvent($event);
     }
 
     /**
@@ -174,45 +168,22 @@ class WorkerController extends AbstractActionController
      */
     protected function starSchedulerForService($serviceName, array $startParams = [])
     {
+        $startParams['server'] = false;
+
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
+        DynamicPriorityFilter::resetPriority();
 
-        /** @var EventManager $schedulerEventManager */
-        $schedulerEventManager = null;
-        $serviceEventManager = $this->manager->getEventManager();
-        $serviceEventManager->attach(ManagerEvent::EVENT_MANAGER_LOOP, function(ManagerEvent $event) {
-            $event->stopPropagation(true);
-        }, 1);
+        $event = $scheduler->getMultiProcessingModule()->getSchedulerEvent();
 
-        $serviceEventManager->attach(ManagerEvent::EVENT_SERVICE_STOP, function(ManagerEvent $event) {
-            $event->stopPropagation(true);
-        }, 1);
-
-        $serviceEventManager->attach(ManagerEvent::EVENT_SERVICE_START, function(ManagerEvent $event)
-        use (& $scheduler, & $schedulerEventManager) {
-
-            $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $schedulerEvent)
-            use (& $schedulerEventManager) {
-                $schedulerEventManager = $schedulerEvent->getTarget()->getEventManager();
-                if ($schedulerEvent->getParam('server')) {
-
-                    $schedulerEvent->stopPropagation(true);
-                    DynamicPriorityFilter::resetPriority();
-
-                    return;
-                }
-            }, 2000);
-        });
-
-        $this->manager->startService($serviceName);
-
-        $schedulerEvent = $scheduler->getSchedulerEvent();
-        $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
-        if ($startParams) {
-            $schedulerEvent->setParams($startParams);
-        }
-
-        $schedulerEventManager->triggerEvent($schedulerEvent);
+        $event->setParams(array_merge($event->getParams(), $startParams));
+        $event->setParams($startParams);
+        $event->setParam('uid', getmypid());
+        $event->setParam('server', true);
+        $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $event->setParam('processId', getmypid());
+        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $scheduler->getEventManager()->triggerEvent($event);
     }
 
     /**

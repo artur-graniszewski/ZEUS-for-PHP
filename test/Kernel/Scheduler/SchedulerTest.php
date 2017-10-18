@@ -143,19 +143,19 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     /**
      * @dataProvider schedulerProcessAmountProvider
      * @param $schedulerIterations
-     * @param $starProcesses
+     * @param $startWorkers
      * @param $minIdleProcesses
      * @param $expectedProcesses
      */
-    public function testProcessCreationWhenTooLittleOfThemIsWaiting($schedulerIterations, $starProcesses, $minIdleProcesses, $expectedProcesses)
+    public function testProcessCreationWhenTooLittleOfThemIsWaiting($schedulerIterations, $startWorkers, $minIdleProcesses, $expectedProcesses)
     {
         $scheduler = $this->getScheduler($schedulerIterations);
-        $scheduler->getConfig()->setStartProcesses($starProcesses);
+        $scheduler->getConfig()->setStartProcesses($startWorkers);
         $scheduler->getConfig()->setMinSpareProcesses($minIdleProcesses);
 
         $amountOfScheduledProcesses = 0;
         $processCount = 0;
-        $processes = [];
+        $workers = [];
 
         $em = $scheduler->getEventManager();
         $sm = $em->getSharedManager();
@@ -180,18 +180,18 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         );
 
         $sm->attach('*', WorkerEvent::EVENT_WORKER_INIT,
-            function(WorkerEvent $e) use (&$processCount, $starProcesses, &$processes) {
-                $process = $e->getTarget();
-                $uid = $process->getProcessId();
-                $processes[] = $process;
+            function(WorkerEvent $e) use (&$processCount, $startWorkers, &$workers) {
+                $worker = $e->getWorker();
+                $uid = $worker->getProcessId();
+                $workers[] = $worker;
 
-                $process->getStatus()->incrementNumberOfFinishedTasks(1000);
+                $worker->getStatus()->incrementNumberOfFinishedTasks(1000);
 
                 // mark all processes as busy
-                if ($uid - 100000000 <= $starProcesses) {
-                    $process->setRunning();
+                if ($uid - 100000000 <= $startWorkers) {
+                    $worker->setRunning();
                 } else {
-                    $process->setWaiting();
+                    $worker->setWaiting();
                 }
                 $e->stopPropagation(true);
             }, WorkerEvent::PRIORITY_FINALIZE + 1
@@ -199,7 +199,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $scheduler->start(false);
 
-        $this->assertEquals($expectedProcesses, $amountOfScheduledProcesses, "Scheduler should try to create $expectedProcesses processes in total ($starProcesses processes on startup and "  . ($expectedProcesses - $starProcesses) . " additionally if all the other were busy)");
+        $this->assertEquals($expectedProcesses, $amountOfScheduledProcesses, "Scheduler should try to create $expectedProcesses processes in total ($startWorkers processes on startup and "  . ($expectedProcesses - $startWorkers) . " additionally if all the other were busy)");
     }
 
     public function testProcessCreationWhenTooManyOfThemIsWaiting()

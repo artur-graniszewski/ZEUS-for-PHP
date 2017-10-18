@@ -153,7 +153,7 @@ trait ZeusFactories
         $sm = $events->getSharedManager();
 
         $ipcServer = new IpcServer();
-        $ipcServer->setEventManager($events);
+        $ipcServer->setEventManager(new EventManager($sm));
         $ipcServer->attach(new EventManager($sm));
 
         if ($mainLoopIterations > 0) {

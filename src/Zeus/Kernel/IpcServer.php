@@ -64,7 +64,7 @@ class IpcServer implements ListenerAggregateInterface
 
     public function send($message, $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
     {
-        $this->ipcClient->send($message, $audience);
+        $this->ipcClient->send($message, $audience, $number);
         return $this;
     }
 
@@ -96,7 +96,6 @@ class IpcServer implements ListenerAggregateInterface
                 }
 
                 $uid = $ipcStream->read('!');
-
                 $this->ipcSelector->register($ipcStream, Selector::OP_READ);
                 $this->ipcStreams[(int)$uid] = $ipcStream;
             }
@@ -184,7 +183,7 @@ class IpcServer implements ListenerAggregateInterface
         }
 
         $streams = $selector->getSelectedStreams(Selector::OP_READ);
-        
+
         foreach ($streams as $stream) {
             /** @var SocketStream $stream */;
             if ($stream->getLocalAddress() !== $this->ipcServer->getLocalAddress()) {
@@ -202,8 +201,8 @@ class IpcServer implements ListenerAggregateInterface
             $ipc = new IpcSocketStream($stream, 0);
 
             try {
-                $messages = $ipc->readAll(true);
 
+                $messages = $ipc->readAll(true);
                 $this->distributeMessages($messages);
             } catch (\Exception $exception) {
                 $stream->close();
@@ -281,7 +280,11 @@ class IpcServer implements ListenerAggregateInterface
 
                         continue 2;
                     }
+
                     $cids = array_rand($availableAudience, $number);
+                    if ($number === 1) {
+                        $cids = [$cids];
+                    }
 
                     break;
 
@@ -345,7 +348,9 @@ class IpcServer implements ListenerAggregateInterface
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
 
-        $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $event) { $this->onWorkerLoop($event); }, -9000);
+        $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $event) {
+            $this->onWorkerLoop($event);
+            }, -9000);
 
         $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $ipcPort = $event->getParam('ipcPort');
@@ -356,14 +361,14 @@ class IpcServer implements ListenerAggregateInterface
 
             $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
             $this->registerIpc($ipcPort, $uid);
-            $event->getTarget()->setIpc($this);
+            $event->getWorker()->setIpc($this);
         }, WorkerEvent::PRIORITY_INITIALIZE);
 
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {
             $this->startIpc();
             $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
             $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
-            $event->getTarget()->setIpc($this);
+            $event->getScheduler()->setIpc($this);
 
             $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
@@ -374,7 +379,7 @@ class IpcServer implements ListenerAggregateInterface
                 $this->removeIpcClients();
                 $this->handleIpcMessages();
             }, SchedulerEvent::PRIORITY_REGULAR + 1);
-        }, $priority);
+        }, 100000);
     }
 
     /**

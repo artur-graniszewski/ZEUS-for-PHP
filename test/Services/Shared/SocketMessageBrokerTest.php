@@ -55,6 +55,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $worker->setProcessId(getmypid());
         $worker->setConfig($config);
         $worker->setIpc($event->getScheduler()->getIpc());
+        $worker->setLogger($event->getScheduler()->getLogger());
         $worker->attach($events);
 
         $received = null;
@@ -70,6 +71,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             }
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
+        $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
@@ -89,6 +91,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
         $event = new WorkerEvent();
         $event->setTarget($worker);
+        $event->setWorker($worker);
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
@@ -103,6 +106,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
         $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
         $event->setTarget($worker);
+        $event->setWorker($worker);
         $events->triggerEvent($event);
         $wrote = stream_socket_sendto($client, $requestString);
         $this->assertEquals($wrote, strlen($requestString));
@@ -131,6 +135,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $process = new Worker();
         $process->setConfig($config);
         $process->setIpc($event->getTarget()->getIpc());
+        $process->setLogger($event->getScheduler()->getLogger());
         $process->attach($events);
         $process->setProcessId(getmypid());
 
@@ -139,6 +144,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             throw new \RuntimeException("TEST");
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
+        $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
@@ -155,6 +161,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event = new WorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setTarget($process);
+        $event->setWorker($process);
 
         $events->triggerEvent($event);
 

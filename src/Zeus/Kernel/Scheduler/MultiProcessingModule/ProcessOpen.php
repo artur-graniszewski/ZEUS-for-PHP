@@ -8,6 +8,7 @@ use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\StreamException;
@@ -108,7 +109,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
 
         $eventManager = $eventManager->getSharedManager();
 
-        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
         $eventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
@@ -144,7 +145,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->checkPipe();
 
         if ($this->isTerminating()) {
-            $event->onStopWorker(true);
             $event->stopPropagation(true);
         }
     }
@@ -295,7 +295,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         return $pid;
     }
 
-    public function onWorkerCreate(SchedulerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
         $event->setParam('connectionPort', $pipe->getLocalPort());
@@ -304,6 +304,9 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $event->setParam('uid', $pid);
         $event->setParam('processId', $pid);
         $event->setParam('threadId', 1);
+        $worker = $event->getWorker();
+        $worker->setProcessId($pid);
+        $worker->setThreadId(1);
     }
 
     /**

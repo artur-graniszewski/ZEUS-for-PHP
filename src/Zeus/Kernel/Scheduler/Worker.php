@@ -221,10 +221,6 @@ class Worker
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 2);
 
-            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
-                $this->onExit($e);
-            }, SchedulerEvent::PRIORITY_FINALIZE);
-
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
 
@@ -251,6 +247,7 @@ class Worker
 
         $event = new WorkerEvent();
         $event->setTarget($this);
+        $event->setWorker($this);
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(WorkerState::RUNNING);
@@ -376,9 +373,9 @@ class Worker
      */
     protected function sendStatus(WorkerEvent $event)
     {
-        $status = $event->getTarget()->getStatus();
+        $status = $event->getWorker()->getStatus();
         $status->updateStatus();
-        $worker = $event->getTarget();
+        $worker = $event->getWorker();
 
         $payload = [
             'type' => Message::IS_STATUS,
@@ -401,17 +398,5 @@ class Worker
             $event->setParam('exception', $ex);
         }
         return $this;
-    }
-
-    /**
-     * @param WorkerEvent $event
-     */
-    protected function onExit(WorkerEvent $event)
-    {
-        /** @var \Exception $exception */
-        $exception = $event->getParam('exception');
-
-        $status = $exception ? $exception->getCode(): 0;
-        exit($status);
     }
 }

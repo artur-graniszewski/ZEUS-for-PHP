@@ -26,7 +26,6 @@ abstract class AbstractServerService implements ServerServiceInterface
     public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
     {
         $this->scheduler = $scheduler;
-        $this->logger = $scheduler->getLogger();
         $this->config = $config;
         $this->logger = $logger;
     }

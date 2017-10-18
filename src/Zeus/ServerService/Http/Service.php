@@ -4,9 +4,11 @@ namespace Zeus\ServerService\Http;
 
 use Zend\Http\Request;
 use Zend\Http\Response;
+use Zend\Log\LoggerInterface;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
+use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
@@ -21,13 +23,9 @@ class Service extends AbstractSocketServerService
     /** @var Worker */
     protected $process;
 
-    public function start()
+    public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
     {
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
-            $this->process = $event->getTarget();
-        });
-
-        $this->config['logger'] = get_class();
+        parent::__construct($config, $scheduler, $logger);
 
         $dispatcherConfig = $this->getConfig();
         $dispatcherConfig['service'] = $this;
@@ -48,6 +46,16 @@ class Service extends AbstractSocketServerService
 
         $config = new Config($this->getConfig());
         $this->getServer($messageComponent, $config);
+    }
+
+    public function start()
+    {
+        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+            $this->process = $event->getTarget();
+        });
+
+        $this->config['logger'] = get_class();
+
         parent::start();
 
         return $this;

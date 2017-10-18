@@ -63,18 +63,15 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     {
         parent::attach($eventManager);
 
-        $this->events = $eventManager;
-
-        $sharedEventManager = $eventManager->getSharedManager();
-        $sharedEventManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
-        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
-        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
-        $sharedEventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
-        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], WorkerEvent::PRIORITY_INITIALIZE);
-        $sharedEventManager->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning']);
-        $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
-        $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
-        $sharedEventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
+        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning']);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
 
         return $this;
     }

@@ -29,4 +29,8 @@ interface MultiProcessingModuleInterface
     public function stopWorker(int $uid, bool $useSoftTermination);
 
     public function setWorkerEvent(WorkerEvent $workerEvent);
+
+    public function getSchedulerEvent() : SchedulerEvent;
+
+    public function getWorkerEvent() : WorkerEvent;
 }
