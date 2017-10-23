@@ -52,7 +52,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     {
         $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
-        $scheduler->stopScheduler(true);
+        $scheduler->setIsTerminating(true);
         $scheduler->start(false);
 
         $this->assertTrue($scheduler->isTerminating());
@@ -66,7 +66,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $events = $scheduler->getEventManager();
         $counter = 0;
         $events->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) use (&$counter) {
-            $e->getTarget()->stopScheduler(true);
+            $e->getScheduler()->setIsTerminating(true);
             $counter++;
         });
 
@@ -175,7 +175,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $sm->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
             function(SchedulerEvent $e) use (&$scheduler, $em) {
                 $e->stopPropagation(true);
-                $scheduler->stopScheduler(false);
+                $scheduler->setIsTerminating(false);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 
@@ -319,7 +319,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $sm->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
             function(SchedulerEvent $e) use (&$scheduler) {
                 $e->stopPropagation(true);
-                $scheduler->stopScheduler(false);
+                $scheduler->setIsTerminating(false);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 
@@ -409,7 +409,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $this->assertGreaterThan(0, $amountOfScheduledProcesses, "Scheduler should try to create some processes on its startup");
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-        $scheduler->stopScheduler(false);
+        $scheduler->setIsTerminating(false);
         $scheduler->getEventManager()->triggerEvent($event);
 
         $this->assertEquals(0, count($unknownProcesses), 'No unknown processes should have been terminated');

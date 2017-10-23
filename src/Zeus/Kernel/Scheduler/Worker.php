@@ -21,7 +21,7 @@ use function get_class;
  * @package Zeus\Kernel\Scheduler
  * @internal
  */
-class Worker
+class Worker extends AbstractService
 {
     use GarbageCollector;
 
@@ -34,21 +34,6 @@ class Worker
     /** @var int */
     protected $threadId = 1;
 
-    /** @var EventManagerInterface */
-    protected $events;
-
-    /** @var LoggerInterface */
-    protected $logger;
-
-    /** @var ConfigInterface */
-    protected $config;
-
-    /** @var IpcServer */
-    protected $ipcAdapter;
-
-    /** @var bool */
-    protected $isTerminating = false;
-
     /**
      * @param int $processId
      * @return $this
@@ -58,25 +43,6 @@ class Worker
         $this->processId = $processId;
 
         return $this;
-    }
-
-    /**
-     * @param bool $isTerminating
-     * @return $this
-     */
-    public function setIsTerminating(bool $isTerminating)
-    {
-        $this->isTerminating = $isTerminating;
-
-        return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isTerminating() : bool
-    {
-        return $this->isTerminating;
     }
 
     /**
@@ -99,25 +65,6 @@ class Worker
     }
 
     /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-
-        return $this;
-    }
-
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger()
-    {
-        return $this->logger;
-    }
-
-    /**
      * @return int
      */
     public function getProcessId() : int
@@ -136,67 +83,6 @@ class Worker
         }
 
         return $this->status;
-    }
-
-    /**
-     * @return ConfigInterface
-     */
-    public function getConfig()
-    {
-        return $this->config;
-    }
-
-    /**
-     * @param ConfigInterface $config
-     * @return $this
-     */
-    public function setConfig(ConfigInterface $config)
-    {
-        $this->config = $config;
-
-        return $this;
-    }
-
-    /**
-     * @param EventManagerInterface $events
-     * @return $this
-     */
-    public function setEventManager(EventManagerInterface $events)
-    {
-        $this->events = $events;
-
-        return $this;
-    }
-
-    /**
-     * @return EventManagerInterface
-     */
-    public function getEventManager()
-    {
-        if (null === $this->events) {
-            $this->setEventManager(new EventManager());
-        }
-
-        return $this->events;
-    }
-
-    /**
-     * @param $ipcAdapter
-     * @return $this
-     */
-    public function setIpc($ipcAdapter)
-    {
-        $this->ipcAdapter = $ipcAdapter;
-
-        return $this;
-    }
-
-    /**
-     * @return IpcServer
-     */
-    public function getIpc()
-    {
-        return $this->ipcAdapter;
     }
 
     /**
@@ -323,6 +209,7 @@ class Worker
 
         $event = new WorkerEvent();
         $event->setTarget($this);
+        $event->setWorker($this);
         $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
         $event->setParams($payload); // @todo: remove this line?
         $event->setParam('status', $status);

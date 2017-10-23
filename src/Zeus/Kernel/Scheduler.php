@@ -8,6 +8,7 @@ use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\Scheduler\AbstractService;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
@@ -26,7 +27,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
  * @package Zeus\Kernel\Scheduler
  * @internal
  */
-final class Scheduler implements EventsCapableInterface
+final class Scheduler extends AbstractService implements EventsCapableInterface
 {
     use PluginRegistry;
     use GarbageCollector;
@@ -51,59 +52,8 @@ final class Scheduler implements EventsCapableInterface
     /** @var MultiProcessingModuleInterface */
     protected $multiProcessingModule;
 
-    /** @var EventManagerInterface */
-    protected $events;
-    protected $config;
-    protected $logger;
-    protected $ipcAdapter;
-
     /** @var SchedulerEvent */
     protected $schedulerEvent;
-
-    /**
-     * @param IpcServer $ipcAdapter
-     * @return $this
-     */
-    public function setIpc(IpcServer $ipcAdapter)
-    {
-        $this->ipcAdapter = $ipcAdapter;
-
-        return $this;
-    }
-
-    /**
-     * @return IpcServer mixed
-     */
-    public function getIpc() : IpcServer
-    {
-        return $this->ipcAdapter;
-    }
-
-    /**
-     * @param EventManagerInterface $events
-     * @return $this
-     */
-    public function setEventManager(EventManagerInterface $events)
-    {
-        $events->setIdentifiers([
-            __CLASS__,
-            get_called_class(),
-        ]);
-
-        $this->events = $events;
-    }
-
-    /**
-     * @return EventManagerInterface
-     */
-    public function getEventManager()
-    {
-        if (null === $this->events) {
-            $this->setEventManager(new EventManager());
-        }
-
-        return $this->events;
-    }
 
     /**
      * @param SchedulerEvent $event
@@ -125,68 +75,11 @@ final class Scheduler implements EventsCapableInterface
     }
 
     /**
-     * @return ConfigInterface
-     */
-    public function getConfig()
-    {
-        return $this->config;
-    }
-
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-
-        return $this;
-    }
-
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger()
-    {
-        return $this->logger;
-    }
-
-    /**
-     * @param ConfigInterface $config
-     * @return $this
-     */
-    public function setConfig(ConfigInterface $config)
-    {
-        $this->config = $config;
-
-        return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isTerminating()
-    {
-        return $this->isSchedulerTerminating;
-    }
-
-    /**
      * @return Worker
      */
     public function getWorkerService()
     {
         return $this->workerService;
-    }
-
-    /**
-     * @param bool $stopScheduler
-     * @return $this
-     */
-    public function stopScheduler(bool $stopScheduler)
-    {
-        $this->isSchedulerTerminating = $stopScheduler;
-
-        return $this;
     }
 
     /**
@@ -380,7 +273,7 @@ final class Scheduler implements EventsCapableInterface
             throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
         }
 
-        $this->stopScheduler(true);
+        $this->setIsTerminating(true);
         $this->stopWorker($pid, true);
 
         unlink($fileName);
@@ -501,14 +394,14 @@ final class Scheduler implements EventsCapableInterface
             $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
         }
 
-        $this->stopScheduler(true);
+        $this->setIsTerminating(true);
 
         $this->log(Logger::INFO, "Terminating scheduled workers");
 
         if ($this->workers) {
-            foreach (array_keys($this->workers->toArray()) as $pid) {
-                $this->log(Logger::DEBUG, "Terminating worker $pid");
-                $this->stopWorker($pid, false);
+            foreach (array_keys($this->workers->toArray()) as $uid) {
+                $this->log(Logger::DEBUG, "Terminating worker $uid");
+                $this->stopWorker($uid, false);
             }
         }
 
@@ -547,7 +440,7 @@ final class Scheduler implements EventsCapableInterface
         $worker->setProcessId($event->getParam('uid'));
         $worker->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
-        $this->stopScheduler(true);
+        $this->setIsTerminating(true);
     }
 
     /**
@@ -610,14 +503,14 @@ final class Scheduler implements EventsCapableInterface
     {
         $now = microtime(true);
 
-        foreach ($workerUids as $processId) {
-            $processStatus = $this->workers[$processId];
+        foreach ($workerUids as $uid) {
+            $processStatus = $this->workers[$uid];
             $processStatus['code'] = WorkerState::TERMINATED;
             $processStatus['time'] = $now;
-            $this->workers[$processId] = $processStatus;
+            $this->workers[$uid] = $processStatus;
 
-            $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $processId));
-            $this->stopWorker($processId, $isSoftTermination);
+            $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
+            $this->stopWorker($uid, $isSoftTermination);
         }
 
         return $this;

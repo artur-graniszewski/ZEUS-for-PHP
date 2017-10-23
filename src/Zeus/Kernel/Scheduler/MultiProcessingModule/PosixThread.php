@@ -166,7 +166,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
      */
     protected function onWorkerStop(SchedulerEvent $event)
     {
-        $this->stopWorker($event->getParam('uid'), $event->getParam('soft', false));
+        $this->unregisterWorker($event->getParam('uid'));
     }
 
     protected function createThread(SchedulerEvent $event)

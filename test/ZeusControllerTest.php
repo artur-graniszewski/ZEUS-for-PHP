@@ -101,7 +101,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
             '[listen_port] => 7070',
             '[listen_address] => 0.0.0.0'
         ];
-        
+
         foreach ($sentences as $sentence) {
             $this->assertGreaterThan(0, strpos($logEntries, $sentence));
         }
