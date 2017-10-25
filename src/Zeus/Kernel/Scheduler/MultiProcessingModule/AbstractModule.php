@@ -80,6 +80,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
         $workerEvent = clone $this->workerEvent;
         $workerEvent->setParams([]);
+        $workerEvent->getWorker()->setIsTerminating(false);
         return $workerEvent;
     }
 
@@ -93,6 +94,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $this->events = $eventManager;
         $this->events->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) {
             $worker = clone $e->getWorker();
+            $worker->setIsTerminating(false);
             $e->setWorker($worker);
             $e->setTarget($worker);
             $worker->attach($this->events);
@@ -210,7 +212,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $this->checkPipe();
 
         if ($this->isTerminating()) {
-            $event->stopWorker(true);
+            $event->getWorker()->setIsTerminating(true);
             $event->stopPropagation(true);
         }
     }

@@ -2,11 +2,9 @@
 
 namespace Zeus\Kernel;
 
-use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
-use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\AbstractService;
 use Zeus\Kernel\Scheduler\Worker;
@@ -126,7 +124,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
     {
         $this->setEventManager($eventManager);
         $sharedEventManager = $eventManager->getSharedManager();
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
@@ -159,7 +157,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE,
-            function (SchedulerEvent $event) use ($eventManager) {
+            function (WorkerEvent $event) use ($eventManager) {
                 if (!$event->getParam('server') || $event->getParam('init_process')) {
                     return;
                 }
@@ -444,10 +442,10 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
     }
 
     /**
-     * @param SchedulerEvent $event
-     * @return $this
+     * @param WorkerEvent $event
+     * @return Scheduler
      */
-    protected function addNewWorker(SchedulerEvent $event) : Scheduler
+    protected function addNewWorker(WorkerEvent $event) : Scheduler
     {
         if ($event->getParam('server')) {
             return $this;

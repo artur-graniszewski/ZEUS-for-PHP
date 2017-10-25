@@ -72,7 +72,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $status->attach($em);
 
         $em->attach(WorkerEvent::EVENT_WORKER_CREATE,
-            function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
+            function(WorkerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
                 $amountOfScheduledProcesses++;
 
                 $uid = 100000000 + $amountOfScheduledProcesses;

@@ -245,7 +245,7 @@ class Worker extends AbstractService
                 $this->reportException($exception);
             }
 
-            if ($event->isWorkerStopping()) {
+            if ($this->isTerminating()) {
                 break;
             }
         }
@@ -281,7 +281,7 @@ class Worker extends AbstractService
         try {
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (\Exception $ex) {
-            $event->stopWorker(true);
+            $event->getWorker()->setIsTerminating(true);
             $event->setParam('exception', $ex);
         }
         return $this;

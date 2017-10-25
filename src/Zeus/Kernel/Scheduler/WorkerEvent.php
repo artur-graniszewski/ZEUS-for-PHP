@@ -5,7 +5,7 @@ namespace Zeus\Kernel\Scheduler;
 /**
  * @package Zeus\Kernel\Scheduler
  */
-class WorkerEvent extends SchedulerEvent
+class WorkerEvent extends AbstractEvent
 {
     const PRIORITY_FINALIZE = -100000;
     const PRIORITY_INITIALIZE = 50000;
@@ -24,9 +24,6 @@ class WorkerEvent extends SchedulerEvent
 
     const EVENT_WORKER_TERMINATED = 'workerTerminated';
 
-    /** @var bool */
-    private $stopWorker = false;
-
     /** @var Worker */
     private $worker;
 
@@ -41,18 +38,5 @@ class WorkerEvent extends SchedulerEvent
     public function setWorker(Worker $worker)
     {
         $this->worker = $worker;
-    }
-
-    /**
-     * @param bool $stop
-     */
-    public function stopWorker(bool $stop)
-    {
-        $this->stopWorker = $stop;
-    }
-
-    public function isWorkerStopping() : bool
-    {
-        return $this->stopWorker;
     }
 }

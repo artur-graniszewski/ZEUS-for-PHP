@@ -8,7 +8,6 @@ use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\StreamException;
@@ -107,19 +106,17 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     {
         parent::attach($eventManager);
 
-        $eventManager = $eventManager->getSharedManager();
-
-        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], WorkerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $eventManager->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
-        $eventManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
-        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onProcessInit'], -9000);
-        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
-        $eventManager->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
-        $eventManager->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
-        $eventManager->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
-        $eventManager->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->onIpcReadable($e); }, -9000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], WorkerEvent::PRIORITY_FINALIZE + 1);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onProcessInit'], -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
+        $eventManager->getSharedManager()->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
+        $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
+        $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->onIpcReadable($e); }, -9000);
 
         return $this;
     }
@@ -145,6 +142,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->checkPipe();
 
         if ($this->isTerminating()) {
+            $event->getWorker()->setIsTerminating(true);
             $event->stopPropagation(true);
         }
     }
@@ -250,7 +248,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      * @param SchedulerEvent $event
      * @return int
      */
-    public function createProcess(SchedulerEvent $event) : int
+    public function createProcess(WorkerEvent $event) : int
     {
         $descriptors = [
             0 => ['pipe', 'r'], // stdin

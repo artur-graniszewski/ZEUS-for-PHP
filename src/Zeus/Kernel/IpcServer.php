@@ -370,7 +370,7 @@ class IpcServer implements ListenerAggregateInterface
             $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
             $event->getScheduler()->setIpc($this);
 
-            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(SchedulerEvent $event) {
+            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
 

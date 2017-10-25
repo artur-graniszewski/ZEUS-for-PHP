@@ -563,7 +563,7 @@ final class SocketMessageBroker
             }
         } catch (\Exception $ex) {
             // @todo: connection severed, leader died, exit
-            $event->stopWorker(true);
+            $event->getWorker()->setIsTerminating(true);
             throw new \RuntimeException("Connection with session leader is broken, exiting");
         }
 
@@ -571,15 +571,15 @@ final class SocketMessageBroker
             if (!$this->connection) {
                 try {
                     if ($this->workerServer->getSocket()->select(1000)) {
-                        $event->getTarget()->setRunning();
+                        $event->getWorker()->setRunning();
                         $connection = $this->workerServer->accept();
-                        $event->getTarget()->getStatus()->incrementNumberOfFinishedTasks(1);
+                        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
 
                     } else {
                         return;
                     }
                 } catch (SocketTimeoutException $exception) {
-                    $event->getTarget()->setWaiting();
+                    $event->getWorker()->setWaiting();
 
                     return;
                 }

@@ -2,13 +2,10 @@
 
 namespace Zeus\Kernel\Scheduler;
 
-use Zend\EventManager\Event;
-use Zeus\Kernel\Scheduler;
-
 /**
  * @package Zeus\Kernel\Scheduler
  */
-class SchedulerEvent extends Event
+class SchedulerEvent extends AbstractEvent
 {
     const PRIORITY_FINALIZE = -100000;
     const PRIORITY_INITIALIZE = 50000;
@@ -26,20 +23,4 @@ class SchedulerEvent extends Event
     // and if used - are subjects to change and BC breaks.
     const INTERNAL_EVENT_KERNEL_START = 'kernelStart';
     const INTERNAL_EVENT_KERNEL_STOP = 'kernelStop';
-
-    /** @var Scheduler */
-    private $scheduler;
-
-    /**
-     * @return Scheduler
-     */
-    public function getScheduler() : Scheduler
-    {
-        return $this->scheduler;
-    }
-
-    public function setScheduler(Scheduler $scheduler)
-    {
-        $this->scheduler = $scheduler;
-    }
 }

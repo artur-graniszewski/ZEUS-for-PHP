@@ -8,7 +8,6 @@ use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
 final class PosixProcess extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
@@ -140,7 +139,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $this->getPcntlBridge()->pcntlSignalDispatch();
 
         if ($this->isWorkerTerminating) {
-            $event->stopWorker(true);
+            $event->getWorker()->setIsTerminating(true);
             $event->stopPropagation(true);
         }
     }
