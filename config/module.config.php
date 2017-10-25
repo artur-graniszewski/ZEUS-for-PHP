@@ -24,8 +24,6 @@ use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
-use Zeus\ServerService\Shared\Logger\IpcLoggerFactory;
-use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\ServerService\Memcache\Service as MemcacheService;

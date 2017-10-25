@@ -20,9 +20,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     /** @var EventManagerInterface */
     protected $events;
 
-    /** @var int Parent PID */
-    public $ppid;
-
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
 
@@ -47,10 +44,10 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     public static function isSupported($throwException = false)
     {
-        $isSupported = function_exists('proc_open');
+        $isSupported = function_exists('proc_open') && function_exists('proc_status');
 
         if (!$isSupported && $throwException) {
-            throw new \RuntimeException(sprintf("proc_open() is required by %s but disabled in PHP",
+            throw new \RuntimeException(sprintf("proc_open() and proc_status() are required by %s but disabled in PHP",
                     static::class
                 )
             );
@@ -66,8 +63,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     {
         $this->stdout = @fopen('php://stdout', 'w');
         $this->stderr = @fopen('php://stderr', 'w');
-
-        $this->ppid = getmypid();
 
         parent::__construct();
     }
@@ -116,7 +111,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
         $eventManager->getSharedManager()->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
-        $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->onIpcReadable($e); }, -9000);
+        $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
 
         return $this;
     }
@@ -181,19 +176,33 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     {
         parent::checkWorkers();
 
-        // catch other potential signals to avoid race conditions
-        while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            @fclose($this->workers[$pid]['resource']);
+        if ($this->getPcntlBridge()->isSupported()) {
+            while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
+                $this->processExited($pid);
+            }
+        } else {
+            foreach ($this->workers as $pid => $worker) {
+                $status = proc_get_status($worker['resource']);
 
-            $this->unregisterWorker($pid);
-            $this->raiseWorkerExitedEvent($pid, $pid, 1);
-            unset ($this->workers[$pid]);
-
-            $this->flushBuffers($pid, false);
-            unset ($this->pipeBuffer[$pid]);
+                if (!$status['running']) {
+                    $this->processExited($pid);
+                }
+            }
         }
 
         return $this;
+    }
+
+    private function processExited($pid)
+    {
+        @fclose($this->workers[$pid]['resource']);
+
+        $this->unregisterWorker($pid);
+        $this->raiseWorkerExitedEvent($pid, $pid, 1);
+        unset ($this->workers[$pid]);
+
+        $this->flushBuffers($pid, false);
+        unset ($this->pipeBuffer[$pid]);
     }
 
     public function onKernelLoop(SchedulerEvent $event)
@@ -245,7 +254,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     }
 
     /**
-     * @param SchedulerEvent $event
+     * @param WorkerEvent $event
      * @return int
      */
     public function createProcess(WorkerEvent $event) : int
@@ -314,7 +323,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
      */
     public function onStopWorker(int $uid, bool $useSoftTermination)
     {
-        if ($useSoftTermination) {
+        if ($useSoftTermination || !$this->getPcntlBridge()->isSupported()) {
             parent::onStopWorker($uid, $useSoftTermination);
 
             return $this;
@@ -385,7 +394,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
-    private function onIpcReadable(IpcEvent $event)
+    private function checkWorkerOutput(IpcEvent $event)
     {
         /** @var PipeStream $stream */
         $stream = $event->getParam('stream');
@@ -403,9 +412,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
                 $this->pipeBuffer[$uid][$outputType] .= $data;
             }
         } catch (StreamException $exception) {
-            if (!$stream->isReadable()) {
-                $this->closeProcessPipes($uid);
-            }
         }
 
         $this->flushBuffers($uid, false);

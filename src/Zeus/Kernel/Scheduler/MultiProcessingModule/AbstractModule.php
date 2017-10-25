@@ -143,11 +143,11 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
         foreach ($this->ipcServers as $uid => $server) {
             try {
-                if (isset($this->ipcServers[$uid])) {
-                    $connection = $this->ipcServers[$uid]->accept();
-                    $this->ipcConnections[$uid] = $connection;
-                    $this->ipcSelector->register($connection, Selector::OP_READ);
-                }
+                $connection = $this->ipcServers[$uid]->accept();
+                $this->ipcConnections[$uid] = $connection;
+                $this->ipcSelector->register($connection, Selector::OP_READ);
+                $this->ipcServers[$uid]->close();
+                unset($this->ipcServers[$uid]);
             } catch (SocketTimeoutException $exception) {
                 // @todo: verify if nothing to do?
             }
@@ -234,7 +234,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
      */
     public function onStopWorker(int $uid, bool $useSoftTermination)
     {
-        if (!isset($this->ipcServers[$uid])) {
+        if (!isset($this->ipcConnections[$uid])) {
             $this->getLogger()->warn("Trying to stop already detached worker $uid");
             return $this;
         }
@@ -256,11 +256,6 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     protected function unregisterWorker(int $uid)
     {
-        if (isset($this->ipcServers[$uid])) {
-            $this->ipcServers[$uid]->close();
-            unset($this->ipcServers[$uid]);
-        }
-
         if (isset($this->ipcConnections[$uid])) {
             $this->ipcConnections[$uid]->close();
             $this->ipcSelector->unregister($this->ipcConnections[$uid]);
