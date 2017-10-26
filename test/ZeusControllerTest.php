@@ -77,6 +77,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
     public function testControllerServicesList()
     {
+        $this->markTestIncomplete('Triggers segfault error on PHP 7.0.22');
         $request = new \Zend\Console\Request([
             __FILE__,
             'zeus',
