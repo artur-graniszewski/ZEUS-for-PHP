@@ -10,6 +10,8 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Networking\Exception\SocketException;
+use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\PipeStream;
 use Zeus\Networking\Stream\Selector;
@@ -196,10 +198,20 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     private function processExited($pid)
     {
         @fclose($this->workers[$pid]['resource']);
-
         $this->unregisterWorker($pid);
         $this->raiseWorkerExitedEvent($pid, $pid, 1);
         unset ($this->workers[$pid]);
+
+        // check stdOut and stdErr...
+        foreach (['stdout' => $this->stdOutStreams[$pid], 'stderr' => $this->stdErrStreams[$pid]] as $name => $stream) {
+            try {
+                if ($stream->select(0)) {
+                    $this->pipeBuffer[$pid][$name] .= $stream->read();
+                }
+            } catch (StreamException $e) {
+
+            }
+        }
 
         $this->flushBuffers($pid, false);
         unset ($this->pipeBuffer[$pid]);
