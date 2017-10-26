@@ -32,7 +32,7 @@ class Selector
      * @param int $operation
      * @return void
      */
-    public function register(SelectableStreamInterface $stream, int $operation)
+    public function register(SelectableStreamInterface $stream, int $operation = self::OP_ALL)
     {
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
@@ -106,7 +106,7 @@ class Selector
      * @param int $operation
      * @return SelectableStreamInterface[]
      */
-    public function getSelectedStreams($operation = self::OP_ALL) : array
+    public function getSelectedStreams(int $operation = self::OP_ALL) : array
     {
         if (!in_array($operation, [self::OP_READ, self::OP_WRITE, self::OP_ALL])) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
