@@ -128,7 +128,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             'type' => Message::IS_STATUS,
             'message' => 'statusSent',
             'extra' => [
-                'uid' => $scheduler->getProcessId(),
+                'uid' => getmypid(),
                 'logger' => __CLASS__,
                 'process_status' => $scheduler->getWorkers()->toArray(),
                 'scheduler_status' => $scheduler->getStatus()->toArray(),

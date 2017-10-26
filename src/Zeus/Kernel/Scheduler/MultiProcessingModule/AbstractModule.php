@@ -219,12 +219,15 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     protected function raiseWorkerExitedEvent($uid, $processId, $threadId)
     {
-        $newEvent = $this->getSchedulerEvent();
-        $newEvent->setParam('uid', $uid);
-        $newEvent->setParam('threadId', $threadId);
-        $newEvent->setParam('processId', $processId);
-        $newEvent->setName(SchedulerEvent::EVENT_WORKER_TERMINATED);
-        $this->events->triggerEvent($newEvent);
+        $event = $this->getWorkerEvent();
+        $event->setName(WorkerEvent::EVENT_WORKER_TERMINATED);
+        $event->getWorker()->setUid($uid);
+        $event->getWorker()->setProcessId($processId);
+        $event->getWorker()->setThreadId($threadId);
+        $event->setParam('uid', $uid);
+        $event->setParam('threadId', $threadId);
+        $event->setParam('processId', $processId);
+        $this->events->triggerEvent($event);
     }
 
     /**
@@ -327,14 +330,14 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $event = $this->getWorkerEvent();
         // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldnt be cloned
         $worker = $event->getWorker();
-        $worker->setProcessId($pid);
-
+        $worker->setUid($pid);
+        $worker->setProcessId(getmypid());
         $worker->setThreadId($event->getParam('threadId', 1));
 
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams($params);
         $event->setParam('uid', $pid);
-        $event->setParam('processId', $pid);
+        $event->setParam('processId', getmypid());
         $event->setParam('threadId', $event->getParam('threadId', 1));
         $event->setTarget($worker);
         $this->events->triggerEvent($event);

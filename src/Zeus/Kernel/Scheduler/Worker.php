@@ -34,6 +34,24 @@ class Worker extends AbstractService
     /** @var int */
     protected $threadId = 1;
 
+    protected $uid;
+
+    /**
+     * @param int $id
+     * @return $this
+     */
+    public function setUid(int $id)
+    {
+        $this->uid = $id;
+
+        return $this;
+    }
+
+    public function getUid() : int
+    {
+        return $this->uid;
+    }
+
     /**
      * @param int $processId
      * @return $this
@@ -268,7 +286,7 @@ class Worker extends AbstractService
             'type' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $worker->getProcessId(),
+                'uid' => $worker->getUid(),
                 'threadId' => $worker->getThreadId(),
                 'processId' => $worker->getProcessId(),
                 'logger' => __CLASS__,

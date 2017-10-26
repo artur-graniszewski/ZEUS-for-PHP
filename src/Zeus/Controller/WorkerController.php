@@ -148,16 +148,18 @@ class WorkerController extends AbstractActionController
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
-        $event->getWorker()->setEventManager($scheduler->getEventManager());
-        $event->getWorker()->attach($scheduler->getEventManager());
-        $event->setTarget($event->getWorker());
-        $event->getWorker()->setProcessId(getmypid());
-        $event->getWorker()->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $worker = $event->getWorker();
+        $worker->setEventManager($scheduler->getEventManager());
+        $worker->attach($scheduler->getEventManager());
+        $event->setTarget($worker);
+        $worker->setProcessId(getmypid());
+        $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : getmypid());
         $event->setParams(array_merge($event->getParams(), $startParams));
         $event->setParams($startParams);
-        $event->setParam('uid', getmypid());
-        $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        $event->setParam('processId', getmypid());
+        $event->setParam('uid', $worker->getUid());
+        $event->setParam('threadId', $worker->getThreadId());
+        $event->setParam('processId', $worker->getProcessId());
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
     }

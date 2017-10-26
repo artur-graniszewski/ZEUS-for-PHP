@@ -313,6 +313,7 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $event->setParam('threadId', 1);
         $worker = $event->getWorker();
         $worker->setProcessId($pid);
+        $worker->setUid($pid);
         $worker->setThreadId(1);
     }
 

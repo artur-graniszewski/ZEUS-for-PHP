@@ -114,7 +114,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
                 unset ($this->workers[$threadId]);
                 $this->unregisterWorker($threadId);
 
-                $this->raiseWorkerExitedEvent($threadId, 1, $threadId);
+                $this->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
 
                 continue;
             }
@@ -202,14 +202,15 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
     protected function onWorkerCreate(WorkerEvent $event)
     {
-        $pid = $this->createThread($event);
+        $uid = $this->createThread($event);
 
-        $event->setParam('uid', $pid);
+        $event->setParam('uid', $uid);
         $event->setParam('processId', getmypid());
-        $event->setParam('threadId', $pid);
+        $event->setParam('threadId', $uid);
         $worker = $event->getWorker();
-        $worker->setThreadId($pid);
+        $worker->setThreadId($uid);
         $worker->setProcessId(getmypid());
+        $worker->setUid($uid);
     }
 
     protected function onSchedulerInit(SchedulerEvent $event)

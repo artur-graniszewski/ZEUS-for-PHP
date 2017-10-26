@@ -195,7 +195,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
     public function testDetectionOfProcessTermination()
     {
         $em = new EventManager(new SharedEventManager());
-        $em->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function($event) use (&$triggeredEvent) {
+        $em->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -204,8 +204,11 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
+        $workerEvent = new WorkerEvent();
+        $workerEvent->setWorker(new Scheduler\Worker());
         $posixProcess = new PosixProcess();
         $posixProcess->setSchedulerEvent($event);
+        $posixProcess->setWorkerEvent($workerEvent);
         $posixProcess->attach($em);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);

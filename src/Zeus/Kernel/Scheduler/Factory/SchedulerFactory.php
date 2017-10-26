@@ -56,7 +56,6 @@ class SchedulerFactory implements FactoryInterface
 
         $scheduler = new Scheduler($configObject, $eventManager, $worker, $schedulerDiscipline);
         $scheduler->setLogger($logger);
-        $scheduler->attach($eventManager);
 
         $workerEvent = new Scheduler\WorkerEvent();
         $workerEvent->setScheduler($scheduler);

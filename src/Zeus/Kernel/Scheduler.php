@@ -100,6 +100,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         $this->workerService = $workerService;
         $this->status = new WorkerState($this->getConfig()->getServiceName());
         $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
+        $this->attach();
     }
 
     public function __destruct()
@@ -117,16 +118,15 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
     }
 
     /**
-     * @param EventManagerInterface $eventManager
      * @return $this
      */
-    public function attach(EventManagerInterface $eventManager)
+    protected function attach()
     {
-        $this->setEventManager($eventManager);
+        $eventManager = $this->getEventManager();
         $sharedEventManager = $eventManager->getSharedManager();
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e);}, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATED, function(SchedulerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() {
@@ -154,7 +154,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
                 $e->getWorker()->setIsTerminating(true);
                 $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
 
-            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+            }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE,
             function (WorkerEvent $event) use ($eventManager) {
@@ -166,7 +166,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
                     $e->stopPropagation(true);
                 }, WorkerEvent::PRIORITY_INITIALIZE + 100000);
 
-                $pid = $event->getParam('uid');
+                $pid = $event->getWorker()->getProcessId();
 
                 $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
                 if (!@file_put_contents($fileName, $pid)) {
@@ -175,7 +175,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
 
                 $this->kernelLoop();
             }
-            , SchedulerEvent::PRIORITY_FINALIZE
+            , WorkerEvent::PRIORITY_FINALIZE
         );
 
 
@@ -238,11 +238,11 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
     }
 
     /**
-     * @param SchedulerEvent $event
+     * @param WorkerEvent $event
      */
-    protected function onWorkerExited(SchedulerEvent $event)
+    protected function onWorkerExited(WorkerEvent $event)
     {
-        $id = $event->getParam('uid');
+        $id = $event->getWorker()->getUid();
         $this->log(Logger::DEBUG, "Worker $id exited");
 
         if (isset($this->workers[$id])) {
@@ -443,7 +443,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
 
     /**
      * @param WorkerEvent $event
-     * @return Scheduler
+     * @return $this
      */
     protected function addNewWorker(WorkerEvent $event) : Scheduler
     {
