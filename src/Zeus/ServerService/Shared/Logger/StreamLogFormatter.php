@@ -37,12 +37,19 @@ class StreamLogFormatter implements FormatterInterface
 
     public function format($event)
     {
-        $serviceName = $event['extra']['service_name'] . '-' . $event['extra']['threadId'];
-        $dateTime = $event['timestamp']->format($this->dateTimeFormat) . sprintf("%'.03d", $event['extra']['microtime']);
+        $extraData = $event['extra'] + [
+                'logger' => '<unknown>',
+                'threadId' => 1,
+                'service_name' => '<unknown>',
+                'uid' => 1
+            ];
+
+        $serviceName = $extraData['service_name'] . '-' . $extraData['threadId'];
+        $dateTime = $event['timestamp']->format($this->dateTimeFormat) . sprintf("%'.03d", $extraData['microtime']);
         $severity = str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT);
         $pid = $event['extra']['uid'];
         $serviceName = sprintf("--- [%s]", str_pad(substr($serviceName,0, 15), 15, " ", STR_PAD_LEFT));
-        $loggerName = str_pad(isset($event['extra']['logger']) ? substr($this->getShortLoggerName($event['extra']['logger']), -40) : '<unknown>', 40, " ", STR_PAD_RIGHT);
+        $loggerName = str_pad(substr($this->getShortLoggerName($extraData['logger']), -40), 40, " ", STR_PAD_RIGHT);
         $message = ": " . $event['message'];
 
         $eventText = "$dateTime $severity $pid $serviceName $loggerName $message";

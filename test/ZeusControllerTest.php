@@ -20,6 +20,10 @@ use ZeusTest\Helpers\DummyServiceFactory;
 use ZeusTest\Helpers\MainControllerMock;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * @runTestsInSeparateProcesses
+ * @preserveGlobalState disabled
+ */
 class ZeusControllerTest extends PHPUnit_Framework_TestCase
 {
     use ZeusFactories;
@@ -77,7 +81,6 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
     public function testControllerServicesList()
     {
-        $this->markTestIncomplete('Triggers Segfault error on PHP 7.0.22');
         $request = new \Zend\Console\Request([
             __FILE__,
             'zeus',
@@ -144,7 +147,6 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
     public function testControllerApplicationAutoStartWithoutServices()
     {
-        $this->markTestIncomplete('Triggers Segfault error on PHP 7.0.22');
         $request = new \Zend\Console\Request([
             __FILE__,
             'zeus',
@@ -161,7 +163,6 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
 
     public function testControllerApplicationStopWithoutServices()
     {
-        $this->markTestIncomplete('Triggers Segfault error on PHP 7.0.22');
         $request = new \Zend\Console\Request([
             __FILE__,
             'zeus',

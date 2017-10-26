@@ -20,12 +20,19 @@ class ConsoleLogFormatter extends StreamLogFormatter implements FormatterInterfa
     {
         $console = $this->console;
 
-        $serviceName = $event['extra']['service_name'] . '-' . $event['extra']['threadId'];
+        $extraData = $event['extra'] + [
+            'logger' => '<unknown>',
+            'threadId' => 1,
+            'service_name' => '<unknown>',
+            'uid' => 1
+        ];
+
+        $serviceName = $extraData['service_name'] . '-' . $extraData['threadId'];
         $dateTime = $console->colorize($event['timestamp']->format($this->dateTimeFormat . '.') . sprintf("%'.03d", $event['extra']['microtime']), ColorInterface::GRAY);
         $severity = $console->colorize(str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT), $this->getSeverityColor($event['priorityName']));
-        $pid = $console->colorize($event['extra']['uid'], ColorInterface::CYAN);
+        $pid = $console->colorize($extraData['uid'], ColorInterface::CYAN);
         $serviceName = $console->colorize(sprintf("--- [%s]", str_pad(substr($serviceName, 0, 15), 15, " ", STR_PAD_LEFT)), ColorInterface::GRAY);
-        $loggerName = $console->colorize(str_pad(isset($event['extra']['logger']) ? substr($this->getShortLoggerName($event['extra']['logger']), -40): '<unknown>', 40, " ", STR_PAD_RIGHT), ColorInterface::LIGHT_BLUE) ;
+        $loggerName = $console->colorize(str_pad(substr($this->getShortLoggerName($extraData['logger']), -40), 40, " ", STR_PAD_RIGHT), ColorInterface::LIGHT_BLUE) ;
         $message = $console->colorize(": ", ColorInterface::GRAY) . $console->colorize($event['message'], $this->getMessageColor($event['priorityName']));
 
         $eventText = "$dateTime $severity $pid $serviceName $loggerName $message";

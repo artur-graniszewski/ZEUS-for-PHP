@@ -16,6 +16,10 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * @runTestsInSeparateProcesses
+ * @preserveGlobalState disabled
+ */
 class SchedulerTest extends PHPUnit_Framework_TestCase
 {
     use ZeusFactories;

@@ -8,6 +8,10 @@ use Zeus\Networking\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Async\Message\Message;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 
+/**
+ * @runTestsInSeparateProcesses
+ * @preserveGlobalState disabled
+ */
 class AsyncMessageTest extends PHPUnit_Framework_TestCase
 {
     /** @var NetworkStreamInterface|SocketTestNetworkStream */
