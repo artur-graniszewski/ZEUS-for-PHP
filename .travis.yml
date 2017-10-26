@@ -53,22 +53,23 @@ notifications:
   email: true
 
 before_install:
-  - if [[ $HHVMPHP7 == "yes" ]]; then echo hhvm.php7.all=1 >> /etc/hhvm/php.ini; fi
   - if [[ $EXECUTE_TEST_COVERALLS != 'true' ]]; then phpenv config-rm xdebug.ini || return 0 ; fi
   - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then composer require --dev --no-update satooshi/php-coveralls ; fi
   - if [[ $TRAVIS_PHP_VERSION = 7.1 ]] ; then pecl config-set preferred_state beta; echo yes | pecl install apcu_bc; fi;
   - if [[ $TRAVIS_PHP_VERSION = 7.1 ]] ; then tail -n +3 /home/travis/.phpenv/versions/`phpenv global`/etc/php.ini > /home/travis/.phpenv/versions/`phpenv global`/etc/php.ini ; fi;
   - if [[ $TRAVIS_PHP_VERSION = 7.1 ]] ; then printf 'extension="apcu.so"'"\n"'extension="apc.so"'"\napc.enabled=1\napc.enable_cli=1\n" >> /home/travis/.phpenv/versions/`phpenv global`/etc/php.ini ; fi;
   - travis_retry composer self-update
+  - travis_retry composer clear-cache
 
 install:
   - if [[ $DEPS == 'latest' ]]; then travis_retry composer update $COMPOSER_ARGS ; fi
   - if [[ $DEPS == 'lowest' ]]; then travis_retry composer update --prefer-lowest --prefer-stable $COMPOSER_ARGS ; fi
-  - travis_retry composer install $COMPOSER_ARGS
+  - if [[ $DEPS == 'locked' ]]; then travis_retry composer install $COMPOSER_ARGS ; fi
   - composer show
 
 before_script:
   - mkdir -p build/logs
+  - if [[ $HHVMPHP7 == "yes" ]]; then echo hhvm.php7.all=1 >> /etc/hhvm/php.ini; fi
 
 script:
   - if [[ $CS_CHECK == 'true' ]]; then composer cs-check ; fi
