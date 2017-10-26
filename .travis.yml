@@ -37,12 +37,15 @@ matrix:
     - php: hhvm
       env:
         - DEPS=lowest
+        - HHVMPHP7="yes"
     - php: hhvm
       env:
         - DEPS=locked
+        - HHVMPHP7="yes"
     - php: hhvm
       env:
         - DEPS=latest
+        - HHVMPHP7="yes"
   allow_failures:
     - php: hhvm
 
@@ -50,6 +53,7 @@ notifications:
   email: true
 
 before_install:
+  - if [[ $HHVMPHP7 == "yes" ]]; then echo hhvm.php7.all=1 >> /etc/hhvm/php.ini; fi
   - if [[ $EXECUTE_TEST_COVERALLS != 'true' ]]; then phpenv config-rm xdebug.ini || return 0 ; fi
   - if [[ $EXECUTE_TEST_COVERALLS == 'true' ]]; then composer require --dev --no-update satooshi/php-coveralls ; fi
   - if [[ $TRAVIS_PHP_VERSION = 7.1 ]] ; then pecl config-set preferred_state beta; echo yes | pecl install apcu_bc; fi;
