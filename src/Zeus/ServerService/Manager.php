@@ -51,20 +51,6 @@ final class Manager
     }
 
     /**
-     * @return mixed[]|false
-     */
-//    protected function checkSignal()
-//    {
-//        $pid = pcntl_waitpid(-1, $status, WNOHANG);
-//
-//        if ($pid > 0) {
-//            return ['pid' => $pid, 'status' => $status];
-//        }
-//
-//        return false;
-//    }
-
-    /**
      * @return $this
      */
     protected function attach()
@@ -74,11 +60,6 @@ final class Manager
         $this->eventHandles[] = $events->attach(ManagerEvent::EVENT_MANAGER_LOOP, function () {
 
             return;
-            //$signal = $this->checkSignal();
-
-//            if (!$signal) {
-//                sleep(1);
-//            }
 
             $service = $this->findServiceByPid($signal['pid']);
 
