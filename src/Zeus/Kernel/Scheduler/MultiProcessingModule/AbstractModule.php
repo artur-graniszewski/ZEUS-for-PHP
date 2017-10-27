@@ -144,6 +144,8 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         foreach ($this->ipcServers as $uid => $server) {
             try {
                 $connection = $this->ipcServers[$uid]->accept();
+                $connection->setOption(TCP_NODELAY, 1);
+                $connection->setOption(SO_KEEPALIVE, 1);
                 $this->ipcConnections[$uid] = $connection;
                 $this->ipcSelector->register($connection, Selector::OP_READ);
                 $this->ipcServers[$uid]->close();
@@ -193,6 +195,8 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                 } else {
                     $this->ipc = new SocketStream($stream);
                     $this->ipc->setBlocking(false);
+                    $this->ipc->setOption(SO_KEEPALIVE, 1);
+                    $this->ipc->setOption(TCP_NODELAY, 1);
                 }
             } else {
                 try {

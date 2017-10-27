@@ -6,7 +6,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\IpcServer\SocketStream as IpcSocketStream;
+use Zeus\Kernel\IpcServer\SocketIpc as IpcSocketStream;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
@@ -42,7 +42,7 @@ class IpcServer implements ListenerAggregateInterface
     /** @var SocketServer */
     protected $ipcServer;
 
-    /** @var IpcServer\SocketStream */
+    /** @var IpcServer\SocketIpc */
     protected $ipcClient;
 
     /** @var Selector */
@@ -90,6 +90,7 @@ class IpcServer implements ListenerAggregateInterface
                 // @todo: remove setBlocking(), now its needed in ZeusTest\SchedulerTest unit tests, otherwise they hang
                 $ipcStream->setBlocking(true);
                 $ipcStream->setOption(SO_KEEPALIVE, 1);
+                $ipcStream->setOption(TCP_NODELAY, 1);
 
                 if (!$ipcStream->select(10)) {
                     return $this;
@@ -155,6 +156,7 @@ class IpcServer implements ListenerAggregateInterface
         $ipcStream = new SocketStream($socket);
         $ipcStream->setBlocking(false);
         $ipcStream->setOption(SO_KEEPALIVE, 1);
+        $ipcStream->setOption(TCP_NODELAY, 1);
         $ipcStream->write("$uid!")->flush();
         $this->ipcClient = new IpcSocketStream($ipcStream, $uid);
 

@@ -134,6 +134,7 @@ final class SocketMessageBroker
 
             $leaderPipe = new SocketStream($leaderPipe);
             $leaderPipe->setOption(SO_KEEPALIVE, 1);
+            $leaderPipe->setOption(TCP_NODELAY, 1);
             $leaderPipe->write("$uid:$port!")->flush();
             $this->leaderPipe = $leaderPipe;
         }
@@ -275,6 +276,8 @@ final class SocketMessageBroker
             $connectionLimit = 10;
             while ($client && $connectionLimit-- > 0) {
                 $client = $this->upstreamServer->accept();
+                $client->setOption(TCP_NODELAY, 1);
+                $client->setOption(SO_KEEPALIVE, 1);
                 $this->bindToWorker($client);
             }
         } catch (SocketTimeoutException $exception) {
@@ -456,6 +459,7 @@ final class SocketMessageBroker
 
             $downstream = new SocketStream($socket);
             $downstream->setOption(SO_KEEPALIVE, 1);
+            $downstream->setOption(TCP_NODELAY, 1);
             $downstream->setBlocking(true);
             $this->downstream[$uid] = $downstream;
             $this->busyWorkers[$uid] = $port;
@@ -489,6 +493,8 @@ final class SocketMessageBroker
 
         try {
             while ($connection = $this->downstreamServer->accept()) {
+                $connection->setOption(TCP_NODELAY, 1);
+                $connection->setOption(SO_KEEPALIVE, 1);
                 if ($connection->select(100)) {
                     $in = $connection->read('!');
                     list($uid, $port) = explode(":", $in);
@@ -573,6 +579,8 @@ final class SocketMessageBroker
                     if ($this->workerServer->getSocket()->select(1000)) {
                         $event->getWorker()->setRunning();
                         $connection = $this->workerServer->accept();
+                        $connection->setOption(SO_KEEPALIVE, 1);
+                        $connection->setOption(TCP_NODELAY, 1);
                         $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
 
                     } else {

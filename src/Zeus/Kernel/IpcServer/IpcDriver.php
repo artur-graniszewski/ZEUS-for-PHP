@@ -4,6 +4,11 @@ namespace Zeus\Kernel\IpcServer;
 
 use Zeus\Kernel\IpcServer;
 
+/**
+ * Class IpcDriver
+ * @package Zeus\Kernel\IpcServer
+ * @internal
+ */
 abstract class IpcDriver
 {
     /**

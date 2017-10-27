@@ -7,7 +7,12 @@ use Zeus\Kernel\IpcServer\MessagePackager;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
 
-class SocketStream extends IpcDriver
+/**
+ * Class SocketIpc
+ * @package Zeus\Kernel\IpcServer
+ * @internal
+ */
+class SocketIpc extends IpcDriver
 {
     /**
      * @var AbstractStream

@@ -46,8 +46,18 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
             throw new SocketException("Stream must be open");
         }
 
+        $level = \SOL_SOCKET;
+
+        if (in_array($option, [\TCP_NODELAY])) {
+            $level = \SOL_TCP;
+        }
+
+        if (!function_exists('socket_import_stream') || !function_exists('socket_set_option')) {
+            throw new \RuntimeException("This option is unsupported by current PHP configuration");
+        }
+
         $socket = socket_import_stream($this->getResource());
-        socket_set_option($socket, SOL_SOCKET, $option, $value);
+        socket_set_option($socket, $level, $option, $value);
 
         return $this;
     }

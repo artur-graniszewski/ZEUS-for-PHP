@@ -44,6 +44,8 @@ class AsyncPlugin extends AbstractPlugin
         }
 
         $stream = new SocketStream($result);
+        $stream->setOption(SO_KEEPALIVE, 1);
+        $stream->setOption(TCP_NODELAY, 1);
         if ($stream instanceof FlushableConnectionInterface) {
             $stream->setWriteBufferSize(0);
         }
