@@ -105,7 +105,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onProcessInit'], -9000);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
         $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
@@ -223,17 +222,11 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     {
         $wasExiting = $this->isTerminating();
 
-        $this->checkWorkers();
         $this->checkPipe();
+        $this->checkWorkers();
 
         if ($this->isTerminating() && !$wasExiting) {
-            $event->stopPropagation();
-            $event = $this->getSchedulerEvent();
-            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', getmypid());
-            $event->setParam('processId', getmypid());
-            $event->setParam('threadId', 1);
-            $this->events->triggerEvent($event);
+            $event->getScheduler()->setIsTerminating(true);
         }
     }
 

@@ -123,7 +123,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return $this;
     }
 
-    protected function onSchedulerLoop(SchedulerEvent $event)
+    public function onSchedulerLoop(SchedulerEvent $event)
     {
         $wasExiting = $this->isTerminating();
 
@@ -131,13 +131,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $this->checkWorkers();
 
         if ($this->isTerminating() && !$wasExiting) {
-            $event->stopPropagation();
-            $event = $this->getSchedulerEvent();
-            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', \ZEUS_THREAD_ID);
-            $event->setParam('processId', getmypid());
-            $event->setParam('threadId', \ZEUS_THREAD_ID);
-            $this->events->triggerEvent($event);
+            $event->getScheduler()->setIsTerminating(true);
         }
     }
 

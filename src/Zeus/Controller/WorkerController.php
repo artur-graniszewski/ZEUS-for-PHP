@@ -9,6 +9,7 @@ use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\ServerService\Manager;
@@ -134,6 +135,13 @@ class WorkerController extends AbstractActionController
         return $result;
     }
 
+    private function initializeWorker(Worker $worker)
+    {
+        $worker->setProcessId(getmypid());
+        $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : getmypid());
+    }
+
     /**
      * @param string $serviceName
      * @param array $startParams
@@ -152,9 +160,7 @@ class WorkerController extends AbstractActionController
         $worker->setEventManager($scheduler->getEventManager());
         $worker->attach($scheduler->getEventManager());
         $event->setTarget($worker);
-        $worker->setProcessId(getmypid());
-        $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : getmypid());
+        $this->initializeWorker($worker);
         $event->setParams(array_merge($event->getParams(), $startParams));
         $event->setParams($startParams);
         $event->setParam('uid', $worker->getUid());
@@ -176,15 +182,19 @@ class WorkerController extends AbstractActionController
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
         DynamicPriorityFilter::resetPriority();
 
-        $event = $scheduler->getMultiProcessingModule()->getSchedulerEvent();
-
+        $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
+        $worker = $event->getWorker();
+        $worker->setEventManager($scheduler->getEventManager());
+        $worker->attach($scheduler->getEventManager());
+        $event->setTarget($worker);
+        $this->initializeWorker($worker);
         $event->setParams(array_merge($event->getParams(), $startParams));
         $event->setParams($startParams);
         $event->setParam('uid', getmypid());
         $event->setParam('server', true);
         $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         $event->setParam('processId', getmypid());
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
