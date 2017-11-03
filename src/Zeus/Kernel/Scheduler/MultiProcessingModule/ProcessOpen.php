@@ -6,7 +6,6 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -15,15 +14,13 @@ use Zeus\Networking\Stream\PipeStream;
 use Zeus\Networking\Stream\Selector;
 use Zeus\ServerService\ManagerEvent;
 
-final class ProcessOpen extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
+final class ProcessOpen extends AbstractProcessModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;
 
     /** @var PosixProcessBridgeInterface */
     protected static $pcntlBridge;
-
-    protected $workers = [];
 
     protected $stdout;
 
@@ -74,26 +71,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     }
 
     /**
-     * @return PosixProcessBridgeInterface
-     */
-    private static function getPcntlBridge()
-    {
-        if (!isset(static::$pcntlBridge)) {
-            static::$pcntlBridge = new PcntlBridge();
-        }
-
-        return static::$pcntlBridge;
-    }
-
-    /**
-     * @param PosixProcessBridgeInterface $bridge
-     */
-    public static function setPcntlBridge(PosixProcessBridgeInterface $bridge)
-    {
-        static::$pcntlBridge = $bridge;
-    }
-
-    /**
      * @param EventManagerInterface $eventManager
      * @return $this
      */
@@ -101,12 +78,9 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     {
         parent::attach($eventManager);
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], -9000);
+        //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], -9000);
         $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
         $eventManager->getSharedManager()->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
@@ -120,24 +94,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         while ($this->workers) {
             $this->checkWorkers();
             usleep(10000);
-        }
-    }
-
-    /**
-     * @param EventInterface $event
-     */
-    public function onWorkerTerminate(EventInterface $event)
-    {
-        $this->onStopWorker($event->getParam('uid'), $event->getParam('soft', false));
-    }
-
-    public function onWorkerLoop(WorkerEvent $event)
-    {
-        $this->checkPipe();
-
-        if ($this->isTerminating()) {
-            $event->getWorker()->setIsTerminating(true);
-            $event->stopPropagation(true);
         }
     }
 
@@ -171,15 +127,11 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
     /**
      * @return $this
      */
-    protected function checkWorkers()
+    public function checkWorkers()
     {
         parent::checkWorkers();
 
-        if ($this->getPcntlBridge()->isSupported()) {
-            while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-                $this->processExited($pid);
-            }
-        } else {
+        if (!$this->getPcntlBridge()->isSupported()) {
             foreach ($this->workers as $pid => $worker) {
                 $status = proc_get_status($worker['resource']);
 
@@ -208,7 +160,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $this->flushBuffers($pid, false);
         unset ($this->pipeBuffer[$pid]);
         @fclose($this->workers[$pid]['resource']);
-        $this->unregisterWorker($pid);
         $this->raiseWorkerExitedEvent($pid, $pid, 1);
         unset ($this->workers[$pid]);
     }
@@ -317,30 +268,6 @@ final class ProcessOpen extends AbstractModule implements MultiProcessingModuleI
         $worker->setProcessId($pid);
         $worker->setUid($pid);
         $worker->setThreadId(1);
-    }
-
-    /**
-     * @param int $uid
-     * @param bool $useSoftTermination
-     * @return $this
-     */
-    public function onStopWorker(int $uid, bool $useSoftTermination)
-    {
-        if ($useSoftTermination || !$this->getPcntlBridge()->isSupported()) {
-            parent::onStopWorker($uid, $useSoftTermination);
-
-            return $this;
-        } else {
-            $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
-        }
-
-        if (!isset($this->workers[$uid])) {
-            $this->getLogger()->warn("Trying to stop already detached process $uid");
-
-            return $this;
-        }
-
-        return $this;
     }
 
     /**

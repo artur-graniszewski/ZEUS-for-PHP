@@ -5,15 +5,12 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadBootstrap;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
 final class PosixThread extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
     use GarbageCollector;
-
-    const LOOPBACK_INTERFACE = '127.0.0.1';
 
     const MIN_STABLE_PHP_VERSION = 7.2;
 
@@ -59,12 +56,10 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     {
         parent::attach($eventManager);
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
+        //$eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+        //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit(); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
@@ -112,7 +107,6 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
                 $this->workers[$threadId] = null;
                 unset ($this->workers[$threadId]);
-                $this->unregisterWorker($threadId);
 
                 $this->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
 
@@ -121,18 +115,6 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         }
 
         return $this;
-    }
-
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
-        $wasExiting = $this->isTerminating();
-
-        $this->checkPipe();
-        $this->checkWorkers();
-
-        if ($this->isTerminating() && !$wasExiting) {
-            $event->getScheduler()->setIsTerminating(true);
-        }
     }
 
     protected function onSchedulerStop()
@@ -151,14 +133,6 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
                 usleep(10000);
             }
         }
-    }
-
-    /**
-     * @param SchedulerEvent $event
-     */
-    protected function onWorkerStop(SchedulerEvent $event)
-    {
-        $this->unregisterWorker($event->getParam('uid'));
     }
 
     protected function createThread(WorkerEvent $event)
@@ -194,7 +168,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return static::$id;
     }
 
-    protected function onWorkerCreate(WorkerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $uid = $this->createThread($event);
 

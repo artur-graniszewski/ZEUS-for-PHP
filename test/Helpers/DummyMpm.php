@@ -25,4 +25,9 @@ class DummyMpm extends AbstractModule
     {
         return new MultiProcessingModuleCapabilities();
     }
+
+    public function onWorkerCreate(WorkerEvent $event)
+    {
+        // TODO: Implement onWorkerCreate() method.
+    }
 }

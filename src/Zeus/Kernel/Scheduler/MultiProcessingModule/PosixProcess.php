@@ -10,16 +10,13 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeI
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
-final class PosixProcess extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
+final class PosixProcess extends AbstractProcessModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
 {
     /** @var EventManagerInterface */
     protected $events;
 
     /** @var int Parent PID */
     public $ppid;
-
-    /** @var PosixProcessBridgeInterface */
-    protected static $pcntlBridge;
 
     /** @var bool */
     protected $isWorkerTerminating = false;
@@ -35,26 +32,6 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     }
 
     /**
-     * @return PosixProcessBridgeInterface
-     */
-    private static function getPcntlBridge()
-    {
-        if (!isset(static::$pcntlBridge)) {
-            static::$pcntlBridge = new PcntlBridge();
-        }
-
-        return static::$pcntlBridge;
-    }
-
-    /**
-     * @param PosixProcessBridgeInterface $bridge
-     */
-    public static function setPcntlBridge(PosixProcessBridgeInterface $bridge)
-    {
-        static::$pcntlBridge = $bridge;
-    }
-
-    /**
      * @param EventManagerInterface $eventManager
      * @return $this
      */
@@ -63,14 +40,13 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         parent::attach($eventManager);
 
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
+//        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
-        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], WorkerEvent::PRIORITY_INITIALIZE);
+        //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning']);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop']);
 
         return $this;
     }
@@ -98,14 +74,6 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     }
 
     /**
-     * @param EventInterface $event
-     */
-    public function onWorkerTerminate(EventInterface $event)
-    {
-        $this->terminateWorker($event->getParam('uid'), $event->getParam('soft', false));
-    }
-
-    /**
      *
      */
     public function onKernelStart()
@@ -124,10 +92,10 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $this->events->triggerEvent($event);
     }
 
-    public function onWorkerTerminating()
-    {
-        $this->isWorkerTerminating = true;
-    }
+//    public function onWorkerTerminating()
+//    {
+//        $this->isWorkerTerminating = true;
+//    }
 
     public function onWorkerRunning()
     {
@@ -138,10 +106,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
     {
         $this->getPcntlBridge()->pcntlSignalDispatch();
 
-        if ($this->isWorkerTerminating) {
-            $event->getWorker()->setIsTerminating(true);
-            $event->stopPropagation(true);
-        }
+        parent::onWorkerLoop($event);
     }
 
     public function onProcessWaiting(WorkerEvent $event)
@@ -150,14 +115,16 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    public function onSchedulerLoop(SchedulerEvent $oldEvent)
+    /**
+     * @return $this
+     */
+    public function checkWorkers()
     {
-        // catch other potential signals to avoid race conditions
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $this->raiseWorkerExitedEvent($pid, $pid, 1);
         }
 
-        $this->getPcntlBridge()->pcntlSignalDispatch();
+        parent::checkWorkers();
 
         if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
             $event = $this->getSchedulerEvent();
@@ -167,7 +134,10 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
             $event->setParam('processId', $this->ppid);
             $this->events->triggerEvent($event);
         }
+
+        return $this;
     }
+
 
     public function onSchedulerStop()
     {
@@ -177,6 +147,9 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
 
     public function onWorkerCreate(WorkerEvent $event)
     {
+        $pipe = $this->createPipe();
+        $event->setParam('connectionPort', $pipe->getLocalPort());
+
         $pcntl = $this->getPcntlBridge();
         $pid = $pcntl->pcntlFork();
 
@@ -197,6 +170,7 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
             default:
                 // we are the parent
                 $event->setParam('init_process', false);
+                $this->registerWorker($pid, $pipe);
                 break;
         }
 
@@ -219,16 +193,9 @@ final class PosixProcess extends AbstractModule implements MultiProcessingModule
         $pcntl->pcntlSignal(SIGHUP, $onTerminate);
     }
 
-    /**
-     * @param int $pid
-     * @param bool $useSoftTermination
-     * @return $this
-     */
-    protected function terminateWorker($pid, $useSoftTermination)
+    public function onProcessInit(EventInterface $event)
     {
-        $this->getPcntlBridge()->posixKill($pid, $useSoftTermination ? SIGINT : SIGKILL);
-
-        return $this;
+        $this->setConnectionPort($event->getParam('connectionPort'));
     }
 
     /**
