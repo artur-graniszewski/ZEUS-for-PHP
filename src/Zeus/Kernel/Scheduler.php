@@ -190,16 +190,9 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
 
         $message = $message->getParams();
 
-        $details = $message['extra'];
-        $pid = $details['uid'];
-        $threadId = $details['threadId'];
-
-        if ($threadId > 1) {
-            $pid = $threadId;
-        }
-
         /** @var WorkerState $processStatus */
         $processStatus = $message['extra']['status'];
+        $pid = $processStatus['uid'];
 
         // worker status changed, update this information server-side
         if (isset($this->workers[$pid])) {
@@ -503,7 +496,6 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             $processStatus['code'] = WorkerState::TERMINATED;
             $processStatus['time'] = $now;
             $this->workers[$uid] = $processStatus;
-
             $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
             $this->stopWorker($uid, $isSoftTermination);
         }

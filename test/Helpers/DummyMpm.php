@@ -13,9 +13,16 @@ class DummyMpm extends AbstractModule
     {
         parent::attach($eventManager);
 
-        $this->events->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) {
+        $this->events->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
+            $pid = $event->getParam('uid', getmypid());
+            $event->getWorker()->setProcessId($pid);
+            $event->getWorker()->setThreadId(1);
+            $event->getWorker()->setUid($pid);
+        }, WorkerEvent::PRIORITY_FINALIZE + 10);
+    }
 
-        }, WorkerEvent::PRIORITY_INITIALIZE + 10);
+    protected function checkPipe()
+    {
     }
 
     /**
@@ -28,6 +35,8 @@ class DummyMpm extends AbstractModule
 
     public function onWorkerCreate(WorkerEvent $event)
     {
-        // TODO: Implement onWorkerCreate() method.
+        $pipe = $this->createPipe();
+        $event->setParam('connectionPort', $pipe->getLocalPort());
+        $this->setConnectionPort($pipe->getLocalPort());
     }
 }

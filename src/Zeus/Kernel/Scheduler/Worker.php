@@ -278,17 +278,17 @@ class Worker extends AbstractService
      */
     protected function sendStatus(WorkerEvent $event)
     {
-        $status = $event->getWorker()->getStatus();
-        $status->updateStatus();
         $worker = $event->getWorker();
+        $status = $worker->getStatus();
+        $status->updateStatus();
+        $status->setThreadId($worker->getThreadId());
+        $status->setProcessId($worker->getProcessId());
+        $status->setUid($worker->getUid());
 
         $payload = [
             'type' => Message::IS_STATUS,
             'message' => $status->getStatusDescription(),
             'extra' => [
-                'uid' => $worker->getUid(),
-                'threadId' => $worker->getThreadId(),
-                'processId' => $worker->getProcessId(),
                 'logger' => __CLASS__,
                 'status' => $status->toArray()
             ]

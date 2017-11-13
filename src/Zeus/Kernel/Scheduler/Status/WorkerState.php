@@ -78,6 +78,9 @@ class WorkerState
     /** @var int */
     protected $threadId = 1;
 
+    /** @var int */
+    protected $uid = 0;
+
     /**
      * TaskStatus constructor.
      * @param string $serviceName
@@ -113,6 +116,25 @@ class WorkerState
     /**
      * @return int
      */
+    public function getUid() : int
+    {
+        return $this->uid;
+    }
+
+    /**
+     * @param int $uid
+     * @return $this
+     */
+    public function setUid(int $uid)
+    {
+        $this->uid = $uid;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
     public function getNumberOfTasksPerSecond()
     {
         return $this->tasksPerSecond;
@@ -122,7 +144,8 @@ class WorkerState
     {
         return [
             'code' => $this->code,
-            'uid' => $this->getProcessId(),
+            'uid' => $this->getUid(),
+            'processId' => $this->getProcessId(),
             'threadId' => $this->getThreadId(),
             'requests_finished' => $this->tasksFinished,
             'requests_per_second' => $this->tasksPerSecond,

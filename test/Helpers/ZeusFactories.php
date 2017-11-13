@@ -15,6 +15,7 @@ use Zend\Stdlib\ArrayUtils;
 use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Controller\MainController;
 use Zeus\Kernel\IpcServer;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\Scheduler\Factory\WorkerFactory;
 use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
@@ -41,7 +42,6 @@ trait ZeusFactories
         $sm->addAbstractFactory(AbstractServerServiceFactory::class);
         $sm->setFactory(Scheduler::class, SchedulerFactory::class);
         $sm->setFactory(Worker::class, WorkerFactory::class);
-        $sm->setFactory(DummyServiceFactory::class, DummyServiceFactory::class);
         $sm->setFactory(MainControllerMock::class, ControllerFactory::class);
         $sm->setFactory(MainController::class, ControllerFactory::class);
         $sm->setFactory(Manager::class, ManagerFactory::class);
@@ -50,6 +50,8 @@ trait ZeusFactories
         $sm->setFactory('EventManager', EventManagerFactory::class);
         $sm->setFactory('ModuleManager', ModuleManagerFactory::class);
         $sm->setFactory('zeus-event-manager', EventManagerFactory::class);
+        $sm->setFactory(DummyMpm::class, MultiProcessingModuleFactory::class);
+        $sm->setFactory(Scheduler\MultiProcessingModule\PosixProcess::class, MultiProcessingModuleFactory::class);
 
         $serviceListener = new ServiceListenerFactory();
         $r = new ReflectionProperty($serviceListener, 'defaultServiceConfig');
@@ -102,7 +104,7 @@ trait ZeusFactories
                     'schedulers' => [
                         'test_scheduler_1' => [
                             'scheduler_name' => 'test-scheduler',
-                            'multiprocessing_module' => DummyServiceFactory::class,
+                            'multiprocessing_module' => DummyMpm::class,
                             'max_processes' => 32,
                             'max_process_tasks' => 100,
                             'min_spare_processes' => 3,

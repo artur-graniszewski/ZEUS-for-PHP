@@ -13,7 +13,7 @@ class PcntlMockBridge implements PosixProcessBridgeInterface
     protected $posixPppid;
     protected $signalDispatch;
     protected $signalHandlers;
-    protected $isSupported;
+    protected $isSupported = true;
 
     /**
      * @return mixed[]
@@ -161,7 +161,7 @@ class PcntlMockBridge implements PosixProcessBridgeInterface
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
-        return posix_kill($pid, $signal);
+        return true;
     }
 
     /**

@@ -5,8 +5,6 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 

@@ -16,6 +16,7 @@ use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
+use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\DummyServiceFactory;
 use ZeusTest\Helpers\MainControllerMock;
 use ZeusTest\Helpers\ZeusFactories;
@@ -54,9 +55,6 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
     {
         $sm = $this->getServiceManager();
         $sm->setFactory(LoggerInterface::class, LoggerFactory::class);
-        $sm->setFactory(PosixProcess::class, DummyServiceFactory::class);
-        $sm->setFactory(ProcessOpen::class, DummyServiceFactory::class);
-        $sm->setFactory(PosixThread::class, DummyServiceFactory::class);
         $controller = $sm->get($useOriginalClass ? MainController::class : MainControllerMock::class);
 
         return $controller;
