@@ -2,7 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 
-interface PosixProcessBridgeInterface
+interface PcntlBridgeInterface
 {
     /**
      * @return bool

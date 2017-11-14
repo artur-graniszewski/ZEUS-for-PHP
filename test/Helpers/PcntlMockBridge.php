@@ -1,11 +1,11 @@
 <?php
 
 namespace ZeusTest\Helpers;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 
 /**
  */
-class PcntlMockBridge implements PosixProcessBridgeInterface
+class PcntlMockBridge implements PcntlBridgeInterface
 {
     protected $executionLog = [];
     protected $pcntlWaitPids = [];
@@ -172,14 +172,7 @@ class PcntlMockBridge implements PosixProcessBridgeInterface
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
-        if (!$this->isSupported) {
-            $className = basename(str_replace('\\', '/', static::class));
-
-            throw new \RuntimeException(sprintf("PCNTL extension is required by %s but disabled in PHP",
-                    $className
-                )
-            );
-        }
+        return $this->isSupported;
     }
 
     /**

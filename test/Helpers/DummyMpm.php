@@ -25,6 +25,10 @@ class DummyMpm extends AbstractModule
     {
     }
 
+    protected function connectToPipe(WorkerEvent $event)
+    {
+    }
+
     /**
      * @return MultiProcessingModuleCapabilities
      */

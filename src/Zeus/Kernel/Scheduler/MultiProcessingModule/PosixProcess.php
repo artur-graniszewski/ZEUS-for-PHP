@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -57,11 +56,14 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
     {
         $bridge = static::getPcntlBridge();
 
-        try {
-            $bridge->isSupported();
-        } catch (\Throwable $e) {
+        if (!$bridge->isSupported()) {
             if ($throwException) {
-                throw $e;
+                $className = basename(str_replace('\\', '/', static::class));
+
+                throw new \RuntimeException(sprintf("PCNTL extension is required by %s but disabled in PHP",
+                        $className
+                    )
+                );
             }
 
             return false;
@@ -89,10 +91,10 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         $this->events->triggerEvent($event);
     }
 
-//    public function onWorkerTerminating()
-//    {
-//        $this->isWorkerTerminating = true;
-//    }
+    public function onWorkerTerminating()
+    {
+        $this->isWorkerTerminating = true;
+    }
 
     public function onWorkerRunning()
     {

@@ -6,7 +6,7 @@ use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\StreamException;
@@ -19,7 +19,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
     /** @var EventManagerInterface */
     protected $events;
 
-    /** @var PosixProcessBridgeInterface */
+    /** @var PcntlBridgeInterface */
     protected static $pcntlBridge;
 
     protected $stdout;

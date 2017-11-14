@@ -7,7 +7,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
  * @package Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess
  * @codeCoverageIgnore
  */
-class PcntlBridge implements PosixProcessBridgeInterface
+class PcntlBridge implements PcntlBridgeInterface
 {
     /**
      * @return int
@@ -84,18 +84,12 @@ class PcntlBridge implements PosixProcessBridgeInterface
     }
 
     /**
-     * @throws \Exception
      * @internal
      */
     public function isSupported()
     {
-        $className = basename(str_replace('\\', '/', static::class));
-
         if (!$this->isPcntlExtensionLoaded()) {
-            throw new \RuntimeException(sprintf("PCNTL extension is required by %s but disabled in PHP",
-                    $className
-                )
-            );
+            return false;
         }
 
         $requiredFunctions = [
@@ -117,12 +111,10 @@ class PcntlBridge implements PosixProcessBridgeInterface
         }
 
         if ($missingFunctions) {
-            throw new \RuntimeException(sprintf("Following functions are required by %s but disabled in PHP: %s",
-                    $className,
-                    implode(", ", $missingFunctions)
-                )
-            );
+            return false;
         }
+
+        return true;
     }
 
     /**

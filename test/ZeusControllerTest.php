@@ -105,7 +105,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
         ];
 
         foreach ($sentences as $sentence) {
-            $this->assertGreaterThan(0, strpos($logEntries, $sentence));
+            $this->assertGreaterThan(0, strpos($logEntries, $sentence), "Missing sentence " . $sentence);
         }
     }
 

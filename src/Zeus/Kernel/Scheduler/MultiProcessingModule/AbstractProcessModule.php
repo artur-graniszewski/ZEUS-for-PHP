@@ -3,14 +3,14 @@
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PosixProcessBridgeInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
 abstract class AbstractProcessModule extends AbstractModule
 {
     protected $workers = [];
 
-    /** @var PosixProcessBridgeInterface */
+    /** @var PcntlBridgeInterface */
     protected static $pcntlBridge;
 
     /**
@@ -36,7 +36,7 @@ abstract class AbstractProcessModule extends AbstractModule
     }
 
     /**
-     * @return PosixProcessBridgeInterface
+     * @return PcntlBridgeInterface
      */
     protected static function getPcntlBridge()
     {
@@ -48,9 +48,9 @@ abstract class AbstractProcessModule extends AbstractModule
     }
 
     /**
-     * @param PosixProcessBridgeInterface $bridge
+     * @param PcntlBridgeInterface $bridge
      */
-    public static function setPcntlBridge(PosixProcessBridgeInterface $bridge)
+    public static function setPcntlBridge(PcntlBridgeInterface $bridge)
     {
         static::$pcntlBridge = $bridge;
     }
