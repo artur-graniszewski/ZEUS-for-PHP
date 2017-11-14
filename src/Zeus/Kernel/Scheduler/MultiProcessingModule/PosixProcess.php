@@ -39,7 +39,6 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
 
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
 //        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
         //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning']);
@@ -189,11 +188,6 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
         $pcntl->pcntlSignal(SIGINT, $onTerminate);
         $pcntl->pcntlSignal(SIGHUP, $onTerminate);
-    }
-
-    public function onProcessInit(EventInterface $event)
-    {
-        $this->setConnectionPort($event->getParam('connectionPort'));
     }
 
     /**

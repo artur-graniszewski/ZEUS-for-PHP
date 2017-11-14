@@ -100,11 +100,24 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             $worker->attach($this->events);
         }, WorkerEvent::PRIORITY_INITIALIZE + 10);
 
-        $this->events->attach(WorkerEvent::EVENT_WORKER_INIT, function (WorkerEvent $e) use ($eventManager) {
+        $this->events->attach(WorkerEvent::EVENT_WORKER_INIT, function (WorkerEvent $event) use ($eventManager) {
             $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $e) {
                 $this->onExit($e);
             }, SchedulerEvent::PRIORITY_FINALIZE);
-        }, WorkerEvent::PRIORITY_INITIALIZE);
+
+            $this->setConnectionPort($event->getParam('connectionPort'));
+            $stream = @stream_socket_client(sprintf('tcp://%s:%d', static::LOOPBACK_INTERFACE, $this->getConnectionPort()), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
+
+            if (!$stream) {
+                $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getConnectionPort());
+                $this->isTerminating = true;
+            } else {
+                $this->ipc = new SocketStream($stream);
+                $this->ipc->setBlocking(false);
+                $this->ipc->setOption(SO_KEEPALIVE, 1);
+                $this->ipc->setOption(TCP_NODELAY, 1);
+            }
+        }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], WorkerEvent::PRIORITY_INITIALIZE);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
@@ -201,26 +214,12 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
      */
     protected function checkPipe()
     {
-        if (!$this->isTerminating) {
-            if (!isset($this->ipc)) {
-                $stream = @stream_socket_client(sprintf('tcp://%s:%d', static::LOOPBACK_INTERFACE, $this->getConnectionPort()), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
-
-                if (!$stream) {
-                    $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getConnectionPort());
-                    $this->isTerminating = true;
-                } else {
-                    $this->ipc = new SocketStream($stream);
-                    $this->ipc->setBlocking(false);
-                    $this->ipc->setOption(SO_KEEPALIVE, 1);
-                    $this->ipc->setOption(TCP_NODELAY, 1);
-                }
-            } else {
-                try {
-                    $this->ipc->select(0);
-                    $this->ipc->write("!")->flush();
-                } catch (\Exception $exception) {
-                    $this->isTerminating = true;
-                }
+        if (!$this->isTerminating()) {
+            try {
+                $this->ipc->select(0);
+                $this->ipc->write("!")->flush();
+            } catch (\Exception $exception) {
+                $this->isTerminating = true;
             }
         }
 
