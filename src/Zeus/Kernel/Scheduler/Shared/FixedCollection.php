@@ -7,6 +7,11 @@ class FixedCollection implements \Iterator, \ArrayAccess, \Countable
 
     protected $values = [];
 
+    public function __debugInfo()
+    {
+        return $this->toArray();
+    }
+
     public function __construct($arraySize)
     {
         $this->ids = new \SplFixedArray($arraySize);

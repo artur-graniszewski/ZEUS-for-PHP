@@ -19,6 +19,7 @@ use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler\WorkerFlowManager;
 
 /**
  * Class Scheduler
@@ -52,6 +53,9 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
 
     /** @var SchedulerEvent */
     protected $schedulerEvent;
+
+    /** @var WorkerFlowManager */
+    protected $workerFlowManager;
 
     /**
      * @param SchedulerEvent $event
@@ -89,6 +93,8 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
      */
     public function __construct(ConfigInterface $config, EventManagerInterface $eventManager, Worker $workerService, DisciplineInterface $discipline)
     {
+        $this->workerFlowManager = new WorkerFlowManager();
+        $this->workerFlowManager->setScheduler($this);
         $event = new SchedulerEvent();
         $event->setTarget($this);
         $event->setScheduler($this);
@@ -146,8 +152,9 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
                 }
 
                 $e->stopPropagation(true);
-                $e->getWorker()->setIsTerminating(true);
+                //
                 $this->startLifeCycle();
+                $e->getWorker()->setIsTerminating(true);
 
             }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -260,7 +267,11 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         }
 
         $this->setIsTerminating(true);
+
+        $this->log(Logger::INFO, "Terminating scheduler $pid");
         $this->stopWorker($pid, true);
+        $this->getMultiProcessingModule()->checkWorkers();
+        $this->log(Logger::INFO, "Workers checked");
 
         unlink($fileName);
 
@@ -315,7 +326,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
                 return $this;
             }
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
-            $this->getMultiProcessingModule()->startWorker(['server' => true]);
+            $this->workerFlowManager->startWorker(['server' => true]);
 
         } catch (\Throwable $exception) {
             $this->handleException($exception);
@@ -330,7 +341,9 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
         $this->mainLoop();
         // @fixme: kernelLoop() should be merged with mainLoop()
+        $this->getLogger()->debug("Scheduler stop event triggering...");
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
+        $this->getLogger()->debug("Scheduler stop event finished");
     }
 
     /**
@@ -351,7 +364,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
      */
     protected function stopWorker(int $uid, bool $isSoftStop) : Scheduler
     {
-        $this->getMultiProcessingModule()->stopWorker($uid, $isSoftStop);
+        $this->workerFlowManager->stopWorker($uid, $isSoftStop);
 
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
@@ -369,10 +382,6 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
      */
     protected function onShutdown(SchedulerEvent $event)
     {
-        if ($this->isTerminating()) {
-            return;
-        }
-
         $exception = $event->getParam('exception', null);
 
         $this->log(Logger::DEBUG, "Shutting down" . ($exception ? ' with exception: ' . $exception->getMessage() : ''));
@@ -393,6 +402,15 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             }
         }
 
+        while ($this->workers->count()) {
+            $this->getMultiProcessingModule()->checkWorkers();
+            if ($this->workers->count()) {
+                sleep(1);
+                $amount = count($this->workers);
+                $this->getLogger()->info("Waiting $amount for workers to exit");
+            }
+        }
+
         $this->log(Logger::NOTICE, "Scheduler terminated");
     }
 
@@ -409,7 +427,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         }
 
         for ($i = 0; $i < $count; ++$i) {
-            $this->getMultiProcessingModule()->startWorker();
+            $this->workerFlowManager->startWorker();
         }
 
         return $this;
@@ -514,6 +532,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         } while (!$this->isTerminating());
 
+        $this->getLogger()->debug("Scheduler loop finished");
         return $this;
     }
 

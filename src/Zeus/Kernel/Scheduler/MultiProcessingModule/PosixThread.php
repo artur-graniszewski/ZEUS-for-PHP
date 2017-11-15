@@ -27,7 +27,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     protected $workers = [];
 
     /** @var int */
-    protected static $id = 0;
+    protected static $id = 1;
 
     /**
      * @param bool $throwException
@@ -59,7 +59,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         //$eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
+        //$eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop2($e); }, SchedulerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit(); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
@@ -98,41 +98,20 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     /**
      * @return $this
      */
-    protected function checkWorkers()
+    public function checkWorkers()
     {
         parent::checkWorkers();
 
         foreach ($this->workers as $threadId => $thread) {
             if ($thread->isTerminated()) {
-
                 $this->workers[$threadId] = null;
                 unset ($this->workers[$threadId]);
 
                 $this->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
-
-                continue;
             }
         }
 
         return $this;
-    }
-
-    protected function onSchedulerStop()
-    {
-        parent::onSchedulerStop();
-
-        $this->checkWorkers();
-        foreach ($this->workers as $uid => $thread) {
-            $this->stopWorker($uid, false);
-        }
-
-        while ($this->workers) {
-            $this->checkWorkers();
-
-            if ($this->workers) {
-                usleep(10000);
-            }
-        }
     }
 
     protected function createThread(WorkerEvent $event)

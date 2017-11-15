@@ -24,10 +24,6 @@ interface MultiProcessingModuleInterface
 
     public function setSchedulerEvent(SchedulerEvent $schedulerEvent);
 
-    public function startWorker($startParameters = null);
-
-    public function stopWorker(int $uid, bool $useSoftTermination);
-
     public function setWorkerEvent(WorkerEvent $workerEvent);
 
     public function getSchedulerEvent() : SchedulerEvent;

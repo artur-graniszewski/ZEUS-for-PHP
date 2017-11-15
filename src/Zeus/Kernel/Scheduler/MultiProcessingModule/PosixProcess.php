@@ -41,7 +41,7 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
         //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning']);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerInit']);
+
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
 
         return $this;
@@ -79,16 +79,6 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
     {
         // make the current process a session leader
         $this->getPcntlBridge()->posixSetSid();
-    }
-
-    public function onSchedulerTerminate()
-    {
-        $event = $this->getSchedulerEvent();
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-        $event->setParam('uid', getmypid());
-        $event->setParam('processId', getmypid());
-        $event->setParam('threadId', 1);
-        $this->events->triggerEvent($event);
     }
 
     public function onWorkerTerminating()
@@ -179,17 +169,6 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         $event->getWorker()->setProcessId($pid);
         $event->getWorker()->setThreadId(1);
         $event->getWorker()->setUid($pid);
-    }
-
-    public function onSchedulerInit()
-    {
-        $pcntl = $this->getPcntlBridge();
-        $onTerminate = function() { $this->onSchedulerTerminate(); };
-        $pcntl->pcntlSignal(SIGTERM, $onTerminate);
-        $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
-        $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
-        $pcntl->pcntlSignal(SIGINT, $onTerminate);
-        $pcntl->pcntlSignal(SIGHUP, $onTerminate);
     }
 
     /**

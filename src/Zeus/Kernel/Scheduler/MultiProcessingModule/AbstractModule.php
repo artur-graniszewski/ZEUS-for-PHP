@@ -18,13 +18,13 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     const UPSTREAM_CONNECTION_TIMEOUT = 5;
 
     /** @var EventManagerInterface */
-    protected $events;
+    private $events;
 
     /** @var int */
-    protected $connectionPort;
+    private $connectionPort;
 
     /** @var SchedulerEvent */
-    protected $schedulerEvent;
+    private $schedulerEvent;
 
     /** @var WorkerEvent */
     protected $workerEvent;
@@ -33,19 +33,24 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     private $isTerminating = false;
 
     /** @var SocketServer[] */
-    protected $ipcServers = [];
+    private $ipcServers = [];
 
     /** @var SocketStream[] */
-    protected $ipcConnections = [];
+    private $ipcConnections = [];
 
     /** @var SocketStream */
     protected $ipc;
 
     /** @var Selector */
-    protected $ipcSelector;
+    private $ipcSelector;
 
     /** @var LoggerInterface */
     private $logger;
+
+    public function __construct()
+    {
+        $this->ipcSelector = new Selector();
+    }
 
     /**
      * @param SchedulerEvent $event
@@ -84,11 +89,6 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $workerEvent;
     }
 
-    public function __construct()
-    {
-        $this->ipcSelector = new Selector();
-    }
-
     public function attach(EventManagerInterface $eventManager)
     {
         $this->events = $eventManager;
@@ -107,6 +107,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             }, SchedulerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], WorkerEvent::PRIORITY_INITIALIZE);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], WorkerEvent::PRIORITY_FINALIZE + 1);
@@ -157,7 +158,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this->isTerminating;
     }
 
-    protected function checkWorkers()
+    public function checkWorkers()
     {
         // read all keep-alive messages
         if ($this->ipcSelector->select(0)) {
@@ -222,7 +223,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             try {
                 $this->ipc->select(0);
                 $this->ipc->write("!")->flush();
-            } catch (\Exception $exception) {
+            } catch (\Throwable $exception) {
                 $this->isTerminating = true;
             }
         }
@@ -284,16 +285,6 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this;
     }
 
-    public function stopWorker(int $uid, bool $isSoftStop)
-    {
-        $newEvent = $this->getSchedulerEvent();
-        $newEvent->setParam('uid', $uid);
-        $newEvent->setParam('soft', $isSoftStop);
-        $newEvent->setName(SchedulerEvent::EVENT_WORKER_TERMINATE);
-
-        $this->events->triggerEvent($newEvent);
-    }
-
     protected function unregisterWorker(int $uid)
     {
         if (isset($this->ipcConnections[$uid])) {
@@ -346,37 +337,5 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $this->connectionPort = $port;
 
         return $this;
-    }
-
-    public function startWorker($startParameters = null)
-    {
-        $event = $this->getWorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_CREATE);
-
-        if (is_array($startParameters)) {
-            $event->setParams($startParameters);
-        }
-        $this->events->triggerEvent($event);
-        if (!$event->getParam('init_process')) {
-            return $this;
-        }
-
-        $params = $event->getParams();
-
-        $pid = $event->getParam('uid');
-        $event = $this->getWorkerEvent();
-        // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldnt be cloned
-        $worker = $event->getWorker();
-        $worker->setUid($pid);
-        $worker->setProcessId(getmypid());
-        $worker->setThreadId($event->getParam('threadId', 1));
-
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
-        $event->setParams($params);
-        $event->setParam('uid', $pid);
-        $event->setParam('processId', getmypid());
-        $event->setParam('threadId', $event->getParam('threadId', 1));
-        $event->setTarget($worker);
-        $this->events->triggerEvent($event);
     }
 }

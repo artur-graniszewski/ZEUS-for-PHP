@@ -13,7 +13,7 @@ class DummyMpm extends AbstractModule
     {
         parent::attach($eventManager);
 
-        $this->events->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
             $pid = $event->getParam('uid', getmypid());
             $event->getWorker()->setProcessId($pid);
             $event->getWorker()->setThreadId(1);

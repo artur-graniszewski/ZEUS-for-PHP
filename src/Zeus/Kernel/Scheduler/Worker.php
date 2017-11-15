@@ -223,6 +223,7 @@ class Worker extends AbstractService
 
         if ($exception) {
             $payload['exception'] = $exception;
+            $this->reportException($exception);
         }
 
         $event = new WorkerEvent();
@@ -257,8 +258,7 @@ class Worker extends AbstractService
                 $this->getEventManager()->triggerEvent($event);
 
             } catch (\Error $exception) {
-                $this->reportException($exception);
-                $this->terminate();
+                $this->terminate($exception);
             } catch (\Throwable $exception) {
                 $this->reportException($exception);
             }
