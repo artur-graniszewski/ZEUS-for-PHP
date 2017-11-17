@@ -5,7 +5,6 @@ namespace Zeus\ServerService\Shared\Networking;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
@@ -97,7 +96,7 @@ final class SocketMessageBroker
      */
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerStart'], WorkerEvent::PRIORITY_REGULAR);
+        $events->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onWorkerInit'], WorkerEvent::PRIORITY_REGULAR);
         $events->attach(WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $event) {
             if ($this->isLeader && !$this->isBusy) {
                 $event->getWorker()->setRunning();
@@ -238,14 +237,14 @@ final class SocketMessageBroker
         $server->setTcpNoDelay(true);
         $server->bind('127.0.0.1', 1, 0);
         $worker = $event->getWorker();
-        $this->uid = $worker->getThreadId() > 1 ? $worker->getThreadId() : $worker->getProcessId();
+        $this->uid = $worker->getUid();
         $this->workerServer = $server;
     }
 
     /**
      * @param WorkerEvent $event
      */
-    public function onWorkerStart(WorkerEvent $event)
+    public function onWorkerInit(WorkerEvent $event)
     {
         $this->createWorkerServer($event);
     }

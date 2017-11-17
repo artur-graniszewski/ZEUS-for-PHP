@@ -9,17 +9,11 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 
 final class PosixProcess extends AbstractProcessModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
 {
-    /** @var EventManagerInterface */
-    protected $events;
-
     /** @var int Parent PID */
     public $ppid;
 
-    /** @var bool */
-    protected $isWorkerTerminating = false;
-
     /**
-     * PosixDriver constructor.
+     * PosixProcess constructor.
      */
     public function __construct()
     {
@@ -36,13 +30,7 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
     {
         parent::attach($eventManager);
 
-        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart']);
-//        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting']);
-        //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate']);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onWorkerRunning']);
-
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], -9999);
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() { $this->onKernelStart();});
 
         return $this;
     }
@@ -72,42 +60,27 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         return true;
     }
 
-    /**
-     *
-     */
-    public function onKernelStart()
+    private function onKernelStart()
     {
         // make the current process a session leader
         $this->getPcntlBridge()->posixSetSid();
     }
 
-    public function onWorkerTerminating()
-    {
-        $this->isWorkerTerminating = true;
-    }
-
-    public function onWorkerRunning()
-    {
-        $this->getPcntlBridge()->pcntlSigprocmask(SIG_BLOCK, [SIGTERM]);
-    }
-
-    public function onWorkerLoop(WorkerEvent $event)
+    protected function onWorkerLoop(WorkerEvent $event)
     {
         $this->getPcntlBridge()->pcntlSignalDispatch();
+
+        if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
+            $this->setIsTerminating(true);
+        }
 
         parent::onWorkerLoop($event);
-    }
-
-    public function onProcessWaiting(WorkerEvent $event)
-    {
-        $this->getPcntlBridge()->pcntlSigprocmask(SIG_UNBLOCK, [SIGTERM]);
-        $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
     /**
      * @return $this
      */
-    public function checkWorkers()
+    protected function checkWorkers()
     {
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $this->raiseWorkerExitedEvent($pid, $pid, 1);
@@ -115,26 +88,16 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
 
         parent::checkWorkers();
 
-        if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
-            $event = $this->getSchedulerEvent();
-            $event->setName(SchedulerEvent::EVENT_SCHEDULER_STOP);
-            $event->setParam('uid', $this->ppid);
-            $event->setParam('threadId', 1);
-            $event->setParam('processId', $this->ppid);
-            $this->events->triggerEvent($event);
-        }
-
         return $this;
     }
 
-
-    public function onSchedulerStop()
+    protected function onSchedulerStop(SchedulerEvent $event)
     {
         $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    public function onWorkerCreate(WorkerEvent $event)
+    protected function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
         $event->setParam('connectionPort', $pipe->getLocalPort());
@@ -147,7 +110,9 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
                 throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
             case 0:
                 // we are the new process
-                $onTerminate = function() { $this->onWorkerTerminating(); };
+                $this->ppid = $this->getPcntlBridge()->posixGetPpid();
+
+                $onTerminate = function() { $this->setIsTerminating(true); };
                 $pcntl->pcntlSignal(SIGTERM, $onTerminate);
                 $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
                 $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
@@ -163,12 +128,10 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
                 break;
         }
 
-        $event->setParam('uid', $pid);
-        $event->setParam('processId', $pid);
-        $event->setParam('threadId', 1);
-        $event->getWorker()->setProcessId($pid);
-        $event->getWorker()->setThreadId(1);
-        $event->getWorker()->setUid($pid);
+        $worker = $event->getWorker();
+        $worker->setProcessId($pid);
+        $worker->setThreadId(1);
+        $worker->setUid($pid);
     }
 
     /**

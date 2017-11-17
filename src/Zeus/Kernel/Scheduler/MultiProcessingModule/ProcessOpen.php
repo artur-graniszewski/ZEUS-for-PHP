@@ -2,23 +2,17 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\PipeStream;
 use Zeus\Networking\Stream\Selector;
-use Zeus\ServerService\ManagerEvent;
 
 final class ProcessOpen extends AbstractProcessModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
-    /** @var EventManagerInterface */
-    protected $events;
-
     /** @var PcntlBridgeInterface */
     protected static $pcntlBridge;
 
@@ -54,7 +48,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
     }
 
     /**
-     * PosixDriver constructor.
+     * ProcessOpen constructor.
      */
     public function __construct()
     {
@@ -78,23 +72,12 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
     {
         parent::attach($eventManager);
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, [$this, 'onProcessInit'], WorkerEvent::PRIORITY_INITIALIZE + 1);
-        //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onWorkerTerminate'], -9000);
-        //$eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onSchedulerStop'], SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, [$this, 'onKernelLoop'], -9000);
-        $eventManager->getSharedManager()->attach('*', ManagerEvent::EVENT_SERVICE_STOP, function() { $this->onServiceStop(); }, -9000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerExited($e); }, WorkerEvent::PRIORITY_FINALIZE);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
 
         return $this;
-    }
-
-    public function onServiceStop()
-    {
-        while ($this->workers) {
-            $this->checkWorkers();
-            usleep(10000);
-        }
     }
 
     /**
@@ -102,7 +85,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
      * @param bool $forceFlush
      * @return $this
      */
-    protected function flushBuffers(int $uid, bool $forceFlush)
+    private function flushBuffers(int $uid, bool $forceFlush)
     {
         foreach (['stdout', 'stderr'] as $type) {
             if (!isset($this->pipeBuffer[$uid][$type])) {
@@ -127,7 +110,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
     /**
      * @return $this
      */
-    public function checkWorkers()
+    protected function checkWorkers()
     {
         parent::checkWorkers();
 
@@ -136,7 +119,8 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
                 $status = proc_get_status($worker['resource']);
 
                 if (!$status['running']) {
-                    $this->processExited($pid);
+                    $this->cleanProcessPipes($pid);
+                    $this->raiseWorkerExitedEvent($pid, $pid, 1);
                 }
             }
         }
@@ -144,73 +128,61 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         return $this;
     }
 
-    private function processExited($pid)
+    protected function onWorkerExited(WorkerEvent $event)
+    {
+        $this->cleanProcessPipes($event->getWorker()->getUid());
+    }
+
+    private function cleanProcessPipes($uid)
     {
         // check stdOut and stdErr...
-        foreach (['stdout' => $this->stdOutStreams[$pid], 'stderr' => $this->stdErrStreams[$pid]] as $name => $stream) {
+        foreach (['stdout' => $this->stdOutStreams[$uid], 'stderr' => $this->stdErrStreams[$uid]] as $name => $stream) {
             try {
                 if ($stream->select(0)) {
-                    $this->pipeBuffer[$pid][$name] .= $stream->read();
+                    $this->pipeBuffer[$uid][$name] .= $stream->read();
                 }
             } catch (StreamException $e) {
 
             }
         }
 
-        $this->flushBuffers($pid, false);
-        unset ($this->pipeBuffer[$pid]);
-        @fclose($this->workers[$pid]['resource']);
-        $this->raiseWorkerExitedEvent($pid, $pid, 1);
-        unset ($this->workers[$pid]);
-    }
+        $this->flushBuffers($uid, false);
+        unset ($this->pipeBuffer[$uid]);
 
-    public function onKernelLoop(SchedulerEvent $event)
-    {
-        $this->checkWorkers();
-    }
+        try {
+            if (isset($this->stdErrStreams[$uid])) {
+                $this->stdErrStreams[$uid]->close();
+            }
+        } catch (StreamException $ex) {
 
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
-        $wasExiting = $this->isTerminating();
-
-        $this->checkPipe();
-        $this->checkWorkers();
-
-        if ($this->isTerminating() && !$wasExiting) {
-            $event->getScheduler()->setIsTerminating(true);
         }
-    }
 
-    public function onProcessInit(EventInterface $event)
-    {
-        $this->setConnectionPort($event->getParam('connectionPort'));
-    }
+        try {
+            if (isset($this->stdOutStreams[$uid])) {
+                $this->stdOutStreams[$uid]->close();
+            }
+        } catch (StreamException $ex) {
 
-//    public function onSchedulerStop()
-//    {
-//        $this->checkPipe();
-//
-//        parent::onSchedulerStop();
-//
-//        $this->checkWorkers();
-//        foreach ($this->workers as $uid => $worker) {
-//            $this->stopWorker($uid, true);
-//        }
-//
-//        while ($this->workers) {
-//            $this->checkWorkers();
-//
-//            if ($this->workers) {
-//                usleep(1000);
-//            }
-//        }
-//    }
+        }
+
+        unset ($this->stdErrStreams[$uid]);
+        unset ($this->stdOutStreams[$uid]);
+        $tmpArray = $this->stdErrStreams;
+        $this->stdErrStreams = $tmpArray;
+
+        $tmpArray = $this->stdOutStreams;
+        $this->stdOutStreams = $tmpArray;
+        @fclose($this->workers[$uid]['resource']);
+        unset ($this->workers[$uid]);
+
+        return $this;
+    }
 
     /**
      * @param WorkerEvent $event
      * @return int
      */
-    public function createProcess(WorkerEvent $event) : int
+    private function createProcess(WorkerEvent $event) : int
     {
         $descriptors = [
             0 => ['pipe', 'r'], // stdin
@@ -255,51 +227,16 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         return $pid;
     }
 
-    public function onWorkerCreate(WorkerEvent $event)
+    protected function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
         $event->setParam('connectionPort', $pipe->getLocalPort());
         $pid = $this->createProcess($event);
         $this->registerWorker($pid, $pipe);
-        $event->setParam('uid', $pid);
-        $event->setParam('processId', $pid);
-        $event->setParam('threadId', 1);
         $worker = $event->getWorker();
         $worker->setProcessId($pid);
         $worker->setUid($pid);
         $worker->setThreadId(1);
-    }
-
-    /**
-     * @param int $uid
-     * @return $this
-     */
-    protected function closeProcessPipes(int $uid)
-    {
-        try {
-            if (isset($this->stdErrStreams[$uid])) {
-                $this->stdErrStreams[$uid]->close();
-            }
-        } catch (StreamException $ex) {
-
-        }
-
-        try {
-            if (isset($this->stdOutStreams[$uid])) {
-                $this->stdOutStreams[$uid]->close();
-            }
-        } catch (StreamException $ex) {
-
-        }
-
-        unset ($this->stdErrStreams[$uid]);
-        unset ($this->stdOutStreams[$uid]);
-        $tmpArray = $this->stdErrStreams;
-        $this->stdErrStreams = $tmpArray;
-
-        $tmpArray = $this->stdOutStreams;
-        $this->stdOutStreams = $tmpArray;
-        return $this;
     }
 
     /**

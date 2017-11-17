@@ -270,7 +270,6 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
 
         $this->log(Logger::INFO, "Terminating scheduler $pid");
         $this->stopWorker($pid, true);
-        $this->getMultiProcessingModule()->checkWorkers();
         $this->log(Logger::INFO, "Workers checked");
 
         unlink($fileName);
@@ -442,9 +441,6 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             return;
         }
 
-        $worker = $event->getWorker();
-        $worker->setProcessId($event->getParam('uid'));
-        $worker->setThreadId($event->getParam('threadId', 1));
         $this->collectCycles();
         $this->setIsTerminating(true);
     }
@@ -459,11 +455,11 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             return $this;
         }
 
-        $pid = $event->getParam('uid');
+        $uid = $event->getWorker()->getUid();
 
-        $this->workers[$pid] = [
+        $this->workers[$uid] = [
             'code' => WorkerState::WAITING,
-            'uid' => $pid,
+            'uid' => $uid,
             'time' => microtime(true),
             'service_name' => $this->getConfig()->getServiceName(),
             'requests_finished' => 0,

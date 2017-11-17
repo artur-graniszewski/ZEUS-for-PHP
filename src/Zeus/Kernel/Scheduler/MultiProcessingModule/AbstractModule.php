@@ -92,26 +92,22 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     public function attach(EventManagerInterface $eventManager)
     {
         $this->events = $eventManager;
-        $this->events->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) {
-            $worker = clone $e->getWorker();
-            $worker->setIsTerminating(false);
-            $e->setWorker($worker);
-            $e->setTarget($worker);
-            $worker->attach($this->events);
-        }, WorkerEvent::PRIORITY_INITIALIZE + 10);
-
         $this->events->attach(WorkerEvent::EVENT_WORKER_INIT, function (WorkerEvent $event) use ($eventManager) {
             $this->connectToPipe($event);
             $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $e) {
-                $this->onExit($e);
+                $this->onWorkerExit($e);
             }, SchedulerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop(); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, [$this, 'onWorkerLoop'], WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function($e) { $this->onWorkerInit($e);}, WorkerEvent::PRIORITY_INITIALIZE + 1);
+
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop($e); }, SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function (WorkerEvent $e) { $this->onWorkerLoop($e);}, WorkerEvent::PRIORITY_INITIALIZE);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], WorkerEvent::PRIORITY_FINALIZE + 1);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerTerminate($e); }, -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function(SchedulerEvent $e) {$this->onKernelLoop($e);}, -9000);
     }
 
     protected function connectToPipe(WorkerEvent $event)
@@ -130,7 +126,12 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         }
     }
 
-    public abstract function onWorkerCreate(WorkerEvent $event);
+    protected function onKernelLoop(SchedulerEvent $event)
+    {
+        $this->checkWorkers();
+    }
+
+    protected abstract function onWorkerCreate(WorkerEvent $event);
 
 
     /**
@@ -144,7 +145,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     /**
      * @param WorkerEvent $event
      */
-    private function onExit(WorkerEvent $event)
+    protected function onWorkerExit(WorkerEvent $event)
     {
         /** @var \Exception $exception */
         $exception = $event->getParam('exception');
@@ -153,12 +154,17 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         exit($status);
     }
 
-    public function isTerminating()
+    public function isTerminating() : bool
     {
         return $this->isTerminating;
     }
 
-    public function checkWorkers()
+    public function setIsTerminating(bool $isTerminating)
+    {
+        $this->isTerminating = $isTerminating;
+    }
+
+    protected function checkWorkers()
     {
         // read all keep-alive messages
         if ($this->ipcSelector->select(0)) {
@@ -231,7 +237,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this;
     }
 
-    public function onSchedulerLoop(SchedulerEvent $event)
+    protected function onSchedulerLoop(SchedulerEvent $event)
     {
         $wasExiting = $this->isTerminating();
 
@@ -244,7 +250,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         }
     }
 
-    public function onWorkerLoop(WorkerEvent $event)
+    protected function onWorkerLoop(WorkerEvent $event)
     {
         $this->checkPipe();
 
@@ -262,9 +268,6 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $event->getWorker()->setUid($uid);
         $event->getWorker()->setProcessId($processId);
         $event->getWorker()->setThreadId($threadId);
-        $event->setParam('uid', $uid);
-        $event->setParam('threadId', $threadId);
-        $event->setParam('processId', $processId);
         $this->events->triggerEvent($event);
     }
 
@@ -319,7 +322,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $socketServer;
     }
 
-    protected function onSchedulerStop()
+    protected function onSchedulerStop(SchedulerEvent $event)
     {
         $this->isTerminating = true;
     }
@@ -335,7 +338,15 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     protected function setConnectionPort(int $port)
     {
         $this->connectionPort = $port;
+    }
 
-        return $this;
+    protected function onSchedulerInit(SchedulerEvent $event)
+    {
+
+    }
+
+    protected function onWorkerInit(WorkerEvent $event)
+    {
+        $this->setConnectionPort($event->getParam('connectionPort'));
     }
 }

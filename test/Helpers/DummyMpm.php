@@ -37,7 +37,7 @@ class DummyMpm extends AbstractModule
         return new MultiProcessingModuleCapabilities();
     }
 
-    public function onWorkerCreate(WorkerEvent $event)
+    protected function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
         $event->setParam('connectionPort', $pipe->getLocalPort());

@@ -56,19 +56,14 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     {
         parent::attach($eventManager);
 
-        //$eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e); }, SchedulerEvent::PRIORITY_FINALIZE + 1);
-        //$eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerStop($e); }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
-        //$eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop2($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerInit(); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         return $this;
     }
 
-    protected function onWorkerInit()
+    protected function onWorkerInit(WorkerEvent $event)
     {
-        $this->setConnectionPort(\ZEUS_THREAD_CONN_PORT);
+        $event->setParam('connectionPort', \ZEUS_THREAD_CONN_PORT);
     }
 
     protected function onServiceStop()
@@ -98,7 +93,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     /**
      * @return $this
      */
-    public function checkWorkers()
+    protected function checkWorkers()
     {
         parent::checkWorkers();
 
@@ -147,13 +142,9 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return static::$id;
     }
 
-    public function onWorkerCreate(WorkerEvent $event)
+    protected function onWorkerCreate(WorkerEvent $event)
     {
         $uid = $this->createThread($event);
-
-        $event->setParam('uid', $uid);
-        $event->setParam('processId', getmypid());
-        $event->setParam('threadId', $uid);
         $worker = $event->getWorker();
         $worker->setThreadId($uid);
         $worker->setProcessId(getmypid());
@@ -166,8 +157,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
             $this->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
         }
 
-        $this->setConnectionPort(\ZEUS_THREAD_CONN_PORT);
-        static::$id = \ZEUS_THREAD_ID;
+        parent::onSchedulerInit($event);
     }
 
     /**

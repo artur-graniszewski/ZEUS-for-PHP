@@ -186,6 +186,7 @@ class IpcServer implements ListenerAggregateInterface
 
         $streams = $selector->getSelectedStreams(Selector::OP_READ);
 
+
         foreach ($streams as $stream) {
             /** @var SocketStream $stream */;
             if ($stream->getLocalAddress() !== $this->ipcServer->getLocalAddress()) {
@@ -203,8 +204,8 @@ class IpcServer implements ListenerAggregateInterface
             $ipc = new IpcSocketStream($stream, 0);
 
             try {
-
                 $messages = $ipc->readAll(true);
+
                 $this->distributeMessages($messages);
             } catch (\Exception $exception) {
                 $stream->close();
@@ -232,6 +233,9 @@ class IpcServer implements ListenerAggregateInterface
     private function onWorkerLoop(WorkerEvent $event)
     {
         $messages = $this->ipcClient->readAll(true);
+        if (!$messages) {
+            return;
+        }
 
         foreach ($messages as $key => $payload) {
             $messages[$key]['aud'] = static::AUDIENCE_SELF;
@@ -321,7 +325,7 @@ class IpcServer implements ListenerAggregateInterface
                     unset($this->ipcStreams[$cid]);
                     $this->ipcSelector->unregister($this->ipcStreams[$cid]);
                 }
-                //trigger_error("SENT $message FROM $senderId TO $cid ($audience)");
+//                trigger_error("SENT $message FROM $senderId TO $cid ($audience)");
             }
         }
 
@@ -361,7 +365,7 @@ class IpcServer implements ListenerAggregateInterface
                 return;
             }
 
-            $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
+            $uid = $event->getWorker()->getUid();
             $this->registerIpc($ipcPort, $uid);
             $event->getWorker()->setIpc($this);
         }, WorkerEvent::PRIORITY_INITIALIZE);

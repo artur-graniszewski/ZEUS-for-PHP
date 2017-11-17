@@ -80,7 +80,7 @@ abstract class AbstractProcessModule extends AbstractModule
         return $this;
     }
 
-    public function onSchedulerLoop(SchedulerEvent $event)
+    protected function onSchedulerLoop(SchedulerEvent $event)
     {
         $wasExiting = $this->isTerminating();
 
@@ -95,14 +95,15 @@ abstract class AbstractProcessModule extends AbstractModule
     /**
      * @return $this
      */
-    public function checkWorkers()
+    protected function checkWorkers()
     {
-        parent::checkWorkers();
         if ($this->getPcntlBridge()->isSupported()) {
             while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
                 $this->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
+
+        parent::checkWorkers();
 
         return $this;
     }

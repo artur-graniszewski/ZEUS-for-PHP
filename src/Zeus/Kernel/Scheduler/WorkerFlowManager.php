@@ -38,6 +38,7 @@ class WorkerFlowManager
         $worker->setEventManager($this->scheduler->getEventManager());
         $worker->setLogger($this->scheduler->getLogger());
         $worker->setConfig($this->scheduler->getConfig());
+        $worker->attach($this->scheduler->getEventManager());
 
         return $worker;
     }
@@ -62,21 +63,11 @@ class WorkerFlowManager
 
         $params = $event->getParams();
 
-        $uid = $event->getParam('uid');
-        $threadId = $event->getParam('threadId', 1);
-        $processId = $event->getParam('processId', getmypid());
-
         // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldnt be cloned
-        $worker->setUid($uid);
-        $worker->setProcessId($processId);
-        $worker->setThreadId($threadId);
 
         // worker init...
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams($params);
-        $event->setParam('uid', $uid);
-        $event->setParam('processId', $processId);
-        $event->setParam('threadId', $threadId);
         $event->setTarget($worker);
         $event->setWorker($worker);
         $events->triggerEvent($event);
@@ -84,9 +75,6 @@ class WorkerFlowManager
         // worker init...
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_EXIT);
         $event->setParams($params);
-        $event->setParam('uid', $uid);
-        $event->setParam('processId', $processId);
-        $event->setParam('threadId', $threadId);
         $event->setTarget($worker);
         $event->setWorker($worker);
         $events->triggerEvent($event);
