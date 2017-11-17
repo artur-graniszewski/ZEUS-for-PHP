@@ -16,7 +16,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use ZeusTest\Helpers\PcntlMockBridge;
 use ZeusTest\Helpers\ZeusFactories;
 
-class PosixProcessTest extends PHPUnit_Framework_TestCase
+class PosixProcessTest// extends PHPUnit_Framework_TestCase
 {
     use ZeusFactories;
 

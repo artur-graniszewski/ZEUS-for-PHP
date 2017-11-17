@@ -53,6 +53,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $config->setServiceName('test');
         $worker = new Worker();
         $worker->setProcessId(getmypid());
+        $worker->setUid(getmypid());
         $worker->setConfig($config);
         $worker->setIpc($event->getScheduler()->getIpc());
         $worker->setLogger($event->getScheduler()->getLogger());
@@ -132,12 +133,13 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
-        $process = new Worker();
-        $process->setConfig($config);
-        $process->setIpc($event->getTarget()->getIpc());
-        $process->setLogger($event->getScheduler()->getLogger());
-        $process->attach($events);
-        $process->setProcessId(getmypid());
+        $worker = new Worker();
+        $worker->setConfig($config);
+        $worker->setIpc($event->getTarget()->getIpc());
+        $worker->setLogger($event->getScheduler()->getLogger());
+        $worker->attach($events);
+        $worker->setProcessId(getmypid());
+        $worker->setUid(getmypid());
 
         $received = null;
         $message = new SocketTestMessage(function($connection, $data) use (&$received) {
@@ -160,8 +162,8 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
         $event = new WorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
-        $event->setTarget($process);
-        $event->setWorker($process);
+        $event->setTarget($worker);
+        $event->setWorker($worker);
 
         $events->triggerEvent($event);
 

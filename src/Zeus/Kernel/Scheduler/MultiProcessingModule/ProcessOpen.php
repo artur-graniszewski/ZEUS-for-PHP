@@ -5,7 +5,6 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\PipeStream;
@@ -13,9 +12,6 @@ use Zeus\Networking\Stream\Selector;
 
 final class ProcessOpen extends AbstractProcessModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
 {
-    /** @var PcntlBridgeInterface */
-    protected static $pcntlBridge;
-
     protected $stdout;
 
     protected $stderr;
@@ -114,14 +110,12 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
     {
         parent::checkWorkers();
 
-        if (!$this->getPcntlBridge()->isSupported()) {
-            foreach ($this->workers as $pid => $worker) {
-                $status = proc_get_status($worker['resource']);
+        foreach ($this->workers as $pid => $worker) {
+            $status = proc_get_status($worker['resource']);
 
-                if (!$status['running']) {
-                    $this->cleanProcessPipes($pid);
-                    $this->raiseWorkerExitedEvent($pid, $pid, 1);
-                }
+            if (!$status['running']) {
+                $this->cleanProcessPipes($pid);
+                $this->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
 
@@ -202,12 +196,12 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
 
-        $process = proc_open($command, $descriptors, $pipes, getcwd());
+        $process = \proc_open($command, $descriptors, $pipes, getcwd());
         if ($process === false) {
             throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
         }
 
-        $status = proc_get_status($process);
+        $status = \proc_get_status($process);
         $pid = $status['pid'];
 
         $this->workers[$pid] = [

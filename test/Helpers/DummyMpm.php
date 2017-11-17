@@ -6,12 +6,18 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\AbstractModule;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Networking\SocketServer;
 
 class DummyMpm extends AbstractModule
 {
+    /** @var SocketServer */
+    protected $pipe;
+
     public function attach(EventManagerInterface $eventManager)
     {
         parent::attach($eventManager);
+
+        $this->pipe = $this->createPipe();
 
         $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
             $pid = $event->getParam('uid', getmypid());
@@ -19,6 +25,9 @@ class DummyMpm extends AbstractModule
             $event->getWorker()->setThreadId(1);
             $event->getWorker()->setUid($pid);
         }, WorkerEvent::PRIORITY_FINALIZE + 10);
+
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
+        }, WorkerEvent::PRIORITY_INITIALIZE + 2);
     }
 
     protected function checkPipe()
@@ -40,7 +49,13 @@ class DummyMpm extends AbstractModule
     protected function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
-        $event->setParam('connectionPort', $pipe->getLocalPort());
+        $event->setParam('connectionPort', $this->pipe->getLocalPort());
         $this->setConnectionPort($pipe->getLocalPort());
+    }
+
+    protected function onWorkerInit(WorkerEvent $event)
+    {
+        $event->setParam('connectionPort', $this->pipe->getLocalPort());
+        $this->setConnectionPort($this->pipe->getLocalPort());
     }
 }

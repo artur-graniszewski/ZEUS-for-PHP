@@ -215,6 +215,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     {
         $scheduler = $this->getScheduler(4);
         $scheduler->getConfig()->setStartProcesses(20);
+        $scheduler->getConfig()->setMinSpareProcesses(4);
         $scheduler->getConfig()->setProcessIdleTimeout(0);
 
         $amountOfScheduledProcesses = 0;
@@ -238,9 +239,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $amountOfScheduledProcesses++;
 
                 $uid = 100000000 + $amountOfScheduledProcesses;
-                $e->setParam('uid', $uid);
-                $e->setParam('processId', $uid);
-                $e->setParam('threadId', 1);
+                $worker = clone $e->getWorker();
+                $worker->setUid($uid);
+                $e->setWorker($worker);
             }
         );
 
@@ -249,8 +250,8 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $uid = $e->getTarget()->getProcessId();
                 $processesInitialized[] = $uid;
 
-                // kill the processs
-                $e->getTarget()->getStatus()->incrementNumberOfFinishedTasks(100);
+                // kill the process
+                $e->getWorker()->getStatus()->incrementNumberOfFinishedTasks(100);
             }
         );
         $scheduler->start(false);

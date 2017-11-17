@@ -74,6 +74,20 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
+    protected function onSchedulerStop(SchedulerEvent $event)
+    {
+        parent::onSchedulerStop($event);
+
+        while ($this->workers) {
+            $this->checkWorkers();
+            if ($this->workers) {
+                sleep(1);
+                $amount = count($this->workers);
+                $this->getLogger()->info("Waiting $amount for workers to exit");
+            }
+        }
+    }
+
     /**
      * @return $this
      */

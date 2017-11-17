@@ -342,6 +342,7 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         // @fixme: kernelLoop() should be merged with mainLoop()
         $this->getLogger()->debug("Scheduler stop event triggering...");
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
+        $this->log(Logger::NOTICE, "Scheduler terminated");
         $this->getLogger()->debug("Scheduler stop event finished");
     }
 
@@ -400,17 +401,6 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
                 $this->stopWorker($uid, false);
             }
         }
-
-        while ($this->workers->count()) {
-            $this->getMultiProcessingModule()->checkWorkers();
-            if ($this->workers->count()) {
-                sleep(1);
-                $amount = count($this->workers);
-                $this->getLogger()->info("Waiting $amount for workers to exit");
-            }
-        }
-
-        $this->log(Logger::NOTICE, "Scheduler terminated");
     }
 
     /**

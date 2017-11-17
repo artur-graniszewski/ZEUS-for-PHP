@@ -52,6 +52,7 @@ trait ZeusFactories
         $sm->setFactory('zeus-event-manager', EventManagerFactory::class);
         $sm->setFactory(DummyMpm::class, MultiProcessingModuleFactory::class);
         $sm->setFactory(Scheduler\MultiProcessingModule\PosixProcess::class, MultiProcessingModuleFactory::class);
+        $sm->setFactory(Scheduler\MultiProcessingModule\PosixThread::class, MultiProcessingModuleFactory::class);
 
         $serviceListener = new ServiceListenerFactory();
         $r = new ReflectionProperty($serviceListener, 'defaultServiceConfig');

@@ -325,6 +325,15 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     protected function onSchedulerStop(SchedulerEvent $event)
     {
         $this->isTerminating = true;
+
+        while ($this->ipcConnections) {
+            $this->checkWorkers();
+            if ($this->ipcConnections) {
+                sleep(1);
+                $amount = count($this->ipcConnections);
+                $this->getLogger()->info("Waiting $amount for workers to exit");
+            }
+        }
     }
 
     /**
