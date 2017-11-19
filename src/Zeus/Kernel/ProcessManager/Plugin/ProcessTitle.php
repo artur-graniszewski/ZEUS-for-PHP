@@ -35,7 +35,8 @@ class ProcessTitle implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 0)
     {
-        if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
+        // Drawin Kernel (macOS) does not support cli_set_process_title and generates E_WARNING
+        if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title') && PHP_OS !== 'Darwin') {
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_CREATE, [$this, 'onProcessStarting'], $priority);
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_WAITING, [$this, 'onProcessWaiting'], $priority);
             $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_PROCESS_TERMINATE, [$this, 'onProcessTerminate'], $priority);
