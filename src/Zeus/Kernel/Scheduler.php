@@ -261,15 +261,15 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         $this->getLogger()->debug("Stopping scheduler");
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
 
-        $pid = @file_get_contents($fileName);
-        if (!$pid) {
+        $uid = @file_get_contents($fileName);
+        if (!$uid) {
             throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
         }
 
         $this->setIsTerminating(true);
 
-        $this->log(Logger::INFO, "Terminating scheduler $pid");
-        $this->stopWorker($pid, true);
+        $this->log(Logger::INFO, "Terminating scheduler $uid");
+        $this->stopWorker($uid, true);
         $this->log(Logger::INFO, "Workers checked");
 
         unlink($fileName);

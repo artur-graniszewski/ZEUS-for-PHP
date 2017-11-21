@@ -66,6 +66,7 @@ class WorkerFlowManager
         // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldnt be cloned
 
         // worker init...
+        $worker = $event->getWorker();
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_INIT);
         $event->setParams($params);
         $event->setTarget($worker);
@@ -73,6 +74,7 @@ class WorkerFlowManager
         $events->triggerEvent($event);
 
         // worker init...
+        $worker = $event->getWorker();
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_EXIT);
         $event->setParams($params);
         $event->setTarget($worker);

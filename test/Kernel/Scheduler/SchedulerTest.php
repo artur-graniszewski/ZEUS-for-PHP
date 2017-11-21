@@ -239,15 +239,14 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $amountOfScheduledProcesses++;
 
                 $uid = 100000000 + $amountOfScheduledProcesses;
-                $worker = clone $e->getWorker();
+                $worker = $e->getWorker();
                 $worker->setUid($uid);
-                $e->setWorker($worker);
-            }
+            }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 
         $sm->attach('*', WorkerEvent::EVENT_WORKER_LOOP,
             function(WorkerEvent $e) use (&$processesInitialized) {
-                $uid = $e->getTarget()->getProcessId();
+                $uid = $e->getWorker()->getUid();
                 $processesInitialized[] = $uid;
 
                 // kill the process
