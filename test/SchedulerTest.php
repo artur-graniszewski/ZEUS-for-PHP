@@ -125,7 +125,8 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $processesInitialized = [];
 
         $em = $scheduler->getEventManager();
-        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
+        $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
+        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
             function(SchedulerEvent $e) use ($em) {
                 $e->stopPropagation(true);
@@ -134,13 +135,14 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }
         );
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
-            function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
+            function(SchedulerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em, $scheduler) {
                 $amountOfScheduledProcesses++;
 
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $event = new SchedulerEvent();
                 $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
                 $event->setParams(['uid' => $uid]);
+                $event->setScheduler($scheduler);
                 $em->triggerEvent($event);
                 $processesCreated[] = $uid;
             }, -1000
@@ -163,29 +165,35 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     public function testProcessCreationWhenTooLittleOfThemIsWaiting()
     {
         $scheduler = $this->getScheduler(20);
-        $scheduler->getConfig()->setStartProcesses(0);
+        $scheduler->getConfig()->setStartProcesses(8);
 
         $amountOfScheduledProcesses = 0;
 
         $em = $scheduler->getEventManager();
         $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
-        $em->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
+        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {throw $e->getParam('exception');$e->stopPropagation(true);}, 0);
+        $em->attach(SchedulerEvent::EVENT_PROCESS_INIT, function(SchedulerEvent $e) {$e->stopPropagation(true);}, SchedulerEvent::PRIORITY_REGULAR + 1);
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
-            function(SchedulerEvent $e) use ($em, &$amountOfScheduledProcesses, $scheduler) {
-                $process = clone $e->getProcess();
-                $e->setProcess($process);
-                $e->getProcess()->setConfig($scheduler->getConfig());
-                $e->getProcess()->setEventManager($em);
+            function() use ($em, &$amountOfScheduledProcesses, $scheduler) {
+                $process = new Process();
+                $event = new SchedulerEvent();
+                $event->setProcess($process);
+                $event->setScheduler($scheduler);
+                $process->setConfig($scheduler->getConfig());
+                $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
+                $process->attach($em);
+                $em->triggerEvent($event);
+                $event->stopPropagation(false);
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $process->setId($uid);
                 // mark all processes as busy
                 if ($amountOfScheduledProcesses < 9) {
-                    $e->getProcess()->setRunning();
+                    $process->setRunning();
                 }
-                $e->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
-                $e->setParam('uid', $uid);
-                $em->triggerEvent($e);
+                $event->setName(SchedulerEvent::EVENT_PROCESS_CREATED);
+                $event->setParam('uid', $uid);
+                $em->triggerEvent($event);
             }
         );
 
@@ -286,6 +294,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
 
         $em = $scheduler->getEventManager();
         $em->attach(SchedulerEvent::EVENT_PROCESS_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATE,
             function(EventInterface $e) use ($em) {
                 $e->stopPropagation(true);
@@ -293,13 +302,14 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }
         );
         $em->attach(SchedulerEvent::EVENT_PROCESS_CREATED,
-            function(EventInterface $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
+            function(EventInterface $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em, $scheduler) {
                 $amountOfScheduledProcesses++;
                 $e->stopPropagation(true);
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $event = new SchedulerEvent();
                 $event->setName(SchedulerEvent::EVENT_PROCESS_INIT);
                 $event->setParams(['uid' => $uid]);
+                $event->setScheduler($scheduler);
                 $em->triggerEvent($event);
                 $processesCreated[] = $uid;
             }

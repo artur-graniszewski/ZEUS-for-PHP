@@ -61,10 +61,16 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf(PosixProcess::class, $service);
 
         $eventLaunched = false;
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function() use (&$eventLaunched) {
-            $eventLaunched = true;
-        });
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (&$eventLaunched) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
+            $eventLaunched = true;
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+        $scheduler->start(true);
         $service->onSchedulerLoop();
 
         $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixProcess');
@@ -139,22 +145,25 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
     public function testProcessTermination($signal, $isSoftKill)
     {
         $em = new EventManager();
+        $posixProcess = new PosixProcess();
+        $posixProcess->attach($em);
 
         $pcntlMock = new PcntlMockBridge();
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
-        $posixProcess->attach($em);
+        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setParam('uid', 123456);
+        $em->triggerEvent($event);
 
         $event->setName(SchedulerEvent::EVENT_PROCESS_TERMINATE);
-        $event->setParam('uid', 123456);
+
         $event->setParam('soft', $isSoftKill);
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
-        $this->assertEquals(123456, $logArray[0][1][0], 'Kill signal should be sent to a certain process');
-        $this->assertEquals($signal, $logArray[0][1][1], 'Correct type of kill signal should be sent to a certain process');
+        $this->assertEquals(123456, $logArray[5][1][0], 'Kill signal should be sent to a certain process');
+        $this->assertEquals($signal, $logArray[5][1][1], 'Correct type of kill signal should be sent to a certain process');
         $this->assertEquals(SchedulerEvent::EVENT_PROCESS_TERMINATE, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
@@ -170,6 +179,9 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $event = new SchedulerEvent();
         $posixProcess = new PosixProcess($event);
         $posixProcess->attach($em);
+
+        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $em->triggerEvent($event);
 
         $event->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         $em->triggerEvent($event);

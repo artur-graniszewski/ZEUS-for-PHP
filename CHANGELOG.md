@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.7.2
+- [Fix] ProcessTitle plugin has been disabled on MacOS systems (as on MacOS requires root privileges to change process name)
+
 ## Version 1.7.1
 - [Improvement] Removed ReactPHP library from ZEUS Memcached Server and replaced it with ZEUS socket server implementation
 - [Improvement] Removed ReactPHP library from ZEUS Async Server and replaced it with ZEUS socket server implementation
