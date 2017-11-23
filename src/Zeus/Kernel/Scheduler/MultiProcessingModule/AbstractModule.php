@@ -61,7 +61,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $this->schedulerEvent = $event;
     }
 
-    public function getSchedulerEvent() : SchedulerEvent
+    public function getSchedulerEvent(): SchedulerEvent
     {
         if (!$this->schedulerEvent) {
             throw new \LogicException("Scheduler event not set");
@@ -78,7 +78,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $this->workerEvent = $event;
     }
 
-    public function getWorkerEvent() : WorkerEvent
+    public function getWorkerEvent(): WorkerEvent
     {
         if (!$this->workerEvent) {
             throw new \LogicException("Worker event not set");
@@ -87,7 +87,42 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $workerEvent = clone $this->workerEvent;
         $workerEvent->setParams([]);
         $workerEvent->getWorker()->setIsTerminating(false);
+
         return $workerEvent;
+    }
+
+    public function getIpcAddress(): string
+    {
+        return $this->ipcAddress;
+    }
+
+    public function setIpcAddress(string $address)
+    {
+        $this->ipcAddress = $address;
+    }
+
+    public function isTerminating(): bool
+    {
+        return $this->isTerminating;
+    }
+
+    public function setIsTerminating(bool $isTerminating)
+    {
+        $this->isTerminating = $isTerminating;
+    }
+
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
+
+    public function getLogger(): LoggerInterface
+    {
+        if (!isset($this->logger)) {
+            throw new \LogicException("Logger is not set");
+        }
+
+        return $this->logger;
     }
 
     public function attach(EventManagerInterface $eventManager)
@@ -104,18 +139,20 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                     /** @var \Exception $exception */
                     $exception = $event->getParam('exception');
 
-                    $status = $exception ? $exception->getCode(): 0;
+                    $status = $exception ? $exception->getCode() : 0;
                     exit($status);
                 }
             }, WorkerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
-        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function (SchedulerEvent $e) {
             $this->onKernelStart($e);
             $this->checkWorkers();
         });
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function (SchedulerEvent $e) {
+            $this->onSchedulerInit($e);
+        }, -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function (SchedulerEvent $e) {
             $this->onSchedulerStop($e);
             $this->isTerminating = true;
 
@@ -137,7 +174,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                 $event->stopPropagation(true);
             }
         }, WorkerEvent::PRIORITY_INITIALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $event) {
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $event) {
             $this->onSchedulerLoop($event);
             $wasExiting = $this->isTerminating();
 
@@ -158,12 +195,14 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             }
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function (SchedulerEvent $e) {
             $this->onWorkerTerminate($e);
             $this->unregisterWorker($e->getParam('uid'));
         }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function(SchedulerEvent $e) { $this->onKernelLoop($e); }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) {
+        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
+            $this->onKernelLoop($e);
+        }, -9000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function (WorkerEvent $e) {
             $this->onWorkerTerminated($e);
         }, WorkerEvent::PRIORITY_FINALIZE);
     }
@@ -172,54 +211,43 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     {
     }
 
-    public function isTerminating() : bool
-    {
-        return $this->isTerminating;
-    }
-
-    public function setIsTerminating(bool $isTerminating)
-    {
-        $this->isTerminating = $isTerminating;
-    }
-
-    protected function connectToPipe(WorkerEvent $event)
-    {
-        $stream = @stream_socket_client($this->getIpcAddress(), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
-
-        if (!$stream) {
-            $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
-            $this->isTerminating = true;
-        } else {
-            $this->ipc = new SocketStream($stream);
-            $this->ipc->setBlocking(false);
-            $this->ipc->setOption(SO_KEEPALIVE, 1);
-            $this->ipc->setOption(TCP_NODELAY, 1);
-        }
-    }
-
     public function onKernelLoop(SchedulerEvent $event)
     {
-
     }
 
     public function onWorkerCreate(WorkerEvent $event)
     {
-
     }
 
+    public function onSchedulerStop(SchedulerEvent $event)
+    {
+    }
 
-    /**
-     * @param SchedulerEvent $event
-     */
     public function onWorkerTerminate(SchedulerEvent $event)
     {
-
     }
 
-    /**
-     * @param WorkerEvent $event
-     */
     public function onWorkerExit(WorkerEvent $event)
+    {
+    }
+
+    public function onSchedulerInit(SchedulerEvent $event)
+    {
+    }
+
+    public function onWorkerInit(WorkerEvent $event)
+    {
+    }
+
+    public function onWorkerTerminated(WorkerEvent $event)
+    {
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+    }
+
+    public function onWorkerLoop(WorkerEvent $event)
     {
     }
 
@@ -257,32 +285,25 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this;
     }
 
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
-    public function setLogger(LoggerInterface $logger)
+    private function connectToPipe(WorkerEvent $event)
     {
-        $this->logger = $logger;
+        $stream = @stream_socket_client($this->getIpcAddress(), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
 
-        return $this;
-    }
-
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger() : LoggerInterface
-    {
-        if (!isset($this->logger)) {
-            throw new \LogicException("Logger not available");
+        if (!$stream) {
+            $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
+            $this->isTerminating = true;
+        } else {
+            $this->ipc = new SocketStream($stream);
+            $this->ipc->setBlocking(false);
+            $this->ipc->setOption(SO_KEEPALIVE, 1);
+            $this->ipc->setOption(TCP_NODELAY, 1);
         }
-        return $this->logger;
     }
 
     /**
      * @return $this
      */
-    protected function checkPipe()
+    private function checkPipe()
     {
         if (!$this->isTerminating()) {
             try {
@@ -296,28 +317,9 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this;
     }
 
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
 
-    }
 
-    public function onWorkerLoop(WorkerEvent $event)
-    {
-
-    }
-
-    protected function raiseWorkerExitedEvent($uid, $processId, $threadId)
-    {
-        $event = $this->getWorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_TERMINATED);
-        $event->getWorker()->setUid($uid);
-        $event->getWorker()->setProcessId($processId);
-        $event->getWorker()->setThreadId($threadId);
-        $this->events->triggerEvent($event);
-        $this->unregisterWorker($uid);
-    }
-
-    protected function unregisterWorker(int $uid)
+    private function unregisterWorker(int $uid)
     {
         if (isset($this->ipcConnections[$uid])) {
             $this->ipcConnections[$uid]->close();
@@ -333,7 +335,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
      * @param SocketServer $pipe
      * @return $this
      */
-    protected function registerWorker(int $uid, SocketServer $pipe)
+    private function registerWorker(int $uid, SocketServer $pipe)
     {
         $this->ipcServers[$uid] = $pipe;
 
@@ -349,36 +351,5 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         $socketServer->setSoTimeout(10);
 
         return $socketServer;
-    }
-
-    public function onSchedulerStop(SchedulerEvent $event)
-    {
-
-    }
-
-    /**
-     * @return string
-     */
-    public function getIpcAddress() : string
-    {
-        return $this->ipcAddress;
-    }
-
-    public function setIpcAddress(string $address)
-    {
-        $this->ipcAddress = $address;
-    }
-
-    public function onSchedulerInit(SchedulerEvent $event)
-    {
-
-    }
-
-    public function onWorkerInit(WorkerEvent $event)
-    {
-    }
-
-    public function onWorkerTerminated(WorkerEvent $event)
-    {
     }
 }
