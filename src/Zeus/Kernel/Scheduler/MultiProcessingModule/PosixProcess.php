@@ -21,24 +21,14 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         parent::__construct();
     }
 
-    /**
-     * @param bool $throwException
-     * @return bool
-     * @throws \Throwable
-     */
-    public static function isSupported($throwException = false)
+    public static function isSupported(& $errorMessage  = '') : bool
     {
         $bridge = static::getPcntlBridge();
 
         if (!$bridge->isSupported()) {
-            if ($throwException) {
-                $className = basename(str_replace('\\', '/', static::class));
+            $className = basename(str_replace('\\', '/', static::class));
 
-                throw new \RuntimeException(sprintf("PCNTL extension is required by %s but disabled in PHP",
-                        $className
-                    )
-                );
-            }
+            $errorMessage = sprintf("PCNTL extension is required by %s but disabled in PHP", $className);
 
             return false;
         }
@@ -65,31 +55,14 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         parent::onWorkerLoop($event);
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkWorkers()
-    {
-        while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $this->raiseWorkerExitedEvent($pid, $pid, 1);
-        }
-
-        parent::checkWorkers();
-
-        return $this;
-    }
-
     public function onSchedulerStop(SchedulerEvent $event)
     {
         $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    public function onWorkerCreate(WorkerEvent $event)
+    protected function createProcess(WorkerEvent $event): int
     {
-        $pipe = $this->createPipe();
-        $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
-
         $pcntl = $this->getPcntlBridge();
         $pid = $pcntl->pcntlFork();
 
@@ -112,13 +85,23 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
             default:
                 // we are the parent
                 $event->setParam('init_process', false);
-                $this->registerWorker($pid, $pipe);
                 break;
         }
 
-        $worker = $event->getWorker();
-        $worker->setProcessId($pid);
-        $worker->setThreadId(1);
-        $worker->setUid($pid);
+        return $pid;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function checkWorkers()
+    {
+        while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
+            $this->raiseWorkerExitedEvent($pid, $pid, 1);
+        }
+
+        parent::checkWorkers();
+
+        return $this;
     }
 }

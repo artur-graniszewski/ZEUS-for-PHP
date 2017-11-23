@@ -45,6 +45,11 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     public function __construct()
     {
+        $errorMessage = '';
+        if (!static::isSupported($errorMessage)) {
+            throw new \RuntimeException($errorMessage);
+        }
+
         $this->ipcSelector = new Selector();
     }
 
@@ -92,9 +97,17 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             $this->onWorkerInit($event);
             $this->connectToPipe($event);
             $this->checkPipe();
-            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $e) {
-                $this->onWorkerExit($e);
-            }, SchedulerEvent::PRIORITY_FINALIZE);
+            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $event) {
+                $this->onWorkerExit($event);
+
+                if (!$event->propagationIsStopped()) {
+                    /** @var \Exception $exception */
+                    $exception = $event->getParam('exception');
+
+                    $status = $exception ? $exception->getCode(): 0;
+                    exit($status);
+                }
+            }, WorkerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(SchedulerEvent $e) {
@@ -115,7 +128,15 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                 }
             }
         }, SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function (WorkerEvent $e) { $this->onWorkerLoop($e);}, WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function (WorkerEvent $event) {
+            $this->onWorkerLoop($event);
+            $this->checkPipe();
+
+            if ($this->isTerminating()) {
+                $event->getWorker()->setIsTerminating(true);
+                $event->stopPropagation(true);
+            }
+        }, WorkerEvent::PRIORITY_INITIALIZE);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $event) {
             $this->onSchedulerLoop($event);
             $wasExiting = $this->isTerminating();
@@ -128,7 +149,15 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                 $event->stopPropagation(true);
             }
         }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
+            $pipe = $this->createPipe();
+            $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
+            $this->onWorkerCreate($event);
+            if (!$event->getParam('init_process', false)) {
+                $this->registerWorker($event->getWorker()->getUid(), $pipe);
+            }
+
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) {
             $this->onWorkerTerminate($e);
             $this->unregisterWorker($e->getParam('uid'));
@@ -192,11 +221,6 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
      */
     public function onWorkerExit(WorkerEvent $event)
     {
-        /** @var \Exception $exception */
-        $exception = $event->getParam('exception');
-
-        $status = $exception ? $exception->getCode(): 0;
-        exit($status);
     }
 
     protected function checkWorkers()
@@ -279,12 +303,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     public function onWorkerLoop(WorkerEvent $event)
     {
-        $this->checkPipe();
 
-        if ($this->isTerminating()) {
-            $event->getWorker()->setIsTerminating(true);
-            $event->stopPropagation(true);
-        }
     }
 
     protected function raiseWorkerExitedEvent($uid, $processId, $threadId)

@@ -24,7 +24,7 @@ class ThreadBootstrap extends \Thread {
         $argv = $_SERVER['argv'];
         $argc = $_SERVER['argc'];
         $php = '
-                    define("ZEUS_THREAD_CONN_PORT", ' . $this->ipcPort . ');
+                    define("ZEUS_THREAD_CONN_PORT", "' . $this->ipcPort . '");
                     define("ZEUS_THREAD_ID", ' . $this->id . ');
                     $SERVER = ' . var_export((array) $_SERVER, true) .';
                     foreach ($SERVER as $type => $value) {

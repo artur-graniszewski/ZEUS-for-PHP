@@ -15,10 +15,8 @@ interface MultiProcessingModuleInterface
 
     const ZEUS_IPC_ADDRESS_PARAM = 'zeusIpcAddress';
 
-    /**
-     * @param EventManagerInterface $eventManager
-     * @return mixed
-     */
+    public static function isSupported(& $errorMessage = '') : bool;
+
     public function attach(EventManagerInterface $eventManager);
 
     public function setLogger(LoggerInterface $logger);

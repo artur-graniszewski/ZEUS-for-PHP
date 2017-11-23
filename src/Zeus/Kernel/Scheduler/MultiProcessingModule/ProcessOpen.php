@@ -24,20 +24,15 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
 
     protected $pipeBuffer = [];
 
-    /**
-     * @param bool $throwException
-     * @return bool
-     * @throws \Exception
-     */
-    public static function isSupported($throwException = false)
+    public static function isSupported(& $errorMessage = '') : bool
     {
         $isSupported = function_exists('proc_open') && function_exists('proc_status');
 
-        if (!$isSupported && $throwException) {
-            throw new \RuntimeException(sprintf("proc_open() and proc_status() are required by %s but disabled in PHP",
-                    static::class
-                )
-            );
+        if (!$isSupported) {
+            $className = basename(str_replace('\\', '/', static::class));
+
+            $errorMessage = sprintf("proc_open() and proc_status() are required by %s but disabled in PHP",
+                $className);
         }
 
         return $isSupported;
@@ -48,6 +43,8 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
      */
     public function __construct()
     {
+        parent::__construct();
+
         $this->stdout = @fopen('php://stdout', 'w');
         $this->stderr = @fopen('php://stderr', 'w');
 
@@ -72,6 +69,11 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
 
         return $this;
+    }
+
+    public function onWorkerTerminated(WorkerEvent $event)
+    {
+        $this->cleanProcessPipes($event->getWorker()->getUid());
     }
 
     /**
@@ -118,11 +120,6 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         }
 
         return $this;
-    }
-
-    public function onWorkerTerminated(WorkerEvent $event)
-    {
-        $this->cleanProcessPipes($event->getWorker()->getUid());
     }
 
     private function cleanProcessPipes($uid)
@@ -174,7 +171,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
      * @param WorkerEvent $event
      * @return int
      */
-    private function createProcess(WorkerEvent $event) : int
+    protected function createProcess(WorkerEvent $event) : int
     {
         $descriptors = [
             0 => ['pipe', 'r'], // stdin
@@ -217,18 +214,6 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         $this->pipeBuffer[$pid] = ['stdout' => '', 'stderr' => ''];
 
         return $pid;
-    }
-
-    public function onWorkerCreate(WorkerEvent $event)
-    {
-        $pipe = $this->createPipe();
-        $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
-        $pid = $this->createProcess($event);
-        $this->registerWorker($pid, $pipe);
-        $worker = $event->getWorker();
-        $worker->setProcessId($pid);
-        $worker->setUid($pid);
-        $worker->setThreadId(1);
     }
 
     private function onIpcSelect(IpcEvent $event)

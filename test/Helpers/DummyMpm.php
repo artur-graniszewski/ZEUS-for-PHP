@@ -60,4 +60,9 @@ class DummyMpm extends AbstractModule
         $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
         $this->setIpcAddress($this->pipe->getLocalPort());
     }
+
+    public static function isSupported(& $errorMessage = ''): bool
+    {
+        return true;
+    }
 }

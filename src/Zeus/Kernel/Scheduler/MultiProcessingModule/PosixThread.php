@@ -22,20 +22,15 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     /** @var int */
     protected static $id = 1;
 
-    /**
-     * @param bool $throwException
-     * @return bool
-     * @throws \Exception
-     */
-    public static function isSupported($throwException = false)
+    public static function isSupported(& $errorMessage = '') : bool
     {
         $isSupported = class_exists(\Thread::class);
 
-        if (!$isSupported && $throwException) {
-            throw new \RuntimeException(sprintf("pthreads extension is required by %s but disabled in PHP",
-                    static::class
-                )
-            );
+        if (!$isSupported) {
+            $className = basename(str_replace('\\', '/', static::class));
+
+            $errorMessage = sprintf("pThreads extension is required by %s but disabled in PHP",
+                $className);
         }
 
         return $isSupported;
@@ -43,13 +38,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->setIpcAddress('tcp://' . static::LOOPBACK_INTERFACE . ':' . \ZEUS_THREAD_CONN_PORT);
-
-//        if ($this->isTerminating()) {
-//            $event->getWorker()->setIsTerminating(true);
-//            $event->stopPropagation(true);
-//        }
-
+        $this->setIpcAddress('tcp://' . \ZEUS_THREAD_CONN_PORT);
     }
 
     public function onSchedulerStop(SchedulerEvent $event)
@@ -110,14 +99,11 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
         static::$id++;
 
-        $pipe = $this->createPipe();
-        $this->registerWorker(static::$id, $pipe);
-
         $this->collectCycles();
         $thread->server = $_SERVER;
         $thread->argv = $argv;
         $thread->id = static::$id;
-        $thread->ipcPort = $pipe->getLocalPort();
+        $thread->ipcPort = $event->getParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM);
         $thread->start(PTHREADS_INHERIT_NONE);
 
         $this->workers[static::$id] = $thread;

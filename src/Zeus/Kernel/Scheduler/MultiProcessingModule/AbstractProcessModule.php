@@ -39,6 +39,18 @@ abstract class AbstractProcessModule extends AbstractModule
         }
     }
 
+    protected abstract function createProcess(WorkerEvent $event) : int;
+
+    public function onWorkerCreate(WorkerEvent $event)
+    {
+        $pid = $this->createProcess($event);
+
+        $worker = $event->getWorker();
+        $worker->setProcessId($pid);
+        $worker->setThreadId(1);
+        $worker->setUid($pid);
+    }
+
     /**
      * @return PcntlBridgeInterface
      */
