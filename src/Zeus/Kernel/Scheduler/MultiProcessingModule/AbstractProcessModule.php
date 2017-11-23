@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 
 abstract class AbstractProcessModule extends AbstractModule
 {
@@ -12,6 +13,11 @@ abstract class AbstractProcessModule extends AbstractModule
 
     /** @var PcntlBridgeInterface */
     protected static $pcntlBridge;
+
+    public function onWorkerInit(WorkerEvent $event)
+    {
+        $this->setIpcAddress('tcp://' . $event->getParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM));
+    }
 
     /**
      * @param SchedulerEvent $event
@@ -21,7 +27,7 @@ abstract class AbstractProcessModule extends AbstractModule
         $uid = $event->getParam('uid');
         $useSoftTermination = $event->getParam('soft', false);
         if ($useSoftTermination || !$this->getPcntlBridge()->isSupported()) {
-            parent::onStopWorker($uid, $useSoftTermination);
+            parent::onWorkerTerminate($event);
 
             return;
         } else {
@@ -31,8 +37,6 @@ abstract class AbstractProcessModule extends AbstractModule
         if (!isset($this->workers[$uid])) {
             $this->getLogger()->warn("Trying to stop already detached process $uid");
         }
-
-        return;
     }
 
     /**
@@ -56,43 +60,6 @@ abstract class AbstractProcessModule extends AbstractModule
     }
 
     /**
-     * @param int $uid
-     * @param bool $useSoftTermination
-     * @return $this
-     */
-    public function onStopWorker(int $uid, bool $useSoftTermination)
-    {
-        if ($useSoftTermination || !$this->getPcntlBridge()->isSupported()) {
-            parent::onStopWorker($uid, $useSoftTermination);
-
-            return $this;
-        } else {
-            $this->unregisterWorker($uid);
-            $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
-        }
-
-        if (!isset($this->workers[$uid])) {
-            $this->getLogger()->warn("Trying to stop already detached process $uid");
-
-            return $this;
-        }
-
-        return $this;
-    }
-
-    protected function onSchedulerLoop(SchedulerEvent $event)
-    {
-        $wasExiting = $this->isTerminating();
-
-        $this->checkPipe();
-        $this->checkWorkers();
-
-        if ($this->isTerminating() && !$wasExiting) {
-            $event->getScheduler()->setIsTerminating(true);
-        }
-    }
-
-    /**
      * @return $this
      */
     protected function checkWorkers()
@@ -106,5 +73,16 @@ abstract class AbstractProcessModule extends AbstractModule
         parent::checkWorkers();
 
         return $this;
+    }
+
+    /**
+     * @return MultiProcessingModuleCapabilities
+     */
+    public function getCapabilities() : MultiProcessingModuleCapabilities
+    {
+        $capabilities = new MultiProcessingModuleCapabilities();
+        $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);
+
+        return $capabilities;
     }
 }

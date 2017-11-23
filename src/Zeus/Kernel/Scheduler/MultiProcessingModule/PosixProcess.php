@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -20,19 +19,6 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         $this->ppid = getmypid();
 
         parent::__construct();
-    }
-
-    /**
-     * @param EventManagerInterface $eventManager
-     * @return $this
-     */
-    public function attach(EventManagerInterface $eventManager)
-    {
-        parent::attach($eventManager);
-
-        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() { $this->onKernelStart();});
-
-        return $this;
     }
 
     /**
@@ -60,13 +46,15 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         return true;
     }
 
-    private function onKernelStart()
+    public function onKernelStart(SchedulerEvent $event)
     {
         // make the current process a session leader
         $this->getPcntlBridge()->posixSetSid();
+
+        parent::onKernelStart($event);
     }
 
-    protected function onWorkerLoop(WorkerEvent $event)
+    public function onWorkerLoop(WorkerEvent $event)
     {
         $this->getPcntlBridge()->pcntlSignalDispatch();
 
@@ -91,16 +79,16 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         return $this;
     }
 
-    protected function onSchedulerStop(SchedulerEvent $event)
+    public function onSchedulerStop(SchedulerEvent $event)
     {
         $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    protected function onWorkerCreate(WorkerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
-        $event->setParam('connectionPort', $pipe->getLocalPort());
+        $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
 
         $pcntl = $this->getPcntlBridge();
         $pid = $pcntl->pcntlFork();
@@ -132,16 +120,5 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         $worker->setProcessId($pid);
         $worker->setThreadId(1);
         $worker->setUid($pid);
-    }
-
-    /**
-     * @return MultiProcessingModuleCapabilities
-     */
-    public function getCapabilities()
-    {
-        $capabilities = new MultiProcessingModuleCapabilities();
-        $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);
-
-        return $capabilities;
     }
 }

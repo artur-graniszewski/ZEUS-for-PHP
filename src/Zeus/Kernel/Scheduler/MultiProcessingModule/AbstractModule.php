@@ -13,15 +13,11 @@ use Zeus\Networking\Stream\SocketStream;
 
 abstract class AbstractModule implements MultiProcessingModuleInterface
 {
-    const LOOPBACK_INTERFACE = '127.0.0.1';
-
-    const UPSTREAM_CONNECTION_TIMEOUT = 5;
-
     /** @var EventManagerInterface */
     private $events;
 
     /** @var int */
-    private $connectionPort;
+    private $ipcAddress;
 
     /** @var SchedulerEvent */
     private $schedulerEvent;
@@ -93,65 +89,58 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     {
         $this->events = $eventManager;
         $this->events->attach(WorkerEvent::EVENT_WORKER_INIT, function (WorkerEvent $event) use ($eventManager) {
+            $this->onWorkerInit($event);
             $this->connectToPipe($event);
+            $this->checkPipe();
             $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $e) {
                 $this->onWorkerExit($e);
             }, SchedulerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function($e) { $this->onWorkerInit($e);}, WorkerEvent::PRIORITY_INITIALIZE + 1);
-
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(SchedulerEvent $e) {
+            $this->onKernelStart($e);
+            $this->checkWorkers();
+        });
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $e) { $this->onSchedulerInit($e); }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onSchedulerStop($e); }, SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function (WorkerEvent $e) { $this->onWorkerLoop($e);}, WorkerEvent::PRIORITY_INITIALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop($e); }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) { $this->onWorkerTerminate($e); }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function(SchedulerEvent $e) {$this->onKernelLoop($e);}, -9000);
-    }
-
-    protected function connectToPipe(WorkerEvent $event)
-    {
-        $this->setConnectionPort($event->getParam('connectionPort'));
-        $stream = @stream_socket_client(sprintf('tcp://%s:%d', static::LOOPBACK_INTERFACE, $this->getConnectionPort()), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
-
-        if (!$stream) {
-            $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getConnectionPort());
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) {
+            $this->onSchedulerStop($e);
             $this->isTerminating = true;
-        } else {
-            $this->ipc = new SocketStream($stream);
-            $this->ipc->setBlocking(false);
-            $this->ipc->setOption(SO_KEEPALIVE, 1);
-            $this->ipc->setOption(TCP_NODELAY, 1);
-        }
+
+            while ($this->ipcConnections) {
+                $this->checkWorkers();
+                if ($this->ipcConnections) {
+                    sleep(1);
+                    $amount = count($this->ipcConnections);
+                    $this->getLogger()->info("Waiting $amount for workers to exit");
+                }
+            }
+        }, SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function (WorkerEvent $e) { $this->onWorkerLoop($e);}, WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function(SchedulerEvent $event) {
+            $this->onSchedulerLoop($event);
+            $wasExiting = $this->isTerminating();
+
+            $this->checkPipe();
+            $this->checkWorkers();
+
+            if ($this->isTerminating() && !$wasExiting) {
+                $event->getScheduler()->setIsTerminating(true);
+                $event->stopPropagation(true);
+            }
+        }, -9000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
+        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function(SchedulerEvent $e) {
+            $this->onWorkerTerminate($e);
+            $this->unregisterWorker($e->getParam('uid'));
+        }, -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function(SchedulerEvent $e) { $this->onKernelLoop($e); }, -9000);
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) {
+            $this->onWorkerTerminated($e);
+        }, WorkerEvent::PRIORITY_FINALIZE);
     }
 
-    protected function onKernelLoop(SchedulerEvent $event)
+    public function onKernelStart(SchedulerEvent $event)
     {
-        $this->checkWorkers();
-    }
-
-    protected abstract function onWorkerCreate(WorkerEvent $event);
-
-
-    /**
-     * @param SchedulerEvent $event
-     */
-    protected function onWorkerTerminate(SchedulerEvent $event)
-    {
-        $this->unregisterWorker($event->getParam('uid'));
-    }
-
-    /**
-     * @param WorkerEvent $event
-     */
-    protected function onWorkerExit(WorkerEvent $event)
-    {
-        /** @var \Exception $exception */
-        $exception = $event->getParam('exception');
-
-        $status = $exception ? $exception->getCode(): 0;
-        exit($status);
     }
 
     public function isTerminating() : bool
@@ -162,6 +151,52 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     public function setIsTerminating(bool $isTerminating)
     {
         $this->isTerminating = $isTerminating;
+    }
+
+    protected function connectToPipe(WorkerEvent $event)
+    {
+        $stream = @stream_socket_client($this->getIpcAddress(), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
+
+        if (!$stream) {
+            $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
+            $this->isTerminating = true;
+        } else {
+            $this->ipc = new SocketStream($stream);
+            $this->ipc->setBlocking(false);
+            $this->ipc->setOption(SO_KEEPALIVE, 1);
+            $this->ipc->setOption(TCP_NODELAY, 1);
+        }
+    }
+
+    public function onKernelLoop(SchedulerEvent $event)
+    {
+
+    }
+
+    public function onWorkerCreate(WorkerEvent $event)
+    {
+
+    }
+
+
+    /**
+     * @param SchedulerEvent $event
+     */
+    public function onWorkerTerminate(SchedulerEvent $event)
+    {
+
+    }
+
+    /**
+     * @param WorkerEvent $event
+     */
+    public function onWorkerExit(WorkerEvent $event)
+    {
+        /** @var \Exception $exception */
+        $exception = $event->getParam('exception');
+
+        $status = $exception ? $exception->getCode(): 0;
+        exit($status);
     }
 
     protected function checkWorkers()
@@ -237,20 +272,12 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this;
     }
 
-    protected function onSchedulerLoop(SchedulerEvent $event)
+    public function onSchedulerLoop(SchedulerEvent $event)
     {
-        $wasExiting = $this->isTerminating();
 
-        $this->checkPipe();
-        $this->checkWorkers();
-
-        if ($this->isTerminating() && !$wasExiting) {
-            $event->getScheduler()->setIsTerminating(true);
-            $event->stopPropagation(true);
-        }
     }
 
-    protected function onWorkerLoop(WorkerEvent $event)
+    public function onWorkerLoop(WorkerEvent $event)
     {
         $this->checkPipe();
 
@@ -262,30 +289,13 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     protected function raiseWorkerExitedEvent($uid, $processId, $threadId)
     {
-        $this->unregisterWorker($uid);
         $event = $this->getWorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_TERMINATED);
         $event->getWorker()->setUid($uid);
         $event->getWorker()->setProcessId($processId);
         $event->getWorker()->setThreadId($threadId);
         $this->events->triggerEvent($event);
-    }
-
-    /**
-     * @param int $uid
-     * @param bool $useSoftTermination
-     * @return $this
-     */
-    public function onStopWorker(int $uid, bool $useSoftTermination)
-    {
-        if (!isset($this->ipcConnections[$uid])) {
-            $this->getLogger()->warn("Trying to stop already detached worker $uid");
-            return $this;
-        }
-
         $this->unregisterWorker($uid);
-
-        return $this;
     }
 
     protected function unregisterWorker(int $uid)
@@ -322,40 +332,34 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $socketServer;
     }
 
-    protected function onSchedulerStop(SchedulerEvent $event)
+    public function onSchedulerStop(SchedulerEvent $event)
     {
-        $this->isTerminating = true;
 
-        while ($this->ipcConnections) {
-            $this->checkWorkers();
-            if ($this->ipcConnections) {
-                sleep(1);
-                $amount = count($this->ipcConnections);
-                $this->getLogger()->info("Waiting $amount for workers to exit");
-            }
-        }
     }
 
     /**
-     * @return int
+     * @return string
      */
-    protected function getConnectionPort() : int
+    public function getIpcAddress() : string
     {
-        return $this->connectionPort;
+        return $this->ipcAddress;
     }
 
-    protected function setConnectionPort(int $port)
+    public function setIpcAddress(string $address)
     {
-        $this->connectionPort = $port;
+        $this->ipcAddress = $address;
     }
 
-    protected function onSchedulerInit(SchedulerEvent $event)
+    public function onSchedulerInit(SchedulerEvent $event)
     {
 
     }
 
-    protected function onWorkerInit(WorkerEvent $event)
+    public function onWorkerInit(WorkerEvent $event)
     {
-        $this->setConnectionPort($event->getParam('connectionPort'));
+    }
+
+    public function onWorkerTerminated(WorkerEvent $event)
+    {
     }
 }

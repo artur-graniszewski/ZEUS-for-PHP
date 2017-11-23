@@ -68,8 +68,6 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
     {
         parent::attach($eventManager);
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerExited($e); }, WorkerEvent::PRIORITY_FINALIZE);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
 
@@ -122,7 +120,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         return $this;
     }
 
-    protected function onWorkerExited(WorkerEvent $event)
+    public function onWorkerTerminated(WorkerEvent $event)
     {
         $this->cleanProcessPipes($event->getWorker()->getUid());
     }
@@ -221,27 +219,16 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         return $pid;
     }
 
-    protected function onWorkerCreate(WorkerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
-        $event->setParam('connectionPort', $pipe->getLocalPort());
+        $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
         $pid = $this->createProcess($event);
         $this->registerWorker($pid, $pipe);
         $worker = $event->getWorker();
         $worker->setProcessId($pid);
         $worker->setUid($pid);
         $worker->setThreadId(1);
-    }
-
-    /**
-     * @return MultiProcessingModuleCapabilities
-     */
-    public function getCapabilities()
-    {
-        $capabilities = new MultiProcessingModuleCapabilities();
-        $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);
-
-        return $capabilities;
     }
 
     private function onIpcSelect(IpcEvent $event)

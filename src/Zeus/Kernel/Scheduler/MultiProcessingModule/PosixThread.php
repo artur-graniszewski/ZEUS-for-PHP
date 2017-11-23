@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadBootstrap;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -13,12 +12,6 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     use GarbageCollector;
 
     const MIN_STABLE_PHP_VERSION = 7.2;
-
-    /** Timeout in seconds */
-    const UPSTREAM_CONNECTION_TIMEOUT = 5;
-
-    /** @var EventManagerInterface */
-    protected $events;
 
     /** @var int Parent PID */
     public $ppid;
@@ -48,33 +41,18 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return $isSupported;
     }
 
-    /**
-     * @param EventManagerInterface $eventManager
-     * @return $this
-     */
-    public function attach(EventManagerInterface $eventManager)
+    public function onWorkerInit(WorkerEvent $event)
     {
-        parent::attach($eventManager);
+        $this->setIpcAddress('tcp://' . static::LOOPBACK_INTERFACE . ':' . \ZEUS_THREAD_CONN_PORT);
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) { $this->onWorkerLoop($e); }, WorkerEvent::PRIORITY_INITIALIZE + 1);
+//        if ($this->isTerminating()) {
+//            $event->getWorker()->setIsTerminating(true);
+//            $event->stopPropagation(true);
+//        }
 
-        return $this;
     }
 
-    protected function onWorkerInit(WorkerEvent $event)
-    {
-        $event->setParam('connectionPort', \ZEUS_THREAD_CONN_PORT);
-    }
-
-    protected function onServiceStop()
-    {
-        while ($this->workers) {
-            $this->checkWorkers();
-            usleep(10000);
-        }
-    }
-
-    protected function onSchedulerStop(SchedulerEvent $event)
+    public function onSchedulerStop(SchedulerEvent $event)
     {
         parent::onSchedulerStop($event);
 
@@ -88,20 +66,11 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         }
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkPipe()
+    public function onWorkerExit(WorkerEvent $event)
     {
-        parent::checkPipe();
-
-        if ($this->isTerminating()) {
-            // @todo: investigate why PHP must have a stderr stream open for each thread, otherwise thread may hang on exit
-            file_put_contents("php://stderr", "");
-            file_put_contents("php://stdout", "");
-        }
-
-        return $this;
+        // @todo: investigate why PHP must have a stderr stream open for each thread, otherwise thread may hang on exit
+        file_put_contents("php://stderr", "");
+        file_put_contents("php://stdout", "");
     }
 
     /**
@@ -123,7 +92,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return $this;
     }
 
-    protected function createThread(WorkerEvent $event)
+    private function createThread(WorkerEvent $event)
     {
         $applicationPath = $_SERVER['PHP_SELF'];
 
@@ -156,7 +125,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         return static::$id;
     }
 
-    protected function onWorkerCreate(WorkerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $uid = $this->createThread($event);
         $worker = $event->getWorker();
@@ -165,7 +134,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $worker->setUid($uid);
     }
 
-    protected function onSchedulerInit(SchedulerEvent $event)
+    public function onSchedulerInit(SchedulerEvent $event)
     {
         if (version_compare((float) phpversion(), self::MIN_STABLE_PHP_VERSION, "<")) {
             $this->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));

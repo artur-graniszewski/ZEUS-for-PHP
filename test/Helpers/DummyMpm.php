@@ -5,6 +5,7 @@ namespace ZeusTest\Helpers;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\AbstractModule;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\SocketServer;
 
@@ -42,21 +43,21 @@ class DummyMpm extends AbstractModule
     /**
      * @return MultiProcessingModuleCapabilities
      */
-    public function getCapabilities()
+    public function getCapabilities() : MultiProcessingModuleCapabilities
     {
         return new MultiProcessingModuleCapabilities();
     }
 
-    protected function onWorkerCreate(WorkerEvent $event)
+    public function onWorkerCreate(WorkerEvent $event)
     {
         $pipe = $this->createPipe();
-        $event->setParam('connectionPort', $this->pipe->getLocalPort());
-        $this->setConnectionPort($pipe->getLocalPort());
+        $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
+        $this->setIpcAddress($pipe->getLocalPort());
     }
 
-    protected function onWorkerInit(WorkerEvent $event)
+    public function onWorkerInit(WorkerEvent $event)
     {
-        $event->setParam('connectionPort', $this->pipe->getLocalPort());
-        $this->setConnectionPort($this->pipe->getLocalPort());
+        $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
+        $this->setIpcAddress($this->pipe->getLocalPort());
     }
 }
