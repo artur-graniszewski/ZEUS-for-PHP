@@ -9,15 +9,10 @@ use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 use Zeus\Controller\MainController;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
-use ZeusTest\Helpers\DummyMpm;
-use ZeusTest\Helpers\DummyServiceFactory;
 use ZeusTest\Helpers\MainControllerMock;
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -105,7 +100,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
         ];
 
         foreach ($sentences as $sentence) {
-            $this->assertGreaterThan(0, strpos($logEntries, $sentence), "Missing sentence " . $sentence);
+            $this->assertGreaterThan(0, strpos($logEntries, $sentence), "Missing sentence " . $sentence . "\nGot:\n" . $logEntries);
         }
     }
 

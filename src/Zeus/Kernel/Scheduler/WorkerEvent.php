@@ -23,6 +23,7 @@ class WorkerEvent extends AbstractEvent
     const EVENT_WORKER_WAITING = 'workerWaiting';
 
     const EVENT_WORKER_TERMINATED = 'workerTerminated';
+    const EVENT_WORKER_TERMINATE = 'workerTerminate';
 
     /** @var Worker */
     private $worker;

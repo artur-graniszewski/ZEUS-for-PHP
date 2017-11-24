@@ -7,57 +7,56 @@ use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use function min;
 use function microtime;
-use function array_slice;
 
 class LruDiscipline implements DisciplineInterface
 {
     /**
      * @param ConfigInterface $config
-     * @param WorkerCollection $processes
+     * @param WorkerCollection $workers
      * @return \mixed[]
      */
-    public function manage(ConfigInterface $config, WorkerCollection $processes) : array
+    public function manage(ConfigInterface $config, WorkerCollection $workers) : array
     {
         $result = [
             'create' => 0,
             'terminate' => [],
-            'soft_terminate' => [],
+            'softTerminate' => [],
         ];
 
         if (!$config->isProcessCacheEnabled()) {
             return $result;
         }
 
-        $statusSummary = $processes->getStatusSummary();
-        $processesToTerminate = $this->getProcessesToTerminate($processes, $config, $statusSummary);
-        $processesToCreate = $this->getAmountOfProcessesToCreate($processes, $config, $statusSummary);
+        $statusSummary = $workers->getStatusSummary();
+        $workersToTerminate = $this->getWorkersToTerminate($workers, $config, $statusSummary);
+        $workersToCreate = $this->getAmountOfWorkersToCreate($workers, $config, $statusSummary);
 
         return [
-            'create' => $processesToCreate,
+            'create' => $workersToCreate,
             'terminate' => [],
-            'soft_terminate' => $processesToTerminate,
+            'softTerminate' => $workersToTerminate,
         ];
     }
 
     /**
-     * @param WorkerCollection $processes
+     * @param WorkerCollection $workers
      * @param ConfigInterface $config
      * @param int[] $statusSummary
      * @return int
      */
-    protected function getAmountOfProcessesToCreate(WorkerCollection $processes, ConfigInterface $config, array $statusSummary) : int
+    protected function getAmountOfWorkersToCreate(WorkerCollection $workers, ConfigInterface $config, array $statusSummary) : int
     {
-        $idleProcesses = $statusSummary[WorkerState::WAITING];
-        $allProcesses = $processes->count();
+        $idleWorkers = $statusSummary[WorkerState::WAITING];
+        $allWorkers = $workers->count();
 
         // start additional processes, if number of them is too small.
-        if ($idleProcesses < $config->getMinSpareProcesses()) {
-            $idleProcessSlots = $processes->getSize() - $processes->count();
+        if ($idleWorkers < $config->getMinSpareProcesses()) {
+            $idleWorkerSlots = $workers->getSize() - $workers->count();
 
-            return min($idleProcessSlots, $config->getMinSpareProcesses() - $idleProcesses);
+            return min($idleWorkerSlots, $config->getMinSpareProcesses() - $idleWorkers);
         }
 
-        if ($allProcesses === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
+        if ($allWorkers === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
 
             return $config->getMaxSpareProcesses();
         }
@@ -66,44 +65,53 @@ class LruDiscipline implements DisciplineInterface
     }
 
     /**
-     * @param WorkerCollection $processes
+     * @param WorkerCollection $workers
      * @param ConfigInterface $config
      * @param int[] $statusSummary
      * @return int[]
      */
-    protected function getProcessesToTerminate(WorkerCollection $processes, ConfigInterface $config, array $statusSummary) : array
+    protected function getWorkersToTerminate(WorkerCollection $workers, ConfigInterface $config, array $statusSummary) : array
     {
         $expireTime = microtime(true) - $config->getProcessIdleTimeout();
 
-        $processesToTerminate = [];
-        $idleProcesses = $statusSummary[WorkerState::WAITING];
-        //$busyProcesses = $statusSummary[ProcessState::RUNNING];
-        //$terminatedProcesses = $statusSummary[ProcessStatus::STATUS_EXITING] + $statusSummary[ProcessStatus::STATUS_KILL];
+        $workersToTerminate = [];
+        $idleWorkers = $statusSummary[WorkerState::WAITING];
 
         // terminate idle processes, if number of them is too high.
-        if ($idleProcesses > $config->getMaxSpareProcesses()) {
-            $toTerminate = $idleProcesses - $config->getMaxSpareProcesses();
-            $spareProcessesFound = 0;
+        $toTerminate = $idleWorkers - $config->getMaxSpareProcesses();
 
-            foreach ($processes as $pid => $processStatus) {
-                if (!WorkerState::isIdle($processStatus)) {
-                    continue;
-                }
-
-                if ($processStatus['time'] < $expireTime) {
-                    $processesToTerminate[$processStatus['time']] = $pid;
-                    ++$spareProcessesFound;
-
-                    if ($spareProcessesFound === $toTerminate) {
-                        break;
-                    }
-                }
-            }
-
-            ksort($processesToTerminate, SORT_ASC);
-            $processesToTerminate = array_slice($processesToTerminate, 0, $toTerminate);
+        if (!$toTerminate) {
+            return [];
         }
 
-        return $processesToTerminate;
+        $spareWorkersFound = 0;
+
+        foreach ($workers as $uid => $workerStatus) {
+            if (!WorkerState::isIdle($workerStatus)) {
+                continue;
+            }
+
+            if ($workerStatus['time'] < $expireTime) {
+                $workersToTerminate[$workerStatus['time']][] = $uid;
+                ++$spareWorkersFound;
+
+                if ($spareWorkersFound === $toTerminate) {
+                    break;
+                }
+            }
+        }
+
+        ksort($workersToTerminate, SORT_ASC);
+
+        $result = [];
+
+        // unwind all workers...
+        foreach ($workersToTerminate as $workers) {
+            foreach ($workers as $worker) {
+                $result[] = $worker;
+            }
+        }
+
+        return $result;
     }
 }

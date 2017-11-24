@@ -7,6 +7,7 @@ use Zend\Console\Console;
 use Zend\EventManager\EventInterface;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
+use Zend\Log\Writer\Noop;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
@@ -14,6 +15,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
+use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
 /**
@@ -211,11 +213,33 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expectedProcesses, $amountOfScheduledProcesses, "Scheduler should try to create $expectedProcesses processes in total ($startWorkers processes on startup and "  . ($expectedProcesses - $startWorkers) . " additionally if all the other were busy)");
     }
 
+    private function getMpm(Scheduler $scheduler) : DummyMpm
+    {
+        $sm = $this->getServiceManager();
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
+
+        $workerEvent = new WorkerEvent();
+        $workerEvent->setWorker(new Scheduler\Worker());
+
+        $service = $sm->build(DummyMpm::class, [
+            'scheduler_event' => new SchedulerEvent(),
+            'worker_event' => $workerEvent,
+            'logger_adapter' => $logger,
+            'event_manager' => $scheduler->getEventManager()
+        ]);
+
+        $this->assertInstanceOf(DummyMpm::class, $service);
+        return $service;
+    }
+
     public function testProcessCreationWhenTooManyOfThemIsWaiting()
     {
         $scheduler = $this->getScheduler(4);
+        $scheduler->setMultiProcessingModule($this->getMpm($scheduler));
         $scheduler->getConfig()->setStartProcesses(20);
-        $scheduler->getConfig()->setMinSpareProcesses(4);
+        $scheduler->getConfig()->setMinSpareProcesses(3);
+        $scheduler->getConfig()->setMaxSpareProcesses(4);
         $scheduler->getConfig()->setProcessIdleTimeout(0);
 
         $amountOfScheduledProcesses = 0;
@@ -227,9 +251,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $sm = $em->getSharedManager();
 
         $sm->attach('*', WorkerEvent::EVENT_WORKER_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
-        $sm->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE,
-            function(SchedulerEvent $processEvent) use ($em, & $processesToTerminate, & $amountOfTerminateCommands) {
-                $processEvent->stopPropagation(true);
+        $sm->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, function(EventInterface $e) {$e->stopPropagation(true);});
+        $sm->attach('*', WorkerEvent::EVENT_WORKER_TERMINATE,
+            function(WorkerEvent $processEvent) use ($em, & $processesToTerminate, & $amountOfTerminateCommands) {
                 $amountOfTerminateCommands++;
                 $processesToTerminate[] = $processEvent->getParam('uid');
             }
@@ -244,18 +268,15 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 
-        $sm->attach('*', WorkerEvent::EVENT_WORKER_LOOP,
+        $sm->attach('*', WorkerEvent::EVENT_WORKER_INIT,
             function(WorkerEvent $e) use (&$processesInitialized) {
-                $uid = $e->getWorker()->getUid();
-                $processesInitialized[] = $uid;
-
-                // kill the process
-                $e->getWorker()->getStatus()->incrementNumberOfFinishedTasks(100);
+                $e->stopPropagation(true);
             }
         );
         $scheduler->start(false);
 
-        $this->assertEquals(4, $amountOfTerminateCommands, "Scheduler should try to reduce number of processes to 4 if too many of them is waiting");
+        $this->assertGreaterThan(0, $amountOfTerminateCommands, "Scheduler should try to reduce number of workers if too many of them is waiting");
+        $this->assertEquals(4, $scheduler->getWorkers()->count(), "Scheduler should try to reduce number of processes to 4 if too many of them is waiting");
     }
 
     public function getSchedulerLaunchTypes()
@@ -399,8 +420,8 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             }, -9999);
 
         $unknownProcesses = [];
-        $sm->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE,
-            function(SchedulerEvent $e) use ($em, &$processesCreated, &$unknownProcesses) {
+        $sm->attach('*', WorkerEvent::EVENT_WORKER_TERMINATE,
+            function(WorkerEvent $e) use ($em, &$processesCreated, &$unknownProcesses) {
                 $uid = $e->getParam('uid');
                 if (!isset($processesCreated[$uid])) {
                     $unknownProcesses[] = $uid;

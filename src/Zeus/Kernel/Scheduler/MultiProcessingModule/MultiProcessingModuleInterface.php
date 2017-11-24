@@ -57,7 +57,7 @@ interface MultiProcessingModuleInterface
 
     public function onWorkerLoop(WorkerEvent $event);
 
-    public function onWorkerTerminate(SchedulerEvent $event);
+    public function onWorkerTerminate(WorkerEvent $event);
 
     public function onWorkerTerminated(WorkerEvent $event);
 

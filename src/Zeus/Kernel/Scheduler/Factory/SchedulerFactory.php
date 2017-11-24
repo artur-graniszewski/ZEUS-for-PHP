@@ -8,7 +8,6 @@ use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\IpcServer;
-
 use Zeus\Kernel\Scheduler\Config;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\Kernel\Scheduler;
@@ -54,7 +53,7 @@ class SchedulerFactory implements FactoryInterface
             'ipc_server' => $ipcServer
         ]);
 
-        $scheduler = new Scheduler($configObject, $worker, $schedulerDiscipline);
+        $scheduler = new Scheduler($configObject, $schedulerDiscipline);
         $scheduler->setEventManager($eventManager);
         $scheduler->setLogger($logger);
 
@@ -80,7 +79,7 @@ class SchedulerFactory implements FactoryInterface
      * @param string $schedulerName
      * @return mixed[]
      */
-    protected function getSchedulerConfig(ContainerInterface $container, $schedulerName)
+    private function getSchedulerConfig(ContainerInterface $container, $schedulerName)
     {
         $config = $container->get('configuration');
         $schedulerConfigs = $config['zeus_process_manager']['schedulers'];

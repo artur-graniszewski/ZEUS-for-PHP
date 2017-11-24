@@ -28,6 +28,7 @@ class WorkerFlowManager
         $event = new SchedulerEvent();
         $event->setName($eventName);
         $event->setScheduler($this->scheduler);
+        $event->setTarget($this->scheduler);
 
         return $event;
     }
@@ -83,7 +84,7 @@ class WorkerFlowManager
 
     public function stopWorker(int $uid, bool $isSoftStop)
     {
-        $event = $this->getSchedulerEvent(SchedulerEvent::EVENT_WORKER_TERMINATE);
+        $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_TERMINATE);
         $event->setParam('uid', $uid);
         $event->setParam('soft', $isSoftStop);
 

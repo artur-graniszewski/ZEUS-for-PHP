@@ -182,7 +182,10 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $event->setParam('uid', 123456);
         $em->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_WORKER_TERMINATE);
+        $event = new WorkerEvent();
+        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
+        $event->setName(WorkerEvent::EVENT_WORKER_TERMINATE);
 
         $event->setParam('soft', false);
         $em->triggerEvent($event);
@@ -191,7 +194,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
         $this->assertEquals(123456, $logArray[6][1][0], 'Kill signal should be sent to a certain process');
         $this->assertEquals(SIGKILL, $logArray[6][1][1], 'Correct type of kill signal should be sent to a certain process');
-        $this->assertEquals(SchedulerEvent::EVENT_WORKER_TERMINATE, $event->getName());
+        $this->assertEquals(WorkerEvent::EVENT_WORKER_TERMINATE, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
 

@@ -45,7 +45,7 @@ class ProcessTitle implements ListenerAggregateInterface
             $events = $events->getSharedManager();
             $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessStarting'], $priority);
             $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate'], $priority);
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate'], $priority);
             $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onProcessRunning'], $priority);
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart'], $priority);
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], $priority);

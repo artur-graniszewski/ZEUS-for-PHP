@@ -9,8 +9,8 @@ interface DisciplineInterface
 {
     /**
      * @param ConfigInterface $config
-     * @param WorkerCollection $processes
+     * @param WorkerCollection $workers
      * @return \mixed[]
      */
-    public function manage(ConfigInterface $config, WorkerCollection $processes) : array;
+    public function manage(ConfigInterface $config, WorkerCollection $workers) : array;
 }

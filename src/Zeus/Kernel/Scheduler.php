@@ -5,7 +5,6 @@ namespace Zeus\Kernel;
 use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\AbstractService;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
@@ -29,66 +28,42 @@ final class Scheduler extends AbstractService
     use PluginRegistry;
     use GarbageCollector;
 
-    /** @var WorkerState[]|WorkerCollection */
-    protected $workers = [];
-
-    /** @var bool */
-    protected $isSchedulerTerminating = false;
-
     /** @var WorkerState */
-    protected $schedulerStatus;
+    private $status;
 
-    /** @var Worker */
-    protected $workerService;
+    /** @var WorkerState[]|WorkerCollection */
+    private $workers = [];
 
-    protected $discipline;
+    private $discipline;
 
     /** @var mixed[] */
-    protected $eventHandles;
+    private $eventHandles;
 
     /** @var MultiProcessingModuleInterface */
-    protected $multiProcessingModule;
+    private $multiProcessingModule;
 
     /** @var SchedulerEvent */
-    protected $schedulerEvent;
+    private $schedulerEvent;
 
     /** @var WorkerFlowManager */
-    protected $workerFlowManager;
+    private $workerFlowManager;
 
-    /**
-     * @param SchedulerEvent $event
-     * @return $this
-     */
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
-
-        return $this;
     }
 
-    /**
-     * @return SchedulerEvent
-     */
     public function getSchedulerEvent() : SchedulerEvent
     {
         return clone $this->schedulerEvent;
     }
 
     /**
-     * @return Worker
-     */
-    public function getWorkerService()
-    {
-        return $this->workerService;
-    }
-
-    /**
      * Scheduler constructor.
      * @param ConfigInterface $config
-     * @param Worker $workerService
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, Worker $workerService, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
     {
         $this->workerFlowManager = new WorkerFlowManager();
         $this->workerFlowManager->setScheduler($this);
@@ -99,7 +74,6 @@ final class Scheduler extends AbstractService
 
         $this->discipline = $discipline;
         $this->setConfig($config);
-        $this->workerService = $workerService;
         $this->status = new WorkerState($this->getConfig()->getServiceName());
         $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
     }
@@ -123,8 +97,7 @@ final class Scheduler extends AbstractService
 
         $sharedEventManager = $eventManager->getSharedManager();
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerExited($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() {
@@ -144,7 +117,6 @@ final class Scheduler extends AbstractService
                 }
 
                 $e->stopPropagation(true);
-                //
                 $this->startLifeCycle();
                 $e->getWorker()->setIsTerminating(true);
 
@@ -168,15 +140,11 @@ final class Scheduler extends AbstractService
                 }
 
                 $this->kernelLoop();
-            }
-            , WorkerEvent::PRIORITY_FINALIZE
+            }, WorkerEvent::PRIORITY_FINALIZE
         );
     }
 
-    /**
-     * @param IpcEvent $event
-     */
-    protected function onIpcMessage(IpcEvent $event)
+    private function onIpcMessage(IpcEvent $event)
     {
         $message = $event->getParams();
 
@@ -200,13 +168,7 @@ final class Scheduler extends AbstractService
         }
     }
 
-    /**
-     * @param int $priority
-     * @param string $message
-     * @param mixed[] $extra
-     * @return $this
-     */
-    protected function log($priority, $message, $extra = []) : Scheduler
+    private function log(int $priority, string $message, array $extra = [])
     {
         if (!isset($extra['service_name'])) {
             $extra['service_name'] = $this->getConfig()->getServiceName();
@@ -217,35 +179,32 @@ final class Scheduler extends AbstractService
         }
 
         $this->getLogger()->log($priority, $message, $extra);
-
-        return $this;
     }
 
     /**
      * @param WorkerEvent $event
      */
-    protected function onWorkerExited(WorkerEvent $event)
+    private function onWorkerTerminated(WorkerEvent $event)
     {
-        $id = $event->getWorker()->getUid();
-        $this->log(Logger::DEBUG, "Worker $id exited");
+        $uid = $event->getWorker()->getUid();
 
-        if (isset($this->workers[$id])) {
-            $processStatus = $this->workers[$id];
+        $this->log(Logger::DEBUG, "Worker $uid exited");
+
+        if (isset($this->workers[$uid])) {
+            $processStatus = $this->workers[$uid];
 
             if (!WorkerState::isExiting($processStatus) && $processStatus['time'] < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
-                $this->log(Logger::ERR, "Worker $id exited prematurely");
+                $this->log(Logger::ERR, "Worker $uid exited prematurely");
             }
 
-            unset($this->workers[$id]);
+            unset($this->workers[$uid]);
         }
     }
 
     /**
-     * Stops the process manager.
-     *
-     * @return $this
+     * Stops the scheduler.
      */
-    public function stop() : Scheduler
+    public function stop()
     {
         $this->getLogger()->debug("Stopping scheduler");
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
@@ -262,13 +221,8 @@ final class Scheduler extends AbstractService
         $this->log(Logger::INFO, "Workers checked");
 
         unlink($fileName);
-
-        return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getPidFile() : string
     {
         // @todo: make it more sophisticated
@@ -279,10 +233,9 @@ final class Scheduler extends AbstractService
 
     /**
      * @param string $eventName
-     * @param mixed[]$extraData
-     * @return $this
+     * @param mixed[] $extraData
      */
-    protected function triggerEvent(string $eventName, array $extraData = []) : Scheduler
+    private function triggerEvent(string $eventName, array $extraData = [])
     {
         $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
@@ -290,17 +243,14 @@ final class Scheduler extends AbstractService
         $event->setParams($extraData);
         $event->setName($eventName);
         $events->triggerEvent($event);
-
-        return $this;
     }
 
     /**
      * Creates the server instance.
      *
      * @param bool $launchAsDaemon Run this server as a daemon?
-     * @return $this
      */
-    public function start($launchAsDaemon = false) : Scheduler
+    public function start(bool $launchAsDaemon = false)
     {
         $plugins = $this->getPluginRegistry()->count();
         $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
@@ -311,7 +261,7 @@ final class Scheduler extends AbstractService
                 $this->startLifeCycle();
                 $this->kernelLoop();
 
-                return $this;
+                return;
             }
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
             $this->workerFlowManager->startWorker(['server' => true]);
@@ -319,11 +269,9 @@ final class Scheduler extends AbstractService
         } catch (\Throwable $exception) {
             $this->handleException($exception);
         }
-
-        return $this;
     }
 
-    protected function startLifeCycle()
+    private function startLifeCycle()
     {
         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
@@ -335,23 +283,16 @@ final class Scheduler extends AbstractService
         $this->getLogger()->debug("Scheduler stop event finished");
     }
 
-    /**
-     * @param \Throwable $exception
-     * @return $this
-     */
-    protected function handleException(\Throwable $exception) : Scheduler
+    private function handleException(\Throwable $exception)
     {
         $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
-
-        return $this;
     }
 
     /**
      * @param int $uid
      * @param bool $isSoftStop
-     * @return $this
      */
-    protected function stopWorker(int $uid, bool $isSoftStop) : Scheduler
+    private function stopWorker(int $uid, bool $isSoftStop)
     {
         $this->workerFlowManager->stopWorker($uid, $isSoftStop);
 
@@ -360,8 +301,6 @@ final class Scheduler extends AbstractService
             $workerState['code'] = WorkerState::TERMINATED;
             $this->workers[$uid] = $workerState;
         }
-
-        return $this;
     }
 
     /**
@@ -369,7 +308,7 @@ final class Scheduler extends AbstractService
      *
      * @param SchedulerEvent $event
      */
-    protected function onShutdown(SchedulerEvent $event)
+    private function onShutdown(SchedulerEvent $event)
     {
         $exception = $event->getParam('exception', null);
 
@@ -393,45 +332,25 @@ final class Scheduler extends AbstractService
     }
 
     /**
-     * Create processes
+     * Start workers
      *
      * @param int $count Number of processes to create.
-     * @return $this
      */
-    protected function startWorkers(int $count) : Scheduler
+    private function startWorkers(int $count)
     {
         if ($count === 0) {
-            return $this;
+            return;
         }
 
         for ($i = 0; $i < $count; ++$i) {
             $this->workerFlowManager->startWorker();
         }
-
-        return $this;
     }
 
-    /**
-     * @param WorkerEvent $event
-     */
-    protected function onWorkerCreate(WorkerEvent $event)
-    {
-        if (!$event->getParam('init_process') || $event->getParam('server')) {
-            return;
-        }
-
-        $this->collectCycles();
-        $this->setIsTerminating(true);
-    }
-
-    /**
-     * @param WorkerEvent $event
-     * @return $this
-     */
-    protected function addNewWorker(WorkerEvent $event) : Scheduler
+    private function addNewWorker(WorkerEvent $event)
     {
         if ($event->getParam('server')) {
-            return $this;
+            return;
         }
 
         $uid = $event->getWorker()->getUid();
@@ -446,41 +365,35 @@ final class Scheduler extends AbstractService
             'cpu_usage' => 0,
             'status_description' => '',
         ];
-
-        return $this;
     }
 
     /**
-     * Manages server workers.
+     * Manages scheduled workers.
      *
      * @param DisciplineInterface $discipline
-     * @return $this
      */
-    protected function manageWorkers(DisciplineInterface $discipline) : Scheduler
+    private function manageWorkers(DisciplineInterface $discipline)
     {
         if ($this->isTerminating()) {
-            return $this;
+            return;
         }
 
         $operations = $discipline->manage($this->getConfig(), clone $this->workers);
 
         $toTerminate = $operations['terminate'];
-        $toSoftTerminate = $operations['soft_terminate'];
+        $toSoftTerminate = $operations['softTerminate'];
         $toCreate = $operations['create'];
 
         $this->startWorkers($toCreate);
         $this->stopWorkers($toTerminate, false);
         $this->stopWorkers($toSoftTerminate, true);
-
-        return $this;
     }
 
     /**
      * @param int[] $workerUids
-     * @param $isSoftTermination
-     * @return $this
+     * @param bool $isSoftTermination
      */
-    protected function stopWorkers(array $workerUids, bool $isSoftTermination) : Scheduler
+    private function stopWorkers(array $workerUids, bool $isSoftTermination)
     {
         $now = microtime(true);
 
@@ -492,29 +405,21 @@ final class Scheduler extends AbstractService
             $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
             $this->stopWorker($uid, $isSoftTermination);
         }
-
-        return $this;
     }
 
     /**
-     * Creates main (infinite) loop.
-     *
-     * @return $this
+     * Starts main (infinite) loop.
      */
-    protected function mainLoop() : Scheduler
+    private function mainLoop()
     {
         do {
             $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
         } while (!$this->isTerminating());
 
         $this->getLogger()->debug("Scheduler loop finished");
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
-    public function kernelLoop() : Scheduler
+    private function kernelLoop()
     {
         while (!$this->isTerminating()) {
             $time = microtime(true);
@@ -527,8 +432,6 @@ final class Scheduler extends AbstractService
                 usleep($diff * 100000);
             }
         }
-
-        return $this;
     }
 
     /**
@@ -539,20 +442,11 @@ final class Scheduler extends AbstractService
         return $this->workers;
     }
 
-    /**
-     * @param MultiProcessingModuleInterface $driver
-     * @return $this
-     */
-    public function setMultiProcessingModule(MultiProcessingModuleInterface $driver) : Scheduler
+    public function setMultiProcessingModule(MultiProcessingModuleInterface $driver)
     {
         $this->multiProcessingModule = $driver;
-
-        return $this;
     }
 
-    /**
-     * @return MultiProcessingModuleInterface
-     */
     public function getMultiProcessingModule() : MultiProcessingModuleInterface
     {
         return $this->multiProcessingModule;

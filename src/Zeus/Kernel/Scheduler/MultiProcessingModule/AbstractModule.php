@@ -197,7 +197,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             }
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach(SchedulerEvent::EVENT_WORKER_TERMINATE, function (SchedulerEvent $e) {
+        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATE, function (WorkerEvent $e) {
             $this->onWorkerTerminate($e);
             $this->unregisterWorker($e->getParam('uid'));
         }, -9000);
@@ -225,7 +225,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     {
     }
 
-    public function onWorkerTerminate(SchedulerEvent $event)
+    public function onWorkerTerminate(WorkerEvent $event)
     {
     }
 

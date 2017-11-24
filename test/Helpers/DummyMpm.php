@@ -21,10 +21,6 @@ class DummyMpm extends AbstractModule
         $this->pipe = $this->createPipe();
 
         $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
-
-        }, WorkerEvent::PRIORITY_FINALIZE + 10);
-
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
             $pid = $event->getParam('uid', getmypid());
             $event->getWorker()->setProcessId($pid);
             $event->getWorker()->setThreadId(1);
@@ -61,5 +57,16 @@ class DummyMpm extends AbstractModule
     public static function isSupported(& $errorMessage = ''): bool
     {
         return true;
+    }
+
+    public function onWorkerTerminate(WorkerEvent $event)
+    {
+        $this->raiseWorkerExitedEvent($event->getParam('uid'), $event->getParam('uid'), 1);
+        $event->stopPropagation(true);
+    }
+
+    public function isTerminating(): bool
+    {
+        return false;
     }
 }

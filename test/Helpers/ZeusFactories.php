@@ -183,7 +183,7 @@ trait ZeusFactories
         $scheduler->getMultiProcessingModule()->attach($events);
         $scheduler->getMultiProcessingModule()->setSchedulerEvent($scheduler->getSchedulerEvent());
 
-        $worker = $scheduler->getWorkerService();
+        $worker = new Worker();
         $worker->setIpc($scheduler->getIpc());
         $worker->setLogger($logger);
         $worker->setConfig($scheduler->getConfig());

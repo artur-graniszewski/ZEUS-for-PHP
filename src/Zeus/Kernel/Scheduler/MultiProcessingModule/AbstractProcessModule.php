@@ -19,10 +19,7 @@ abstract class AbstractProcessModule extends AbstractModule
         $this->setIpcAddress('tcp://' . $event->getParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM));
     }
 
-    /**
-     * @param SchedulerEvent $event
-     */
-    public function onWorkerTerminate(SchedulerEvent $event)
+    public function onWorkerTerminate(WorkerEvent $event)
     {
         $uid = $event->getParam('uid');
         $useSoftTermination = $event->getParam('soft', false);
