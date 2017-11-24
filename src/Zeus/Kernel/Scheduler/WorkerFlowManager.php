@@ -35,10 +35,9 @@ class WorkerFlowManager
     private function getWorker() : Worker
     {
         $worker = new Worker();
-        $worker->setEventManager($this->scheduler->getEventManager());
         $worker->setLogger($this->scheduler->getLogger());
         $worker->setConfig($this->scheduler->getConfig());
-        $worker->attach($this->scheduler->getEventManager());
+        $worker->setEventManager($this->scheduler->getEventManager());
 
         return $worker;
     }

@@ -156,7 +156,6 @@ class WorkerController extends AbstractActionController
         $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
-        $worker->attach($scheduler->getEventManager());
         $event->setTarget($worker);
         $this->initializeWorker($worker);
         $event->setParams(array_merge($event->getParams(), $startParams));
@@ -185,7 +184,6 @@ class WorkerController extends AbstractActionController
         $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
-        $worker->attach($scheduler->getEventManager());
         $event->setTarget($worker);
         $this->initializeWorker($worker);
         $event->setParams(array_merge($event->getParams(), $startParams));

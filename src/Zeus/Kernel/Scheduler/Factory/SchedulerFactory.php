@@ -54,7 +54,8 @@ class SchedulerFactory implements FactoryInterface
             'ipc_server' => $ipcServer
         ]);
 
-        $scheduler = new Scheduler($configObject, $eventManager, $worker, $schedulerDiscipline);
+        $scheduler = new Scheduler($configObject, $worker, $schedulerDiscipline);
+        $scheduler->setEventManager($eventManager);
         $scheduler->setLogger($logger);
 
         $workerEvent = new Scheduler\WorkerEvent();

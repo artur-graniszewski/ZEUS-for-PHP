@@ -23,7 +23,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     private $schedulerEvent;
 
     /** @var WorkerEvent */
-    protected $workerEvent;
+    private $workerEvent;
 
     /** @var bool */
     private $isTerminating = false;
@@ -35,7 +35,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     private $ipcConnections = [];
 
     /** @var SocketStream */
-    protected $ipc;
+    private $ipc;
 
     /** @var Selector */
     private $ipcSelector;

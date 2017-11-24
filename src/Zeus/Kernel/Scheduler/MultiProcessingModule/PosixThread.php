@@ -50,7 +50,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
             if ($this->workers) {
                 sleep(1);
                 $amount = count($this->workers);
-                $this->getLogger()->info("Waiting $amount for workers to exit");
+                $this->getLogger()->info("Waiting for $amount workers to exit");
             }
         }
     }

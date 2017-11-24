@@ -2,8 +2,6 @@
 
 namespace Zeus\Kernel;
 
-use Zend\EventManager\EventManagerInterface;
-use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\AbstractService;
@@ -26,7 +24,7 @@ use Zeus\Kernel\Scheduler\WorkerFlowManager;
  * @package Zeus\Kernel\Scheduler
  * @internal
  */
-final class Scheduler extends AbstractService implements EventsCapableInterface
+final class Scheduler extends AbstractService
 {
     use PluginRegistry;
     use GarbageCollector;
@@ -87,11 +85,10 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
     /**
      * Scheduler constructor.
      * @param ConfigInterface $config
-     * @param EventManagerInterface $eventManager
      * @param Worker $workerService
      * @param DisciplineInterface $discipline
      */
-    public function __construct(ConfigInterface $config, EventManagerInterface $eventManager, Worker $workerService, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, Worker $workerService, DisciplineInterface $discipline)
     {
         $this->workerFlowManager = new WorkerFlowManager();
         $this->workerFlowManager->setScheduler($this);
@@ -100,13 +97,11 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         $event->setScheduler($this);
         $this->setSchedulerEvent($event);
 
-        $this->setEventManager($eventManager);
         $this->discipline = $discipline;
         $this->setConfig($config);
         $this->workerService = $workerService;
         $this->status = new WorkerState($this->getConfig()->getServiceName());
         $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
-        $this->attach();
     }
 
     public function __destruct()
@@ -116,19 +111,16 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
         }
 
         if ($this->eventHandles) {
-            $events = $this->getEventManager();
             foreach ($this->eventHandles as $handle) {
-                $events->detach($handle);
+                $this->getEventManager()->detach($handle);
             }
         }
     }
 
-    /**
-     * @return $this
-     */
-    protected function attach()
+    public function attachDefaultListeners()
     {
         $eventManager = $this->getEventManager();
+
         $sharedEventManager = $eventManager->getSharedManager();
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->onWorkerCreate($e);}, WorkerEvent::PRIORITY_FINALIZE + 1);
@@ -179,9 +171,6 @@ final class Scheduler extends AbstractService implements EventsCapableInterface
             }
             , WorkerEvent::PRIORITY_FINALIZE
         );
-
-
-        return $this;
     }
 
     /**

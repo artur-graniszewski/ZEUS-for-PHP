@@ -29,7 +29,6 @@ class WorkerFactory implements FactoryInterface
         $schedulerConfig = $options['scheduler_config'];
         $worker = new Worker();
         $worker->setLogger($options['logger_adapter']);
-        $worker->setEventManager($options['event_manager']);
         $worker->setConfig($schedulerConfig);
         $worker->setIpc($options['ipc_server']);
 

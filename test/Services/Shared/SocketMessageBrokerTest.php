@@ -3,8 +3,6 @@
 namespace ZeusTest\Services\Shared;
 
 use PHPUnit_Framework_TestCase;
-use Zend\EventManager\EventManager;
-use Zend\EventManager\SharedEventManager;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -57,7 +55,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $worker->setConfig($config);
         $worker->setIpc($event->getScheduler()->getIpc());
         $worker->setLogger($event->getScheduler()->getLogger());
-        $worker->attach($events);
+        $worker->setEventManager($events);
 
         $received = null;
         $steps = 0;
@@ -118,6 +116,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event = new WorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
         $event->setTarget($worker);
+        $event->setWorker($worker);
         $events->triggerEvent($event);
 
         $this->assertEquals($requestString, $received);
@@ -137,7 +136,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $worker->setConfig($config);
         $worker->setIpc($event->getTarget()->getIpc());
         $worker->setLogger($event->getScheduler()->getLogger());
-        $worker->attach($events);
+        $worker->setEventManager($events);
         $worker->setProcessId(getmypid());
         $worker->setUid(getmypid());
 

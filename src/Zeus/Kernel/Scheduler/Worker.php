@@ -3,9 +3,6 @@
 namespace Zeus\Kernel\Scheduler;
 
 use Throwable;
-use Zend\EventManager\EventManager;
-use Zend\EventManager\EventManagerInterface;
-use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
@@ -103,13 +100,10 @@ class Worker extends AbstractService
         return $this->status;
     }
 
-    /**
-     * @param EventManagerInterface $eventManager
-     * @return $this
-     */
-    public function attach(EventManagerInterface $eventManager)
+    public function attachDefaultListeners()
     {
         $eventManager = $this->getEventManager();
+
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use ($eventManager) {
             set_exception_handler([$this, 'terminate']);
 
@@ -131,8 +125,6 @@ class Worker extends AbstractService
         $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
             $event->getWorker()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
-
-        return $this;
     }
 
     /**

@@ -2,19 +2,19 @@
 
 namespace Zeus\Kernel\Scheduler;
 
-use Zend\EventManager\EventManager;
-use Zend\EventManager\EventManagerInterface;
+use Zend\EventManager\EventManagerAwareInterface;
+use Zend\EventManager\EventManagerAwareTrait;
+use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\IpcServer;
 
-class AbstractService
+abstract class AbstractService implements EventsCapableInterface, EventManagerAwareInterface
 {
+    use EventManagerAwareTrait;
+
     private $ipcAdapter;
 
     private $logger;
-
-    /** @var EventManagerInterface */
-    private $events;
 
     /** @var ConfigInterface */
     private $config;
@@ -58,30 +58,6 @@ class AbstractService
     public function getLogger()
     {
         return $this->logger;
-    }
-
-    /**
-     * @param EventManagerInterface $events
-     */
-    public function setEventManager(EventManagerInterface $events)
-    {
-        $events->setIdentifiers([
-            get_called_class(),
-        ]);
-
-        $this->events = $events;
-    }
-
-    /**
-     * @return EventManagerInterface
-     */
-    public function getEventManager()
-    {
-        if (null === $this->events) {
-            $this->setEventManager(new EventManager());
-        }
-
-        return $this->events;
     }
 
     /**
