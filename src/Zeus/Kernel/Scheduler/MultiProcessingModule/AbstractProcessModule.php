@@ -71,10 +71,7 @@ abstract class AbstractProcessModule extends AbstractModule
         static::$pcntlBridge = $bridge;
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkWorkers()
+    public function onWorkersCheck(SchedulerEvent $event)
     {
         if ($this->getPcntlBridge()->isSupported()) {
             while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
@@ -82,15 +79,13 @@ abstract class AbstractProcessModule extends AbstractModule
             }
         }
 
-        parent::checkWorkers();
-
-        return $this;
+        parent::onWorkersCheck($event);
     }
 
     /**
      * @return MultiProcessingModuleCapabilities
      */
-    public function getCapabilities() : MultiProcessingModuleCapabilities
+    public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
         $capabilities = new MultiProcessingModuleCapabilities();
         $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);

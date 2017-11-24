@@ -46,7 +46,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         parent::onSchedulerStop($event);
 
         while ($this->workers) {
-            $this->checkWorkers();
+            $this->onWorkersCheck($event);
             if ($this->workers) {
                 sleep(1);
                 $amount = count($this->workers);
@@ -62,12 +62,9 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         file_put_contents("php://stdout", "");
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkWorkers()
+    public function onWorkersCheck(SchedulerEvent $event)
     {
-        parent::checkWorkers();
+        parent::onWorkersCheck($event);
 
         foreach ($this->workers as $threadId => $thread) {
             if ($thread->isTerminated()) {
@@ -77,8 +74,6 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
                 $this->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
             }
         }
-
-        return $this;
     }
 
     private function createThread(WorkerEvent $event)
@@ -129,10 +124,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         parent::onSchedulerInit($event);
     }
 
-    /**
-     * @return MultiProcessingModuleCapabilities
-     */
-    public function getCapabilities() : MultiProcessingModuleCapabilities
+    public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
         $capabilities = new MultiProcessingModuleCapabilities();
         $capabilities->setIsolationLevel($capabilities::ISOLATION_THREAD);

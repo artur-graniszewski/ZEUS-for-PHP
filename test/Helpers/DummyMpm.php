@@ -40,10 +40,7 @@ class DummyMpm extends AbstractModule
     {
     }
 
-    /**
-     * @return MultiProcessingModuleCapabilities
-     */
-    public function getCapabilities() : MultiProcessingModuleCapabilities
+    public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
         return new MultiProcessingModuleCapabilities();
     }
@@ -52,13 +49,13 @@ class DummyMpm extends AbstractModule
     {
         $pipe = $this->createPipe();
         $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
-        $this->setIpcAddress($pipe->getLocalPort());
+        $this->setIpcAddress($pipe->getLocalAddress());
     }
 
     public function onWorkerInit(WorkerEvent $event)
     {
         $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
-        $this->setIpcAddress($this->pipe->getLocalPort());
+        $this->setIpcAddress($this->pipe->getLocalAddress());
     }
 
     public static function isSupported(& $errorMessage = ''): bool

@@ -27,10 +27,7 @@ interface MultiProcessingModuleInterface
 
     public function setIpcAddress(string $address);
 
-    /**
-     * @return MultiProcessingModuleCapabilities
-     */
-    public function getCapabilities() : MultiProcessingModuleCapabilities;
+    public static function getCapabilities() : MultiProcessingModuleCapabilities;
 
     public function setSchedulerEvent(SchedulerEvent $schedulerEvent);
 
@@ -48,6 +45,8 @@ interface MultiProcessingModuleInterface
     public function onSchedulerInit(SchedulerEvent $schedulerEvent);
 
     public function onSchedulerLoop(SchedulerEvent $event);
+
+    public function onWorkersCheck(SchedulerEvent $event);
 
     public function onSchedulerStop(SchedulerEvent $event);
 

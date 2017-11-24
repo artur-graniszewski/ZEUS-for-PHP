@@ -343,7 +343,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
+        $posixProcess = new PosixProcess();
         $posixProcess->attach($em);
 
         $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
@@ -358,9 +358,8 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
 
     public function testPosixCapabilities()
     {
-        $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess($event);
-        $capabilities = $posixProcess->getCapabilities();
+        $posixProcess = new PosixProcess();
+        $capabilities = $posixProcess::getCapabilities();
 
         $this->assertInstanceOf(MultiProcessingModuleCapabilities::class, $capabilities);
         $this->assertEquals(MultiProcessingModuleCapabilities::ISOLATION_PROCESS, $capabilities->getIsolationLevel());

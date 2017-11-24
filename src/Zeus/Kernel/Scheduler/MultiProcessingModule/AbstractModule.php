@@ -147,17 +147,18 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function (SchedulerEvent $e) {
             $this->onKernelStart($e);
-            $this->checkWorkers();
+            $this->onWorkersCheck($e);
         });
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function (SchedulerEvent $e) {
             $this->onSchedulerInit($e);
         }, -9000);
         $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function (SchedulerEvent $e) {
             $this->onSchedulerStop($e);
-            $this->isTerminating = true;
+            $this->setIsTerminating(true);
 
             while ($this->ipcConnections) {
-                $this->checkWorkers();
+                $this->registerWorkers();
+                $this->onWorkersCheck($e);
                 if ($this->ipcConnections) {
                     sleep(1);
                     $amount = count($this->ipcConnections);
@@ -179,7 +180,8 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
             $wasExiting = $this->isTerminating();
 
             $this->checkPipe();
-            $this->checkWorkers();
+            $this->registerWorkers();
+            $this->onWorkersCheck($event);
 
             if ($this->isTerminating() && !$wasExiting) {
                 $event->getScheduler()->setIsTerminating(true);
@@ -251,7 +253,22 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
     {
     }
 
-    protected function checkWorkers()
+    public function onWorkersCheck(SchedulerEvent $event)
+    {
+    }
+
+    protected function raiseWorkerExitedEvent($uid, $processId, $threadId)
+    {
+        $event = $this->getWorkerEvent();
+        $event->setName(WorkerEvent::EVENT_WORKER_TERMINATED);
+        $event->getWorker()->setUid($uid);
+        $event->getWorker()->setProcessId($processId);
+        $event->getWorker()->setThreadId($threadId);
+        $this->events->triggerEvent($event);
+        $this->unregisterWorker($uid);
+    }
+
+    private function registerWorkers()
     {
         // read all keep-alive messages
         if ($this->ipcSelector->select(0)) {
@@ -281,8 +298,6 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                 // @todo: verify if nothing to do?
             }
         }
-
-        return $this;
     }
 
     private function connectToPipe(WorkerEvent $event)
@@ -291,7 +306,7 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
         if (!$stream) {
             $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
-            $this->isTerminating = true;
+            $this->setIsTerminating(true);
         } else {
             $this->ipc = new SocketStream($stream);
             $this->ipc->setBlocking(false);
@@ -310,14 +325,12 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
                 $this->ipc->select(0);
                 $this->ipc->write("!")->flush();
             } catch (\Throwable $exception) {
-                $this->isTerminating = true;
+                $this->setIsTerminating(true);
             }
         }
 
         return $this;
     }
-
-
 
     private function unregisterWorker(int $uid)
     {

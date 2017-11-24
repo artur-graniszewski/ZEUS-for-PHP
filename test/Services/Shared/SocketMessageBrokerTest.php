@@ -178,7 +178,8 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $exception = null;
         try {
             $events->triggerEvent($event);
-        } catch (\RuntimeException $exception) {
+        } catch (\Throwable $exception) {
+
         }
 
         $this->assertTrue(is_object($exception), 'Exception should be raised');

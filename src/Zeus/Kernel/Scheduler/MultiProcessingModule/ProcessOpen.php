@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\PipeStream;
@@ -103,12 +104,9 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         return $this;
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkWorkers()
+    public function onWorkersCheck(SchedulerEvent $event)
     {
-        parent::checkWorkers();
+        parent::onWorkersCheck($event);
 
         foreach ($this->workers as $pid => $worker) {
             $status = proc_get_status($worker['resource']);

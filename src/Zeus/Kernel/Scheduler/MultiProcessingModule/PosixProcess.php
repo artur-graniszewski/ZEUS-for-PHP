@@ -91,17 +91,12 @@ final class PosixProcess extends AbstractProcessModule implements MultiProcessin
         return $pid;
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkWorkers()
+    public function onWorkersCheck(SchedulerEvent $event)
     {
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $this->raiseWorkerExitedEvent($pid, $pid, 1);
         }
 
-        parent::checkWorkers();
-
-        return $this;
+        parent::onWorkersCheck($event);
     }
 }
