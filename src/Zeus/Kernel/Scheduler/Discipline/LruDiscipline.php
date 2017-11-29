@@ -10,42 +10,32 @@ use function microtime;
 
 class LruDiscipline implements DisciplineInterface
 {
-    /**
-     * @param ConfigInterface $config
-     * @param WorkerCollection $workers
-     * @return \mixed[]
-     */
-    public function manage(ConfigInterface $config, WorkerCollection $workers) : array
+    /** @var ConfigInterface **/
+    private $config;
+
+    /** @var WorkerCollection */
+    private $workers;
+
+    public function setConfig(ConfigInterface $config)
     {
-        $result = [
-            'create' => 0,
-            'terminate' => [],
-            'softTerminate' => [],
-        ];
+        $this->config = $config;
+    }
 
-        if (!$config->isProcessCacheEnabled()) {
-            return $result;
-        }
-
-        $statusSummary = $workers->getStatusSummary();
-        $workersToTerminate = $this->getWorkersToTerminate($workers, $config, $statusSummary);
-        $workersToCreate = $this->getAmountOfWorkersToCreate($workers, $config, $statusSummary);
-
-        return [
-            'create' => $workersToCreate,
-            'terminate' => [],
-            'softTerminate' => $workersToTerminate,
-        ];
+    public function setWorkersCollection(WorkerCollection $workers)
+    {
+        $this->workers = $workers;
     }
 
     /**
-     * @param WorkerCollection $workers
-     * @param ConfigInterface $config
-     * @param int[] $statusSummary
      * @return int
      */
-    protected function getAmountOfWorkersToCreate(WorkerCollection $workers, ConfigInterface $config, array $statusSummary) : int
+    public function getAmountOfWorkersToCreate() : int
     {
+        $config = $this->config;
+        $workers = $this->workers;
+
+        $statusSummary = $workers->getStatusSummary();
+
         $idleWorkers = $statusSummary[WorkerState::WAITING];
         $allWorkers = $workers->count();
 
@@ -65,13 +55,14 @@ class LruDiscipline implements DisciplineInterface
     }
 
     /**
-     * @param WorkerCollection $workers
-     * @param ConfigInterface $config
-     * @param int[] $statusSummary
      * @return int[]
      */
-    protected function getWorkersToTerminate(WorkerCollection $workers, ConfigInterface $config, array $statusSummary) : array
+    public function getWorkersToTerminate() : array
     {
+        $config = $this->config;
+        $workers = $this->workers;
+
+        $statusSummary = $workers->getStatusSummary();
         $expireTime = microtime(true) - $config->getProcessIdleTimeout();
 
         $workersToTerminate = [];

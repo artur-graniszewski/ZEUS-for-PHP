@@ -72,10 +72,13 @@ final class Scheduler extends AbstractService
         $event->setScheduler($this);
         $this->setSchedulerEvent($event);
 
-        $this->discipline = $discipline;
         $this->setConfig($config);
         $this->status = new WorkerState($this->getConfig()->getServiceName());
         $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
+
+        $this->discipline = $discipline;
+        $discipline->setConfig($config);
+        $discipline->setWorkersCollection($this->workers);
     }
 
     public function __destruct()
@@ -107,7 +110,7 @@ final class Scheduler extends AbstractService
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
             $this->collectCycles();
-            $this->manageWorkers($this->discipline);
+            $this->manageWorkers();
         });
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT,
@@ -369,24 +372,17 @@ final class Scheduler extends AbstractService
 
     /**
      * Manages scheduled workers.
-     *
-     * @param DisciplineInterface $discipline
      */
-    private function manageWorkers(DisciplineInterface $discipline)
+    private function manageWorkers()
     {
         if ($this->isTerminating()) {
             return;
         }
 
-        $operations = $discipline->manage($this->getConfig(), clone $this->workers);
+        $discipline = $this->discipline;
 
-        $toTerminate = $operations['terminate'];
-        $toSoftTerminate = $operations['softTerminate'];
-        $toCreate = $operations['create'];
-
-        $this->startWorkers($toCreate);
-        $this->stopWorkers($toTerminate, false);
-        $this->stopWorkers($toSoftTerminate, true);
+        $this->startWorkers($discipline->getAmountOfWorkersToCreate());
+        $this->stopWorkers($discipline->getWorkersToTerminate(), true);
     }
 
     /**

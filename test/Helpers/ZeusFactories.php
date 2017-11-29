@@ -27,7 +27,6 @@ use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
-use Zeus\ServerService\Shared\Logger\IpcLoggerInterface;
 use Zend\Router;
 
 trait ZeusFactories
