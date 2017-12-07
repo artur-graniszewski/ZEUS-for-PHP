@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zend\EventManager\Event;
+use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\Worker;
 
 class IpcEvent extends Event
@@ -23,7 +24,7 @@ class IpcEvent extends Event
     }
 
     /**
-     * @return mixed
+     * @return IpcServer
      */
     public function getTarget()
     {

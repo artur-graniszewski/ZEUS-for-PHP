@@ -84,6 +84,9 @@ final class SocketMessageBroker
     /** @var LoggerInterface */
     private $logger;
 
+    /** @var string */
+    private $leaderIpcAddress;
+
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
         $this->config = $config;
@@ -92,7 +95,6 @@ final class SocketMessageBroker
 
     /**
      * @param EventManagerInterface $events
-     * @return $this
      */
     public function attach(EventManagerInterface $events)
     {
@@ -105,19 +107,32 @@ final class SocketMessageBroker
             $this->isLeader ? $this->onLeaderLoop($event) : $this->onWorkerLoop($event);
         }, WorkerEvent::PRIORITY_REGULAR);
         $events->attach(WorkerEvent::EVENT_WORKER_EXIT, [$this, 'onWorkerExit'], 1000);
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'leaderElection'], SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'leaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
+        $events->attach(WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onWorkerCreate'], 1000);
+        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'startLeaderElection'], SchedulerEvent::PRIORITY_FINALIZE + 1);
+        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'onLeaderElection'], SchedulerEvent::PRIORITY_FINALIZE);
+        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'onLeaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
+    }
 
-        return $this;
+    public function onWorkerCreate(WorkerEvent $event)
+    {
+        $this->getLogger()->debug("Creating new worker");
+        if ($this->leaderIpcAddress) {
+            $this->getLogger()->debug("Pointing new worker to leader on " . $this->leaderIpcAddress);
+            $event->setParam('leaderIpcAddress', $this->leaderIpcAddress);
+        }
     }
 
     /**
-     * @return SocketStream
+     * @return SocketStream|null
      */
     public function getLeaderPipe()
     {
         if ($this->leaderPipe) {
             return $this->leaderPipe;
+        }
+
+        if (!$this->leaderIpcAddress) {
+            return;
         }
 
         $opts = [
@@ -126,7 +141,7 @@ final class SocketMessageBroker
             ],
         ];
 
-        $leaderPipe = @stream_socket_client('tcp://127.0.0.1:3333', $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $leaderPipe = @stream_socket_client($this->leaderIpcAddress, $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
         if ($leaderPipe) {
             $port = $this->workerServer->getLocalPort();
             $uid = $this->uid;
@@ -141,13 +156,24 @@ final class SocketMessageBroker
         return $this->leaderPipe;
     }
 
-    public function leaderElection(SchedulerEvent $event)
+    public function startLeaderElection(SchedulerEvent $event)
     {
         $this->getLogger()->debug("Electing pool leader");
         $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_AMOUNT, 1);
     }
 
-    public function leaderElected(IpcEvent $event)
+    public function onLeaderElected(IpcEvent $event)
+    {
+        $message = $event->getParams();
+        if ($message instanceof LeaderElectedMessage) {
+            /** @var LeaderElectedMessage $message */
+
+            $this->getLogger()->debug("Contacting leader on " . $message->getIpcAddress());
+            $this->leaderIpcAddress = $message->getIpcAddress();
+        }
+    }
+
+    public function onLeaderElection(IpcEvent $event)
     {
         $message = $event->getParams();
 
@@ -160,6 +186,10 @@ final class SocketMessageBroker
             $this->workerServer->close();
             $this->workerServer = null;
             $this->startUpstreamServer(1000);
+
+            $this->getLogger()->debug("Electing pool leader");
+            $event->getTarget()->send(new LeaderElectedMessage($this->downstreamServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
+            $event->getTarget()->send(new LeaderElectedMessage($this->downstreamServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
         }
     }
 
@@ -173,13 +203,10 @@ final class SocketMessageBroker
 
     /**
      * @param LoggerInterface $logger
-     * @return $this
      */
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
-
-        return $this;
     }
 
     /**
@@ -195,7 +222,6 @@ final class SocketMessageBroker
 
     /**
      * @param int $backlog
-     * @return $this
      */
     protected function startUpstreamServer(int $backlog)
     {
@@ -206,29 +232,21 @@ final class SocketMessageBroker
         $server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
         $this->readSelector->register($server->getSocket(), Selector::OP_READ);
         $this->upstreamServer = $server;
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function startDownstreamServer()
     {
         $server = new SocketServer();
         $server->setReuseAddress(true);
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
-        $server->bind('127.0.0.1', 300, 3333);
+        $server->bind('127.0.0.1', 300, 0);
         $this->readSelector->register($server->getSocket(), Selector::OP_READ);
         $this->downstreamServer = $server;
-
-        return $this;
     }
 
     /**
      * @param WorkerEvent $event
-     * @return $this
      */
     protected function createWorkerServer(WorkerEvent $event)
     {
@@ -264,9 +282,6 @@ final class SocketMessageBroker
         $this->handleClients();
     }
 
-    /**
-     * @return $this
-     */
     protected function addClients()
     {
         $queueSize = count($this->connectionQueue);
@@ -296,13 +311,8 @@ final class SocketMessageBroker
             $workers = count($this->busyWorkers);
             $this->getLogger()->info("Connection pool is back to normal [$available downstreams idle, $workers downstreams active]");
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function disconnectClients()
     {
         foreach ($this->upstreams as $key => $stream) {
@@ -316,24 +326,19 @@ final class SocketMessageBroker
                 $this->disconnectClient($key);
             }
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function handleClients()
     {
         if (!$this->upstreams) {
 
-            return $this;
+            return;
         }
 
         $now = microtime(true);
         do {
             if (!$this->readSelector->select(0)) {
-                return $this;
+                return;
             }
 
             $this->registerWorkers();
@@ -395,12 +400,11 @@ final class SocketMessageBroker
             }
         } while ($streamsToRead && (microtime(true) - $now < 0.01));
 
-        return $this;
+        return;
     }
 
     /**
      * @param int $key
-     * @return $this
      */
     protected function disconnectClient($key)
     {
@@ -433,13 +437,10 @@ final class SocketMessageBroker
             $this->availableWorkers[$key] = $this->busyWorkers[$key];
             unset($this->busyWorkers[$key]);
         }
-
-        return $this;
     }
 
     /**
      * @param SocketStream $client
-     * @return $this
      */
     protected function bindToWorker(SocketStream $client)
     {
@@ -469,25 +470,20 @@ final class SocketMessageBroker
             $this->writeSelector->register($downstream, Selector::OP_WRITE);
             $this->writeSelector->register($client, Selector::OP_WRITE);
 
-            return $this;
+            return;
         }
 
         if (!$this->availableWorkers) {
             $this->connectionQueue[] = $client;
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function registerWorkers()
     {
         $streams = $this->readSelector->getSelectedStreams(Selector::OP_READ);
 
         if (!in_array($this->downstreamServer->getSocket(), $streams)) {
-            return $this;
+            return;
         }
 
         try {
@@ -509,13 +505,8 @@ final class SocketMessageBroker
         } catch (SocketTimeoutException $exception) {
 
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function unregisterWorkers()
     {
         foreach ($this->workerPipe as $uid => $ipc) {
@@ -539,8 +530,6 @@ final class SocketMessageBroker
             unset ($this->availableWorkers[$uid]);
             unset ($this->busyWorkers[$uid]);
         }
-
-        return $this;
     }
 
     /**
@@ -669,9 +658,6 @@ final class SocketMessageBroker
         return $this->upstreamServer;
     }
 
-    /**
-     * @return $this
-     */
     protected function onHeartBeat()
     {
         $now = time();
@@ -681,7 +667,5 @@ final class SocketMessageBroker
                 $this->message->onHeartBeat($this->connection, []);
             }
         }
-
-        return $this;
     }
 }

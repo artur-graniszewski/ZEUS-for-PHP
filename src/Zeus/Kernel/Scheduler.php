@@ -334,7 +334,7 @@ final class Scheduler extends AbstractService
     /**
      * Start workers
      *
-     * @param int $count Number of processes to create.
+     * @param int $count Number of workers to start.
      */
     private function startWorkers(int $count)
     {
