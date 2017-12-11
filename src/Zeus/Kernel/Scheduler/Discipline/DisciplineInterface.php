@@ -7,10 +7,14 @@ use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 
 interface DisciplineInterface
 {
+    public function setConfig(ConfigInterface $config);
+
+    public function setWorkersCollection(WorkerCollection $workers);
+
+    public function getAmountOfWorkersToCreate() : int;
+
     /**
-     * @param ConfigInterface $config
-     * @param WorkerCollection $workers
-     * @return \mixed[]
+     * @return int[]
      */
-    public function manage(ConfigInterface $config, WorkerCollection $workers) : array;
+    public function getWorkersToTerminate() : array;
 }

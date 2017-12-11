@@ -390,25 +390,22 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
         $em = $scheduler->getEventManager();
         $sm = $em->getSharedManager();
         $sm->attach('*', WorkerEvent::EVENT_WORKER_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+
         $sm->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
                 $amountOfScheduledProcesses++;
+
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $processesCreated[$uid] = $uid;
-                $e->setParams(['uid' => $uid, 'init_process' => true]);
-            }, 1000
+
+                $worker = $e->getWorker();
+                $worker->setUid($uid);
+            }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 
-        $sm->attach('*', WorkerEvent::EVENT_WORKER_CREATE,
-            function(WorkerEvent $e) use (&$scheduler) {
+        $sm->attach('*', WorkerEvent::EVENT_WORKER_INIT,
+            function(WorkerEvent $e) use (&$processesInitialized) {
                 $e->stopPropagation(true);
-            }, SchedulerEvent::PRIORITY_FINALIZE - 1
-        );
-
-        $sm->attach('*', WorkerEvent::EVENT_WORKER_LOOP,
-            function(WorkerEvent $e) {
-                // stop the process loop
-                $e->getTarget()->getStatus()->incrementNumberOfFinishedTasks(100);
             }
         );
 

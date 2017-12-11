@@ -11,8 +11,6 @@ class SchedulerEvent extends AbstractEvent
     const PRIORITY_INITIALIZE = 50000;
     const PRIORITY_REGULAR = 0;
 
-    const EVENT_WORKER_TERMINATE = 'workerTerminate';
-
     const EVENT_SCHEDULER_START = 'schedulerStart';
     const EVENT_SCHEDULER_STOP = 'schedulerStop';
     const EVENT_SCHEDULER_LOOP = 'schedulerLoop';
