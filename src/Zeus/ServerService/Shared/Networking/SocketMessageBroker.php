@@ -169,8 +169,13 @@ final class SocketMessageBroker
             /** @var LeaderElectedMessage $message */
 
             $this->getLogger()->debug("Contacting leader on " . $message->getIpcAddress());
-            $this->leaderIpcAddress = $message->getIpcAddress();
+            $this->setLeaderIpcAddress($message->getIpcAddress());
         }
+    }
+
+    public function setLeaderIpcAddress(string $address)
+    {
+        $this->leaderIpcAddress = $address;
     }
 
     public function onLeaderElection(IpcEvent $event)
