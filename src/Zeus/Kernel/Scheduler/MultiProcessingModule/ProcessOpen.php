@@ -11,7 +11,7 @@ use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\PipeStream;
 use Zeus\Networking\Stream\Selector;
 
-final class ProcessOpen extends AbstractProcessModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
+final class ProcessOpen extends AbstractProcessModule implements SeparateAddressSpaceInterface
 {
     protected $stdout;
 
@@ -44,12 +44,8 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
      */
     public function __construct()
     {
-        parent::__construct();
-
         $this->stdout = @fopen('php://stdout', 'w');
         $this->stderr = @fopen('php://stderr', 'w');
-
-        parent::__construct();
     }
 
     public function __destruct()
@@ -64,8 +60,6 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
      */
     public function attach(EventManagerInterface $eventManager)
     {
-        parent::attach($eventManager);
-
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
 
@@ -113,7 +107,7 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
 
             if (!$status['running']) {
                 $this->cleanProcessPipes($pid);
-                $this->raiseWorkerExitedEvent($pid, $pid, 1);
+                $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
 
@@ -246,5 +240,40 @@ final class ProcessOpen extends AbstractProcessModule implements MultiProcessing
         }
 
         $this->flushBuffers($uid, false);
+    }
+
+    public function onKernelStart(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelStart() method.
+    }
+
+    public function onKernelLoop(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelLoop() method.
+    }
+
+    public function onSchedulerStop(SchedulerEvent $event)
+    {
+        // TODO: Implement onSchedulerStop() method.
+    }
+
+    public function onWorkerExit(WorkerEvent $event)
+    {
+        // TODO: Implement onWorkerExit() method.
+    }
+
+    public function onSchedulerInit(SchedulerEvent $event)
+    {
+        // TODO: Implement onSchedulerInit() method.
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+        // TODO: Implement onSchedulerLoop() method.
+    }
+
+    public function onWorkerLoop(WorkerEvent $event)
+    {
+        // TODO: Implement onWorkerLoop() method.
     }
 }

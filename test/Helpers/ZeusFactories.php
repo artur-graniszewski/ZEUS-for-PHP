@@ -179,8 +179,8 @@ trait ZeusFactories
 
         $scheduler->setIsTerminating(false);
         $scheduler->setIpc($ipcServer);
-        $scheduler->getMultiProcessingModule()->attach($events);
-        $scheduler->getMultiProcessingModule()->setSchedulerEvent($scheduler->getSchedulerEvent());
+        $scheduler->getMultiProcessingModule()->getWrapper()->setEventManager($events);
+        $scheduler->getMultiProcessingModule()->getWrapper()->setSchedulerEvent($scheduler->getSchedulerEvent());
 
         $worker = new Worker();
         $worker->setIpc($scheduler->getIpc());
@@ -190,7 +190,7 @@ trait ZeusFactories
         $workerEvent = new Scheduler\WorkerEvent();
         $workerEvent->setWorker($worker);
         $workerEvent->setTarget($worker);
-        $scheduler->getMultiProcessingModule()->setWorkerEvent($workerEvent);
+        $scheduler->getMultiProcessingModule()->getWrapper()->setWorkerEvent($workerEvent);
 
         return $scheduler;
     }

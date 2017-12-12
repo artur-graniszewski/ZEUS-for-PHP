@@ -176,7 +176,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $processesCreated[] = $uid;
-                $e->setParams(['uid' => $uid, 'init_process' => true]);
+                $e->setParams(['uid' => $uid, 'initWorker' => true]);
                 $e->getWorker()->setProcessId($uid);
                 $e->getWorker()->setUid($uid);
                 $e->getWorker()->setThreadId(1);
@@ -342,7 +342,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $processesCreated[] = $uid;
-                $e->setParams(['uid' => $uid, 'init_process' => true]);
+                $e->setParams(['uid' => $uid, 'initWorker' => true]);
             }, WorkerEvent::PRIORITY_FINALIZE + 1
         );
 

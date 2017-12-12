@@ -57,7 +57,7 @@ class WorkerFlowManager
         $event->setParams($eventParameters);
         $events->triggerEvent($event);
 
-        if (!$event->getParam('init_process')) {
+        if (!$event->getParam('initWorker')) {
             return $this;
         }
 
@@ -73,7 +73,7 @@ class WorkerFlowManager
         $event->setWorker($worker);
         $events->triggerEvent($event);
 
-        // worker init...
+        // worker exit...
         $worker = $event->getWorker();
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_EXIT);
         $event->setParams($params);

@@ -127,7 +127,7 @@ final class Scheduler extends AbstractService
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE,
             function (WorkerEvent $event) use ($eventManager) {
-                if (!$event->getParam('server') || $event->getParam('init_process')) {
+                if (!$event->getParam('server') || $event->getParam('initWorker')) {
                     return;
                 }
 

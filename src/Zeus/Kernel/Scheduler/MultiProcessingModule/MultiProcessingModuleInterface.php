@@ -2,40 +2,18 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zend\EventManager\EventManagerInterface;
-use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
 interface MultiProcessingModuleInterface
 {
-    const LOOPBACK_INTERFACE = '127.0.0.1';
-
-    const UPSTREAM_CONNECTION_TIMEOUT = 5;
-
-    const ZEUS_IPC_ADDRESS_PARAM = 'zeusIpcAddress';
-
     public static function isSupported(& $errorMessage = '') : bool;
-
-    public function attach(EventManagerInterface $eventManager);
-
-    public function setLogger(LoggerInterface $logger);
-
-    public function getLogger() : LoggerInterface;
-
-    public function getIpcAddress() : string;
-
-    public function setIpcAddress(string $address);
 
     public static function getCapabilities() : MultiProcessingModuleCapabilities;
 
-    public function setSchedulerEvent(SchedulerEvent $schedulerEvent);
+    public function getWrapper() : ModuleWrapper;
 
-    public function setWorkerEvent(WorkerEvent $workerEvent);
-
-    public function getSchedulerEvent() : SchedulerEvent;
-
-    public function getWorkerEvent() : WorkerEvent;
+    public function setWrapper(ModuleWrapper $wrapper);
 
     public function onKernelStart(SchedulerEvent $event);
 

@@ -16,7 +16,7 @@ abstract class AbstractProcessModule extends AbstractModule
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->setIpcAddress('tcp://' . $event->getParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM));
+        $this->getWrapper()->setIpcAddress('tcp://' . $event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM));
     }
 
     public function onWorkerTerminate(WorkerEvent $event)
@@ -24,7 +24,6 @@ abstract class AbstractProcessModule extends AbstractModule
         $uid = $event->getParam('uid');
         $useSoftTermination = $event->getParam('soft', false);
         if ($useSoftTermination || !$this->getPcntlBridge()->isSupported()) {
-            parent::onWorkerTerminate($event);
 
             return;
         } else {
@@ -32,7 +31,7 @@ abstract class AbstractProcessModule extends AbstractModule
         }
 
         if (!isset($this->workers[$uid])) {
-            $this->getLogger()->warn("Trying to stop already detached process $uid");
+            $this->getWrapper()->getLogger()->warn("Trying to stop already detached process $uid");
         }
     }
 
@@ -72,16 +71,13 @@ abstract class AbstractProcessModule extends AbstractModule
     {
         if ($this->getPcntlBridge()->isSupported()) {
             while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-                $this->raiseWorkerExitedEvent($pid, $pid, 1);
+                $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
 
         parent::onWorkersCheck($event);
     }
 
-    /**
-     * @return MultiProcessingModuleCapabilities
-     */
     public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
         $capabilities = new MultiProcessingModuleCapabilities();

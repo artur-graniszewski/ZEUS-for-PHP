@@ -159,7 +159,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
             $this->assertEquals($expectedForkValue, $triggeredEvent->getParam('uid'));
         }
 
-        $this->assertEquals($isInitExpected, $triggeredEvent->getParam('init_process'));
+        $this->assertEquals($isInitExpected, $triggeredEvent->getParam('initWorker'));
     }
 
     public function testProcessTermination()

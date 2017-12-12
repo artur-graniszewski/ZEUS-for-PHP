@@ -7,7 +7,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadBootstrap;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
-final class PosixThread extends AbstractModule implements MultiProcessingModuleInterface, SeparateAddressSpaceInterface
+final class PosixThread extends AbstractModule implements SeparateAddressSpaceInterface
 {
     use GarbageCollector;
 
@@ -38,7 +38,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->setIpcAddress('tcp://' . \ZEUS_THREAD_CONN_PORT);
+        $this->getWrapper()->setIpcAddress('tcp://' . \ZEUS_THREAD_CONN_PORT);
     }
 
     public function onSchedulerStop(SchedulerEvent $event)
@@ -50,7 +50,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
             if ($this->workers) {
                 sleep(1);
                 $amount = count($this->workers);
-                $this->getLogger()->info("Waiting for $amount workers to exit");
+                $this->getWrapper()->getLogger()->info("Waiting for $amount workers to exit");
             }
         }
     }
@@ -71,7 +71,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
                 $this->workers[$threadId] = null;
                 unset ($this->workers[$threadId]);
 
-                $this->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
+                $this->getWrapper()->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
             }
         }
     }
@@ -98,7 +98,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $thread->server = $_SERVER;
         $thread->argv = $argv;
         $thread->id = static::$id;
-        $thread->ipcPort = $event->getParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM);
+        $thread->ipcPort = $event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM);
         $thread->start(PTHREADS_INHERIT_NONE);
 
         $this->workers[static::$id] = $thread;
@@ -118,7 +118,7 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
     public function onSchedulerInit(SchedulerEvent $event)
     {
         if (version_compare((float) phpversion(), self::MIN_STABLE_PHP_VERSION, "<")) {
-            $this->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
+            $this->getWrapper()->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
         }
 
         parent::onSchedulerInit($event);
@@ -130,5 +130,35 @@ final class PosixThread extends AbstractModule implements MultiProcessingModuleI
         $capabilities->setIsolationLevel($capabilities::ISOLATION_THREAD);
 
         return $capabilities;
+    }
+
+    public function onKernelStart(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelStart() method.
+    }
+
+    public function onKernelLoop(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelLoop() method.
+    }
+
+    public function onWorkerTerminate(WorkerEvent $event)
+    {
+        // TODO: Implement onWorkerTerminate() method.
+    }
+
+    public function onWorkerTerminated(WorkerEvent $event)
+    {
+        // TODO: Implement onWorkerTerminated() method.
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+        // TODO: Implement onSchedulerLoop() method.
+    }
+
+    public function onWorkerLoop(WorkerEvent $event)
+    {
+        // TODO: Implement onWorkerLoop() method.
     }
 }
