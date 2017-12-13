@@ -51,11 +51,12 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
 
     public function onSchedulerStop(SchedulerEvent $event)
     {
+        $status = 0;
         $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    protected function createProcess(WorkerEvent $event): int
+    protected function createProcess(WorkerEvent $event) : int
     {
         $pcntl = $this->getPcntlBridge();
         $pid = $pcntl->pcntlFork();
@@ -87,6 +88,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
 
     public function onWorkersCheck(SchedulerEvent $event)
     {
+        $pcntlStatus = 0;
         while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
         }

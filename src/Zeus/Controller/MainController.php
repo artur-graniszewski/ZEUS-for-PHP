@@ -61,9 +61,12 @@ class MainController extends AbstractActionController
             ));
         }
 
-        pcntl_signal(SIGTERM, [$this, 'stopApplication']);
-        pcntl_signal(SIGINT, [$this, 'stopApplication']);
-        pcntl_signal(SIGTSTP, [$this, 'stopApplication']);
+        // @todo: remove pcnt_signal dependency
+        if (function_exists('pcntl_signal')) {
+            pcntl_signal(SIGTERM, [$this, 'stopApplication']);
+            pcntl_signal(SIGINT, [$this, 'stopApplication']);
+            pcntl_signal(SIGTSTP, [$this, 'stopApplication']);
+        }
 
         /** @var \Zend\Stdlib\Parameters $params */
         $params = $request->getParams();
@@ -101,10 +104,7 @@ class MainController extends AbstractActionController
         }
     }
 
-    /**
-     * @param int $code
-     */
-    protected function doExit($code)
+    protected function doExit(int $code)
     {
         exit($code);
     }
@@ -114,7 +114,7 @@ class MainController extends AbstractActionController
      * @param bool $autoStartOnly
      * @return string[]
      */
-    protected function getServices($serviceName = null, $autoStartOnly = false)
+    protected function getServices(string $serviceName = null, bool $autoStartOnly = false) : array
     {
         if ($this->reportBrokenServices($serviceName)) {
             return [];
@@ -197,10 +197,7 @@ class MainController extends AbstractActionController
         $this->logger->err('No Server Service found');
     }
 
-    /**
-     * @param string $serviceName
-     */
-    protected function startServicesCommand($serviceName)
+    protected function startServicesCommand(string $serviceName = null)
     {
         $services = $this->getServices($serviceName, true);
 
@@ -213,7 +210,7 @@ class MainController extends AbstractActionController
      * @param bool $mustBeRunning
      * @throws \Exception
      */
-    protected function stopServices($services, $mustBeRunning)
+    protected function stopServices($services, bool $mustBeRunning)
     {
         $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
 
@@ -235,22 +232,13 @@ class MainController extends AbstractActionController
         $this->stopServices($services, false);
     }
 
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger()
+    public function getLogger() : LoggerInterface
     {
         return $this->logger;
     }
 
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
-    public function setLogger($logger)
+    public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
-
-        return $this;
     }
 }

@@ -69,7 +69,7 @@ class Selector
      * @param int $timeout Timeout in milliseconds
      * @return int
      */
-    public function select($timeout = 0) : int
+    public function select(int $timeout = 0) : int
     {
         foreach($this->streams as $key => $stream) {
             if ($stream->isClosed()) {

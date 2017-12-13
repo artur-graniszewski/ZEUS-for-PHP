@@ -31,17 +31,12 @@ class Worker extends AbstractService
     /** @var int */
     protected $threadId = 1;
 
+    /** @var int */
     protected $uid;
 
-    /**
-     * @param int $id
-     * @return $this
-     */
     public function setUid(int $id)
     {
         $this->uid = $id;
-
-        return $this;
     }
 
     public function getUid() : int
@@ -49,48 +44,27 @@ class Worker extends AbstractService
         return $this->uid;
     }
 
-    /**
-     * @param int $processId
-     * @return $this
-     */
     public function setProcessId(int $processId)
     {
         $this->processId = $processId;
-
-        return $this;
     }
 
-    /**
-     * @param int $threadId
-     * @return $this
-     */
     public function setThreadId(int $threadId)
     {
         $this->threadId = $threadId;
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getThreadId(): int
     {
         return $this->threadId;
     }
 
-    /**
-     * @return int
-     */
     public function getProcessId() : int
     {
         return $this->processId;
     }
 
-    /**
-     * @return WorkerState
-     */
-    public function getStatus()
+    public function getStatus() : WorkerState
     {
         if (!$this->status) {
             $this->status = new WorkerState($this->getConfig()->getServiceName());
@@ -127,10 +101,6 @@ class Worker extends AbstractService
         }, WorkerEvent::PRIORITY_FINALIZE);
     }
 
-    /**
-     * @param string $statusDescription
-     * @return $this
-     */
     public function setRunning(string $statusDescription = null)
     {
         $status = $this->getStatus();
@@ -150,14 +120,8 @@ class Worker extends AbstractService
         $event->setName(WorkerEvent::EVENT_WORKER_RUNNING);
         $event->setParam('status', $status);
         $this->getEventManager()->triggerEvent($event);
-
-        return $this;
     }
 
-    /**
-     * @param string $statusDescription
-     * @return $this
-     */
     public function setWaiting(string $statusDescription = null)
     {
         $status = $this->getStatus();
@@ -177,14 +141,8 @@ class Worker extends AbstractService
         $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
         $event->setParam('status', $status);
         $this->getEventManager()->triggerEvent($event);
-
-        return $this;
     }
 
-    /**
-     * @param \Throwable $exception
-     * @return $this
-     */
     protected function reportException(Throwable $exception)
     {
         $this->getLogger()->err(sprintf("%s (%d): %s in %s on line %d",
@@ -195,8 +153,6 @@ class Worker extends AbstractService
             $exception->getLine()
         ));
         $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
-
-        return $this;
     }
 
     /**
@@ -228,9 +184,6 @@ class Worker extends AbstractService
         $this->getEventManager()->triggerEvent($event);
     }
 
-    /**
-     * Listen for incoming requests.
-     */
     public function mainLoop()
     {
         $exception = null;
@@ -265,7 +218,6 @@ class Worker extends AbstractService
 
     /**
      * @param WorkerEvent $event
-     * @return $this
      * @todo: move this to an AbstractProcess or a Plugin?
      */
     protected function sendStatus(WorkerEvent $event)
@@ -291,9 +243,9 @@ class Worker extends AbstractService
         try {
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (\Exception $ex) {
+            $this->getLogger()->err("Exception occured: " . $ex->getMessage());
             $event->getWorker()->setIsTerminating(true);
             $event->setParam('exception', $ex);
         }
-        return $this;
     }
 }

@@ -16,7 +16,7 @@ trait MessagePackager
      * @param string $message
      * @return mixed
      */
-    protected function unpackMessage($message)
+    protected function unpackMessage(string $message)
     {
         $command = $message[0];
         $message = substr($message, 1);
@@ -36,7 +36,7 @@ trait MessagePackager
      * @param mixed $message
      * @return string
      */
-    protected function packMessage($message)
+    protected function packMessage($message) : string
     {
         $noNull = false;
 

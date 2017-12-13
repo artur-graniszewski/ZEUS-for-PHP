@@ -36,7 +36,7 @@ class AsyncPlugin extends AbstractPlugin
     /**
      * @return SocketStream
      */
-    protected function getSocket()
+    protected function getSocket() : SocketStream
     {
         $result = @stream_socket_client(sprintf('tcp://%s:%d', $this->config->getListenAddress(), $this->config->getListenPort()));
         if (!$result) {
@@ -53,30 +53,24 @@ class AsyncPlugin extends AbstractPlugin
         return $stream;
     }
 
-    /**
-     * @param int $timeout Timeout in seconds
-     * @return $this
-     */
-    public function setJoinTimeout($timeout)
+    public function setJoinTimeout(int $timeout)
     {
         $this->joinTimeout = $timeout;
-
-        return $this;
     }
 
     /**
      * @return int
      */
-    public function getJoinTimeout()
+    public function getJoinTimeout() : int
     {
         return $this->joinTimeout;
     }
 
     /**
      * @param \Closure $callable
-     * @return mixed $callId
+     * @return int $callId
      */
-    public function run(\Closure $callable)
+    public function run(\Closure $callable) : int
     {
         if (!class_exists('Opis\Closure\SerializableClosure')) {
             throw new \LogicException("Async call failed: serialization module is missing");
@@ -110,7 +104,7 @@ class AsyncPlugin extends AbstractPlugin
     }
 
     /**
-     * @param mixed $callId
+     * @param int|int[] $callId
      * @return array|mixed
      */
     public function join($callId)
@@ -165,11 +159,7 @@ class AsyncPlugin extends AbstractPlugin
         return current($results);
     }
 
-    /**
-     * @param int $callId
-     * @return bool
-     */
-    public function isWorking($callId)
+    public function isWorking(int $callId) : bool
     {
         if (!isset($this->handles[$callId])) {
             throw new \LogicException(sprintf("Invalid callback ID: %s", $callId));

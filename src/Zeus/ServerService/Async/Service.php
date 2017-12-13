@@ -13,7 +13,7 @@ use Zeus\ServerService\Shared\AbstractSocketServerService;
 class Service extends AbstractSocketServerService
 {
     /** @var Worker */
-    protected $process;
+    protected $worker;
     protected $message;
 
     public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
@@ -32,32 +32,21 @@ class Service extends AbstractSocketServerService
         }
 
         $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
-            $this->process = $event->getTarget();
+            $this->worker = $event->getTarget();
         });
 
         $this->config['logger'] = get_class();
 
         parent::start();
-
-        return $this;
     }
 
-    /**
-     * @return Worker
-     */
-    public function getProcess()
+    public function getWorker() : Worker
     {
-        return $this->process;
+        return $this->worker;
     }
 
-    /**
-     * @param Message $message
-     * @return $this
-     */
-    public function setMessageComponent($message)
+    public function setMessageComponent(Message $message)
     {
         $this->message = $message;
-
-        return $this;
     }
 }

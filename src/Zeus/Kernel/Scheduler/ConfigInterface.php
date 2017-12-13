@@ -6,53 +6,26 @@ interface ConfigInterface extends \ArrayAccess
 {
     public function __construct($fromArray = null);
 
-    /**
-     * @return int
-     */
-    public function getMaxProcesses();
+    public function getMaxProcesses() : int;
 
-    /**
-     * @return int
-     */
-    public function getStartProcesses();
+    public function getStartProcesses() : int;
 
-    /**
-     * @return int
-     */
-    public function getMinSpareProcesses();
+    public function getMinSpareProcesses() : int;
 
-    /**
-     * @return int
-     */
-    public function getMaxSpareProcesses();
+    public function getMaxSpareProcesses() : int;
 
-    /**
-     * @return int
-     */
-    public function getProcessIdleTimeout();
+    public function getProcessIdleTimeout() : int;
 
-    /**
-     * @return string
-     */
-    public function getIpcDirectory();
+    public function getIpcDirectory() : string;
 
-    /**
-     * @return int
-     */
-    public function getMaxProcessTasks();
+    public function getMaxProcessTasks() : int;
 
-    /**
-     * @return string
-     */
-    public function getServiceName();
+    public function getServiceName() : string;
 
     /**
      * @return mixed[]
      */
     public function toArray();
 
-    /**
-     * @return bool
-     */
-    public function isProcessCacheEnabled();
+    public function isProcessCacheEnabled() : bool;
 }

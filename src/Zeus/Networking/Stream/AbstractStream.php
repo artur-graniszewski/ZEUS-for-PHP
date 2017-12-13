@@ -72,10 +72,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         return $this->isBlocking;
     }
 
-    /**
-     * @param bool $isBlocking
-     * @return $this
-     */
     public function setBlocking(bool $isBlocking)
     {
         $result = stream_set_blocking($this->resource, $isBlocking);
@@ -85,13 +81,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         }
 
         $this->isBlocking = $isBlocking;
-
-        return $this;
     }
 
     /**
-     * @return $this
-     * @throws \Exception
+     * @throws \Throwable
      */
     public function close()
     {
@@ -121,32 +114,19 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         if ($exception) {
             throw $exception;
         }
-
-        return $this;
     }
 
-    /**
-     * @return bool
-     */
     public function isClosed() : bool
     {
         return $this->isClosed;
     }
 
-    /**
-     * @return $this
-     */
     protected function doClose()
     {
         fflush($this->resource);
         fclose($this->resource);
-
-        return $this;
     }
 
-    /**
-     * @return bool
-     */
     protected function isEof() : bool
     {
         // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
@@ -158,9 +138,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         return $info['eof'] || $info['timed_out'];
     }
 
-    /**
-     * @return bool
-     */
     public function isWritable() : bool
     {
         return $this->isWritable && $this->resource;
@@ -168,7 +145,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     /**
      * @param string $ending
-     * @return string|false false if nothing was read, string otherwise
+     * @return string
      */
     public function read(string $ending = '') : string
     {
@@ -178,7 +155,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     /**
      * @param callable $readMethod
      * @param string $ending
-     * @return mixed
+     * @return string
      */
     protected function doRead($readMethod, string $ending = '') : string
     {
@@ -219,10 +196,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         return $data === false ? '' : $data;
     }
 
-    /**
-     * @param string $data
-     * @return $this
-     */
     public function write(string $data)
     {
         if (!$this->isWritable()) {
@@ -234,13 +207,8 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         if (isset($this->writeBuffer[$this->writeBufferSize])) {
             $this->doWrite($this->writeCallback);
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     public function flush()
     {
         $this->doWrite($this->writeCallback);
@@ -248,8 +216,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         if (isset($this->writeBuffer[0])) {
             throw new StreamException(sprintf("Flush incomplete, %d bytes left in the write buffer", strlen($this->writeBuffer)));
         }
-
-        return $this;
     }
 
     /**
@@ -281,31 +247,19 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         return $sent;
     }
 
-    /**
-     * @param int $size
-     * @return $this
-     */
     public function setWriteBufferSize(int $size)
     {
         if ($size < 0) {
             throw new \OutOfRangeException("Write buffer size must be greater than or equal 0");
         }
         $this->writeBufferSize = $size;
-
-        return $this;
     }
 
-    /**
-     * @param int $size
-     * @return $this
-     */
     public function setReadBufferSize(int $size)
     {
         if ($size <= 0) {
             throw new \OutOfRangeException("Read buffer size must be greater than 0");
         }
         $this->readBufferSize = $size;
-
-        return $this;
     }
 }

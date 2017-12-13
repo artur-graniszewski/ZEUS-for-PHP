@@ -25,7 +25,7 @@ trait ChunkedEncoding
         $this->expectedChunkSize = 0;
     }
 
-    public function decodeChunkedRequestBody(Request $request, & $message)
+    public function decodeChunkedRequestBody(Request $request, string & $message)
     {
         $this->buffer .= $message;
 

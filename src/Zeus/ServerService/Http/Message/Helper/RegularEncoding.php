@@ -20,7 +20,7 @@ trait RegularEncoding
             $this->requestComplete = true;
             $this->contentReceived = 0;
 
-            return $this;
+            return;
         }
 
         if (!ctype_digit($expectedBodyLength) || $expectedBodyLength < 0) {
@@ -46,7 +46,5 @@ trait RegularEncoding
             $this->requestComplete = true;
             $this->contentReceived = 0;
         }
-
-        return $this;
     }
 }

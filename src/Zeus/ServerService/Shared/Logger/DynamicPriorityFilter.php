@@ -17,7 +17,7 @@ final class DynamicPriorityFilter implements FilterInterface
 
     protected static $priority = 0;
 
-    public function __construct($priority)
+    public function __construct(int $priority)
     {
         static::$priority = $priority;
         if (!static::$filter) {
@@ -25,7 +25,7 @@ final class DynamicPriorityFilter implements FilterInterface
         }
     }
 
-    public static function overridePriority($priority)
+    public static function overridePriority(int $priority)
     {
         static::$filter = new Priority($priority);
     }

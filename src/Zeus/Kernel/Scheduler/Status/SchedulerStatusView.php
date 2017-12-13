@@ -51,21 +51,12 @@ class SchedulerStatusView
         return $this->scheduler;
     }
 
-    /**
-     * @param Scheduler $scheduler
-     * @return SchedulerStatusView
-     */
     public function setScheduler(Scheduler $scheduler)
     {
         $this->scheduler = $scheduler;
-        return $this;
     }
 
-    /**
-     * @param ServerServiceInterface $service
-     * @return false|string
-     */
-    public function getStatus(ServerServiceInterface $service)
+    public function getStatus(ServerServiceInterface $service) : string
     {
         $this->scheduler = $service->getScheduler();
 
@@ -145,7 +136,7 @@ class SchedulerStatusView
      * @param mixed[] $schedulerStatus
      * @return string
      */
-    protected function listProcessDetails($processList, $processStatusChars, $schedulerStatus)
+    protected function listProcessDetails($processList, $processStatusChars, $schedulerStatus) : string
     {
         $output = '';
         $console = $this->console;

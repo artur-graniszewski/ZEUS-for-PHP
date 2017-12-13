@@ -61,10 +61,10 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     /**
      * @param NetworkStreamInterface $connection
-     * @param \Exception $exception
-     * @throws \Exception
+     * @param \Throwable $exception
+     * @throws \Throwable
      */
-    public function onError(NetworkStreamInterface $connection, $exception)
+    public function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
         $connection->close();
     }
@@ -72,9 +72,9 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     /**
      * @param NetworkStreamInterface $connection
      * @param string $message
-     * @throws \Exception
+     * @throws \Throwable
      */
-    public function onMessage(NetworkStreamInterface $connection, $message)
+    public function onMessage(NetworkStreamInterface $connection, string $message)
     {
         if ($connection instanceof FlushableConnectionInterface) {
             $connection->setWriteBufferSize(0);
@@ -151,7 +151,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         $this->ttl++;
     }
 
-    protected function run($message)
+    protected function run(string $message)
     {
         /** @var Callable $callable */
         $error = [];

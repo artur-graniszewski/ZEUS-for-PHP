@@ -57,8 +57,6 @@ class Service extends AbstractSocketServerService
         $this->config['logger'] = get_class();
 
         parent::start();
-
-        return $this;
     }
 
     /**
@@ -69,10 +67,6 @@ class Service extends AbstractSocketServerService
         return $this->process;
     }
 
-    /**
-     * @param RequestInterface|Request $httpRequest
-     * @param ResponseInterface|Response $httpResponse
-     */
     public function logRequest(RequestInterface $httpRequest, ResponseInterface $httpResponse)
     {
         $priority = $httpResponse->getStatusCode() >= 400 ? 'err' : 'info';
@@ -100,11 +94,11 @@ class Service extends AbstractSocketServerService
 
     /**
      * @param RequestInterface|Request $request
-     * @param $headerName
+     * @param string $headerName
      * @param null|string $defaultValue
-     * @return null|string
+     * @return string
      */
-    protected function getHeader(RequestInterface $request, $headerName, $defaultValue = null)
+    protected function getHeader(RequestInterface $request, string $headerName, $defaultValue = null) : string
     {
         if ($request instanceof HttpRequest) {
             $value = $request->getHeaderOverview($headerName, false);

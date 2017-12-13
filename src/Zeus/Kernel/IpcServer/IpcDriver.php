@@ -12,16 +12,15 @@ use Zeus\Kernel\IpcServer;
 abstract class IpcDriver
 {
     /**
-     * @param $message
+     * @param mixed $message
      * @param string $audience
      * @param int $number
-     * @return $this
      */
-    public abstract function send($message, $audience = IpcServer::AUDIENCE_ALL, int $number = 0);
+    public abstract function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0);
 
     /**
      * @param bool $returnRaw
      * @return mixed[]
      */
-    public abstract function readAll($returnRaw = false);
+    public abstract function readAll(bool $returnRaw = false) : array;
 }

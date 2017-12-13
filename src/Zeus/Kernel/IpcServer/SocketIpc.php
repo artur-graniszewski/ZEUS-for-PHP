@@ -3,7 +3,6 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\MessagePackager;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
 
@@ -31,13 +30,7 @@ class SocketIpc extends IpcDriver
         $this->stream = $stream;
     }
 
-    /**
-     * @param $message
-     * @param string $audience
-     * @param int $number
-     * @return $this
-     */
-    public function send($message, $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
+    public function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
     {
         $payload = [
             'sid' => $this->senderId,
@@ -53,15 +46,9 @@ class SocketIpc extends IpcDriver
         if ($this->stream instanceof FlushableConnectionInterface) {
             $this->stream->flush();
         }
-
-        return $this;
     }
 
-    /**
-     * @param bool $returnRaw
-     * @return mixed[]
-     */
-    public function readAll($returnRaw = false)
+    public function readAll(bool $returnRaw = false) : array
     {
         $messages = [];
 

@@ -306,11 +306,6 @@ final class Scheduler extends AbstractService
         }
     }
 
-    /**
-     * Shutdowns the server
-     *
-     * @param SchedulerEvent $event
-     */
     private function onShutdown(SchedulerEvent $event)
     {
         $exception = $event->getParam('exception', null);
@@ -334,18 +329,13 @@ final class Scheduler extends AbstractService
         }
     }
 
-    /**
-     * Start workers
-     *
-     * @param int $count Number of workers to start.
-     */
-    private function startWorkers(int $count)
+    private function startWorkers(int $amount)
     {
-        if ($count === 0) {
+        if ($amount === 0) {
             return;
         }
 
-        for ($i = 0; $i < $count; ++$i) {
+        for ($i = 0; $i < $amount; ++$i) {
             $this->workerFlowManager->startWorker();
         }
     }

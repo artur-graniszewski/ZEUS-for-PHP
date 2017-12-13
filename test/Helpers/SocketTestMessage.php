@@ -40,10 +40,10 @@ class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageIn
 
     /**
      * @param NetworkStreamInterface $connection
-     * @param \Exception $exception
-     * @throws \Exception
+     * @param \Throwable $exception
+     * @throws \Throwable
      */
-    function onError(NetworkStreamInterface $connection, $exception)
+    function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
         // TODO: Implement onError() method.
     }
@@ -53,7 +53,7 @@ class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageIn
      * @param string $message
      * @throws \Exception
      */
-    function onMessage(NetworkStreamInterface $connection, $message)
+    function onMessage(NetworkStreamInterface $connection, string $message)
     {
         call_user_func($this->readCallback, $connection, $message);
     }

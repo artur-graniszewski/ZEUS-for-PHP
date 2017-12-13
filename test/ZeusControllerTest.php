@@ -151,7 +151,7 @@ class ZeusControllerTest extends PHPUnit_Framework_TestCase
         $controller->dispatch($request, $response);
 
         $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
-        $this->assertGreaterThan(0, strpos($logEntries, 'No server service started'));
+        $this->assertGreaterThan(0, strpos($logEntries, 'No server service started'), "Log contains $logEntries");
     }
 
     public function testControllerApplicationStopWithoutServices()

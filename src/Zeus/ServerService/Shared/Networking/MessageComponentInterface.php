@@ -27,12 +27,12 @@ interface MessageComponentInterface
      * @param \Exception $exception
      * @throws \Exception
      */
-    function onError(NetworkStreamInterface $connection, $exception);
+    function onError(NetworkStreamInterface $connection, \Throwable $exception);
 
     /**
      * @param NetworkStreamInterface $connection
      * @param string $message
      * @throws \Exception
      */
-    function onMessage(NetworkStreamInterface $connection, $message);
+    function onMessage(NetworkStreamInterface $connection, string $message);
 }

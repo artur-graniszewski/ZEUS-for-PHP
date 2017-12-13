@@ -20,195 +20,108 @@ class Config extends \Zend\Config\Config implements ConfigInterface
         parent::__construct($fromArray, true);
     }
 
-    /**
-     * @return string
-     */
-    public function getServiceName()
+    public function getServiceName() : string
     {
         return $this->get('service_name');
     }
 
-    /**
-     * @param string $serviceName
-     * @return $this
-     */
-    public function setServiceName($serviceName)
+    public function setServiceName(string $serviceName)
     {
         $this->offsetSet('service_name', $serviceName);
-
-        return $this;
     }
 
-    /**
-     * @return bool
-     */
-    public function isAutoStartEnabled()
+    public function isAutoStartEnabled() : bool
     {
-        return $this->get('auto_start');
+        return $this->get('auto_start', false);
     }
 
-    /**
-     * @param bool $isAutoStartEnabled
-     * @return $this
-     */
-    public function setIsAutoStartEnabled($isAutoStartEnabled)
+    public function setIsAutoStartEnabled(bool $isAutoStartEnabled)
     {
         $this->offsetSet('auto_start', $isAutoStartEnabled);
-
-        return $this;
     }
 
-    /**
-     * @return bool
-     */
-    public function isProcessCacheEnabled()
+    public function isProcessCacheEnabled() : bool
     {
         return $this->get('enable_process_cache', false);
     }
 
-    /**
-     * @param bool $isEnabled
-     * @return $this
-     */
-    public function setIsProcessCacheEnabled($isEnabled)
+    public function setIsProcessCacheEnabled(bool $isEnabled)
     {
         $this->offsetSet('enable_process_cache', $isEnabled);
-
-        return $this;
     }
 
     /**
      * @return int
      */
-    public function getStartProcesses()
+    public function getStartProcesses() : int
     {
-        return $this->get('start_processes');
+        return $this->get('start_processes', 0);
     }
 
-    /**
-     * @param int $startAmount
-     * @return $this
-     */
-    public function setStartProcesses($startAmount)
+    public function setStartProcesses(int $startAmount)
     {
         $this->offsetSet('start_processes', $startAmount);
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getMaxProcesses()
+    public function getMaxProcesses() : int
     {
-        return $this->get('max_processes');
+        return $this->get('max_processes', 0);
     }
 
-    /**
-     * @param int $limit
-     * @return $this
-     */
-    public function setMaxProcesses($limit)
+    public function setMaxProcesses(int $limit)
     {
         $this->offsetSet('max_processes', $limit);
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getMinSpareProcesses()
+    public function getMinSpareProcesses() : int
     {
-        return $this->get('min_spare_processes');
+        return $this->get('min_spare_processes', 0);
     }
 
-    /**
-     * @param int $limit
-     * @return $this
-     */
-    public function setMinSpareProcesses($limit)
+    public function setMinSpareProcesses(int $limit)
     {
         $this->offsetSet('min_spare_processes', $limit);
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getMaxSpareProcesses()
+    public function getMaxSpareProcesses() : int
     {
-        return $this->get('max_spare_processes');
+        return $this->get('max_spare_processes', 0);
     }
 
-    /**
-     * @param int $limit
-     * @return $this
-     */
-    public function setMaxSpareProcesses($limit)
+    public function setMaxSpareProcesses(int $limit)
     {
         $this->offsetSet('max_spare_processes', $limit);
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getProcessIdleTimeout()
+    public function getProcessIdleTimeout() : int
     {
         return $this->get('processes_idle_timeout', 10);
     }
 
-    /**
-     * @param int $timeInSeconds
-     * @return $this
-     */
-    public function setProcessIdleTimeout($timeInSeconds)
+    public function setProcessIdleTimeout(int $timeInSeconds)
     {
         $this->offsetSet('processes_idle_timeout', $timeInSeconds);
-
-        return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getIpcDirectory()
+    public function getIpcDirectory() : string
     {
         $directory = $this->get('ipc_directory', getcwd() . '/');
 
         return preg_match('~\/$~', $directory) ? $directory : $directory . '/';
     }
 
-    /**
-     * @param string $directory
-     * @return $this
-     */
-    public function setIpcDirectory($directory)
+    public function setIpcDirectory(string $directory)
     {
         $this->offsetSet('ipc_directory', $directory);
-
-        return $this;
     }
 
-    /**
-     * @param int $limit
-     * @return $this
-     */
-    public function setMaxProcessTasks($limit)
+    public function setMaxProcessTasks(int $limit)
     {
         $this->offsetSet('max_process_tasks', $limit);
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getMaxProcessTasks()
+    public function getMaxProcessTasks() : int
     {
-        return $this->get('max_process_tasks');
+        return $this->get('max_process_tasks', 0);
     }
 }

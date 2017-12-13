@@ -73,13 +73,13 @@ class LoggerFactory implements FactoryInterface
     /**
      * @param ContainerInterface $container
      * @param string $serviceName
-     * @return null|string
+     * @return string
      */
-    protected function getBannerFromModule(ContainerInterface $container, $serviceName)
+    protected function getBannerFromModule(ContainerInterface $container, $serviceName) : string
     {
         /** @var ModuleManagerInterface $moduleManager */
         $moduleManager = $container->get('ModuleManager');
-        $banner = null;
+        $banner = "";
 
         if ($serviceName === 'main' && static::$showBanner) {
             foreach ($moduleManager->getLoadedModules(false) as $module) {

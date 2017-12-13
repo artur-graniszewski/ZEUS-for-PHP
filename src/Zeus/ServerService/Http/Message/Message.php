@@ -142,9 +142,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return $this->dispatcher;
     }
 
-    /**
-     * @param NetworkStreamInterface $connection
-     */
     public function onOpen(NetworkStreamInterface $connection)
     {
         $this->initNewRequest();
@@ -159,7 +156,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param \Throwable $exception
      * @throws \Throwable
      */
-    public function onError(NetworkStreamInterface $connection, $exception)
+    public function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
         if (!$connection->isWritable()) {
             $this->onClose($connection);
@@ -192,9 +189,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         throw $exception;
     }
 
-    /**
-     * @param NetworkStreamInterface $connection
-     */
     public function onClose(NetworkStreamInterface $connection)
     {
         $this->requestPhase = static::REQUEST_PHASE_IDLE;
@@ -204,10 +198,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->connection = null;
     }
 
-    /**
-     * @param \Zeus\Networking\Stream\NetworkStreamInterface $connection
-     * @param null $data
-     */
     public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         switch ($this->requestPhase) {
@@ -224,11 +214,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
     }
 
-    /**
-     * @param NetworkStreamInterface $connection
-     * @param string $message
-     */
-    public function onMessage(NetworkStreamInterface $connection, $message)
+    public function onMessage(NetworkStreamInterface $connection, string $message)
     {
         $this->requestPhase = static::REQUEST_PHASE_READING;
 
@@ -270,8 +256,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     /**
      * @param NetworkStreamInterface $connection
      * @param callback $callback
-     * @return $this
-     * @throws \Exception
      * @throws \Throwable
      */
     protected function dispatchRequest(NetworkStreamInterface $connection, $callback)
@@ -296,13 +280,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         if ($exception) {
             $this->onError($connection, $exception);
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function initNewRequest()
     {
         $this->headersSent = false;
@@ -314,14 +293,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->posInRequestBody = 0;
         $this->compressionHandler = null;
         $this->deleteTemporaryFiles();
-
-        return $this;
     }
 
-    /**
-     * @param NetworkStreamInterface $connection
-     * @return $this
-     */
     protected function validateRequestHeaders(NetworkStreamInterface $connection)
     {
         $this->setHost($this->request, $connection->getLocalAddress());
@@ -335,18 +308,12 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
                 $connection->write(sprintf("HTTP/%s 100 Continue\r\n\r\n", Request::VERSION_11));
             }
         }
-
-        return $this;
     }
 
-    /**
-     * @param string $message
-     * @return $this
-     */
     protected function decodeRequestBody(string & $message)
     {
         if ($this->bodyReceived) {
-            return $this;
+            return;
         }
 
         if (!$this->isBodyAllowedInRequest($this->request)) {
@@ -358,24 +325,18 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $this->requestComplete = true;
             $this->bodyReceived = true;
 
-            return $this;
+            return;
         }
 
         if ($this->getEncodingType($this->request) === static::ENCODING_CHUNKED) {
             $this->decodeChunkedRequestBody($this->request, $message);
 
-            return $this;
+            return;
         }
 
         $this->decodeRegularRequestBody($this->request, $message);
-
-        return $this;
     }
 
-    /**
-     * @param string $buffer
-     * @return $this
-     */
     protected function sendHeaders(string & $buffer)
     {
         $connection = $this->connection;
@@ -410,15 +371,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             "\r\n");
 
         $this->headersSent = true;
-
-        return $this;
     }
 
-    /**
-     * @param string $buffer
-     * @return bool
-     */
-    protected function enableCompressionIfSupported(string & $buffer)
+    protected function enableCompressionIfSupported(string & $buffer) : bool
     {
         $this->compressionHandler = null;
 
@@ -462,11 +417,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return true;
     }
 
-    /**
-     * @param string $buffer
-     * @return string
-     */
-    public function sendResponse(string $buffer)
+    public function sendResponse(string $buffer) : string
     {
         $connection = $this->connection;
 
@@ -503,11 +454,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return '';
     }
 
-    /**
-     * @param NetworkStreamInterface $connection
-     * @param string $buffer
-     * @return $this
-     */
     protected function sendBody(NetworkStreamInterface $connection, string $buffer = null)
     {
         if ($this->isBodyAllowedInResponse($this->request)) {
@@ -536,15 +482,12 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         if ($this->requestPhase === static::REQUEST_PHASE_SENDING) {
-            return $this->finalizeRequest();
-        }
+            $this->finalizeRequest();
 
-        return $this;
+            return;
+        }
     }
 
-    /**
-     * @return $this
-     */
     protected function finalizeRequest()
     {
         $connection = $this->connection;
@@ -562,15 +505,13 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         if (!$this->request->getMetadata('isKeepAliveConnection')) {
             $this->onClose($connection);
 
-            return $this;
+            return;
         }
 
         $this->keepAliveCount--;
         $this->initNewRequest();
         $this->restartKeepAliveTimer();
         $this->requestPhase = static::REQUEST_PHASE_KEEP_ALIVE;
-
-        return $this;
     }
 
     /**
@@ -579,7 +520,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @return Response
      * @internal param Response $response
      */
-    protected function dispatchError(Request $request, \Throwable $exception)
+    protected function dispatchError(Request $request, \Throwable $exception) : Response
     {
         $statusCode = $exception->getCode() >= Response::STATUS_CODE_400 ? $exception->getCode() : Response::STATUS_CODE_500;
 
@@ -592,31 +533,21 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return $response;
     }
 
-    /**
-     * @return $this
-     */
     protected function restartKeepAliveCounter()
     {
         $this->keepAliveCount = static::MAX_KEEP_ALIVE_REQUESTS;
         $this->restartKeepAliveTimer();
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function restartKeepAliveTimer()
     {
         $this->keepAliveTimer = 5;
-
-        return $this;
     }
 
     /**
      * @return int
      */
-    public function getNumberOfFinishedRequests()
+    public function getNumberOfFinishedRequests() : int
     {
         return $this->requestsFinished;
     }

@@ -7,7 +7,7 @@ use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
@@ -104,7 +104,7 @@ class WorkerController extends AbstractActionController
     /**
      * @param int $code
      */
-    protected function doExit($code)
+    protected function doExit(int $code)
     {
         exit($code);
     }
@@ -113,7 +113,7 @@ class WorkerController extends AbstractActionController
      * @param string $serviceName
      * @return bool
      */
-    protected function reportBrokenServices($serviceName)
+    protected function reportBrokenServices(string $serviceName)
     {
         $result = false;
         $brokenServices = $this->manager->getBrokenServices();
@@ -144,7 +144,7 @@ class WorkerController extends AbstractActionController
      * @param string $serviceName
      * @param array $startParams
      */
-    protected function startWorkerForService($serviceName, array $startParams = [])
+    protected function startWorkerForService(string $serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
@@ -153,7 +153,7 @@ class WorkerController extends AbstractActionController
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
+        $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
         $event->setTarget($worker);
@@ -163,7 +163,7 @@ class WorkerController extends AbstractActionController
         $event->setParam('threadId', $worker->getThreadId());
         $event->setParam('processId', $worker->getProcessId());
         if (defined("ZEUS_THREAD_CONN_PORT")) {
-            $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
+            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
         }
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
@@ -173,7 +173,7 @@ class WorkerController extends AbstractActionController
      * @param string $serviceName
      * @param array $startParams
      */
-    protected function starSchedulerForService($serviceName, array $startParams = [])
+    protected function starSchedulerForService(string $serviceName, array $startParams = [])
     {
         $startParams['server'] = false;
 
@@ -181,7 +181,7 @@ class WorkerController extends AbstractActionController
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
         DynamicPriorityFilter::resetPriority();
 
-        $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
+        $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
         $event->setTarget($worker);
@@ -191,7 +191,7 @@ class WorkerController extends AbstractActionController
         $event->setParam('server', true);
         $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         if (defined("ZEUS_THREAD_CONN_PORT")) {
-            $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
+            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
         }
         $event->setParam('processId', getmypid());
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
@@ -201,9 +201,9 @@ class WorkerController extends AbstractActionController
     /**
      * @param ServerServiceInterface[] $services
      * @param bool $mustBeRunning
-     * @throws \Exception
+     * @throws \Throwable
      */
-    protected function stopServices($services, $mustBeRunning)
+    protected function stopServices(array $services, bool $mustBeRunning)
     {
         $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
 
@@ -219,22 +219,13 @@ class WorkerController extends AbstractActionController
         $this->stopServices($this->services, false);
     }
 
-    /**
-     * @return LoggerInterface
-     */
     public function getLogger() : LoggerInterface
     {
         return $this->logger;
     }
 
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
-
-        return $this;
     }
 }

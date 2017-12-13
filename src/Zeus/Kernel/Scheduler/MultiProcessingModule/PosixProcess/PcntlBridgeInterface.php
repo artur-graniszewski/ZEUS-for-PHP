@@ -4,10 +4,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 
 interface PcntlBridgeInterface
 {
-    /**
-     * @return bool
-     */
-    public function pcntlSignalDispatch();
+    public function pcntlSignalDispatch() : bool;
 
     /**
      * @param int $action
@@ -15,14 +12,9 @@ interface PcntlBridgeInterface
      * @param mixed $oldSet
      * @return bool
      */
-    public function pcntlSigprocmask($action, array $signals, &$oldSet = null);
+    public function pcntlSigprocmask(int $action, array $signals, &$oldSet = null);
 
-    /**
-     * @param int $status
-     * @param int $options
-     * @return int
-     */
-    public function pcntlWait(&$status, $options);
+    public function pcntlWait(int &$status, int $options) : int;
 
     /**
      * @param int $signal
@@ -30,29 +22,18 @@ interface PcntlBridgeInterface
      * @param bool $restartSysCalls
      * @return bool
      */
-    public function pcntlSignal($signal, $handler, $restartSysCalls = true);
+    public function pcntlSignal(int $signal, $handler, bool $restartSysCalls = true) : bool;
 
     /**
      * @return int
      */
-    public function pcntlFork();
+    public function pcntlFork() : int;
 
-    /**
-     * @return int
-     */
-    public function posixGetPpid();
+    public function posixGetPpid() : int;
 
-    /**
-     * @return int
-     */
-    public function posixSetSid();
+    public function posixSetSid() : int;
 
-    /**
-     * @param int $pid
-     * @param int $signal
-     * @return bool
-     */
-    public function posixKill($pid, $signal);
+    public function posixKill(int $pid, int $signal) : bool;
 
-    public function isSupported();
+    public function isSupported() : bool;
 }

@@ -17,7 +17,7 @@ final class ApplicationProxy
      * @param mixed[] $configuration
      * @return $this
      */
-    public static function init($configuration = [])
+    public static function init(array $configuration = [])
     {
         // Prepare the service manager
         $smConfig = isset($configuration['service_manager']) ? $configuration['service_manager'] : [];

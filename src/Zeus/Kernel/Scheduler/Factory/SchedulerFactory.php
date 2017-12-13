@@ -79,7 +79,7 @@ class SchedulerFactory implements FactoryInterface
      * @param string $schedulerName
      * @return mixed[]
      */
-    private function getSchedulerConfig(ContainerInterface $container, $schedulerName)
+    private function getSchedulerConfig(ContainerInterface $container, string $schedulerName) : array
     {
         $config = $container->get('configuration');
         $schedulerConfigs = $config['zeus_process_manager']['schedulers'];

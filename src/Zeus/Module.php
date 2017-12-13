@@ -26,12 +26,12 @@ class Module implements
 
     protected static $overrideConfig = [];
 
-    public static function setOverrideConfig($overrideConfig)
+    public static function setOverrideConfig(array $overrideConfig)
     {
         static::$overrideConfig = $overrideConfig;
     }
 
-    public static function getOverrideConfig()
+    public static function getOverrideConfig() : array
     {
         return static::$overrideConfig;
     }
@@ -39,7 +39,7 @@ class Module implements
     /**
      * @return string
      */
-    public static function getModuleDirectory()
+    public static function getModuleDirectory() : string
     {
         return realpath('../../');
     }

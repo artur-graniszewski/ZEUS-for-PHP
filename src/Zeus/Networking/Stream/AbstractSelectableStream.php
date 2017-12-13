@@ -3,7 +3,6 @@
 namespace Zeus\Networking\Stream;
 
 use Zeus\Networking\Exception\SocketException;
-use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Util\UnitConverter;
 
@@ -119,14 +118,8 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         return $this->soTimeout;
     }
 
-    /**
-     * @param int $milliseconds
-     * @return $this
-     */
     public function setSoTimeout(int $milliseconds)
     {
         $this->soTimeout = $milliseconds;
-
-        return $this;
     }
 }
