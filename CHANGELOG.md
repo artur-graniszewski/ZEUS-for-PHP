@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.7.3
+- [Fix] Changed file name of coveralls binary used in Travis build
+- [Fix] Use older version of symfony/yaml for backward compatibility with PHP 5.6
+
 ## Version 1.7.2
 - [Fix] ProcessTitle plugin has been disabled on MacOS systems (as on MacOS requires root privileges to change process name)
 
