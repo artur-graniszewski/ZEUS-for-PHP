@@ -53,6 +53,7 @@ class StreamLogFormatter implements FormatterInterface
         $message = ": " . $event['message'];
 
         $eventText = "$dateTime $severity $pid $serviceName $loggerName $message";
+
         return $eventText;
     }
 

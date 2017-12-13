@@ -24,6 +24,7 @@ trait PluginRegistry
     public function hasPlugin(ListenerAggregateInterface $plugin) : bool
     {
         $registry = $this->getPluginRegistry();
+
         return $registry->contains($plugin);
     }
 
@@ -32,10 +33,9 @@ trait PluginRegistry
      *
      * @param  ListenerAggregateInterface $plugin
      * @param  int                    $priority
-     * @return $this Fluent interface
      * @throws \LogicException
      */
-    public function addPlugin(ListenerAggregateInterface $plugin, $priority = 1)
+    public function addPlugin(ListenerAggregateInterface $plugin, int $priority = 1)
     {
         $registry = $this->getPluginRegistry();
         if ($registry->contains($plugin)) {
@@ -47,8 +47,6 @@ trait PluginRegistry
 
         $plugin->attach($this->getEventManager(), $priority);
         $registry->attach($plugin);
-
-        return $this;
     }
 
     /**
@@ -68,7 +66,6 @@ trait PluginRegistry
      * Unregister an already registered plugin
      *
      * @param  ListenerAggregateInterface $plugin
-     * @return $this Fluent interface
      * @throws \LogicException
      */
     public function removePlugin(ListenerAggregateInterface $plugin)
@@ -78,7 +75,5 @@ trait PluginRegistry
             $plugin->detach($this->getEventManager());
             $registry->detach($plugin);
         }
-
-        return $this;
     }
 }

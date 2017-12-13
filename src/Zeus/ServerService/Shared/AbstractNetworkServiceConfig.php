@@ -10,7 +10,7 @@ class AbstractNetworkServiceConfig extends Config
      * Config constructor.
      * @param mixed[] $settings
      */
-    public function __construct($settings = [])
+    public function __construct(array $settings = [])
     {
         parent::__construct($settings, true);
     }
@@ -18,57 +18,39 @@ class AbstractNetworkServiceConfig extends Config
     /**
      * @return int
      */
-    public function getListenPort()
+    public function getListenPort() : int
     {
         return $this->get('listen_port');
     }
 
-    /**
-     * @param int $port
-     * @return $this
-     */
-    public function setListenPort($port)
+    public function setListenPort(int $port)
     {
         $this->offsetSet('listen_port', $port);
-
-        return $this;
     }
 
     /**
      * @return string
      */
-    public function getListenAddress()
+    public function getListenAddress() : string
     {
         return $this->get('listen_address');
     }
 
     /**
      * @param string $address
-     * @return $this
      */
-    public function setListenAddress($address)
+    public function setListenAddress(string $address)
     {
         $this->offsetSet('listen_address', $address);
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getKeepAliveTimeout()
+    public function getKeepAliveTimeout() : int
     {
-        return $this->get('keep_alive_timeout');
+        return $this->get('keep_alive_timeout', 0);
     }
 
-    /**
-     * @param int $timeout
-     * @return $this
-     */
-    public function setKeepAliveTimeout($timeout)
+    public function setKeepAliveTimeout(int $timeout)
     {
         $this->offsetSet('keep_alive_timeout', $timeout);
-
-        return $this;
     }
 }

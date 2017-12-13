@@ -9,10 +9,6 @@ namespace Zeus\Networking\Stream;
  */
 interface SelectableStreamInterface extends StreamInterface
 {
-    /**
-     * @param int $timeout
-     * @return bool
-     */
     public function select(int $timeout) : bool;
 
     public function getLocalAddress() : string;

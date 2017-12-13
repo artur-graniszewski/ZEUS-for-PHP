@@ -26,7 +26,7 @@ trait FileUpload
      * @param int $pos
      * @return string|null
      */
-    protected function checkBodyHeaders(Request $request, $boundaryLine, $pos)
+    protected function checkBodyHeaders(Request $request, string $boundaryLine, int $pos)
     {
         // initialize data block
         if (!isset($this->currentFormDataInfo['tmp_name'])) {
@@ -83,44 +83,36 @@ trait FileUpload
         return $headerLine;
     }
 
-    /**
-     * @param string $headerPart
-     * @return $this
-     */
-    protected function checkContentDisposition($headerPart)
+    protected function checkContentDisposition(string $headerPart)
     {
         $part = trim($headerPart);
         if ($part === 'form-data') {
 
-            return $this;
+            return;
         }
 
         if (preg_match('~^filename="([^"]+)"$~i', $part, $matches)) {
             $this->currentFormDataInfo['name'] = $matches[1];
 
-            return $this;
+            return;
         }
 
         if (preg_match('~^name="([^"]+)"$~i', $part, $matches)) {
             $this->currentFormDataInfo['form_name'] = $matches[1];
 
-            return $this;
+            return;
         }
 
         throw new \InvalidArgumentException("Unknown content-disposition parameter: $part", Response::STATUS_CODE_400);
     }
 
-    /**
-     * @param Request $request
-     * @return $this
-     */
     protected function parseRequestFileData(Request $request)
     {
         $body = $request->getContent();
         $boundaryLine = $this->getMultipartDataBoundary($request);
 
         if (!$body || $this->formDataReceived || !$boundaryLine) {
-            return $this;
+            return;
         }
 
         $boundaryClosingLine = $boundaryLine . '--';
@@ -150,7 +142,7 @@ trait FileUpload
 
                     $this->formDataReceived = true;
 
-                    return $this;
+                    return;
                 }
 
                 fwrite($this->currentFormDataInfo['handle'], $bodyLine);
@@ -162,7 +154,7 @@ trait FileUpload
 
         if (!$this->formDataHeadersReceived) {
             // headers are incomplete, fetch more data...
-            return $this;
+            return;
         }
 
         // check if there's a boundary in the buffer
@@ -173,7 +165,7 @@ trait FileUpload
 
             $this->formDataReceived = true;
             // @todo: validate if ending boundary line is exactly at the end of a request
-            return $this;
+            return;
         }
 
         // no new line found, check if its a buffer that can be sent to disk (or if it may contain part of the boundary)
@@ -181,7 +173,7 @@ trait FileUpload
         if ($body !== substr($boundaryLine, 0, strlen($body)) && $body !== substr($boundaryClosingLine, 0, strlen($body))) {
             if (substr($body, -1) === "\r") {
                 // the new line at the end of a buffer may preceed the boundary string, don't write anything yet
-                return $this;
+                return;
             }
             fwrite($this->currentFormDataInfo['handle'], $body);
             $request->setContent('');
@@ -192,10 +184,6 @@ trait FileUpload
         // there may be a boundary hidden here, fetch more data
     }
 
-    /**
-     * @param Request $request
-     * @return $this
-     */
     protected function registerUploadedFile(Request $request)
     {
         $this->formDataHeadersReceived = false;
@@ -212,31 +200,20 @@ trait FileUpload
             unlink($this->currentFormDataInfo['tmp_name']);
             $this->currentFormDataInfo = [];
 
-            return $this;
+            return;
         }
 
         $this->requestFilesInfo[$this->currentFormDataInfo['form_name']][] = $this->currentFormDataInfo;
         $this->currentFormDataInfo = [];
-
-        return $this;
     }
 
-    /**
-     * @param Request $request
-     * @return $this
-     */
     protected function mapUploadedFiles(Request $request)
     {
         $request->getFiles()->fromArray($this->requestFilesInfo);
         $this->requestFilesInfo = [];
         $this->formDataHeadersReceived = false;
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function deleteTemporaryFiles()
     {
         foreach ($this->requestFilesInfo as $formData) {
@@ -246,15 +223,9 @@ trait FileUpload
                 }
             }
         }
-
-        return $this;
     }
 
-    /**
-     * @param Request $request
-     * @return string
-     */
-    protected function getMultipartDataBoundary(Request $request)
+    protected function getMultipartDataBoundary(Request $request) : string
     {
         $contentType = $request->getHeaderOverview('Content-Type', true);
 
@@ -263,6 +234,6 @@ trait FileUpload
         }
 
         // @todo: validate the above header
-        return null;
+        return '';
     }
 }

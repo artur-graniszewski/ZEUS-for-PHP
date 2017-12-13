@@ -50,9 +50,6 @@ final class Manager
         }
     }
 
-    /**
-     * @return $this
-     */
     protected function attach()
     {
         $events = $this->getEventManager();
@@ -61,14 +58,12 @@ final class Manager
 
             return;
 
-            $service = $this->findServiceByPid($signal['pid']);
+            $service = $this->findServiceByUid($signal['pid']);
 
             if ($service) {
                 $this->onServiceStop($service);
             }
         }, -10000);
-
-        return $this;
     }
 
     /**
@@ -84,11 +79,7 @@ final class Manager
         return $this->event;
     }
 
-    /**
-     * @param string $serviceName
-     * @return ServerServiceInterface
-     */
-    public function getService($serviceName)
+    public function getService(string $serviceName) : ServerServiceInterface
     {
         if (!isset($this->services[$serviceName]['service'])) {
             throw new \RuntimeException("Service \"$serviceName\" not found");
@@ -100,11 +91,7 @@ final class Manager
         return $this->services[$serviceName]['service'];
     }
 
-    /**
-     * @param bool $isAutoStart
-     * @return string[]
-     */
-    public function getServiceList($isAutoStart)
+    public function getServiceList(bool $isAutoStart) : array
     {
         $services = [];
 
@@ -120,24 +107,16 @@ final class Manager
      * @param string $serviceName
      * @param ServerServiceInterface|\Closure $service
      * @param bool $autoStart
-     * @return $this
      */
-    public function registerService($serviceName, $service, $autoStart)
+    public function registerService(string $serviceName, $service, bool $autoStart)
     {
         $this->services[$serviceName] = [
             'service' => $service,
             'auto_start' => $autoStart,
         ];
-
-        return $this;
     }
 
-    /**
-     * @param string $serviceName
-     * @param \Exception|\Throwable $exception
-     * @return $this
-     */
-    public function registerBrokenService($serviceName, $exception)
+    public function registerBrokenService(string $serviceName, \Throwable $exception)
     {
         $this->brokenServices[$serviceName] = $exception;
         $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $exception->getMessage()));
@@ -146,29 +125,19 @@ final class Manager
     }
 
     /**
-     * @return \Exception[]
+     * @return \Throwable[]
      */
     public function getBrokenServices()
     {
         return $this->brokenServices;
     }
 
-    /**
-     * @param string $serviceName
-     * @return $this
-     */
-    public function startService($serviceName)
+    public function startService(string $serviceName)
     {
         $this->startServices([$serviceName]);
-
-        return $this;
     }
 
-    /**
-     * @param string $serviceName
-     * @return $this
-     */
-    protected function doStartService($serviceName)
+    protected function doStartService(string $serviceName)
     {
         $service = $this->getService($serviceName);
 
@@ -212,13 +181,10 @@ final class Manager
         } catch (\Throwable $exception) {
             $this->registerBrokenService($serviceName, $exception);
         }
-
-        return $this;
     }
 
     /**
      * @param string|string[] $serviceNames
-     * @return $this
      */
     public function startServices($serviceNames)
     {
@@ -256,8 +222,6 @@ final class Manager
         if (count($serviceNames) === count($this->brokenServices)) {
             $this->logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
         }
-
-        return $this;
     }
 
     /**
@@ -266,7 +230,7 @@ final class Manager
      * @return int Amount of services which Manager was unable to stop
      * @throws \Throwable
      */
-    public function stopServices($services, $mustBeRunning)
+    public function stopServices(array $services, bool $mustBeRunning)
     {
         $this->logger->info(sprintf("Stopping services"));
         $servicesAmount = 0;
@@ -294,22 +258,15 @@ final class Manager
 
     /**
      * @param string $serviceName
-     * @return $this
      */
-    public function stopService($serviceName)
+    public function stopService(string $serviceName)
     {
         $service = $this->getService($serviceName);
         $service->stop();
 
         $this->onServiceStop($service);
-
-        return $this;
     }
 
-    /**
-     * @param ServerServiceInterface $service
-     * @return $this
-     */
     protected function onServiceStop(ServerServiceInterface $service)
     {
         $this->servicesRunning--;
@@ -323,8 +280,6 @@ final class Manager
         if ($this->servicesRunning === 0) {
             $this->logger->info("All services exited");
         }
-
-        return $this;
     }
 
     /**
@@ -353,43 +308,30 @@ final class Manager
     }
 
     /**
-     * @param int $pid
+     * @param int $uid
      * @return null|ServerServiceInterface
      */
-    protected function findServiceByPid($pid)
+    protected function findServiceByUid(int $uid)
     {
-        if (!isset($this->pidToServiceMap[$pid])) {
+        if (!isset($this->pidToServiceMap[$uid])) {
             return null;
         }
 
-        $service = $this->pidToServiceMap[$pid];
+        $service = $this->pidToServiceMap[$uid];
 
         return $service;
     }
 
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger()
+    public function getLogger() : LoggerInterface
     {
         return $this->logger;
     }
 
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
-    public function setLogger($logger)
+    public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
-
-        return $this;
     }
 
-    /**
-     * @param EventManagerInterface $events
-     * @return $this
-     */
     public function setEventManager(EventManagerInterface $events)
     {
         $events->setIdentifiers(array(
@@ -397,14 +339,9 @@ final class Manager
             get_called_class(),
         ));
         $this->events = $events;
-
-        return $this;
     }
 
-    /**
-     * @return EventManagerInterface
-     */
-    public function getEventManager()
+    public function getEventManager() : EventManagerInterface
     {
         if (null === $this->events) {
             $this->setEventManager(new EventManager());

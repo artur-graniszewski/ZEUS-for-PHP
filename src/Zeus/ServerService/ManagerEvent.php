@@ -22,15 +22,9 @@ class ManagerEvent extends Event
         return $this->service;
     }
 
-    /**
-     * @param ServerServiceInterface $service
-     * @return $this
-     */
     public function setService(ServerServiceInterface $service)
     {
         $this->service = $service;
-
-        return $this;
     }
 
     /**
@@ -38,7 +32,7 @@ class ManagerEvent extends Event
      *
      * @return bool
      */
-    public function isError()
+    public function isError() : bool
     {
         return (bool) $this->getParam('error', false);
     }
@@ -47,13 +41,10 @@ class ManagerEvent extends Event
      * Set the error message
      *
      * @param string $message
-     * @return $this
      */
-    public function setError($message)
+    public function setError(string $message = null)
     {
         $this->setParam('error', $message);
-
-        return $this;
     }
 
     /**
@@ -61,7 +52,7 @@ class ManagerEvent extends Event
      *
      * @return string
      */
-    public function getError()
+    public function getError() : string
     {
         return $this->getParam('error', '');
     }

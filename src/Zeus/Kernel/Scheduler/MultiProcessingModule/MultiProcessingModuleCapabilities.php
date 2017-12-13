@@ -13,24 +13,13 @@ class MultiProcessingModuleCapabilities
     /** @var int */
     protected $isolationLevel =  self::ISOLATION_NONE;
 
-    /**
-     * @return int
-     */
-    public function getIsolationLevel()
+    public function getIsolationLevel() : int
     {
         return $this->isolationLevel;
     }
 
-    /**
-     * @param int $isolationLevel
-     * @return $this
-     */
-    public function setIsolationLevel($isolationLevel)
+    public function setIsolationLevel(int $isolationLevel)
     {
         $this->isolationLevel = $isolationLevel;
-
-        return $this;
     }
-
-
 }

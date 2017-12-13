@@ -76,7 +76,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
         }
     }
 
-    private function createThread(WorkerEvent $event)
+    private function createThread(WorkerEvent $event) : int
     {
         $applicationPath = $_SERVER['PHP_SELF'];
 

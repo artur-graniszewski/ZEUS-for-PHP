@@ -96,7 +96,7 @@ final class ZendFrameworkDispatcher implements DispatcherInterface
      * @param string $name
      * @param mixed $value
      */
-    protected function setEnvVariable($name, $value)
+    protected function setEnvVariable(string $name, $value)
     {
         $_SERVER[$name] = $value;
     }

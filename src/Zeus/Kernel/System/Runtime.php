@@ -16,7 +16,7 @@ class Runtime
     /**
      * @return int
      */
-    public function getNumberOfProcessors()
+    public function getNumberOfProcessors() : int
     {
         if (!$this->processorAmount) {
             $this->processorAmount = @ $this->detectNumberOfCores();
@@ -28,7 +28,7 @@ class Runtime
     /**
      * @return int
      */
-    protected function detectNumberOfCores()
+    protected function detectNumberOfCores() : int
     {
         if (is_file('/proc/cpuInfo') && is_readable('/proc/cpuInfo')) {
             $cpuInfo = file_get_contents('/proc/cpuInfo');

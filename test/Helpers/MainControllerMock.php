@@ -11,7 +11,7 @@ class MainControllerMock extends MainController
     /**
      * @param int $code
      */
-    protected function doExit($code)
+    protected function doExit(int $code)
     {
         $this->exitCode = $code;
     }
@@ -19,19 +19,17 @@ class MainControllerMock extends MainController
     /**
      * @return int
      */
-    public function getExitCode()
+    public function getExitCode() : int
     {
         return $this->exitCode;
     }
 
     /**
-     * @param mixed $exitCode
-     * @return MainControllerMock
+     * @param int $exitCode
      */
-    public function setExitCode($exitCode)
+    public function setExitCode(int $exitCode)
     {
         $this->exitCode = $exitCode;
-        return $this;
     }
 
 }

@@ -145,8 +145,7 @@ class SocketStreamTest extends AbstractNetworkingTest
         $connection = $this->server->accept();
         $this->assertTrue($connection->isReadable(), 'Connection should be readable');
         fclose($this->client);
-        $result = $connection->write("TEST!");
-        $this->assertInstanceOf(SocketStream::class, $result);
+        $connection->write("TEST!");
         $connection->flush();
         $this->assertFalse($connection->isReadable(), 'Connection should not be readable after client disconnection');
     }

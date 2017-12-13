@@ -22,13 +22,10 @@ class ExtraLogProcessor implements ProcessorInterface
 
     /**
      * @param mixed[] $config
-     * @return $this
      */
     public function setConfig(array $config)
     {
         $this->config = $config;
-
-        return $this;
     }
 
     /**
@@ -53,7 +50,7 @@ class ExtraLogProcessor implements ProcessorInterface
         return $event;
     }
 
-    protected function detectLogger()
+    protected function detectLogger() : string
     {
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS | DEBUG_BACKTRACE_PROVIDE_OBJECT, $this->backTraceLevel ? $this->backTraceLevel + 1: 100);
         if (!$this->backTraceLevel) {

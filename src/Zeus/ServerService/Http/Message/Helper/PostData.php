@@ -18,7 +18,7 @@ trait PostData
         $body = $request->getContent();
 
         if (!$body || $request->getHeaderOverview('Content-Type', true) !== 'application/x-www-form-urlencoded') {
-            return $this;
+            return;
         }
 
         $requestPost = $request->getPost();
@@ -41,7 +41,5 @@ trait PostData
                 break;
             }
         }
-
-        return $this;
     }
 }

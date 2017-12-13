@@ -75,10 +75,6 @@ final class SocketServer
         }
     }
 
-    /**
-     * @param bool $reuse
-     * @return $this
-     */
     public function setReuseAddress(bool $reuse)
     {
         $this->reuseAddress = $reuse;
@@ -86,9 +82,6 @@ final class SocketServer
         return $this;
     }
 
-    /**
-     * @return bool
-     */
     public function getReuseAddress() : bool
     {
         return $this->reuseAddress;
@@ -102,23 +95,15 @@ final class SocketServer
         return $this->tcpNoDelay;
     }
 
-    /**
-     * @param bool $tcpNoDelay
-     * @return $this
-     */
     public function setTcpNoDelay(bool $tcpNoDelay)
     {
         $this->tcpNoDelay = $tcpNoDelay;
-
-        return $this;
     }
-
 
     /**
      * @param string $host
      * @param int $backlog
      * @param int $port
-     * @return $this
      */
     public function bind(string $host, int $backlog = null, int $port = -1)
     {
@@ -138,8 +123,6 @@ final class SocketServer
         }
 
         $this->createServer();
-
-        return $this;
     }
 
     /**
@@ -178,12 +161,10 @@ final class SocketServer
         }
 
         $this->isBound = true;
-
-        return $this;
     }
 
     /**
-     * @return null|SocketStream
+     * @return SocketStream
      */
     public function accept() : SocketStream
     {
@@ -202,7 +183,6 @@ final class SocketServer
     /**
      * @param int $option
      * @param mixed $value
-     * @return $this
      */
     public function setOption(int $option, $value)
     {
@@ -212,13 +192,8 @@ final class SocketServer
 
         $socket = socket_import_stream($this->resource);
         socket_set_option($socket, SOL_SOCKET, $option, $value);
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     public function close()
     {
         if (!$this->resource) {
@@ -231,13 +206,8 @@ final class SocketServer
         fclose($this->resource);
         $this->resource = null;
         $this->isClosed = true;
-
-        return $this;
     }
 
-    /**
-     * @return bool
-     */
     public function isBound() : bool
     {
         return $this->isBound;
@@ -259,39 +229,24 @@ final class SocketServer
         return $this->host . ($this->port ? ':' . $this->port : '');
     }
 
-    /**
-     * @return bool
-     */
     public function isClosed() : bool
     {
         return $this->isClosed;
     }
 
-    /**
-     * @return bool
-     */
     public function isIsBound() : bool
     {
         return $this->isBound;
     }
 
-    /**
-     * @return int
-     */
     public function getSoTimeout() : int
     {
         return $this->soTimeout;
     }
 
-    /**
-     * @param int $soTimeout Timeout in milliseconds
-     * @return $this
-     */
     public function setSoTimeout(int $soTimeout)
     {
         $this->soTimeout = $soTimeout;
-
-        return $this;
     }
 
     public function getSocket() : SelectableStreamInterface

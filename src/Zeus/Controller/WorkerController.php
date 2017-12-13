@@ -104,7 +104,7 @@ class WorkerController extends AbstractActionController
     /**
      * @param int $code
      */
-    protected function doExit($code)
+    protected function doExit(int $code)
     {
         exit($code);
     }
@@ -113,7 +113,7 @@ class WorkerController extends AbstractActionController
      * @param string $serviceName
      * @return bool
      */
-    protected function reportBrokenServices($serviceName)
+    protected function reportBrokenServices(string $serviceName)
     {
         $result = false;
         $brokenServices = $this->manager->getBrokenServices();
@@ -144,7 +144,7 @@ class WorkerController extends AbstractActionController
      * @param string $serviceName
      * @param array $startParams
      */
-    protected function startWorkerForService($serviceName, array $startParams = [])
+    protected function startWorkerForService(string $serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
@@ -173,7 +173,7 @@ class WorkerController extends AbstractActionController
      * @param string $serviceName
      * @param array $startParams
      */
-    protected function starSchedulerForService($serviceName, array $startParams = [])
+    protected function starSchedulerForService(string $serviceName, array $startParams = [])
     {
         $startParams['server'] = false;
 
@@ -201,9 +201,9 @@ class WorkerController extends AbstractActionController
     /**
      * @param ServerServiceInterface[] $services
      * @param bool $mustBeRunning
-     * @throws \Exception
+     * @throws \Throwable
      */
-    protected function stopServices($services, $mustBeRunning)
+    protected function stopServices(array $services, bool $mustBeRunning)
     {
         $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
 
@@ -219,22 +219,13 @@ class WorkerController extends AbstractActionController
         $this->stopServices($this->services, false);
     }
 
-    /**
-     * @return LoggerInterface
-     */
     public function getLogger() : LoggerInterface
     {
         return $this->logger;
     }
 
-    /**
-     * @param LoggerInterface $logger
-     * @return $this
-     */
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
-
-        return $this;
     }
 }

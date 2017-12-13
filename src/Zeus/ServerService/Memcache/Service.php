@@ -18,18 +18,10 @@ class Service extends AbstractSocketServerService
         $this->getServer($this->message, $config);
 
         parent::start();
-
-        return $this;
     }
 
-    /**
-     * @param Message $message
-     * @return $this
-     */
-    public function setMessageComponent($message)
+    public function setMessageComponent(Message $message)
     {
         $this->message = $message;
-
-        return $this;
     }
 }

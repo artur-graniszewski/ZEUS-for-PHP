@@ -107,7 +107,7 @@ class StaticFileDispatcher implements DispatcherInterface
      * @param Response $response
      * @param string $fileName
      */
-    protected function addHeadersForFile(Response $response, $fileName)
+    protected function addHeadersForFile(Response $response, string $fileName)
     {
         $response->getHeaders()->addHeader(new ContentLength(filesize($fileName)));
         $response->getHeaders()->addHeader(new ContentType(MimeType::getMimeType($fileName)));

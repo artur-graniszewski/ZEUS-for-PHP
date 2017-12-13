@@ -62,15 +62,16 @@ class IpcServer implements ListenerAggregateInterface
         $this->ipcSelector = new Selector();
     }
 
-    public function send($message, $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
+    /**
+     * @param mixed $message
+     * @param string $audience
+     * @param int $number
+     */
+    public function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
     {
         $this->ipcClient->send($message, $audience, $number);
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     private function startIpc()
     {
         $server = new SocketServer();
@@ -78,8 +79,6 @@ class IpcServer implements ListenerAggregateInterface
         $server->setSoTimeout(0);
         $server->bind('127.0.0.1', 30000, 0);
         $this->ipcServer = $server;
-
-        return $this;
     }
 
     private function addNewIpcClients()
@@ -93,7 +92,7 @@ class IpcServer implements ListenerAggregateInterface
                 $ipcStream->setOption(TCP_NODELAY, 1);
 
                 if (!$ipcStream->select(10)) {
-                    return $this;
+                    return;
                 }
 
                 $uid = $ipcStream->read('!');
@@ -103,13 +102,8 @@ class IpcServer implements ListenerAggregateInterface
         } catch (SocketTimeoutException $exception) {
 
         }
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     private function removeIpcClients()
     {
         foreach ($this->ipcStreams as $uid => $ipcStream) {
@@ -130,16 +124,9 @@ class IpcServer implements ListenerAggregateInterface
             unset ($this->ipcStreams[$uid]);
             $this->ipcSelector->unregister($ipcStream);
         }
-
-        return $this;
     }
 
-    /**
-     * @param int $ipcPort
-     * @param int $uid
-     * @return $this
-     */
-    private function registerIpc($ipcPort, $uid)
+    private function registerIpc(int $ipcPort, int $uid)
     {
         $opts = [
             'socket' => [
@@ -157,15 +144,11 @@ class IpcServer implements ListenerAggregateInterface
         $ipcStream->setBlocking(false);
         $ipcStream->setOption(SO_KEEPALIVE, 1);
         $ipcStream->setOption(TCP_NODELAY, 1);
-        $ipcStream->write("$uid!")->flush();
+        $ipcStream->write("$uid!");
+        $ipcStream->flush();
         $this->ipcClient = new IpcSocketStream($ipcStream, $uid);
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     private function handleIpcMessages()
     {
         $selector = clone $this->ipcSelector;
@@ -181,7 +164,7 @@ class IpcServer implements ListenerAggregateInterface
 
         $wait = (int) ($diff < 0.1 ? (0.1 - $diff) * 1000 : 100);
         if (!$selector->select($wait)) {
-            return $this;
+            return;
         }
 
         $streams = $selector->getSelectedStreams(Selector::OP_READ);
@@ -226,8 +209,6 @@ class IpcServer implements ListenerAggregateInterface
                 $this->queuedMessages = [];
             }
         }
-
-        return $this;
     }
 
     private function onWorkerLoop(WorkerEvent $event)
@@ -245,8 +226,7 @@ class IpcServer implements ListenerAggregateInterface
     }
 
     /**
-     * @param $messages
-     * @return $this
+     * @param mixed $messages
      */
     private function distributeMessages($messages)
     {
@@ -328,8 +308,6 @@ class IpcServer implements ListenerAggregateInterface
 //                trigger_error("SENT $message FROM $senderId TO $cid ($audience)");
             }
         }
-
-        return $this;
     }
 
     /**
@@ -372,7 +350,7 @@ class IpcServer implements ListenerAggregateInterface
 
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {
             $this->startIpc();
-            $uid = $event->getParam('threadId') > 1 ? $event->getParam('threadId') : $event->getParam('processId');
+            $uid = $event->getParam('uid', 0);
             $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
             $event->getScheduler()->setIpc($this);
 
@@ -401,10 +379,6 @@ class IpcServer implements ListenerAggregateInterface
         }
     }
 
-    /**
-     * @param EventManagerInterface $events
-     * @return $this
-     */
     public function setEventManager(EventManagerInterface $events)
     {
         $events->setIdentifiers(array(
@@ -412,14 +386,9 @@ class IpcServer implements ListenerAggregateInterface
             get_called_class(),
         ));
         $this->events = $events;
-
-        return $this;
     }
 
-    /**
-     * @return EventManagerInterface
-     */
-    public function getEventManager()
+    public function getEventManager() : EventManagerInterface
     {
         if (null === $this->events) {
             $this->setEventManager(new EventManager());

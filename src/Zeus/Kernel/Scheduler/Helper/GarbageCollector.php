@@ -9,9 +9,6 @@ namespace Zeus\Kernel\Scheduler\Helper;
  */
 trait GarbageCollector
 {
-    /**
-     * @return $this
-     */
     protected function collectCycles()
     {
         $enabled = gc_enabled();
@@ -30,7 +27,5 @@ trait GarbageCollector
         // @codeCoverageIgnoreStart
         gc_disable();
         // @codeCoverageIgnoreEnd
-
-        return $this;
     }
 }

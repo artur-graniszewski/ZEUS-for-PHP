@@ -4,37 +4,15 @@ namespace Zeus\ServerService\Http;
 
 interface HttpConfigInterface
 {
-    /**
-     * @return int
-     */
-    public function getKeepAliveTimeout();
+    public function getKeepAliveTimeout() : int;
 
-    /**
-     * @param int $timeout
-     * @return HttpConfigInterface
-     */
-    public function setKeepAliveTimeout($timeout);
+    public function setKeepAliveTimeout(int $timeout);
 
-    /**
-     * @return int
-     */
-    public function getMaxKeepAliveRequestsLimit();
+    public function getMaxKeepAliveRequestsLimit() : int;
 
-    /**
-     * @param int $limit
-     * @return HttpConfigInterface
-     */
-    public function setMaxKeepAliveRequestsLimit($limit);
+    public function setMaxKeepAliveRequestsLimit(int $limit);
 
-    /**
-     * @return boolean
-     */
-    public function isKeepAliveEnabled();
+    public function isKeepAliveEnabled() : bool;
 
-    /**
-     * @param boolean $isEnabled
-     * @return HttpConfigInterface
-     */
-    public function setIsKeepAliveEnabled($isEnabled);
-
+    public function setIsKeepAliveEnabled(bool $isEnabled);
 }

@@ -2,7 +2,8 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
-class ThreadBootstrap extends \Thread {
+class ThreadBootstrap extends \Thread
+{
     public $server;
     public $argv;
     public $id;

@@ -19,12 +19,7 @@ trait Header
     /** @var string */
     private $headers = null;
 
-    /**
-     * @param Request $request
-     * @param string $serverAddress
-     * @return $this
-     */
-    protected function setHost(Request $request, $serverAddress)
+    protected function setHost(Request $request, string $serverAddress)
     {
         $host = $serverAddress;
         $port = null;
@@ -42,7 +37,7 @@ trait Header
             $currentUri->setHost($cachedUri['host']);
             $currentUri->setPort($cachedUri['port']);
 
-            return $this;
+            return;
         }
 
         // URI host & port
@@ -82,15 +77,14 @@ trait Header
         $uri = $request->getUri();
         $uri->setHost($host);
         $uri->setPort($port);
-
-        return $this;
     }
 
     /**
-     * @param $message
+     * @todo: unify method output
+     * @param string $message
      * @return bool|Request object if all headers had been processed, false if message is still incomplete
      */
-    protected function parseRequestHeaders(& $message)
+    protected function parseRequestHeaders(string & $message)
     {
         $this->headers .= $message;
 
@@ -119,11 +113,7 @@ trait Header
         return $request;
     }
 
-    /**
-     * @param Request $request
-     * @return bool
-     */
-    protected function isBodyAllowedInRequest(Request $request)
+    protected function isBodyAllowedInRequest(Request $request) : bool
     {
         switch ($request->getMethod()) {
             case 'POST':
@@ -135,10 +125,6 @@ trait Header
         }
     }
 
-    /**
-     * @param Request $request
-     * @return bool
-     */
     protected function isBodyAllowedInResponse(Request $request) : bool
     {
         switch ($request->getMethod()) {
@@ -151,7 +137,7 @@ trait Header
         }
     }
 
-    protected function getEncodingType(Request $request)
+    protected function getEncodingType(Request $request) : string
     {
         $transferEncoding = $request->getHeaderOverview('Transfer-Encoding', true);
 

@@ -66,9 +66,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $this->ipcSelector = new Selector();
     }
 
-    /**
-     * @param SchedulerEvent $event
-     */
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
@@ -83,9 +80,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         return clone $this->schedulerEvent;
     }
 
-    /**
-     * @param WorkerEvent $event
-     */
     public function setWorkerEvent(WorkerEvent $event)
     {
         $this->workerEvent = $event;
@@ -226,7 +220,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         }
     }
 
-    public function raiseWorkerExitedEvent($uid, $processId, $threadId)
+    public function raiseWorkerExitedEvent(int $uid, int $processId, int $threadId)
     {
         $event = $this->getWorkerEvent();
         $event->setName(WorkerEvent::EVENT_WORKER_TERMINATED);
@@ -284,9 +278,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         }
     }
 
-    /**
-     * @return $this
-     */
     private function checkPipe()
     {
         if (!$this->isTerminating()) {
@@ -297,8 +288,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 $this->setIsTerminating(true);
             }
         }
-
-        return $this;
     }
 
     private function unregisterWorker(int $uid)
@@ -312,23 +301,15 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         return $this;
     }
 
-    /**
-     * @param int $uid
-     * @param SocketServer $pipe
-     * @return $this
-     */
     private function registerWorker(int $uid, SocketServer $pipe)
     {
         $this->ipcServers[$uid] = $pipe;
-
-        return $this;
     }
 
     /**
      * @todo Make it private!!!! Now its needed only by DummyMPM test module
-     * @return SocketServer
      */
-    public function createPipe()
+    public function createPipe() : SocketServer
     {
         $socketServer = new SocketServer(0, 500, static::LOOPBACK_INTERFACE);
         $socketServer->setSoTimeout(10);

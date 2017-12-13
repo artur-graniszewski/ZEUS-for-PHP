@@ -996,11 +996,7 @@ class MimeType
         'zmm' => 'application/vnd.handheld-entertainment+xml'
     ];
 
-    /**
-     * @param string $fileName
-     * @return string
-     */
-    public static function getMimeType($fileName)
+    public static function getMimeType(string $fileName) : string
     {
         $extension = pathinfo($fileName, PATHINFO_EXTENSION);
 
@@ -1008,7 +1004,7 @@ class MimeType
         return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : static::getMimeMagic($fileName);
     }
 
-    protected static function getMimeMagic($fileName)
+    protected static function getMimeMagic(string $fileName) : string
     {
         $tmpFileName = tempnam('', 'zeus_mime_');
         $file = fopen($fileName, 'r');

@@ -4,7 +4,7 @@ namespace Zeus\Kernel\Scheduler\Helper;
 
 trait AddUnitsToNumbers
 {
-    public function addUnitsToNumber($value, $precision = 2)
+    public function addUnitsToNumber(int $value, int $precision = 2) : string
     {
         $unit = ["", "K", "M", "G"];
         $exp = floor(log($value, 1000)) | 0;

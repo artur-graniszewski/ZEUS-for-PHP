@@ -54,16 +54,10 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         @fclose($this->stderr);
     }
 
-    /**
-     * @param EventManagerInterface $eventManager
-     * @return $this
-     */
     public function attach(EventManagerInterface $eventManager)
     {
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
         $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
-
-        return $this;
     }
 
     public function onWorkerTerminated(WorkerEvent $event)
@@ -71,11 +65,6 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $this->cleanProcessPipes($event->getWorker()->getUid());
     }
 
-    /**
-     * @param int $uid
-     * @param bool $forceFlush
-     * @return $this
-     */
     private function flushBuffers(int $uid, bool $forceFlush)
     {
         foreach (['stdout', 'stderr'] as $type) {
@@ -94,8 +83,6 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
                 }
             }
         }
-
-        return $this;
     }
 
     public function onWorkersCheck(SchedulerEvent $event)
@@ -110,8 +97,6 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
                 $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
-
-        return $this;
     }
 
     private function cleanProcessPipes($uid)
@@ -159,10 +144,6 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         return $this;
     }
 
-    /**
-     * @param WorkerEvent $event
-     * @return int
-     */
     protected function createProcess(WorkerEvent $event) : int
     {
         $descriptors = [

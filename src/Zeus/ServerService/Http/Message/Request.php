@@ -13,7 +13,6 @@ use function strlen;
 use function strtolower;
 use function substr;
 
-
 class Request extends ZendRequest
 {
     protected $headersOverview = [];
@@ -28,20 +27,14 @@ class Request extends ZendRequest
     /**
      * @return string
      */
-    public function getBasePath()
+    public function getBasePath() : string
     {
         return $this->basePath;
     }
 
-    /**
-     * @param string $basePath
-     * @return $this
-     */
-    public function setBasePath($basePath)
+    public function setBasePath(string $basePath)
     {
         $this->basePath = $basePath;
-
-        return $this;
     }
 
     /**
@@ -50,9 +43,9 @@ class Request extends ZendRequest
      * @param  string $buffer
      * @param  bool $allowCustomMethods
      * @throws \InvalidArgumentException
-     * @return $this
+     * @return Request
      */
-    public static function fromStringOfHeaders($buffer, $allowCustomMethods)
+    public static function fromStringOfHeaders(string $buffer, bool $allowCustomMethods) : Request
     {
         if ("\r\n\r\n" !== substr($buffer, -4)) {
             throw new \InvalidArgumentException(
@@ -111,7 +104,7 @@ class Request extends ZendRequest
      * @param bool $toLower
      * @return null|string
      */
-    public function getHeaderOverview($name, $toLower)
+    public function getHeaderOverview(string $name, bool $toLower)
     {
         $name = strtolower($name);
         if (!isset($this->headersOverview[$name])) {
@@ -128,10 +121,10 @@ class Request extends ZendRequest
     /**
      * @return string "keep-alive" or "close"
      */
-    public function getConnectionType()
+    public function getConnectionType() : string
     {
         $connectionType = $this->getHeaderOverview('Connection', true);
 
-        return ($this->getVersion() === Request::VERSION_11 && $connectionType !== 'close') ? 'keep-alive' : $connectionType;
+        return ($this->getVersion() === Request::VERSION_11 && $connectionType !== 'close') ? 'keep-alive' : ($connectionType ? $connectionType : 'close');
     }
 }

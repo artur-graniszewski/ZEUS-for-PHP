@@ -9,18 +9,12 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
  */
 class PcntlBridge implements PcntlBridgeInterface
 {
-    /**
-     * @return int
-     */
-    public function posixSetsid()
+    public function posixSetsid() : int
     {
         return posix_setsid();
     }
 
-    /**
-     * @return bool
-     */
-    public function pcntlSignalDispatch()
+    public function pcntlSignalDispatch() : bool
     {
         return pcntl_signal_dispatch();
     }
@@ -31,17 +25,12 @@ class PcntlBridge implements PcntlBridgeInterface
      * @param mixed $oldSet
      * @return bool
      */
-    public function pcntlSigprocmask($action, array $signals, &$oldSet = null)
+    public function pcntlSigprocmask(int $action, array $signals, &$oldSet = null) : bool
     {
         return pcntl_sigprocmask($action, $signals, $oldSet);
     }
 
-    /**
-     * @param int $status
-     * @param int $options
-     * @return int
-     */
-    public function pcntlWait(&$status, $options)
+    public function pcntlWait(int &$status, int $options) : int
     {
         return pcntl_wait($status, $options);
     }
@@ -52,33 +41,22 @@ class PcntlBridge implements PcntlBridgeInterface
      * @param bool $restartSysCalls
      * @return bool
      */
-    public function pcntlSignal($signal, $handler, $restartSysCalls = true)
+    public function pcntlSignal(int $signal, $handler, bool $restartSysCalls = true) : bool
     {
         return pcntl_signal($signal, $handler, $restartSysCalls);
     }
 
-    /**
-     * @return int
-     */
-    public function pcntlFork()
+    public function pcntlFork() : int
     {
         return pcntl_fork();
     }
 
-    /**
-     * @return int
-     */
-    public function posixGetPpid()
+    public function posixGetPpid() : int
     {
         return posix_getppid();
     }
 
-    /**
-     * @param int $pid
-     * @param int $signal
-     * @return bool
-     */
-    public function posixKill($pid, $signal)
+    public function posixKill(int $pid, int $signal) : bool
     {
         return posix_kill($pid, $signal);
     }
@@ -86,7 +64,7 @@ class PcntlBridge implements PcntlBridgeInterface
     /**
      * @internal
      */
-    public function isSupported()
+    public function isSupported() : bool
     {
         if (!$this->isPcntlExtensionLoaded()) {
             return false;
@@ -117,10 +95,7 @@ class PcntlBridge implements PcntlBridgeInterface
         return true;
     }
 
-    /**
-     * @return bool
-     */
-    protected function isPcntlExtensionLoaded()
+    protected function isPcntlExtensionLoaded() : bool
     {
         return extension_loaded('pcntl');
     }

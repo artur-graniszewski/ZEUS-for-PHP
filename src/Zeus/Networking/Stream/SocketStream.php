@@ -38,7 +38,6 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
     /**
      * @param int $option
      * @param mixed $value
-     * @return $this
      */
     public function setOption(int $option, $value)
     {
@@ -58,13 +57,8 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
 
         $socket = socket_import_stream($this->getResource());
         socket_set_option($socket, $level, $option, $value);
-
-        return $this;
     }
 
-    /**
-     * @return $this
-     */
     protected function doClose()
     {
         $resource = $this->resource;
@@ -77,8 +71,6 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
             // read...
         };
         fclose($resource);
-
-        return $this;
     }
 
     /**

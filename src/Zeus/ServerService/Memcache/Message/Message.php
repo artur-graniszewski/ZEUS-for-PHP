@@ -105,10 +105,10 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     /**
      * @param NetworkStreamInterface $connection
-     * @param \Exception $exception
+     * @param \Throwable $exception
      * @throws \Exception
      */
-    public function onError(NetworkStreamInterface $connection, $exception)
+    public function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
         $connection->close();
     }
@@ -118,7 +118,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $message
      * @throws \Exception
      */
-    public function onMessage(NetworkStreamInterface $connection, $message)
+    public function onMessage(NetworkStreamInterface $connection, string $message)
     {
         $this->ttl = 0;
         $this->buffer .= $message;
@@ -166,7 +166,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      *
      * @param string $message
      */
-    protected function sendError($message = null)
+    protected function sendError(string $message = null)
     {
         $this->connection->write("ERROR" . ($message ? ' ' . $message : ''). "\r\n");
         $this->buffer = '';
@@ -177,7 +177,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      *
      * @return mixed[]
      */
-    protected function getCommandRules()
+    protected function getCommandRules() : array
     {
         $eol = "[\\t\\s]*\r\n~S";
         return [
@@ -233,15 +233,12 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      *
      * @param string $operation
      * @param int $hits
-     * @return $this
      */
-    protected function markHit($operation, $hits = 1)
+    protected function markHit(string $operation, int $hits = 1)
     {
         if ($this->trackStats && $hits > 0) {
             $this->status->incrementItem('zeus_hits_' . $operation, $hits);
         }
-
-        return $this;
     }
 
     /**
@@ -249,21 +246,17 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      *
      * @param string $operation
      * @param int $misses
-     * @return $this
      */
-    protected function markMiss($operation, $misses = 1)
+    protected function markMiss(string $operation, int $misses = 1)
     {
         if ($this->trackStats && $misses > 0) {
             $this->status->incrementItem('zeus_misses_' . $operation, $misses);
         }
-
-        return $this;
     }
 
 
     /**
      * Increases cas bad value count for the given operation.
-     * @return $this
      * @internal param string $operation
      * @internal param int $misses
      */
@@ -272,8 +265,6 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         if ($this->trackStats) {
             $this->status->incrementItem('zeus_cas_badval', 1);
         }
-
-        return $this;
     }
 
     /**
@@ -282,7 +273,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $operation
      * @return int
      */
-    protected function getHits($operation)
+    protected function getHits(string $operation) : int
     {
         return (int) $this->status->getItem('zeus_hits_' . $operation);
     }
@@ -293,7 +284,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $operation
      * @return int
      */
-    protected function getMisses($operation)
+    protected function getMisses(string $operation) : int
     {
         return (int) $this->status->getItem('zeus_misses_' . $operation);
     }
@@ -303,7 +294,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      *
      * @return int
      */
-    protected function getCasBadValues()
+    protected function getCasBadValues() : int
     {
         return (int) $this->status->getItem('zeus_cas_badval');
     }
@@ -314,7 +305,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $operation
      * @return int
      */
-    protected function getCommandUsage($operation)
+    protected function getCommandUsage(string $operation) : int
     {
         return (int) $this->status->getItem('zeus_cmd_' . $operation);
     }
@@ -323,15 +314,12 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * Increases command usage counter
      *
      * @param string $operation
-     * @return $this
      */
-    protected function markCommandUsage($operation)
+    protected function markCommandUsage(string $operation)
     {
         if ($this->trackStats) {
             $this->status->incrementItem('zeus_cmd_' . $operation, 1);
         }
-
-        return $this;
     }
 
     /**
@@ -417,7 +405,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $command
      * @param string $key
      */
-    protected function delete($command, $key)
+    protected function delete(string $command, string $key)
     {
         $key = sha1($key);
         $success = $this->cache->removeItem($key);
@@ -471,7 +459,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $command
      * @param string $key
      */
-    protected function fetch($command, $key)
+    protected function fetch(string $command, string $key)
     {
         $keys = (false !== strpos($key, ' ')) ? explode(' ', $key) : [$key];
         $hits = 0;
@@ -512,7 +500,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $key
      * @param int $expTime
      */
-    protected function touch($command, $key, $expTime)
+    protected function touch(string $command, string $key, int $expTime)
     {
         $key = sha1($key);
         $this->markCommandUsage($command);
@@ -537,7 +525,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $key
      * @param int $amount
      */
-    protected function math($command, $key, $amount)
+    protected function math(string $command, string $key, int $amount)
     {
         $key = sha1($key);
         $this->markCommandUsage('set');
@@ -595,7 +583,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param int $flags
      * @param int $expTime
      */
-    protected function store($command, $key, $flags, $expTime)
+    protected function store(string $command, string $key, int $flags, int $expTime)
     {
         $key = sha1($key);
         $this->markCommandUsage('set');
@@ -637,7 +625,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param string $command
      * @param string $key
      */
-    protected function concatenate($command, $key)
+    protected function concatenate(string $command, string $key)
     {
         $key = sha1($key);
         $this->markCommandUsage('set');
@@ -665,7 +653,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      * @param int $bytes
      * @param int $requestedCas
      */
-    protected function modify($command, $key, $flags, $expTime, $bytes, $requestedCas)
+    protected function modify(string $command, string $key, int $flags, int $expTime, int $bytes, int $requestedCas)
     {
         $cas = null;
         $key = sha1($key);
@@ -835,7 +823,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     /**
      * @return int[]
      */
-    protected function backupServerStats()
+    protected function backupServerStats() : array
     {
         $backup = [];
         foreach (['get', 'set', 'flush', 'touch'] as $commandName) {
@@ -855,7 +843,6 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     /**
      * @param int[] $backup
-     * @return $this
      */
     protected function restoreServerStats(array $backup)
     {
@@ -864,8 +851,6 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         foreach ($backup as $key => $value) {
             $this->status->setItem($key, $value);
         }
-
-        return $this;
     }
 
     protected function getItemsCount()
