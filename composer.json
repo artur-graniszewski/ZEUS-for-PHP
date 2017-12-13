@@ -53,7 +53,8 @@
     "doctrine/instantiator": ">=1.0.2 <1.1.0",
     "squizlabs/php_codesniffer": "^2.7",
     "zendframework/zend-cache": "^2.7",
-    "athletic/athletic": "^0.1"
+    "athletic/athletic": "^0.1",
+    "symfony/yaml": "2.1.0, Versions 4+ of YAML are not compatible with PHP 5.6"
   },
   "autoload": {
     "psr-4": {
