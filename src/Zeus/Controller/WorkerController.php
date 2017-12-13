@@ -153,7 +153,7 @@ class WorkerController extends AbstractActionController
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
+        $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
         $event->setTarget($worker);
@@ -181,7 +181,7 @@ class WorkerController extends AbstractActionController
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
         DynamicPriorityFilter::resetPriority();
 
-        $event = $scheduler->getMultiProcessingModule()->getWorkerEvent();
+        $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
         $event->setTarget($worker);

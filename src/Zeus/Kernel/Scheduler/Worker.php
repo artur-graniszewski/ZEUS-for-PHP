@@ -31,17 +31,12 @@ class Worker extends AbstractService
     /** @var int */
     protected $threadId = 1;
 
+    /** @var int */
     protected $uid;
 
-    /**
-     * @param int $id
-     * @return $this
-     */
     public function setUid(int $id)
     {
         $this->uid = $id;
-
-        return $this;
     }
 
     public function getUid() : int
@@ -248,6 +243,7 @@ class Worker extends AbstractService
         try {
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (\Exception $ex) {
+            $this->getLogger()->err("Exception occured: " . $ex->getMessage());
             $event->getWorker()->setIsTerminating(true);
             $event->setParam('exception', $ex);
         }

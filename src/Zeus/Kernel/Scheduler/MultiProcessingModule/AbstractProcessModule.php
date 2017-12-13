@@ -69,13 +69,13 @@ abstract class AbstractProcessModule extends AbstractModule
 
     public function onWorkersCheck(SchedulerEvent $event)
     {
+        $pcntlStatus = 0;
+
         if ($this->getPcntlBridge()->isSupported()) {
             while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
                 $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
-
-        parent::onWorkersCheck($event);
     }
 
     public static function getCapabilities() : MultiProcessingModuleCapabilities

@@ -27,12 +27,12 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public static function isSupported(& $errorMessage = '') : bool
     {
-        $isSupported = function_exists('proc_open') && function_exists('proc_status');
+        $isSupported = function_exists('proc_open') && function_exists('proc_get_status');
 
         if (!$isSupported) {
             $className = basename(str_replace('\\', '/', static::class));
 
-            $errorMessage = sprintf("proc_open() and proc_status() are required by %s but disabled in PHP",
+            $errorMessage = sprintf("proc_open() and proc_get_status() are required by %s but disabled in PHP",
                 $className);
         }
 
@@ -101,6 +101,10 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     private function cleanProcessPipes($uid)
     {
+        if (!isset($this->stdOutStreams[$uid])) {
+            return;
+        }
+
         // check stdOut and stdErr...
         foreach (['stdout' => $this->stdOutStreams[$uid], 'stderr' => $this->stdErrStreams[$uid]] as $name => $stream) {
             try {
@@ -140,8 +144,6 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $this->stdOutStreams = $tmpArray;
         @fclose($this->workers[$uid]['resource']);
         unset ($this->workers[$uid]);
-
-        return $this;
     }
 
     protected function createProcess(WorkerEvent $event) : int

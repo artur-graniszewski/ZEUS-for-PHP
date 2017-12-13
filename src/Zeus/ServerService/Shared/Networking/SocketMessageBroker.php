@@ -149,7 +149,8 @@ final class SocketMessageBroker
             $leaderPipe = new SocketStream($leaderPipe);
             $leaderPipe->setOption(SO_KEEPALIVE, 1);
             $leaderPipe->setOption(TCP_NODELAY, 1);
-            $leaderPipe->write("$uid:$port!")->flush();
+            $leaderPipe->write("$uid:$port!");
+            $leaderPipe->flush();
             $this->leaderPipe = $leaderPipe;
         }
 
@@ -396,7 +397,8 @@ final class SocketMessageBroker
                             continue;
                         }
 
-                        $output->write($data)->flush();
+                        $output->write($data);
+                        $output->flush();
                     }
                 } catch (\Exception $exception) {
                     $this->disconnectClient($key);
@@ -516,7 +518,8 @@ final class SocketMessageBroker
     {
         foreach ($this->workerPipe as $uid => $ipc) {
             try {
-                $ipc->write('')->flush();
+                $ipc->write('');
+                $ipc->flush();
 
                 continue;
 

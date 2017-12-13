@@ -22,7 +22,7 @@ class Request extends ZendRequest
      *
      * @var string
      */
-    protected $basePath;
+    protected $basePath = '';
 
     /**
      * @return string

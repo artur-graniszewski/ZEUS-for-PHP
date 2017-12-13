@@ -283,8 +283,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         if (!$this->isTerminating()) {
             try {
                 $this->ipc->select(0);
-                $this->ipc->write("!")->flush();
+                $this->ipc->write("!");
+                $this->ipc->flush();
             } catch (\Throwable $exception) {
+                //$this->getLogger()->err((string) $exception); die();
                 $this->setIsTerminating(true);
             }
         }
