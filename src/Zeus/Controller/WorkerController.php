@@ -7,7 +7,7 @@ use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
@@ -163,7 +163,7 @@ class WorkerController extends AbstractActionController
         $event->setParam('threadId', $worker->getThreadId());
         $event->setParam('processId', $worker->getProcessId());
         if (defined("ZEUS_THREAD_CONN_PORT")) {
-            $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
+            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
         }
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
@@ -191,7 +191,7 @@ class WorkerController extends AbstractActionController
         $event->setParam('server', true);
         $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         if (defined("ZEUS_THREAD_CONN_PORT")) {
-            $event->setParam(MultiProcessingModuleInterface::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
+            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
         }
         $event->setParam('processId', getmypid());
         $event->setName(WorkerEvent::EVENT_WORKER_INIT);

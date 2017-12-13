@@ -13,9 +13,6 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     const MIN_STABLE_PHP_VERSION = 7.2;
 
-    /** @var int Parent PID */
-    public $ppid;
-
     /** @var \Thread[] */
     protected $workers = [];
 
@@ -43,8 +40,6 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     public function onSchedulerStop(SchedulerEvent $event)
     {
-        parent::onSchedulerStop($event);
-
         while ($this->workers) {
             $this->onWorkersCheck($event);
             if ($this->workers) {
@@ -64,8 +59,6 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     public function onWorkersCheck(SchedulerEvent $event)
     {
-        parent::onWorkersCheck($event);
-
         foreach ($this->workers as $threadId => $thread) {
             if ($thread->isTerminated()) {
                 $this->workers[$threadId] = null;
@@ -120,8 +113,6 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
         if (version_compare((float) phpversion(), self::MIN_STABLE_PHP_VERSION, "<")) {
             $this->getWrapper()->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
         }
-
-        parent::onSchedulerInit($event);
     }
 
     public static function getCapabilities() : MultiProcessingModuleCapabilities

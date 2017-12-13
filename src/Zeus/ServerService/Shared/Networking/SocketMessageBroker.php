@@ -115,9 +115,8 @@ final class SocketMessageBroker
 
     public function onWorkerCreate(WorkerEvent $event)
     {
-        $this->getLogger()->debug("Creating new worker");
         if ($this->leaderIpcAddress) {
-            $this->getLogger()->debug("Pointing new worker to leader on " . $this->leaderIpcAddress);
+            //$this->getLogger()->debug("Contacting with existing leader on " . $this->leaderIpcAddress);
             $event->setParam('leaderIpcAddress', $this->leaderIpcAddress);
         }
     }
@@ -141,6 +140,7 @@ final class SocketMessageBroker
             ],
         ];
 
+        //$this->getLogger()->debug("Registering worker");
         $leaderPipe = @stream_socket_client($this->leaderIpcAddress, $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
         if ($leaderPipe) {
             $port = $this->workerServer->getLocalPort();
@@ -169,7 +169,7 @@ final class SocketMessageBroker
         if ($message instanceof LeaderElectedMessage) {
             /** @var LeaderElectedMessage $message */
 
-            $this->getLogger()->debug("Contacting leader on " . $message->getIpcAddress());
+//            $this->getLogger()->debug("Contacting with new leader on " . $message->getIpcAddress());
             $this->setLeaderIpcAddress($message->getIpcAddress());
         }
     }
@@ -193,7 +193,7 @@ final class SocketMessageBroker
             $this->workerServer = null;
             $this->startUpstreamServer(1000);
 
-            $this->getLogger()->debug("Electing pool leader");
+            $this->getLogger()->debug("Sending leader-elected message");
             $event->getTarget()->send(new LeaderElectedMessage($this->downstreamServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
             $event->getTarget()->send(new LeaderElectedMessage($this->downstreamServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
         }
@@ -270,12 +270,14 @@ final class SocketMessageBroker
      */
     public function onWorkerInit(WorkerEvent $event)
     {
+        $this->leaderIpcAddress = $event->getParam('leaderIpcAddress', $this->leaderIpcAddress);
+        //$this->getLogger()->debug("Contacting with new leader on " . $this->leaderIpcAddress);
         $this->createWorkerServer($event);
     }
 
     /**
      * @param WorkerEvent $event
-     * @throws \Throwable|\Exception
+     * @throws \Throwable
      * @throws null
      */
     public function onLeaderLoop(WorkerEvent $event)
@@ -410,10 +412,7 @@ final class SocketMessageBroker
         return;
     }
 
-    /**
-     * @param int $key
-     */
-    protected function disconnectClient($key)
+    protected function disconnectClient(int $key)
     {
         if (isset($this->upstreams[$key])) {
             $stream = $this->upstreams[$key];
@@ -446,9 +445,6 @@ final class SocketMessageBroker
         }
     }
 
-    /**
-     * @param SocketStream $client
-     */
     protected function bindToWorker(SocketStream $client)
     {
         foreach ($this->availableWorkers as $uid => $port) {
@@ -503,6 +499,7 @@ final class SocketMessageBroker
 
                     $this->availableWorkers[$uid] = $port;
                     $this->workerPipe[$uid] = $connection;
+                    //$this->getLogger()->debug("Registered worker #$uid");
 
                     continue;
                 }
@@ -556,6 +553,7 @@ final class SocketMessageBroker
         $leaderPipe = $this->getLeaderPipe();
 
         if (!$leaderPipe) {
+            sleep(1);
             return;
         }
 
