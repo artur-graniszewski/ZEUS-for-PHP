@@ -57,12 +57,7 @@ final class Scheduler extends AbstractService
     {
         return clone $this->schedulerEvent;
     }
-
-    /**
-     * Scheduler constructor.
-     * @param ConfigInterface $config
-     * @param DisciplineInterface $discipline
-     */
+    
     public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
     {
         $this->workerFlowManager = new WorkerFlowManager();
@@ -99,11 +94,11 @@ final class Scheduler extends AbstractService
         $eventManager = $this->getEventManager();
 
         $sharedEventManager = $eventManager->getSharedManager();
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() {
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() use ($eventManager) {
+            $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
             $this->log(Logger::NOTICE, "Scheduler started");
             $this->startWorkers($this->getConfig()->getStartProcesses());
         }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -226,7 +221,7 @@ final class Scheduler extends AbstractService
         unlink($fileName);
     }
 
-    public function getPidFile() : string
+    public function getUidFile() : string
     {
         // @todo: make it more sophisticated
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
@@ -342,10 +337,6 @@ final class Scheduler extends AbstractService
 
     private function addNewWorker(WorkerEvent $event)
     {
-        if ($event->getParam('server')) {
-            return;
-        }
-
         $uid = $event->getWorker()->getUid();
 
         $this->workers[$uid] = [

@@ -31,31 +31,28 @@ class IpcServer implements ListenerAggregateInterface
     const AUDIENCE_AMOUNT = 'aud_num';
     const AUDIENCE_SELF = 'aud_self';
 
-    protected $eventHandles;
-
-    /** @var bool */
-    protected $isConnected = false;
+    private $eventHandles;
 
     /** @var EventManagerInterface */
-    protected $events;
+    private $events;
 
     /** @var SocketServer */
-    protected $ipcServer;
+    private $ipcServer;
 
     /** @var IpcServer\SocketIpc */
-    protected $ipcClient;
+    private $ipcClient;
 
     /** @var Selector */
-    protected $ipcSelector;
+    private $ipcSelector;
 
     /** @var SocketStream[] */
-    protected $ipcStreams = [];
+    private $ipcStreams = [];
 
     /** @var mixed[] */
-    protected $queuedMessages = [];
+    private $queuedMessages = [];
 
     /** @var float */
-    protected $lastTick;
+    private $lastTick;
 
     public function __construct()
     {
@@ -228,7 +225,7 @@ class IpcServer implements ListenerAggregateInterface
     /**
      * @param mixed $messages
      */
-    private function distributeMessages($messages)
+    private function distributeMessages(array $messages)
     {
         foreach ($messages as $payload) {
             $audience = $payload['aud'];

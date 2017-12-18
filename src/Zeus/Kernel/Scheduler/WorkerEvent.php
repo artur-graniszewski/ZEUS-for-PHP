@@ -28,9 +28,6 @@ class WorkerEvent extends AbstractEvent
     /** @var Worker */
     private $worker;
 
-    /**
-     * @return Worker
-     */
     public function getWorker() : Worker
     {
         return $this->worker;
