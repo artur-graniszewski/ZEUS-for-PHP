@@ -9,6 +9,9 @@ class WorkerFlowManager
     /** @var Scheduler */
     private $scheduler;
 
+    /** @var bool */
+    private $firstWorkerInit = true;
+
     public function setScheduler(Scheduler $scheduler)
     {
         $this->scheduler = $scheduler;
@@ -38,7 +41,11 @@ class WorkerFlowManager
         $worker = new Worker();
         $worker->setLogger($this->scheduler->getLogger());
         $worker->setConfig($this->scheduler->getConfig());
-        $worker->setEventManager($this->scheduler->getEventManager());
+
+        if ($this->firstWorkerInit) {
+            $worker->setEventManager($this->scheduler->getEventManager());
+            $this->firstWorkerInit = false;
+        }
 
         return $worker;
     }
@@ -66,6 +73,7 @@ class WorkerFlowManager
         // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldnt be cloned
 
         // worker init...
+        $worker->getLogger()->alert("INITING");
         $worker = $event->getWorker();
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_INIT);
         $event->setParams($params);

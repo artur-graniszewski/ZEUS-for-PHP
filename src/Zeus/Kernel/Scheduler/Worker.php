@@ -79,18 +79,19 @@ class Worker extends AbstractService
         $eventManager = $this->getEventManager();
 
         $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
+            $this->getLogger()->debug("Attaching worker events");
             set_exception_handler([$this, 'terminate']);
 
-            $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $e) {
-                $this->sendStatus($e);
+            $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
+                $event->getWorker()->sendStatus($event);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-            $eventManager->attach(WorkerEvent::EVENT_WAITING, function(WorkerEvent $e) {
-                $this->sendStatus($e);
+            $eventManager->attach(WorkerEvent::EVENT_WAITING, function(WorkerEvent $event) {
+                $event->getWorker()->sendStatus($event);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-            $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $e) {
-                $this->sendStatus($e);
+            $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
+                $event->getWorker()->sendStatus($event);
             }, SchedulerEvent::PRIORITY_FINALIZE + 2);
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
@@ -119,6 +120,7 @@ class Worker extends AbstractService
         $status->setCode(WorkerState::RUNNING);
         $event->setName(WorkerEvent::EVENT_RUNNING);
         $event->setParam('status', $status);
+        $this->getLogger()->alert("Triggering status to IPC");
         $this->getEventManager()->triggerEvent($event);
     }
 
@@ -241,6 +243,9 @@ class Worker extends AbstractService
         $message = new StatusMessage($payload);
 
         try {
+            if ($status->getCode() === WorkerState::RUNNING) {
+                $this->getLogger()->alert("Sending running status to IPC");
+            }
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (\Exception $ex) {
             $this->getLogger()->err("Exception occurred: " . $ex->getMessage());

@@ -5,7 +5,6 @@ namespace Zeus\Kernel\Scheduler\Plugin;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\IpcDriver;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler;
@@ -42,18 +41,21 @@ class SchedulerStatus implements ListenerAggregateInterface
         $events = $events->getSharedManager();
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_START, function(SchedulerEvent $e) use ($events, $priority) {
             $this->init($e);
-            $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onProcessMessage($e);}, $priority);
+            $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);}, $priority);
         }, $priority);
         $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop();}, $priority);
     }
 
-    protected function onProcessMessage(IpcEvent $event)
+    protected function onWorkerMessage(IpcEvent $event)
     {
+        /** @var Scheduler\Status\StatusMessage $message */
         $message = $event->getParams();
 
-        if (!is_array($message)) {
+        if (!$message instanceof Scheduler\Status\StatusMessage) {
             return;
         }
+
+        $message = $message->getParams();
 
         switch ($message['type']) {
             case Message::IS_STATUS_REQUEST:

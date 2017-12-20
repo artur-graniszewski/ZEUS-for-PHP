@@ -58,6 +58,11 @@ final class Scheduler extends AbstractService
         return clone $this->schedulerEvent;
     }
 
+    public function getStatus() : WorkerState
+    {
+        return $this->status;
+    }
+
     public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
     {
         $this->workerFlowManager = new WorkerFlowManager();
@@ -235,7 +240,7 @@ final class Scheduler extends AbstractService
      */
     private function triggerEvent(string $eventName, array $extraData = [])
     {
-        $extraData = array_merge($this->status->toArray(), $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
+        $extraData = array_merge(['status' => $this->status], $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
         $events = $this->getEventManager();
         $event = $this->getSchedulerEvent();
         $event->setParams($extraData);
