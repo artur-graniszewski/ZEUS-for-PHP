@@ -78,25 +78,25 @@ class Worker extends AbstractService
     {
         $eventManager = $this->getEventManager();
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use ($eventManager) {
+        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
             set_exception_handler([$this, 'terminate']);
 
-            $eventManager->attach(WorkerEvent::EVENT_WORKER_RUNNING, function(WorkerEvent $e) {
+            $eventManager->attach(WorkerEvent::EVENT_PROCESSING, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-            $eventManager->attach(WorkerEvent::EVENT_WORKER_WAITING, function(WorkerEvent $e) {
+            $eventManager->attach(WorkerEvent::EVENT_WAITING, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $e) {
+            $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $e) {
                 $this->sendStatus($e);
             }, SchedulerEvent::PRIORITY_FINALIZE + 2);
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $event->getWorker()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
     }
@@ -117,7 +117,7 @@ class Worker extends AbstractService
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(WorkerState::RUNNING);
-        $event->setName(WorkerEvent::EVENT_WORKER_RUNNING);
+        $event->setName(WorkerEvent::EVENT_PROCESSING);
         $event->setParam('status', $status);
         $this->getEventManager()->triggerEvent($event);
     }
@@ -138,7 +138,7 @@ class Worker extends AbstractService
         $status->setTime($now);
         $status->setStatusDescription($statusDescription);
         $status->setCode(WorkerState::WAITING);
-        $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
+        $event->setName(WorkerEvent::EVENT_WAITING);
         $event->setParam('status', $status);
         $this->getEventManager()->triggerEvent($event);
     }
@@ -177,7 +177,7 @@ class Worker extends AbstractService
         $event = new WorkerEvent();
         $event->setTarget($this);
         $event->setWorker($this);
-        $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
+        $event->setName(WorkerEvent::EVENT_EXIT);
         $event->setParams($payload); // @todo: remove this line?
         $event->setParam('status', $status);
 
@@ -198,7 +198,7 @@ class Worker extends AbstractService
                 $event = new WorkerEvent();
                 $event->setTarget($this);
                 $event->setWorker($this);
-                $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
+                $event->setName(WorkerEvent::EVENT_LOOP);
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 

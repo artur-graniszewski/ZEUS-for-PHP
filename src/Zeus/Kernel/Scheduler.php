@@ -57,7 +57,7 @@ final class Scheduler extends AbstractService
     {
         return clone $this->schedulerEvent;
     }
-    
+
     public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
     {
         $this->workerFlowManager = new WorkerFlowManager();
@@ -94,21 +94,21 @@ final class Scheduler extends AbstractService
         $eventManager = $this->getEventManager();
 
         $sharedEventManager = $eventManager->getSharedManager();
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function() use ($eventManager) {
-            $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START, function() use ($eventManager) {
+            $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
             $this->log(Logger::NOTICE, "Scheduler started");
             $this->startWorkers($this->getConfig()->getStartProcesses());
         }, SchedulerEvent::PRIORITY_FINALIZE);
 
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, function() {
             $this->collectCycles();
             $this->manageWorkers();
         });
 
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT,
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT,
             function(WorkerEvent $e) use ($eventManager) {
                 if (!$e->getParam('server')) {
                     return;
@@ -120,13 +120,13 @@ final class Scheduler extends AbstractService
 
             }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE,
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
             function (WorkerEvent $event) use ($eventManager) {
                 if (!$event->getParam('server') || $event->getParam('initWorker')) {
                     return;
                 }
 
-                $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $e) {
+                $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $e) {
                     $e->stopPropagation(true);
                 }, WorkerEvent::PRIORITY_INITIALIZE + 100000);
 
@@ -272,18 +272,18 @@ final class Scheduler extends AbstractService
     private function startLifeCycle()
     {
         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
-        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_START);
+        $this->triggerEvent(SchedulerEvent::EVENT_START);
         $this->mainLoop();
         // @fixme: kernelLoop() should be merged with mainLoop()
         $this->getLogger()->debug("Scheduler stop event triggering...");
-        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP);
+        $this->triggerEvent(SchedulerEvent::EVENT_STOP);
         $this->log(Logger::NOTICE, "Scheduler terminated");
         $this->getLogger()->debug("Scheduler stop event finished");
     }
 
     private function handleException(\Throwable $exception)
     {
-        $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_STOP, ['exception' => $exception]);
+        $this->triggerEvent(SchedulerEvent::EVENT_STOP, ['exception' => $exception]);
     }
 
     /**
@@ -390,7 +390,7 @@ final class Scheduler extends AbstractService
     private function mainLoop()
     {
         do {
-            $this->triggerEvent(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+            $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
         } while (!$this->isTerminating());
 
         $this->getLogger()->debug("Scheduler loop finished");
@@ -400,7 +400,7 @@ final class Scheduler extends AbstractService
     {
         while (!$this->isTerminating()) {
             $time = microtime(true);
-            $this->triggerEvent(SchedulerEvent::EVENT_KERNEL_LOOP);
+            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
             $diff = microtime(true) - $time;
 
             if ($diff < 0.1) {

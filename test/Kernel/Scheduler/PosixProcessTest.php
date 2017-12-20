@@ -81,15 +81,15 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $service = $this->getMpm($scheduler);
 
         $eventLaunched = false;
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (&$eventLaunched) {
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use (&$eventLaunched) {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
 
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
+        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
             $eventLaunched = true;
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
@@ -104,7 +104,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
     {
         return [
             [
-                WorkerEvent::EVENT_WORKER_CREATE,
+                WorkerEvent::EVENT_CREATE,
                 123412341234, 123412341234,
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -114,7 +114,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
             ],
 
             [
-                WorkerEvent::EVENT_WORKER_CREATE,
+                WorkerEvent::EVENT_CREATE,
                 false, getmypid(),
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -178,14 +178,14 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $event = new SchedulerEvent();
         $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(SchedulerEvent::EVENT_START);
         $event->setParam('uid', 123456);
         $em->triggerEvent($event);
 
         $event = new WorkerEvent();
         $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
-        $event->setName(WorkerEvent::EVENT_WORKER_TERMINATE);
+        $event->setName(WorkerEvent::EVENT_TERMINATE);
 
         $event->setParam('soft', false);
         $em->triggerEvent($event);
@@ -194,7 +194,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
         $this->assertEquals(123456, $logArray[6][1][0], 'Kill signal should be sent to a certain process');
         $this->assertEquals(SIGKILL, $logArray[6][1][1], 'Correct type of kill signal should be sent to a certain process');
-        $this->assertEquals(WorkerEvent::EVENT_WORKER_TERMINATE, $event->getName());
+        $this->assertEquals(WorkerEvent::EVENT_TERMINATE, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
 
@@ -203,7 +203,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $this->markTestIncomplete();
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
-        $em->attach(WorkerEvent::EVENT_WORKER_EXIT, function($event) use (&$triggeredEvent) {
+        $em->attach(WorkerEvent::EVENT_EXIT, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -254,7 +254,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
     {
         $this->markTestIncomplete();
         $em = new EventManager(new SharedEventManager());
-        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function($event) use (&$triggeredEvent) {
+        $em->attach(SchedulerEvent::EVENT_STOP, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -267,10 +267,10 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $posixProcess->setSchedulerEvent($event);
         $posixProcess->attach($em);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(SchedulerEvent::EVENT_START);
         $em->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+        $event->setName(SchedulerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
 
         $this->assertNotNull($triggeredEvent);
@@ -286,7 +286,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
         $triggeredEvent = null;
-        $em->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function($event) use (&$triggeredEvent) {
+        $em->attach(SchedulerEvent::EVENT_STOP, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -299,7 +299,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
 
         //$scheduler->start(false);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
+        $event->setName(SchedulerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
 
         $this->assertNotNull($triggeredEvent);
@@ -352,7 +352,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
         $em->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(SchedulerEvent::EVENT_START);
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
@@ -378,11 +378,11 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $posixProcess = new PosixProcess();
         $posixProcess->attach($em);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(SchedulerEvent::EVENT_START);
         $em->triggerEvent($event);
 
         $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_WAITING);
+        $event->setName(WorkerEvent::EVENT_WAITING);
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
@@ -390,7 +390,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSignalDispatch'), 'Signal dispatching should be performed when process is waiting');
         $pcntlMock->setExecutionLog([]);
 
-        $event->setName(WorkerEvent::EVENT_WORKER_RUNNING);
+        $event->setName(WorkerEvent::EVENT_PROCESSING);
         $em->triggerEvent($event);
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSigprocmask'), 'Signal masking should be disabled when process is running');

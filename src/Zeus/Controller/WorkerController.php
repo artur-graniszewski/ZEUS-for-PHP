@@ -149,7 +149,7 @@ class WorkerController extends AbstractActionController
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
 
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function() {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function() {
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -165,7 +165,7 @@ class WorkerController extends AbstractActionController
         if (defined("ZEUS_THREAD_CONN_PORT")) {
             $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
         }
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 
@@ -194,7 +194,7 @@ class WorkerController extends AbstractActionController
             $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
         }
         $event->setParam('processId', getmypid());
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 

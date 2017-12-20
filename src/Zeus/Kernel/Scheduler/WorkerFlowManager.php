@@ -51,7 +51,7 @@ class WorkerFlowManager
         $worker->setIsTerminating(false);
 
         // worker create...
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_CREATE);
+        $event = $this->getWorkerEvent(WorkerEvent::EVENT_CREATE);
         $event->setWorker($worker);
         $event->setTarget($worker);
         $event->setParams($eventParameters);
@@ -67,7 +67,7 @@ class WorkerFlowManager
 
         // worker init...
         $worker = $event->getWorker();
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_INIT);
+        $event = $this->getWorkerEvent(WorkerEvent::EVENT_INIT);
         $event->setParams($params);
         $event->setTarget($worker);
         $event->setWorker($worker);
@@ -75,7 +75,7 @@ class WorkerFlowManager
 
         // worker exit...
         $worker = $event->getWorker();
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_EXIT);
+        $event = $this->getWorkerEvent(WorkerEvent::EVENT_EXIT);
         $event->setParams($params);
         $event->setTarget($worker);
         $event->setWorker($worker);
@@ -84,7 +84,7 @@ class WorkerFlowManager
 
     public function stopWorker(int $uid, bool $isSoftStop)
     {
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_WORKER_TERMINATE);
+        $event = $this->getWorkerEvent(WorkerEvent::EVENT_TERMINATE);
         $event->setParam('uid', $uid);
         $event->setParam('soft', $isSoftStop);
 

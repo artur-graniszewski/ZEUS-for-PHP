@@ -43,14 +43,14 @@ class ProcessTitle implements ListenerAggregateInterface
     {
         if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
             $events = $events->getSharedManager();
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_CREATE, [$this, 'onProcessStarting'], $priority);
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_WAITING, [$this, 'onProcessWaiting'], $priority);
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_TERMINATE, [$this, 'onProcessTerminate'], $priority);
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WORKER_RUNNING, [$this, 'onProcessRunning'], $priority);
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_CREATE, [$this, 'onProcessStarting'], $priority);
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WAITING, [$this, 'onProcessWaiting'], $priority);
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_TERMINATE, [$this, 'onProcessTerminate'], $priority);
+            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_PROCESSING, [$this, 'onProcessRunning'], $priority);
             $this->eventHandles[] = $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, [$this, 'onSchedulerStart'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_STOP, [$this, 'onServerStop'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, [$this, 'onSchedulerLoop'], $priority);
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_STOP, [$this, 'onServerStop'], $priority);
+            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_LOOP, [$this, 'onSchedulerLoop'], $priority);
         }
     }
 

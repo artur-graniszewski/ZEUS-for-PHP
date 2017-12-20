@@ -320,7 +320,7 @@ class IpcServer implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $sharedManager = $events->getSharedManager();
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function() {
+        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function() {
             $this->handleIpcMessages();
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
@@ -329,11 +329,11 @@ class IpcServer implements ListenerAggregateInterface
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
 
-        $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_LOOP, function(WorkerEvent $event) {
+        $sharedManager->attach('*', WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
             $this->onWorkerLoop($event);
             }, -9000);
 
-        $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $ipcPort = $event->getParam('ipcPort');
 
             if (!$ipcPort) {
@@ -345,17 +345,17 @@ class IpcServer implements ListenerAggregateInterface
             $event->getWorker()->setIpc($this);
         }, WorkerEvent::PRIORITY_INITIALIZE);
 
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {
+        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {
             $this->startIpc();
             $uid = $event->getParam('uid', 0);
             $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
             $event->getScheduler()->setIpc($this);
 
-            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_WORKER_CREATE, function(WorkerEvent $event) {
+            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
 
-            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function() {
+            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function() {
                 $this->addNewIpcClients();
                 $this->removeIpcClients();
                 $this->handleIpcMessages();

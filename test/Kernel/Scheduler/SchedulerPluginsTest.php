@@ -70,7 +70,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
     public function testDropPrivilegesPluginWhenSudoer()
     {
         $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
@@ -80,7 +80,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
         $scheduler->getEventManager()->triggerEvent($event);
@@ -89,7 +89,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
     public function testSchedulerDestructor()
     {
         $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
@@ -99,7 +99,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
         $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -116,7 +116,7 @@ class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
     public function testDropPrivilegesPluginWhenEffectiveSudoerButNotRealSudoer()
     {
         $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
 
         $plugin = $this->getDropPrivilegesMock();
 

@@ -71,7 +71,7 @@ class SchedulerStatusTest extends PHPUnit_Framework_TestCase
         $status = new SchedulerStatus();
         $status->attach($em);
 
-        $em->attach(WorkerEvent::EVENT_WORKER_CREATE,
+        $em->attach(WorkerEvent::EVENT_CREATE,
             function(WorkerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
                 $amountOfScheduledProcesses++;
 

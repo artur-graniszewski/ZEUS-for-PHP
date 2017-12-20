@@ -159,7 +159,7 @@ trait ZeusFactories
         $ipcServer->attach(new EventManager($sm));
 
         if ($mainLoopIterations > 0) {
-            $sm->attach('*', SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
+            $sm->attach('*', SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {
@@ -172,7 +172,7 @@ trait ZeusFactories
             }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         }
 
-        $sm->attach('*', SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
+        $sm->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
             $e->getScheduler()->setIsTerminating(true);
             $e->stopPropagation(true);
         }, 10000000);

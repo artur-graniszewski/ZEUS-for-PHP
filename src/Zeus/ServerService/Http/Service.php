@@ -50,7 +50,7 @@ class Service extends AbstractSocketServerService
 
     public function start()
     {
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $this->process = $event->getTarget();
         });
 

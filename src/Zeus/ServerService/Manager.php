@@ -149,20 +149,20 @@ final class Manager
         $event->setError(null);
         $event->setService($service);
 
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START,
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START,
             function (SchedulerEvent $event) use ($service) {
                 $this->logger->debug(sprintf('Scheduler running as process #%d', getmypid()));
                 $this->pidToServiceMap[getmypid()] = $service;
                 $this->servicesRunning++;
             }, -10000);
 
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP,
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP,
             function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);
 
 
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP,
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP,
             function (SchedulerEvent $schedulerEvent) use ($service, $event) {
                 if (!$event->propagationIsStopped()) {
                     pcntl_signal_dispatch(); //@todo: URGENT! REPLACE me with something more platform agnostic!
@@ -209,7 +209,7 @@ final class Manager
         $managerTime = $now - $startTime;
 
         foreach ($serviceNames as $serviceName) {
-            $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_SCHEDULER_START,
+            $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_START,
                 function () use ($serviceName, $managerTime, $phpTime, $engine) {
                     $this->servicesRunning++;
                     $this->logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));

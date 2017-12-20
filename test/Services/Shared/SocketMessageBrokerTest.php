@@ -74,25 +74,25 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
+        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         
-        $events->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_WORKER_EXIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+        $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(SchedulerEvent::EVENT_START);
         $events->triggerEvent($event);
 
         $event = new WorkerEvent();
         $event->setTarget($worker);
         $event->setWorker($worker);
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
@@ -104,7 +104,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $wrote = stream_socket_sendto($client, $requestString);
         $this->assertEquals($wrote, strlen($requestString));
 
-        $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
+        $event->setName(WorkerEvent::EVENT_LOOP);
         $event->setTarget($worker);
         $event->setWorker($worker);
         $events->triggerEvent($event);
@@ -115,7 +115,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         fclose($client);
 
         $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_EXIT);
+        $event->setName(WorkerEvent::EVENT_EXIT);
         $event->setTarget($worker);
         $event->setWorker($worker);
         $events->triggerEvent($event);
@@ -150,19 +150,19 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
-        $events->attach(SchedulerEvent::EVENT_SCHEDULER_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
+        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $event->setName(SchedulerEvent::EVENT_SCHEDULER_START);
+        $event->setName(SchedulerEvent::EVENT_START);
         $events->triggerEvent($event);
 
         $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_INIT);
+        $event->setName(WorkerEvent::EVENT_INIT);
         $event->setTarget($worker);
         $event->setWorker($worker);
 
@@ -175,7 +175,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
         fwrite($client, $requestString);
 
-        $event->setName(WorkerEvent::EVENT_WORKER_LOOP);
+        $event->setName(WorkerEvent::EVENT_LOOP);
         $exception = null;
         try {
             $events->triggerEvent($event);

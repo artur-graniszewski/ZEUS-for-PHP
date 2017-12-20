@@ -31,7 +31,7 @@ class Service extends AbstractSocketServerService
             throw new \LogicException("Async service failed: serialization module is missing");
         }
 
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_WORKER_INIT, function(WorkerEvent $event) {
+        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $this->worker = $event->getTarget();
         });
 

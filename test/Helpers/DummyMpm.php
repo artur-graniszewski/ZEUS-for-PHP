@@ -20,7 +20,7 @@ class DummyMpm extends AbstractModule
     {
         $this->pipe = $this->getWrapper()->createPipe();
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
+        $eventManager->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
             $pid = $event->getParam('uid', getmypid());
             $event->getWorker()->setProcessId($pid);
             $event->getWorker()->setThreadId(1);

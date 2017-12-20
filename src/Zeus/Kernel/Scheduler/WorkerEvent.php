@@ -11,19 +11,17 @@ class WorkerEvent extends AbstractEvent
     const PRIORITY_INITIALIZE = 50000;
     const PRIORITY_REGULAR = 0;
 
-    const EVENT_WORKER_MESSAGE = 'workerMessage';
+    const EVENT_CREATE = 'workerCreate';
+    const EVENT_INIT = 'workerStarted';
+    const EVENT_EXIT = 'workerExit';
 
-    const EVENT_WORKER_CREATE = 'workerCreate';
-    const EVENT_WORKER_INIT = 'workerStarted';
-    const EVENT_WORKER_EXIT = 'workerExit';
+    const EVENT_LOOP = 'workerLoop';
 
-    const EVENT_WORKER_LOOP = 'workerLoop';
+    const EVENT_PROCESSING = 'workerRunning';
+    const EVENT_WAITING = 'workerWaiting';
 
-    const EVENT_WORKER_RUNNING = 'workerRunning';
-    const EVENT_WORKER_WAITING = 'workerWaiting';
-
-    const EVENT_WORKER_TERMINATED = 'workerTerminated';
-    const EVENT_WORKER_TERMINATE = 'workerTerminate';
+    const EVENT_TERMINATED = 'workerTerminated';
+    const EVENT_TERMINATE = 'workerTerminate';
 
     /** @var Worker */
     private $worker;

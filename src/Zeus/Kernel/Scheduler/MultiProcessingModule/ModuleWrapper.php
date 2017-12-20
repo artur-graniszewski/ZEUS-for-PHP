@@ -136,11 +136,11 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     {
         $eventManager = $this->getEventManager();
 
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_INIT, function (WorkerEvent $event) use ($eventManager) {
+        $eventManager->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) use ($eventManager) {
             $this->driver->onWorkerInit($event);
             $this->connectToPipe($event);
             $this->checkPipe();
-            $eventManager->attach(WorkerEvent::EVENT_WORKER_EXIT, function (WorkerEvent $event) {
+            $eventManager->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
                 $this->driver->onWorkerExit($event);
 
                 if (!$event->propagationIsStopped()) {
@@ -157,10 +157,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $this->driver->onKernelStart($e);
             $this->driver->onWorkersCheck($e);
         });
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_START, function (SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $e) {
             $this->driver->onSchedulerInit($e);
         }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_STOP, function (SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::EVENT_STOP, function (SchedulerEvent $e) {
             $this->driver->onSchedulerStop($e);
             $this->setIsTerminating(true);
 
@@ -174,7 +174,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 }
             }
         }, SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_LOOP, function (WorkerEvent $event) {
+        $eventManager->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
             $this->driver->onWorkerLoop($event);
             $this->checkPipe();
 
@@ -183,7 +183,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 $event->stopPropagation(true);
             }
         }, WorkerEvent::PRIORITY_INITIALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_SCHEDULER_LOOP, function (SchedulerEvent $event) {
+        $eventManager->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) {
             $this->driver->onSchedulerLoop($event);
             $wasExiting = $this->isTerminating();
 
@@ -196,7 +196,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 $event->stopPropagation(true);
             }
         }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_CREATE, function (WorkerEvent $event) {
+        $eventManager->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
             $pipe = $this->createPipe();
             $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
             $this->driver->onWorkerCreate($event);
@@ -204,14 +204,14 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 $this->registerWorker($event->getWorker()->getUid(), $pipe);
             }
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATE, function (WorkerEvent $e) {
+        $eventManager->attach(WorkerEvent::EVENT_TERMINATE, function (WorkerEvent $e) {
             $this->driver->onWorkerTerminate($e);
             $this->unregisterWorker($e->getParam('uid'));
         }, -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
             $this->driver->onKernelLoop($e);
         }, -9000);
-        $eventManager->attach(WorkerEvent::EVENT_WORKER_TERMINATED, function (WorkerEvent $e) {
+        $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function (WorkerEvent $e) {
             $this->driver->onWorkerTerminated($e);
         }, WorkerEvent::PRIORITY_FINALIZE);
 
@@ -223,7 +223,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     public function raiseWorkerExitedEvent(int $uid, int $processId, int $threadId)
     {
         $event = $this->getWorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WORKER_TERMINATED);
+        $event->setName(WorkerEvent::EVENT_TERMINATED);
         $event->getWorker()->setUid($uid);
         $event->getWorker()->setProcessId($processId);
         $event->getWorker()->setThreadId($threadId);
