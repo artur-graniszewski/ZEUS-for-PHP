@@ -390,7 +390,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSignalDispatch'), 'Signal dispatching should be performed when process is waiting');
         $pcntlMock->setExecutionLog([]);
 
-        $event->setName(WorkerEvent::EVENT_PROCESSING);
+        $event->setName(WorkerEvent::EVENT_RUNNING);
         $em->triggerEvent($event);
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSigprocmask'), 'Signal masking should be disabled when process is running');

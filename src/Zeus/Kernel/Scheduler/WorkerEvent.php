@@ -17,7 +17,7 @@ class WorkerEvent extends AbstractEvent
 
     const EVENT_LOOP = 'workerLoop';
 
-    const EVENT_PROCESSING = 'workerRunning';
+    const EVENT_RUNNING = 'workerRunning';
     const EVENT_WAITING = 'workerWaiting';
 
     const EVENT_TERMINATED = 'workerTerminated';

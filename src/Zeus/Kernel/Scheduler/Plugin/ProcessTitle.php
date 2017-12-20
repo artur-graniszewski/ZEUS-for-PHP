@@ -41,24 +41,38 @@ class ProcessTitle implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 0)
     {
-        if (function_exists('cli_get_process_title') && function_exists('cli_set_process_title')) {
-            $events = $events->getSharedManager();
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_CREATE, [$this, 'onProcessStarting'], $priority);
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WAITING, [$this, 'onProcessWaiting'], $priority);
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_TERMINATE, [$this, 'onProcessTerminate'], $priority);
-            $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_PROCESSING, [$this, 'onProcessRunning'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onServerStart'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_STOP, [$this, 'onServerStop'], $priority);
-            $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_LOOP, [$this, 'onSchedulerLoop'], $priority);
+        if (!$this->isSupported()) {
+            return;
         }
+
+        $events = $events->getSharedManager();
+        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_CREATE, [$this, 'onWorkerStarting'], $priority);
+        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WAITING, [$this, 'onWorkerWaiting'], $priority);
+        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_TERMINATE, [$this, 'onWorkerTerminate'], $priority);
+        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_RUNNING, [$this, 'onWorkerRunning'], $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_STOP, [$this, 'onSchedulerStop'], $priority);
+        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_LOOP, [$this, 'onSchedulerLoop'], $priority);
+    }
+
+    private function isSupported() : bool
+    {
+        if (PHP_OS === 'Darwin') {
+            // only root can change the process name...
+            if (!function_exists('posix_getuid') || posix_getuid() != 0) {
+                return false;
+            }
+        }
+
+        return function_exists('cli_get_process_title') && function_exists('cli_set_process_title');
     }
 
     /**
      * @param string $function
      * @param mixed[] $args
      */
-    public function __call($function, $args)
+    public function __call(string $function, array $args)
     {
         /** @var EventInterface $event */
         $event = $args[0];
@@ -68,28 +82,33 @@ class ProcessTitle implements ListenerAggregateInterface
         list($eventType, $taskType, $status) = explode('_', $function, 3);
 
         if ($eventType === 'INTERNAL') {
-
-            return;
+            //return;
         }
 
-        if ($event->getParam('cpu_usage') !== null || $event->getParam('requests_finished') !== null) {
+        $statusArray = $event->getParam('status') ? $event->getParam('status')->toArray() : [];
+
+        if (isset($statusArray['cpu_usage']) || isset($statusArray['requests_finished'])) {
             $this->setTitle(sprintf("%s %s [%s] %s req done, %s rps, %d%% CPU usage",
                 $taskType,
-                $event->getParam('service_name'),
+                $statusArray['service_name'],
                 $status,
-                $this->addUnitsToNumber($event->getParam('requests_finished')),
-                $this->addUnitsToNumber($event->getParam('requests_per_second')),
-                $event->getParam('cpu_usage')
+                $this->addUnitsToNumber($statusArray['requests_finished']),
+                $this->addUnitsToNumber($statusArray['requests_per_second']),
+                $statusArray['cpu_usage']
             ));
 
             return;
         }
 
-        $this->setTitle(sprintf("%s %s [%s]",
-            $taskType,
-            $event->getParam('service_name'),
-            $status
-        ));
+        if ($event->getParam('service_name')) {
+            $this->setTitle(sprintf("%s %s [%s]",
+                $taskType,
+                $event->getParam('service_name'),
+                $status
+            ));
+        } else {
+            $this->setTitle("kernel [running]");
+        }
     }
 
     /**
