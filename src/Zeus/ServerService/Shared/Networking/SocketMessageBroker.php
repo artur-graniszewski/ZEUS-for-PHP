@@ -93,9 +93,6 @@ final class SocketMessageBroker
         $this->message = $message;
     }
 
-    /**
-     * @param EventManagerInterface $events
-     */
     public function attach(EventManagerInterface $events)
     {
         $events->attach(WorkerEvent::EVENT_INIT, [$this, 'onWorkerInit'], WorkerEvent::PRIORITY_REGULAR);
@@ -199,25 +196,16 @@ final class SocketMessageBroker
         }
     }
 
-    /**
-     * @return SocketServer
-     */
-    public function getWorkerServer()
+    public function getWorkerServer() : SocketServer
     {
         return $this->workerServer;
     }
 
-    /**
-     * @param LoggerInterface $logger
-     */
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
     }
 
-    /**
-     * @return LoggerInterface
-     */
     public function getLogger() : LoggerInterface
     {
         if (!isset($this->logger)) {
@@ -226,9 +214,6 @@ final class SocketMessageBroker
         return $this->logger;
     }
 
-    /**
-     * @param int $backlog
-     */
     protected function startUpstreamServer(int $backlog)
     {
         $server = new SocketServer();
@@ -251,9 +236,6 @@ final class SocketMessageBroker
         $this->downstreamServer = $server;
     }
 
-    /**
-     * @param WorkerEvent $event
-     */
     protected function createWorkerServer(WorkerEvent $event)
     {
         $server = new SocketServer();
@@ -265,9 +247,6 @@ final class SocketMessageBroker
         $this->workerServer = $server;
     }
 
-    /**
-     * @param WorkerEvent $event
-     */
     public function onWorkerInit(WorkerEvent $event)
     {
         $this->leaderIpcAddress = $event->getParam('leaderIpcAddress', $this->leaderIpcAddress);
@@ -275,11 +254,6 @@ final class SocketMessageBroker
         $this->createWorkerServer($event);
     }
 
-    /**
-     * @param WorkerEvent $event
-     * @throws \Throwable
-     * @throws null
-     */
     public function onLeaderLoop(WorkerEvent $event)
     {
         $this->readSelector->select(1000);
@@ -537,11 +511,6 @@ final class SocketMessageBroker
         }
     }
 
-    /**
-     * @param WorkerEvent $event
-     * @throws \Throwable|\Exception
-     * @throws null
-     */
     public function onWorkerLoop(WorkerEvent $event)
     {
         $exception = null;
@@ -656,11 +625,11 @@ final class SocketMessageBroker
         $this->upstreamServer = null;
     }
 
-    /**
-     * @return SocketServer
-     */
-    public function getUpstreamServer()
+    public function getUpstreamServer() : SocketServer
     {
+        if (!$this->upstreamServer) {
+            throw new \LogicException("Upstream server not available");
+        }
         return $this->upstreamServer;
     }
 

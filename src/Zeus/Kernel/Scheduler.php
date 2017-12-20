@@ -4,6 +4,7 @@ namespace Zeus\Kernel;
 
 use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\AbstractService;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
@@ -145,6 +146,61 @@ final class Scheduler extends AbstractService
                 $this->kernelLoop();
             }, WorkerEvent::PRIORITY_FINALIZE
         );
+
+        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
+            set_exception_handler([$event->getWorker(), 'terminate']);
+
+            $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
+                $this->sendStatus($event);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+            $eventManager->attach(WorkerEvent::EVENT_WAITING, function(WorkerEvent $event) {
+                $this->sendStatus($event);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+            $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
+                $this->sendStatus($event);
+            }, SchedulerEvent::PRIORITY_FINALIZE + 2);
+
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
+
+
+        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+            $event->getWorker()->mainLoop();
+        }, WorkerEvent::PRIORITY_FINALIZE);
+    }
+
+    /**
+     * @param WorkerEvent $event
+     * @todo: move this to an AbstractProcess or a Plugin?
+     */
+    private function sendStatus(WorkerEvent $event)
+    {
+        $worker = $event->getWorker();
+        $status = $worker->getStatus();
+        $status->updateStatus();
+        $status->setThreadId($worker->getThreadId());
+        $status->setProcessId($worker->getProcessId());
+        $status->setUid($worker->getUid());
+
+        $payload = [
+            'type' => Message::IS_STATUS,
+            'message' => $status->getStatusDescription(),
+            'extra' => [
+                'logger' => __CLASS__,
+                'status' => $status->toArray()
+            ]
+        ];
+
+        $message = new StatusMessage($payload);
+
+        try {
+            $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
+        } catch (\Exception $ex) {
+            $this->getLogger()->err("Exception occurred: " . $ex->getMessage());
+            $event->getWorker()->setIsTerminating(true);
+            $event->setParam('exception', $ex);
+        }
     }
 
     private function onIpcMessage(IpcEvent $event)

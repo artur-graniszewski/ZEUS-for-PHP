@@ -4,9 +4,7 @@ namespace Zeus\Kernel\Scheduler;
 
 use Throwable;
 use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
-use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 use function time;
@@ -74,34 +72,6 @@ class Worker extends AbstractService
         return $this->status;
     }
 
-    public function attachDefaultListeners()
-    {
-        $eventManager = $this->getEventManager();
-
-        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
-            $this->getLogger()->debug("Attaching worker events");
-            set_exception_handler([$this, 'terminate']);
-
-            $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
-                $event->getWorker()->sendStatus($event);
-            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
-
-            $eventManager->attach(WorkerEvent::EVENT_WAITING, function(WorkerEvent $event) {
-                $event->getWorker()->sendStatus($event);
-            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
-
-            $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
-                $event->getWorker()->sendStatus($event);
-            }, SchedulerEvent::PRIORITY_FINALIZE + 2);
-
-        }, WorkerEvent::PRIORITY_FINALIZE + 1);
-
-
-        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $event->getWorker()->mainLoop();
-        }, WorkerEvent::PRIORITY_FINALIZE);
-    }
-
     public function setRunning(string $statusDescription = null)
     {
         $status = $this->getStatus();
@@ -120,7 +90,6 @@ class Worker extends AbstractService
         $status->setCode(WorkerState::RUNNING);
         $event->setName(WorkerEvent::EVENT_RUNNING);
         $event->setParam('status', $status);
-        $this->getLogger()->alert("Triggering status to IPC");
         $this->getEventManager()->triggerEvent($event);
     }
 
@@ -157,10 +126,7 @@ class Worker extends AbstractService
         $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
     }
 
-    /**
-     * @param \Throwable|null $exception
-     */
-    protected function terminate(\Throwable $exception = null)
+    public function terminate(\Throwable $exception = null)
     {
         $status = $this->getStatus();
 
@@ -216,41 +182,5 @@ class Worker extends AbstractService
         }
 
         $this->terminate();
-    }
-
-    /**
-     * @param WorkerEvent $event
-     * @todo: move this to an AbstractProcess or a Plugin?
-     */
-    protected function sendStatus(WorkerEvent $event)
-    {
-        $worker = $event->getWorker();
-        $status = $worker->getStatus();
-        $status->updateStatus();
-        $status->setThreadId($worker->getThreadId());
-        $status->setProcessId($worker->getProcessId());
-        $status->setUid($worker->getUid());
-
-        $payload = [
-            'type' => Message::IS_STATUS,
-            'message' => $status->getStatusDescription(),
-            'extra' => [
-                'logger' => __CLASS__,
-                'status' => $status->toArray()
-            ]
-        ];
-
-        $message = new StatusMessage($payload);
-
-        try {
-            if ($status->getCode() === WorkerState::RUNNING) {
-                $this->getLogger()->alert("Sending running status to IPC");
-            }
-            $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
-        } catch (\Exception $ex) {
-            $this->getLogger()->err("Exception occurred: " . $ex->getMessage());
-            $event->getWorker()->setIsTerminating(true);
-            $event->setParam('exception', $ex);
-        }
     }
 }
