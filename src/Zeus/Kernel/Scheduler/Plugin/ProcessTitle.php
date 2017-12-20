@@ -24,15 +24,9 @@ class ProcessTitle implements ListenerAggregateInterface
     /** @var mixed[] */
     protected $eventHandles = [];
 
-    /**
-     * @param string $title
-     * @return $this
-     */
-    protected function setTitle($title)
+    protected function setTitle(string $title)
     {
         cli_set_process_title('zeus ' . $title);
-
-        return $this;
     }
 
     /**
@@ -80,10 +74,6 @@ class ProcessTitle implements ListenerAggregateInterface
         $function = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $function));
 
         list($eventType, $taskType, $status) = explode('_', $function, 3);
-
-        if ($eventType === 'INTERNAL') {
-            //return;
-        }
 
         $statusArray = $event->getParam('status') ? $event->getParam('status')->toArray() : [];
 
