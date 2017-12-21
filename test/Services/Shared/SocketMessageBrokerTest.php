@@ -45,7 +45,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
     public function testSubscriberRequestHandling()
     {
-        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
+        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
         stream_set_blocking($server, false);
         $scheduler = $this->getScheduler(0);
         $events = $scheduler->getEventManager();
@@ -73,7 +73,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             }
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
-        $eventSubscriber->setLeaderIpcAddress('tcp://127.0.0.1:3333');
+        $eventSubscriber->setLeaderIpcAddress('127.0.0.1:3333');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
@@ -149,7 +149,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             throw new \RuntimeException("TEST");
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
-        $eventSubscriber->setLeaderIpcAddress('tcp://127.0.0.1:3333');
+        $eventSubscriber->setLeaderIpcAddress('127.0.0.1:3333');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
@@ -194,6 +194,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("", $read, 'Stream should not contain any message');
         $this->assertEquals(true, $eof, 'Client stream should not be readable when disconnected');
 
+        $server = false;
         fclose($client);
     }
 }

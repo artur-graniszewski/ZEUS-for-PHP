@@ -142,7 +142,8 @@ final class SocketMessageBroker
         ];
 
         //$this->getLogger()->debug("Registering worker on {$this->leaderIpcAddress}");
-        $leaderPipe = @stream_socket_client('tcp://' . $this->leaderIpcAddress, $errno, $errstr, 1, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+
+        $leaderPipe = @stream_socket_client('tcp://' . $this->leaderIpcAddress, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
         if ($leaderPipe) {
             $port = $this->workerServer->getLocalPort();
             $uid = $this->uid;
