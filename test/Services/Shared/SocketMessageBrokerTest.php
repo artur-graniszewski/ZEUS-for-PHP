@@ -34,7 +34,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
     public function tearDown()
     {
         try {
-            $server = $this->service->getFrontendServer();
+            $server = $this->service->getFrontendWorker()->getFrontendServer();
         } catch (\LogicException $ex) {
             return;
         }
