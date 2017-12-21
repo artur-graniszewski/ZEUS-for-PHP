@@ -185,7 +185,6 @@ final class Scheduler extends AbstractService
 
         $payload = [
             'type' => Message::IS_STATUS,
-            'message' => $status->getStatusDescription(),
             'extra' => [
                 'logger' => __CLASS__,
                 'status' => $status->toArray()

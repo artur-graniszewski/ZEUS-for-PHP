@@ -24,6 +24,8 @@ use function get_called_class;
 
 class IpcServer implements ListenerAggregateInterface
 {
+    private $ipcHost = '127.0.0.2';
+
     const AUDIENCE_ALL = 'aud_all';
     const AUDIENCE_ANY = 'aud_any';
     const AUDIENCE_SERVER = 'aud_srv';
@@ -74,7 +76,7 @@ class IpcServer implements ListenerAggregateInterface
         $server = new SocketServer();
         $server->setTcpNoDelay(true);
         $server->setSoTimeout(0);
-        $server->bind('127.0.0.1', 30000, 0);
+        $server->bind($this->ipcHost, 30000, 0);
         $this->ipcServer = $server;
     }
 
@@ -131,10 +133,11 @@ class IpcServer implements ListenerAggregateInterface
             ],
         ];
 
-        $socket = @stream_socket_client('tcp://127.0.0.1:' . $ipcPort, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $host = $this->ipcHost;
+        $socket = @stream_socket_client("tcp://$host:$ipcPort", $errno, $errstr, 1, STREAM_CLIENT_CONNECT, stream_context_create($opts));
 
         if (!$socket) {
-            throw new \RuntimeException("IPC connection failed");
+            throw new \RuntimeException("IPC connection failed: $errstr [$errno]");
         }
 
         $ipcStream = new SocketStream($socket);

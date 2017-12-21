@@ -36,7 +36,7 @@ final class SocketMessageBroker
     protected $isLeader = false;
 
     /** @var SocketServer */
-    protected $upstreamServer;
+    protected $frontendServer;
 
     /** @var int */
     protected $lastTickTime = 0;
@@ -48,7 +48,7 @@ final class SocketMessageBroker
     protected $connection;
 
     /** @var SocketServer */
-    protected $downstreamServer;
+    protected $backendServer;
 
     /** @var SocketServer */
     protected $workerServer;
@@ -57,7 +57,7 @@ final class SocketMessageBroker
     protected $workerPipe = [];
 
     /** @var SocketStream[] */
-    protected $downstream = [];
+    protected $backendStreams = [];
 
     /** @var int[] */
     protected $availableWorkers = [];
@@ -69,7 +69,7 @@ final class SocketMessageBroker
     protected $readSelector;
 
     /** @var SocketStream[] */
-    protected $upstreams = [];
+    protected $frontendStreams = [];
 
     /** @var SocketStream */
     protected $leaderPipe;
@@ -86,6 +86,10 @@ final class SocketMessageBroker
 
     /** @var string */
     private $leaderIpcAddress;
+
+    private $workerHost = '127.0.0.3';
+
+    private $backendHost = '127.0.0.2';
 
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
@@ -137,8 +141,8 @@ final class SocketMessageBroker
             ],
         ];
 
-        //$this->getLogger()->debug("Registering worker");
-        $leaderPipe = @stream_socket_client($this->leaderIpcAddress, $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        //$this->getLogger()->debug("Registering worker on {$this->leaderIpcAddress}");
+        $leaderPipe = @stream_socket_client('tcp://' . $this->leaderIpcAddress, $errno, $errstr, 1, STREAM_CLIENT_CONNECT, stream_context_create($opts));
         if ($leaderPipe) {
             $port = $this->workerServer->getLocalPort();
             $uid = $this->uid;
@@ -149,6 +153,8 @@ final class SocketMessageBroker
             $leaderPipe->write("$uid:$port!");
             $leaderPipe->flush();
             $this->leaderPipe = $leaderPipe;
+        } else {
+            $this->getLogger()->err("Could not connect to leader: $errstr [$errno]");
         }
 
         return $this->leaderPipe;
@@ -166,7 +172,7 @@ final class SocketMessageBroker
         if ($message instanceof LeaderElectedMessage) {
             /** @var LeaderElectedMessage $message */
 
-//            $this->getLogger()->debug("Contacting with new leader on " . $message->getIpcAddress());
+            //$this->getLogger()->debug("Announcing communication readiness on " . $message->getIpcAddress());
             $this->setLeaderIpcAddress($message->getIpcAddress());
         }
     }
@@ -184,15 +190,15 @@ final class SocketMessageBroker
             $this->getLogger()->debug("Becoming pool leader");
             $this->readSelector = new Selector();
             $this->writeSelector = new Selector();
-            $this->startDownstreamServer();
+            $this->startBackendServer();
             $this->isLeader = true;
             $this->workerServer->close();
             $this->workerServer = null;
-            $this->startUpstreamServer(1000);
+            $this->startFrontendServer(100);
 
             $this->getLogger()->debug("Sending leader-elected message");
-            $event->getTarget()->send(new LeaderElectedMessage($this->downstreamServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
-            $event->getTarget()->send(new LeaderElectedMessage($this->downstreamServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
+            $event->getTarget()->send(new LeaderElectedMessage($this->backendServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
+            $event->getTarget()->send(new LeaderElectedMessage($this->backendServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
         }
     }
 
@@ -214,7 +220,7 @@ final class SocketMessageBroker
         return $this->logger;
     }
 
-    protected function startUpstreamServer(int $backlog)
+    protected function startFrontendServer(int $backlog)
     {
         $server = new SocketServer();
         $server->setReuseAddress(true);
@@ -222,18 +228,18 @@ final class SocketMessageBroker
         $server->setTcpNoDelay(true);
         $server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
         $this->readSelector->register($server->getSocket(), Selector::OP_READ);
-        $this->upstreamServer = $server;
+        $this->frontendServer = $server;
     }
 
-    protected function startDownstreamServer()
+    protected function startBackendServer()
     {
         $server = new SocketServer();
         $server->setReuseAddress(true);
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
-        $server->bind('127.0.0.1', 300, 0);
+        $server->bind($this->backendHost, 100, 0);
         $this->readSelector->register($server->getSocket(), Selector::OP_READ);
-        $this->downstreamServer = $server;
+        $this->backendServer = $server;
     }
 
     protected function createWorkerServer(WorkerEvent $event)
@@ -241,7 +247,7 @@ final class SocketMessageBroker
         $server = new SocketServer();
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
-        $server->bind('127.0.0.1', 1, 0);
+        $server->bind($this->workerHost, 1, 0);
         $worker = $event->getWorker();
         $this->uid = $worker->getUid();
         $this->workerServer = $server;
@@ -250,18 +256,28 @@ final class SocketMessageBroker
     public function onWorkerInit(WorkerEvent $event)
     {
         $this->leaderIpcAddress = $event->getParam('leaderIpcAddress', $this->leaderIpcAddress);
-        //$this->getLogger()->debug("Contacting with new leader on " . $this->leaderIpcAddress);
+
+        if ($this->leaderIpcAddress) {
+            //$this->getLogger()->debug("Contacting with new leader on " . $this->leaderIpcAddress);
+        }
         $this->createWorkerServer($event);
     }
 
     public function onLeaderLoop(WorkerEvent $event)
     {
-        $this->readSelector->select(1000);
+        //$this->getLogger()->debug("Select");
+        $this->readSelector->select(100);
+        //$this->getLogger()->debug("Register workers");
         $this->registerWorkers();
+        //$this->getLogger()->debug("Unregister workers");
         $this->unregisterWorkers();
+        //$this->getLogger()->debug("Add clients");
         $this->addClients();
+        //$this->getLogger()->debug("Disconnect clients");
         $this->disconnectClients();
+        //$this->getLogger()->debug("Handle clients");
         $this->handleClients();
+        //$this->getLogger()->debug("Loop done");
     }
 
     protected function addClients()
@@ -270,8 +286,8 @@ final class SocketMessageBroker
         try {
             $client = true;
             $connectionLimit = 10;
-            while ($client && $connectionLimit-- > 0) {
-                $client = $this->upstreamServer->accept();
+            while ($this->availableWorkers && $client && $connectionLimit-- > 0) {
+                $client = $this->getFrontendServer()->accept();
                 $client->setOption(TCP_NODELAY, 1);
                 $client->setOption(SO_KEEPALIVE, 1);
                 $this->bindToWorker($client);
@@ -297,13 +313,13 @@ final class SocketMessageBroker
 
     protected function disconnectClients()
     {
-        foreach ($this->upstreams as $key => $stream) {
+        foreach ($this->frontendStreams as $key => $stream) {
             if (!$stream->isReadable() || !$stream->isWritable()) {
                 $this->disconnectClient($key);
             }
         }
 
-        foreach ($this->downstream as $key => $stream) {
+        foreach ($this->backendStreams as $key => $stream) {
             if (!$stream->isReadable() || !$stream->isWritable()) {
                 $this->disconnectClient($key);
             }
@@ -312,7 +328,7 @@ final class SocketMessageBroker
 
     protected function handleClients()
     {
-        if (!$this->upstreams) {
+        if (!$this->frontendStreams) {
 
             return;
         }
@@ -336,22 +352,22 @@ final class SocketMessageBroker
 
             foreach ($streamsToRead as $index => $input) {
                 $output = null;
-                if ($input->getResourceId() === $this->downstreamServer->getSocket()->getResourceId()) {
+                if ($input->getResourceId() === $this->backendServer->getSocket()->getResourceId()) {
                     continue;
                 }
 
-                $key = array_search($input, $this->upstreams);
+                $key = array_search($input, $this->frontendStreams);
 
                 if ($key !== false) {
-                    $output = $this->downstream[$key];
+                    $output = $this->backendStreams[$key];
                     $outputName = 'SERVER';
                 } else {
-                    $key = array_search($input, $this->downstream);
+                    $key = array_search($input, $this->backendStreams);
                     if (!$key) {
                         //$this->readSelector->unregister($input);
                         continue;
                     }
-                    $output = $this->upstreams[$key];
+                    $output = $this->frontendStreams[$key];
                     $outputName = 'CLIENT';
                 }
 
@@ -388,35 +404,64 @@ final class SocketMessageBroker
 
     protected function disconnectClient(int $key)
     {
-        if (isset($this->upstreams[$key])) {
-            $stream = $this->upstreams[$key];
-            if (!$stream->isClosed()) {
-                try {
+        if (isset($this->frontendStreams[$key])) {
+            $stream = $this->frontendStreams[$key];
+            try {
+                $stream->select(0);
+                if (!$stream->isClosed()) {
                     $stream->close();
-                } catch (\Exception $exception) {
-
                 }
+            } catch (\Exception $exception) {
+
             }
             $this->readSelector->unregister($stream);
             $this->writeSelector->unregister($stream);
-            unset($this->upstreams[$key]);
+            unset($this->frontendStreams[$key]);
         }
 
-        if (isset($this->downstream[$key])) {
-            $stream = $this->downstream[$key];
-            if (!$stream->isClosed()) {
-                try {
+        if (isset($this->backendStreams[$key])) {
+            $stream = $this->backendStreams[$key];
+            try {
+                $stream->select(0);
+                if (!$stream->isClosed()) {
                     $stream->close();
-                } catch (\Exception $exception) {
-
                 }
+            } catch (\Exception $exception) {
+
             }
+
             $this->readSelector->unregister($stream);
             $this->writeSelector->unregister($stream);
-            unset($this->downstream[$key]);
+            unset($this->backendStreams[$key]);
             $this->availableWorkers[$key] = $this->busyWorkers[$key];
             unset($this->busyWorkers[$key]);
         }
+    }
+
+    private function checkBackendConnection($uid)
+    {
+        $ipc = $this->workerPipe[$uid];
+        try {
+            $ipc->write(' ');
+            $ipc->flush();
+
+            return;
+
+        } catch (StreamException $exception) {
+
+        }
+
+        try {
+            $ipc->close();
+        } catch (StreamException $exception) {
+
+        }
+        //$this->getLogger()->debug("Disconnecting worker $uid");
+        $this->disconnectClient($uid);
+
+        unset ($this->workerPipe[$uid]);
+        unset ($this->availableWorkers[$uid]);
+        unset ($this->busyWorkers[$uid]);
     }
 
     protected function bindToWorker(SocketStream $client)
@@ -427,10 +472,17 @@ final class SocketMessageBroker
                     'tcp_nodelay' => true,
                 ],
             ];
+            $host = $this->workerHost;
 
-            $socket = @stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+            $socket = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
             if (!$socket) {
-                unset($this->availableWorkers[$uid]);
+                //unset($this->availableWorkers[$uid]);
+                $this->checkBackendConnection($uid);
+
+                if (isset($this->availableWorkers[$uid])) {
+                    $this->getLogger()->err("Could not bind to worker $uid at port $port: [$errno] $errstr");
+                }
+
                 continue;
             }
 
@@ -438,10 +490,10 @@ final class SocketMessageBroker
             $downstream->setOption(SO_KEEPALIVE, 1);
             $downstream->setOption(TCP_NODELAY, 1);
             $downstream->setBlocking(true);
-            $this->downstream[$uid] = $downstream;
+            $this->backendStreams[$uid] = $downstream;
             $this->busyWorkers[$uid] = $port;
             unset($this->availableWorkers[$uid]);
-            $this->upstreams[$uid] = $client;
+            $this->frontendStreams[$uid] = $client;
             $this->readSelector->register($downstream, Selector::OP_READ);
             $this->readSelector->register($client, Selector::OP_READ);
             $this->writeSelector->register($downstream, Selector::OP_WRITE);
@@ -450,29 +502,40 @@ final class SocketMessageBroker
             return;
         }
 
-        if (!$this->availableWorkers) {
+        //if (!$this->availableWorkers) {
             $this->connectionQueue[] = $client;
-        }
+        //}
     }
 
     protected function registerWorkers()
     {
         $streams = $this->readSelector->getSelectedStreams(Selector::OP_READ);
+        $registeredWorkers = 0;
 
-        if (!in_array($this->downstreamServer->getSocket(), $streams)) {
+//        $connected = json_encode(array_keys($this->workerPipe));
+//        $busy = json_encode(array_keys($this->busyWorkers));
+//        $free = json_encode(array_keys($this->availableWorkers));
+//        $clients = json_encode(array_keys($this->frontendStreams));
+//        $this->getLogger()->debug("Already connected: " . $connected . ", busy: " . $busy . ", available: " . $free . ", clients: " . $clients);
+
+        if (!in_array($this->backendServer->getSocket(), $streams)) {
             return;
         }
 
         try {
-            while ($connection = $this->downstreamServer->accept()) {
+            while ($connection = $this->backendServer->accept()) {
+                $in = false;
                 $connection->setOption(TCP_NODELAY, 1);
                 $connection->setOption(SO_KEEPALIVE, 1);
                 if ($connection->select(100)) {
-                    $in = $connection->read('!');
+                    while (false === $in) {
+                        $in = $connection->read('!');
+                    }
                     list($uid, $port) = explode(":", $in);
 
                     $this->availableWorkers[$uid] = $port;
                     $this->workerPipe[$uid] = $connection;
+                    $registeredWorkers++;
                     //$this->getLogger()->debug("Registered worker #$uid");
 
                     continue;
@@ -483,31 +546,16 @@ final class SocketMessageBroker
         } catch (SocketTimeoutException $exception) {
 
         }
+
+        if ($registeredWorkers) {
+            //$this->getLogger()->debug("Registered $registeredWorkers workers");
+        }
     }
 
     protected function unregisterWorkers()
     {
         foreach ($this->workerPipe as $uid => $ipc) {
-            try {
-                $ipc->write('');
-                $ipc->flush();
-
-                continue;
-
-            } catch (StreamException $exception) {
-
-            }
-
-            try {
-                $ipc->close();
-            } catch (StreamException $exception) {
-
-            }
-            $this->disconnectClient($uid);
-
-            unset ($this->workerPipe[$uid]);
-            unset ($this->availableWorkers[$uid]);
-            unset ($this->busyWorkers[$uid]);
+            $this->checkBackendConnection($uid);
         }
     }
 
@@ -599,7 +647,13 @@ final class SocketMessageBroker
                 } catch (\Exception $ex) {
                     // @todo: handle this case?
                 }
-                $this->connection->close();
+
+                try {
+                    $this->connection->close();
+                } catch (\Exception $ex) {
+                    // @todo: handle this case?
+                }
+
             }
             $this->connection = null;
         }
@@ -622,15 +676,21 @@ final class SocketMessageBroker
             $this->connection->close();
             $this->connection = null;
         }
-        $this->upstreamServer = null;
+
+        if ($this->leaderPipe && !$this->leaderPipe->isClosed()) {
+            $this->leaderPipe->close();
+            $this->leaderPipe = null;
+        }
+
+        $this->frontendServer = null;
     }
 
-    public function getUpstreamServer() : SocketServer
+    public function getFrontendServer() : SocketServer
     {
-        if (!$this->upstreamServer) {
-            throw new \LogicException("Upstream server not available");
+        if (!$this->frontendServer) {
+            throw new \LogicException("Frontend server not available");
         }
-        return $this->upstreamServer;
+        return $this->frontendServer;
     }
 
     protected function onHeartBeat()

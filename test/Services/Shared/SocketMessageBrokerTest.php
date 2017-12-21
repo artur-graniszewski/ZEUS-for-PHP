@@ -34,7 +34,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
     public function tearDown()
     {
         try {
-            $server = $this->service->getUpstreamServer();
+            $server = $this->service->getFrontendServer();
         } catch (\LogicException $ex) {
             return;
         }
@@ -45,7 +45,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
     public function testSubscriberRequestHandling()
     {
-        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
+        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
         stream_set_blocking($server, false);
         $scheduler = $this->getScheduler(0);
         $events = $scheduler->getEventManager();
@@ -99,8 +99,8 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
-        $port = $eventSubscriber->getWorkerServer()->getLocalPort();
-        $client = stream_socket_client("tcp://127.0.0.1:$port", $errno, $errstr, 10, STREAM_CLIENT_ASYNC_CONNECT);
+        $host = $eventSubscriber->getWorkerServer()->getLocalAddress();
+        $client = stream_socket_client("tcp://$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
@@ -171,8 +171,8 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
 
         $events->triggerEvent($event);
 
-        $port = $eventSubscriber->getWorkerServer()->getLocalPort();
-        $client = stream_socket_client("tcp://127.0.0.1:$port", $errno, $errstr, 10, STREAM_CLIENT_ASYNC_CONNECT);
+        $host = $eventSubscriber->getWorkerServer()->getLocalAddress();
+        $client = stream_socket_client("tcp://$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
