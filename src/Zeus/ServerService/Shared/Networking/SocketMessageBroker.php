@@ -30,56 +30,58 @@ use function time;
 final class SocketMessageBroker
 {
     /** @var bool */
-    protected $isBusy = false;
+    private $isBusy = false;
 
     /** @var bool */
-    protected $isLeader = false;
+    private $isLeader = false;
 
     /** @var SocketServer */
-    protected $frontendServer;
+    private $frontendServer;
 
     /** @var int */
-    protected $lastTickTime = 0;
+    private $lastTickTime = 0;
 
     /** @var MessageComponentInterface */
-    protected $message;
+    private $message;
 
     /** @var SocketStream */
-    protected $connection;
+    private $connection;
 
     /** @var SocketServer */
-    protected $backendServer;
+    private $backendServer;
 
     /** @var SocketServer */
-    protected $workerServer;
+    private $workerServer;
 
     /** @var SocketStream[] */
-    protected $workerPipe = [];
+    private $workerPipe = [];
 
     /** @var SocketStream[] */
-    protected $backendStreams = [];
+    private $backendStreams = [];
 
     /** @var int[] */
-    protected $availableWorkers = [];
+    private $availableWorkers = [];
 
     /** @var int[] */
-    protected $busyWorkers = [];
+    private $busyWorkers = [];
 
     /** @var Selector */
-    protected $readSelector;
+    private $readSelector;
 
     /** @var SocketStream[] */
-    protected $frontendStreams = [];
+    private $frontendStreams = [];
 
     /** @var SocketStream */
-    protected $leaderPipe;
+    private $leaderPipe;
 
     /** @var SocketStream[] */
-    protected $connectionQueue = [];
+    private $connectionQueue = [];
 
     /** @var Selector */
-    protected $writeSelector;
-    protected $uid;
+    private $writeSelector;
+
+    /** @var int */
+    private $uid;
 
     /** @var LoggerInterface */
     private $logger;
@@ -87,8 +89,10 @@ final class SocketMessageBroker
     /** @var string */
     private $leaderIpcAddress;
 
+    /** @var string */
     private $workerHost = '127.0.0.3';
 
+    /** @var string */
     private $backendHost = '127.0.0.2';
 
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
@@ -503,9 +507,7 @@ final class SocketMessageBroker
             return;
         }
 
-        //if (!$this->availableWorkers) {
-            $this->connectionQueue[] = $client;
-        //}
+        $this->connectionQueue[] = $client;
     }
 
     protected function registerWorkers()
