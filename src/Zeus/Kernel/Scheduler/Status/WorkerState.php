@@ -82,7 +82,7 @@ class WorkerState
     protected $uid = 0;
 
     /** @var bool */
-    protected $isExiting = false;
+    protected $isLastTask = false;
 
     public function __construct(string $serviceName, int $status = self::WAITING)
     {
@@ -117,14 +117,14 @@ class WorkerState
         return $this->tasksPerSecond;
     }
 
-    public function isIsExiting() : bool
+    public function isLastTask() : bool
     {
-        return $this->isExiting;
+        return $this->isLastTask;
     }
 
-    public function setIsExiting(bool $isExiting)
+    public function setIsLastTask(bool $isLastTask)
     {
-        $this->isExiting = $isExiting;
+        $this->isLastTask = $isLastTask;
     }
 
     public function toArray() : array
