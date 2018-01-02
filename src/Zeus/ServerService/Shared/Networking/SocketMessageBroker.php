@@ -77,9 +77,6 @@ final class SocketMessageBroker
         $events->attach(WorkerEvent::EVENT_INIT, [$this, 'onWorkerInit'], WorkerEvent::PRIORITY_REGULAR);
         $events->attach(WorkerEvent::EVENT_EXIT, [$this, 'onWorkerExit'], 1000);
         $events->attach(WorkerEvent::EVENT_CREATE, [$this, 'onWorkerCreate'], 1000);
-        $events->attach(SchedulerEvent::EVENT_START, [$this, 'startLeaderElection'], SchedulerEvent::PRIORITY_FINALIZE + 1);
-        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, [$this->frontendWorker, 'onLeaderElection'], SchedulerEvent::PRIORITY_FINALIZE);
-        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, [$this, 'onLeaderElected'], SchedulerEvent::PRIORITY_FINALIZE);
     }
 
     public function onWorkerCreate(WorkerEvent $event)
@@ -127,23 +124,6 @@ final class SocketMessageBroker
         }
 
         return $this->leaderPipe;
-    }
-
-    public function startLeaderElection(SchedulerEvent $event)
-    {
-        $this->getLogger()->debug("Electing pool leader");
-        $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_AMOUNT, 1);
-    }
-
-    public function onLeaderElected(IpcEvent $event)
-    {
-        $message = $event->getParams();
-        if ($message instanceof LeaderElectedMessage) {
-            /** @var LeaderElectedMessage $message */
-
-            //$this->getLogger()->debug("Announcing communication readiness on " . $message->getIpcAddress());
-            $this->setLeaderIpcAddress($message->getIpcAddress());
-        }
     }
 
     public function setLeaderIpcAddress(string $address)

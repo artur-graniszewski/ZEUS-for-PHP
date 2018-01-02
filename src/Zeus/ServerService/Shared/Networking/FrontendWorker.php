@@ -5,6 +5,7 @@ namespace Zeus\ServerService\Shared\Networking;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
@@ -73,6 +74,18 @@ class FrontendWorker
             }
             $this->isLeader ? $this->onLeaderLoop($event) : $this->messageBroker->onWorkerLoop($event);
         }, WorkerEvent::PRIORITY_REGULAR);
+
+        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+            $this->startLeaderElection($event);
+        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
+            $this->onLeaderElection($event);
+        }, WorkerEvent::PRIORITY_FINALIZE);
+
+        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
+            $this->onLeaderElected($event);
+        }, WorkerEvent::PRIORITY_FINALIZE);
     }
 
     public function getFrontendServer() : SocketServer
@@ -83,7 +96,13 @@ class FrontendWorker
         return $this->frontendServer;
     }
 
-    protected function startBackendServer()
+    private function startLeaderElection(SchedulerEvent $event)
+    {
+        $this->messageBroker->getLogger()->debug("Electing pool leader");
+        $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_AMOUNT, 1);
+    }
+
+    private function startBackendServer()
     {
         $server = new SocketServer();
         $server->setReuseAddress(true);
@@ -94,7 +113,7 @@ class FrontendWorker
         $this->backendServer = $server;
     }
 
-    public function onLeaderLoop(WorkerEvent $event)
+    private function onLeaderLoop(WorkerEvent $event)
     {
         //$this->messageBroker->getLogger()->debug("Select");
         $this->readSelector->select(100);
@@ -111,7 +130,7 @@ class FrontendWorker
         //$this->messageBroker->getLogger()->debug("Loop done");
     }
 
-    protected function startFrontendServer(int $backlog)
+    private function startFrontendServer(int $backlog)
     {
         $server = new SocketServer();
         $server->setReuseAddress(true);
@@ -122,7 +141,7 @@ class FrontendWorker
         $this->frontendServer = $server;
     }
 
-    public function onLeaderElection(IpcEvent $event)
+    private function onLeaderElection(IpcEvent $event)
     {
         $message = $event->getParams();
 
@@ -142,7 +161,7 @@ class FrontendWorker
         }
     }
 
-    protected function addClients()
+    private function addClients()
     {
         $queueSize = count($this->connectionQueue);
         try {
@@ -173,7 +192,7 @@ class FrontendWorker
         }
     }
 
-    protected function disconnectClients()
+    private function disconnectClients()
     {
         foreach ($this->frontendStreams as $key => $stream) {
             if (!$stream->isReadable() || !$stream->isWritable()) {
@@ -188,7 +207,7 @@ class FrontendWorker
         }
     }
 
-    protected function handleClients()
+    private function handleClients()
     {
         if (!$this->frontendStreams) {
 
@@ -264,7 +283,7 @@ class FrontendWorker
         return;
     }
 
-    protected function disconnectClient(int $key)
+    private function disconnectClient(int $key)
     {
         if (isset($this->frontendStreams[$key])) {
             $stream = $this->frontendStreams[$key];
@@ -326,7 +345,18 @@ class FrontendWorker
         unset ($this->busyWorkers[$uid]);
     }
 
-    protected function bindToWorker(SocketStream $client)
+    private function onLeaderElected(IpcEvent $event)
+    {
+        $message = $event->getParams();
+        if ($message instanceof LeaderElectedMessage) {
+            /** @var LeaderElectedMessage $message */
+
+            //$this->getLogger()->debug("Announcing communication readiness on " . $message->getIpcAddress());
+            $this->messageBroker->setLeaderIpcAddress($message->getIpcAddress());
+        }
+    }
+
+    private function bindToWorker(SocketStream $client)
     {
         foreach ($this->availableWorkers as $uid => $port) {
             $opts = [
@@ -367,7 +397,7 @@ class FrontendWorker
         $this->connectionQueue[] = $client;
     }
 
-    protected function registerWorkers()
+    private function registerWorkers()
     {
         $streams = $this->readSelector->getSelectedStreams(Selector::OP_READ);
         $registeredWorkers = 0;
@@ -412,7 +442,7 @@ class FrontendWorker
         }
     }
 
-    protected function unregisterWorkers()
+    private function unregisterWorkers()
     {
         foreach ($this->workerPipe as $uid => $ipc) {
             $this->checkBackendConnection($uid);
