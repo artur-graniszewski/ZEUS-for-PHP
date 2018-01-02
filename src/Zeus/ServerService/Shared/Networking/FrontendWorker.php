@@ -253,17 +253,9 @@ class FrontendWorker
                 }
 
                 try {
-//                    if (!$input->isReadable()) {
-//                        $this->disconnectClient($key);
-//                        continue;
-//                    }
-
                     if ($output->isClosed() || \in_array($output, $streamsToWrite)) {
                         $data = $input->read();
-
-                        if (!isset($data[0])) {
-                            continue;
-                        }
+                        $this->messageBroker->getLogger()->emerg("Read " . strlen($data) . ": " . json_encode($data));
 
                         if (!$output->isReadable() || !$output->isWritable()) {
                             $this->disconnectClient($key);
@@ -273,7 +265,7 @@ class FrontendWorker
                         $output->write($data);
                         $output->flush();
                     }
-                } catch (\Exception $exception) {
+                } catch (StreamException $exception) {
                     $this->disconnectClient($key);
                     break;
                 }

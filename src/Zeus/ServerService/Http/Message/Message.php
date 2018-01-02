@@ -366,8 +366,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $response->renderStatusLine() . "\r\n" .
             $responseHeaders->toString() .
             "Date: " . gmdate('D, d M Y H:i:s') . " GMT\r\n" .
-            "X-TTL: " . $this->keepAliveCount. "\r\n" .
-            "X-PID: " . getmypid(). "\r\n" .
+            //"X-TTL: " . $this->keepAliveCount. "\r\n" .
+            //"X-PID: " . getmypid(). "\r\n" .
             "\r\n");
 
         $this->headersSent = true;

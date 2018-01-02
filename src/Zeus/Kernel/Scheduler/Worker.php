@@ -159,7 +159,8 @@ class Worker extends AbstractService
         $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
-        while ($this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks() > 0) {
+        while (($runsLeft = $this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks()) > 0) {
+            $status->setIsExiting($runsLeft === 1);
             $this->collectCycles();
             $exception = null;
             try {

@@ -65,7 +65,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     protected function doSelect(& $read, & $write, & $except, $timeout) : int
     {
         error_clear_last();
-        $result = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
+        $result = @stream_select($read, $write, $except, 0, $timeout > 0 ? UnitConverter::convertMillisecondsToMicroseconds($timeout) : 0);
         if ($result !== false) {
             return $result;
         }

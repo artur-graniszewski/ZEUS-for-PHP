@@ -22,14 +22,12 @@ use function substr;
  */
 class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
-    /**
-     * SocketConnection constructor.
-     * @param resource $resource
-     * @param string $peerName
-     */
     public function __construct($resource, string $peerName = null)
     {
         parent::__construct($resource, $peerName);
+
+        stream_set_write_buffer($resource, 0);
+        stream_set_read_buffer($resource, 0);
 
         $this->writeCallback = 'stream_socket_sendto';
         $this->readCallback = 'stream_socket_recvfrom';
@@ -62,10 +60,9 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
     protected function doClose()
     {
         $resource = $this->resource;
-
         $readMethod = $this->readCallback;
         fflush($resource);
-        stream_socket_shutdown($resource, STREAM_SHUT_RDWR);
+        stream_socket_shutdown($resource, STREAM_SHUT_WR);
         stream_set_blocking($resource, false);
         while (strlen(@$readMethod($resource, 8192)) > 0) {
             // read...
@@ -95,7 +92,11 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         if ($ending === '') {
             $data = @$readMethod($this->resource, $this->readBufferSize);
 
-            if ((false === $data || "" == $data) && $this->isEof()) {
+            if ((false === $data || '' === $data) && ($this->isEof() || $this->select(0))) {
+                // select() reported stream to have some data to read but buffer was empty, this means:
+                // "When a socket is at EOF, read returns without blocking (a zero-length read).
+                // This is basically the definition (from an application standpoint) of EOF."
+
                 $this->isReadable = false;
                 throw new StreamException("Stream is not readable");
             } else {
@@ -113,9 +114,11 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
             // @todo: add some checks if STREAM_PEEK is supported by $readMethod
             $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
 
-            if ($buffer === '') {
+            if ($buffer === '' || $buffer === false) {
+                // stream had some data to read but buffer was empty, this is an EOF situation
                 @$readMethod($this->resource, 0);
-                break;
+                $this->isReadable = false;
+                throw new StreamException("Stream is not readable");
             }
 
             $pos = strpos($buffer, $ending);

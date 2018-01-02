@@ -81,11 +81,9 @@ class WorkerState
     /** @var int */
     protected $uid = 0;
 
-    /**
-     * TaskStatus constructor.
-     * @param string $serviceName
-     * @param int $status
-     */
+    /** @var bool */
+    protected $isExiting = false;
+
     public function __construct(string $serviceName, int $status = self::WAITING)
     {
         $this->startTime = microtime(true);
@@ -94,53 +92,42 @@ class WorkerState
         $this->serviceName = $serviceName;
     }
 
-    /**
-     * @return int
-     */
     public function getThreadId() : int
     {
         return $this->threadId;
     }
 
-    /**
-     * @param int $threadId
-     * @return $this
-     */
     public function setThreadId(int $threadId)
     {
         $this->threadId = $threadId;
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getUid() : int
     {
         return $this->uid;
     }
 
-    /**
-     * @param int $uid
-     * @return $this
-     */
     public function setUid(int $uid)
     {
         $this->uid = $uid;
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getNumberOfTasksPerSecond()
+    public function getNumberOfTasksPerSecond() : float
     {
         return $this->tasksPerSecond;
     }
 
-    public function toArray()
+    public function isIsExiting() : bool
+    {
+        return $this->isExiting;
+    }
+
+    public function setIsExiting(bool $isExiting)
+    {
+        $this->isExiting = $isExiting;
+    }
+
+    public function toArray() : array
     {
         return [
             'code' => $this->code,
@@ -173,40 +160,22 @@ class WorkerState
         return $status;
     }
 
-    /**
-     * @return string
-     */
-    public function getStatusDescription()
+    public function getStatusDescription() : string
     {
         return $this->statusDescription;
     }
 
-    /**
-     * @param string $statusDescription
-     * @return $this
-     */
     public function setStatusDescription(string $statusDescription = null)
     {
         $this->statusDescription = $statusDescription;
-
-        return $this;
     }
 
-    /**
-     * @param float $time
-     * @return $this
-     */
     public function setTime(float $time)
     {
         $this->time = $time;
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
-    public function getTime()
+    public function getTime() : float
     {
         return $this->time;
     }
@@ -219,69 +188,36 @@ class WorkerState
         return $this->processId ? $this->processId : getmypid();
     }
 
-    /**
-     * @param int $processId
-     * @return $this
-     */
     public function setProcessId(int $processId)
     {
         $this->processId = $processId;
-
-        return $this;
     }
-
-    /**
-     * @param int $status
-     * @return $this
-     */
     public function setCode(int $status)
     {
         $this->code = $status;
-
-        return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getCode() : int
     {
         return $this->code;
     }
 
-    /**
-     * @param mixed[] $array
-     * @return bool
-     */
-    public static function isIdle(array $array)
+    public static function isIdle(array $array) : bool
     {
         return $array['code'] === WorkerState::WAITING;
     }
 
-    /**
-     * @param mixed[] $array
-     * @return bool
-     */
-    public static function isExiting(array $array)
+    public static function isExiting(array $array) : bool
     {
         return $array['code'] === WorkerState::EXITING || $array['code'] === WorkerState::TERMINATED;
     }
 
-    /**
-     * @return $this
-     */
     public function updateStatus()
     {
         $this->incrementNumberOfFinishedTasks(0);
         $this->updateCurrentCpuTime();
-
-        return $this;
     }
 
-    /**
-     * @param int $amount
-     * @return $this
-     */
     public function incrementNumberOfFinishedTasks(int $amount = 1)
     {
         $now = microtime(true);
@@ -297,17 +233,11 @@ class WorkerState
         return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getNumberOfFinishedTasks() : int
     {
         return $this->tasksFinished;
     }
 
-    /**
-     * @return $this
-     */
     protected function updateCurrentCpuTime()
     {
         $usage = [
@@ -323,29 +253,18 @@ class WorkerState
 
         $this->currentSysCpuTime = $usage["ru_stime.tv_sec"] * 1e6 + $usage["ru_stime.tv_usec"];
         $this->currentUserCpuTime = $usage["ru_utime.tv_sec"] * 1e6 + $usage["ru_utime.tv_usec"];
-
-        return $this;
     }
 
-    /**
-     * @return float
-     */
     public function getCurrentSystemCpuTime() : float
     {
         return $this->currentSysCpuTime;
     }
 
-    /**
-     * @return float
-     */
     public function getCurrentUserCpuTime() : float
     {
         return $this->currentUserCpuTime;
     }
 
-    /**
-     * @return float
-     */
     public function getCpuUsage() : float
     {
         if (isset($this->cpuUsage)) {
@@ -361,25 +280,16 @@ class WorkerState
         return $cpuUsage;
     }
 
-    /**
-     * @return float
-     */
     public function getUptime() : float
     {
         return microtime(true) - $this->getStartTime();
     }
 
-    /**
-     * @return float
-     */
     public function getStartTime() : float
     {
         return $this->startTime;
     }
 
-    /**
-     * @return string
-     */
     public function getServiceName() : string
     {
         return $this->serviceName;
