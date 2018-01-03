@@ -27,33 +27,33 @@ use function current;
 final class SocketServer
 {
     /** @var resource */
-    protected $resource;
+    private $resource;
 
     /** @var int */
-    protected $port = -1;
+    private $port = -1;
 
     /** @var string */
-    protected $host;
+    private $host;
 
     /** @var int */
-    protected $backlog = 5;
+    private $backlog = 5;
 
     /** @var bool */
-    protected $reuseAddress = false;
+    private $reuseAddress = false;
 
     /** @var bool */
-    protected $isClosed = false;
+    private $isClosed = false;
 
     /** @var bool */
-    protected $isBound = false;
+    private $isBound = false;
 
-    protected $soTimeout = 0;
+    private $soTimeout = 0;
 
     /** @var bool */
-    protected $tcpNoDelay;
+    private $tcpNoDelay;
 
     /** @var SelectableStreamInterface */
-    protected $socketObject;
+    private $socketObject;
 
     /**
      * SocketServer constructor.
@@ -125,10 +125,7 @@ final class SocketServer
         $this->createServer();
     }
 
-    /**
-     * @return $this
-     */
-    protected function createServer()
+    private function createServer()
     {
         $opts = [
             'socket' => [
@@ -163,9 +160,6 @@ final class SocketServer
         $this->isBound = true;
     }
 
-    /**
-     * @return SocketStream
-     */
     public function accept() : SocketStream
     {
         $timeout = UnitConverter::convertMillisecondsToSeconds($this->getSoTimeout());
@@ -213,17 +207,11 @@ final class SocketServer
         return $this->isBound;
     }
 
-    /**
-     * @return int
-     */
     public function getLocalPort() : int
     {
         return $this->port;
     }
 
-    /**
-     * @return null|string
-     */
     public function getLocalAddress() : string
     {
         return $this->host . ($this->port ? ':' . $this->port : '');

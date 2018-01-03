@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\ServerService\Shared\Networking;
+namespace Zeus\ServerService\Shared\Networking\Message;
 
 class LeaderElectedMessage
 {
