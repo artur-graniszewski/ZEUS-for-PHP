@@ -25,6 +25,9 @@ use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 class FrontendService
 {
+    /** @var SocketStream[] */
+    protected $deadStreams = [];
+
     /** @var bool */
     private $isBusy = false;
 
@@ -74,7 +77,7 @@ class FrontendService
     private $registratorAddress;
 
     /** @var SocketStream */
-    private $leaderPipe;
+    private $registratorPipe;
 
     public function __construct(SocketMessageBroker $messageBroker)
     {
@@ -90,8 +93,8 @@ class FrontendService
         $events->attach(WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
             if (!$this->isLeader) {
                 try {
-                    if ($this->leaderPipe && $this->leaderPipe->select(0)) {
-                        $this->leaderPipe->read();
+                    if ($this->registratorPipe && $this->registratorPipe->select(0)) {
+                        $this->registratorPipe->read();
                     }
                 } catch (\Exception $ex) {
                     // @todo: connection severed, leader died, exit
@@ -170,6 +173,7 @@ class FrontendService
         //$this->messageBroker->getLogger()->debug("Handle clients");
         $this->handleClients();
         //$this->messageBroker->getLogger()->debug("Loop done");
+        $this->drainStreams();
     }
 
     private function startRegistratorServer()
@@ -227,9 +231,9 @@ class FrontendService
 
     private function onWorkerExit(WorkerEvent $event)
     {
-        if ($this->leaderPipe && !$this->leaderPipe->isClosed()) {
-            $this->leaderPipe->close();
-            $this->leaderPipe = null;
+        if ($this->registratorPipe && !$this->registratorPipe->isClosed()) {
+            $this->registratorPipe->close();
+            $this->registratorPipe = null;
         }
     }
 
@@ -332,7 +336,7 @@ class FrontendService
                 try {
                     if ($output->isClosed() || \in_array($output, $streamsToWrite)) {
                         $data = $input->read();
-                        $this->messageBroker->getLogger()->emerg("Read " . strlen($data) . ": " . json_encode($data));
+                        //$this->messageBroker->getLogger()->emerg("Read " . strlen($data) . ": " . json_encode($data));
 
                         if (!$output->isReadable() || !$output->isWritable()) {
                             $this->disconnectClient($key);
@@ -352,19 +356,98 @@ class FrontendService
         return;
     }
 
+    private function drainStreams()
+    {
+        //$this->messageBroker->getLogger()->debug("Deadstreams to check: " . count($this->deadStreams));
+        foreach ($this->deadStreams as $key => $stream) {
+            $this->drainStream($key);
+        }
+    }
+
+    private function drainStream(int $key)
+    {
+        if (!isset($this->deadStreams[$key])) {
+            return;
+        }
+
+        /** @var SocketStream $stream */
+        $stream = $this->deadStreams[$key]['stream'];
+        $uid = $this->deadStreams[$key]['key'];
+        $time = $this->deadStreams[$key]['time'];
+        $shatDown = $this->deadStreams[$key]['shatDown'];
+
+        $readBytes = 0;
+
+        try {
+//            $now = time();
+//            // wait gracefully 2 secs...
+//            if ($now  < $time + 2) {
+//                return;
+//            }
+
+            if ($stream->isClosed()) {
+                unset ($this->deadStreams[$key]);
+                $this->readSelector->unregister($stream);
+                $this->messageBroker->getLogger()->debug("Stream disconnected: $uid ($key)");
+
+                return;
+            }
+
+//            if ($now > $time + 5) {
+//                unset ($this->deadStreams[$key]);
+//                $this->readSelector->unregister($stream);
+//                $stream->close();
+//                $this->messageBroker->getLogger()->debug("Stream disconnected forcefully: $uid ($key)");
+//
+//                return;
+//            }
+
+            // frontend connections must be checked against POLLIN revent
+            $pollin = $stream->select(0);
+
+            if (!$pollin) {
+                $this->messageBroker->getLogger()->debug("Stream hanging: $uid ($key)");
+                return;
+            }
+
+            // this will throw an exception if POLLIN and EOF occurred
+            while ('' !== ($buffer = $stream->read())) {
+                $readBytes += strlen($buffer);
+            }
+
+            $this->messageBroker->getLogger()->debug("Stream to drain: $uid ($readBytes read)");
+
+            return;
+        } catch (StreamException $exception) {
+
+        }
+
+        if ($readBytes === 0) {
+            $this->messageBroker->getLogger()->debug("Drained stream: $uid ($key)");
+            // its an EOF mark...
+            unset ($this->deadStreams[$key]);
+            $this->readSelector->unregister($stream);
+            $stream->close();
+        }
+    }
+
     private function disconnectClient(int $key)
     {
         if (isset($this->frontendStreams[$key])) {
             $stream = $this->frontendStreams[$key];
-            try {
-                $stream->select(0);
-                if (!$stream->isClosed()) {
-                    $stream->close();
+            $this->deadStreams[] = [
+                'key' => $key,
+                'stream' => $stream,
+                'time' => time(),
+                'shatDown' => false,
+            ];
+            if ($stream->isReadable()) {
+                if ($stream->isWritable()) {
+                    $stream->flush();
                 }
-            } catch (\Exception $exception) {
-
+                $stream->shutdown(STREAM_SHUT_RD);
             }
-            $this->readSelector->unregister($stream);
+            $this->drainStreams();
             $this->writeSelector->unregister($stream);
             unset($this->frontendStreams[$key]);
         }
@@ -507,10 +590,10 @@ class FrontendService
         }
     }
 
-    public function getLeaderPipe(int $workerUid, int $port)
+    public function getRegistratorPipe(int $workerUid, int $port)
     {
-        if ($this->leaderPipe) {
-            return $this->leaderPipe;
+        if ($this->registratorPipe) {
+            return $this->registratorPipe;
         }
 
         if (!$this->registratorAddress) {
@@ -532,11 +615,11 @@ class FrontendService
             $leaderPipe->setOption(TCP_NODELAY, 1);
             $leaderPipe->write("$workerUid:$port!");
             $leaderPipe->flush();
-            $this->leaderPipe = $leaderPipe;
+            $this->registratorPipe = $leaderPipe;
         } else {
             $this->messageBroker->getLogger()->err("Could not connect to leader: $errstr [$errno]");
         }
 
-        return $this->leaderPipe;
+        return $this->registratorPipe;
     }
 }

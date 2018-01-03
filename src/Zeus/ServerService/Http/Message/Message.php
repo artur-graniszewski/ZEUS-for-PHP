@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Http\Message;
 
+use Zend\Http\Header\KeepAlive;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
@@ -46,7 +47,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
-    const MAX_KEEP_ALIVE_REQUESTS = 100;
+    const MAX_KEEP_ALIVE_REQUESTS = 10;
 
     /** @var \Zeus\Networking\Stream\NetworkStreamInterface */
     protected $connection;
@@ -106,6 +107,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     protected $remoteAddress = '';
 
+    /** @var KeepAlive */
+    protected $keepAliveCounterHeader;
+
     /**
      * @var callable
      */
@@ -121,7 +125,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->errorHandler = $errorHandler;
         $this->chunkedHeader = new TransferEncoding(static::ENCODING_CHUNKED);
         $this->closeHeader = (new Connection())->setValue("close");
-        $this->keepAliveHeader = (new Connection())->setValue("keep-alive; timeout=" . $this->keepAliveTimer);
+        $this->keepAliveHeader = (new Connection())->setValue("keep-alive");
+        $this->keepAliveCounterHeader = new KeepAlive("timeout=" . $this->keepAliveTimer);
         $this->dispatcher = $dispatcher;
         $this->responseHandler = $responseHandler;
     }
@@ -360,8 +365,12 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         $response->setMetadata('isChunkedResponse', $isChunkedResponse);
-        $responseHeaders->addHeader($request->getMetadata('isKeepAliveConnection') ? $this->keepAliveHeader : $this->closeHeader);
-
+        if ($request->getMetadata('isKeepAliveConnection')) {
+            $responseHeaders->addHeader($this->keepAliveHeader);
+            $responseHeaders->addHeader($this->keepAliveCounterHeader);
+        } else {
+            $responseHeaders->addHeader($this->closeHeader);
+        }
         $connection->write(
             $response->renderStatusLine() . "\r\n" .
             $responseHeaders->toString() .

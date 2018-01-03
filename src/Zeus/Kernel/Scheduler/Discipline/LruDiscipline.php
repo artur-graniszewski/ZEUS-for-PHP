@@ -43,11 +43,11 @@ class LruDiscipline implements DisciplineInterface
         if ($idleWorkers < $config->getMinSpareProcesses()) {
             $idleWorkerSlots = $workers->getSize() - $workers->count();
 
-            return min($idleWorkerSlots, $config->getMinSpareProcesses() - $idleWorkers);
+            $toCreate = min($idleWorkerSlots, $config->getMinSpareProcesses() - $idleWorkers);
+            return $toCreate;
         }
 
         if ($allWorkers === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
-
             return $config->getMaxSpareProcesses();
         }
 

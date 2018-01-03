@@ -78,6 +78,23 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
     }
 
+    public function shutdown(int $operation)
+    {
+        if ($operation === STREAM_SHUT_RD && !$this->isReadable) {
+            throw new StreamException("Stream is not readable");
+        }
+
+        if ($operation === STREAM_SHUT_WR && !$this->isWritable) {
+            throw new StreamException("Stream is not writable");
+        }
+
+        if ($operation === STREAM_SHUT_RDWR && !($this->isWritable && $this->isReadable)) {
+            throw new StreamException("Stream is not writable or readable");
+        }
+
+        stream_socket_shutdown($this->resource, $operation);
+    }
+
     /**
      * @param callable $readMethod
      * @param string $ending

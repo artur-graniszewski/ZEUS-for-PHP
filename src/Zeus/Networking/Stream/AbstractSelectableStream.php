@@ -40,7 +40,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
             return $result === 1;
 
-        } catch (\Exception $exception) {
+        } catch (StreamException $exception) {
             $this->isReadable = false;
 
             throw $exception;

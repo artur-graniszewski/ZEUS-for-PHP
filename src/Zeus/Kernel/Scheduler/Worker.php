@@ -86,7 +86,9 @@ class Worker extends AbstractService
         $event->setTarget($this);
         $event->setWorker($this);
         $status->setTime($now);
-        $status->setStatusDescription($statusDescription);
+        if (null !== $statusDescription) {
+            $status->setStatusDescription($statusDescription);
+        }
         $status->setCode(WorkerState::RUNNING);
         $event->setName(WorkerEvent::EVENT_RUNNING);
         $event->setParam('status', $status);
@@ -107,7 +109,9 @@ class Worker extends AbstractService
         $event->setTarget($this);
         $event->setWorker($this);
         $status->setTime($now);
-        $status->setStatusDescription($statusDescription);
+        if (null !== $statusDescription) {
+            $status->setStatusDescription($statusDescription);
+        }
         $status->setCode(WorkerState::WAITING);
         $event->setName(WorkerEvent::EVENT_WAITING);
         $event->setParam('status', $status);

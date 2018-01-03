@@ -422,8 +422,11 @@ final class Scheduler extends AbstractService
 
         $discipline = $this->discipline;
 
-        $this->startWorkers($discipline->getAmountOfWorkersToCreate());
-        $this->stopWorkers($discipline->getWorkersToTerminate(), true);
+        $toTerminate = $discipline->getWorkersToTerminate();
+        $toCreate = $discipline->getAmountOfWorkersToCreate();
+
+        $this->stopWorkers($toTerminate, true);
+        $this->startWorkers($toCreate);
     }
 
     /**

@@ -106,7 +106,7 @@ class BackendService
             $this->startBackendServer($event);
         }
 
-        $leaderPipe = $this->messageBroker->getFrontend()->getLeaderPipe($this->uid, $this->getBackendServer()->getLocalPort());
+        $leaderPipe = $this->messageBroker->getFrontend()->getRegistratorPipe($this->uid, $this->getBackendServer()->getLocalPort());
 
         if (!$leaderPipe) {
             sleep(1);
