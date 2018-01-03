@@ -71,7 +71,7 @@ class LruDiscipline implements DisciplineInterface
         // terminate idle processes, if number of them is too high.
         $toTerminate = $idleWorkers - $config->getMaxSpareProcesses();
 
-        if (!$toTerminate) {
+        if ($toTerminate <= 0) {
             return [];
         }
 
