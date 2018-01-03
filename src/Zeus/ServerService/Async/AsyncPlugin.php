@@ -4,6 +4,7 @@ namespace Zeus\ServerService\Async;
 
 use Opis\Closure\SerializableClosure;
 use Zend\Mvc\Controller\Plugin\AbstractPlugin;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\NetworkStreamInterface;
 use Zeus\Networking\Stream\FlushableConnectionInterface;
@@ -44,8 +45,12 @@ class AsyncPlugin extends AbstractPlugin
         }
 
         $stream = new SocketStream($result);
-        $stream->setOption(SO_KEEPALIVE, 1);
-        $stream->setOption(TCP_NODELAY, 1);
+        try {
+            $stream->setOption(SO_KEEPALIVE, 1);
+            $stream->setOption(TCP_NODELAY, 1);
+        } catch (UnsupportedOperationException $exception) {
+            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
+        }
         if ($stream instanceof FlushableConnectionInterface) {
             $stream->setWriteBufferSize(0);
         }

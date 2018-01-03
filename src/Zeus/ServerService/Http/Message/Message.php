@@ -47,7 +47,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_READING = 4;
     const REQUEST_PHASE_PROCESSING = 8;
     const REQUEST_PHASE_SENDING = 16;
-    const MAX_KEEP_ALIVE_REQUESTS = 10;
+    const MAX_KEEP_ALIVE_REQUESTS = 100;
 
     /** @var \Zeus\Networking\Stream\NetworkStreamInterface */
     protected $connection;
@@ -375,8 +375,8 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $response->renderStatusLine() . "\r\n" .
             $responseHeaders->toString() .
             "Date: " . gmdate('D, d M Y H:i:s') . " GMT\r\n" .
-            //"X-TTL: " . $this->keepAliveCount. "\r\n" .
-            //"X-PID: " . getmypid(). "\r\n" .
+            "X-TTL: " . $this->keepAliveCount. "\r\n" .
+            "X-PID: " . getmypid(). "\r\n" .
             "\r\n");
 
         $this->headersSent = true;

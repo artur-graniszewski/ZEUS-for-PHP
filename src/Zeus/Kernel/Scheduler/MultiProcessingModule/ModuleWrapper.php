@@ -9,6 +9,7 @@ use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -251,8 +252,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         foreach ($this->ipcServers as $uid => $server) {
             try {
                 $connection = $this->ipcServers[$uid]->accept();
-                $connection->setOption(TCP_NODELAY, 1);
-                $connection->setOption(SO_KEEPALIVE, 1);
+                $this->setStreamOptions($connection);
                 $this->ipcConnections[$uid] = $connection;
                 $this->ipcSelector->register($connection, Selector::OP_READ);
                 $this->ipcServers[$uid]->close();
@@ -273,8 +273,17 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         } else {
             $this->ipc = new SocketStream($stream);
             $this->ipc->setBlocking(false);
-            $this->ipc->setOption(SO_KEEPALIVE, 1);
-            $this->ipc->setOption(TCP_NODELAY, 1);
+            $this->setStreamOptions($this->ipc);
+        }
+    }
+
+    private function setStreamOptions(SocketStream $stream)
+    {
+        try {
+            $stream->setOption(SO_KEEPALIVE, 1);
+            $stream->setOption(TCP_NODELAY, 1);
+        } catch (UnsupportedOperationException $e) {
+            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
         }
     }
 

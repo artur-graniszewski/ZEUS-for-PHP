@@ -8,6 +8,7 @@ use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\ServerService\Shared\Networking\Message\ElectionMessage;
@@ -91,6 +92,10 @@ class BackendService
 
     private function onHeartBeat()
     {
+        if (!$this->connection) {
+            return;
+        }
+
         $now = time();
         if ($this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
@@ -119,20 +124,25 @@ class BackendService
                     if ($this->backendServer->getSocket()->select(1000)) {
                         $event->getWorker()->setRunning();
                         $connection = $this->backendServer->accept();
-                        $connection->setOption(SO_KEEPALIVE, 1);
-                        $connection->setOption(TCP_NODELAY, 1);
-                        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
-
+                        try {
+                            $connection->setOption(SO_KEEPALIVE, 1);
+                            $connection->setOption(TCP_NODELAY, 1);
+                        } catch (UnsupportedOperationException $exception) {
+                            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
+                        }
                     } else {
                         return;
                     }
-                } catch (SocketTimeoutException $exception) {
+                } catch (\Throwable $exception) {
+                    echo $exception;
+                    die();
                     $event->getWorker()->setWaiting();
 
                     return;
                 }
 
                 $this->connection = $connection;
+                //$this->messageBroker->getLogger()->emerg("[BACKEND ] Opened");
                 $this->messageBroker->onOpen($connection);
             }
 
@@ -144,8 +154,10 @@ class BackendService
 
             while ($this->connection->select(0)) {
                 $data = $this->connection->read();
+                //$this->messageBroker->getLogger()->emerg("[BACKEND ] Read " . strlen($data) . ": " . json_encode($data));
                 if ($data !== '') {
                     $this->messageBroker->onMessage($this->connection, $data);
+                    $this->connection->flush();
                 }
 
                 $this->onHeartBeat();
@@ -179,6 +191,7 @@ class BackendService
 
                 try {
                     $this->connection->close();
+                    //$this->messageBroker->getLogger()->emerg("[BACKEND ] Close");
                 } catch (\Exception $ex) {
                     // @todo: handle this case?
                 }
@@ -187,6 +200,7 @@ class BackendService
             $this->connection = null;
         }
 
+        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
         $event->getTarget()->setWaiting();
 
         if ($exception) {

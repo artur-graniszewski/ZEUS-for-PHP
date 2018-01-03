@@ -209,13 +209,11 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         }
     }
 
-    public function flush()
+    public function flush() : bool
     {
         $this->doWrite($this->writeCallback);
 
-        if (isset($this->writeBuffer[0])) {
-            throw new StreamException(sprintf("Flush incomplete, %d bytes left in the write buffer", strlen($this->writeBuffer)));
-        }
+        return !isset($this->writeBuffer[0]);
     }
 
     /**

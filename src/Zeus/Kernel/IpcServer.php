@@ -10,6 +10,7 @@ use Zeus\Kernel\IpcServer\SocketIpc as IpcSocketStream;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -87,8 +88,7 @@ class IpcServer implements ListenerAggregateInterface
                 $ipcStream = $this->ipcServer->accept();
                 // @todo: remove setBlocking(), now its needed in ZeusTest\SchedulerTest unit tests, otherwise they hang
                 $ipcStream->setBlocking(true);
-                $ipcStream->setOption(SO_KEEPALIVE, 1);
-                $ipcStream->setOption(TCP_NODELAY, 1);
+                $this->setStreamOptions($ipcStream);
 
                 if (!$ipcStream->select(10)) {
                     return;
@@ -100,6 +100,16 @@ class IpcServer implements ListenerAggregateInterface
             }
         } catch (SocketTimeoutException $exception) {
 
+        }
+    }
+
+    private function setStreamOptions(SocketStream $stream)
+    {
+        try {
+            $stream->setOption(SO_KEEPALIVE, 1);
+            $stream->setOption(TCP_NODELAY, 1);
+        } catch (UnsupportedOperationException $e) {
+            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
         }
     }
 
@@ -142,8 +152,7 @@ class IpcServer implements ListenerAggregateInterface
 
         $ipcStream = new SocketStream($socket);
         $ipcStream->setBlocking(false);
-        $ipcStream->setOption(SO_KEEPALIVE, 1);
-        $ipcStream->setOption(TCP_NODELAY, 1);
+        $this->setStreamOptions($ipcStream);
         $ipcStream->write("$uid!");
         $ipcStream->flush();
         $this->ipcClient = new IpcSocketStream($ipcStream, $uid);

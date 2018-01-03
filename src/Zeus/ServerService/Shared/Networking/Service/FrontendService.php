@@ -9,6 +9,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -26,7 +27,7 @@ use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 class FrontendService
 {
     /** @var SocketStream[] */
-    protected $deadStreams = [];
+    protected $lingeringStreams = [];
 
     /** @var bool */
     private $isBusy = false;
@@ -79,9 +80,17 @@ class FrontendService
     /** @var SocketStream */
     private $registratorPipe;
 
+    /** @var resource */
+    private $streamContext;
+
     public function __construct(SocketMessageBroker $messageBroker)
     {
         $this->messageBroker = $messageBroker;
+        $this->streamContext = stream_context_create([
+            'socket' => [
+                'tcp_nodelay' => true,
+            ],
+        ]);
     }
 
     public function attach(EventManagerInterface $events)
@@ -246,13 +255,19 @@ class FrontendService
     {
         $queueSize = count($this->connectionQueue);
         try {
-            $client = true;
-            $connectionLimit = 10;
-            while ($this->availableWorkers && $client && $connectionLimit-- > 0) {
-                $client = $this->getFrontendServer()->accept();
-                $client->setOption(TCP_NODELAY, 1);
-                $client->setOption(SO_KEEPALIVE, 1);
-                $this->connectToBackend($client);
+            $connectionLimit = 20;
+            $client = null;
+            if ($this->availableWorkers) {
+                do {
+                    $client = $this->getFrontendServer()->accept();
+                    //$this->messageBroker->getLogger()->err("Connected");
+                    $this->setStreamOptions($client);
+                    $this->connectToBackend($client);
+                } while ($client && $connectionLimit-- > 0);
+            }
+
+            if ($client && !$this->availableWorkers) {
+                $this->messageBroker->getLogger()->err("Workers pool exhausted");
             }
         } catch (SocketTimeoutException $exception) {
         }
@@ -301,13 +316,11 @@ class FrontendService
                 return;
             }
 
-            $this->addBackends();
-            $this->addClients();
-
             $streamsToRead = $this->readSelector->getSelectedStreams(Selector::OP_READ);
 
             $this->writeSelector->select(0);
             $streamsToWrite = $this->writeSelector->getSelectedStreams(Selector::OP_WRITE);
+
             if (!$streamsToWrite) {
                 break;
             }
@@ -333,20 +346,28 @@ class FrontendService
                     $outputName = 'CLIENT';
                 }
 
-                try {
-                    if ($output->isClosed() || \in_array($output, $streamsToWrite)) {
-                        $data = $input->read();
-                        //$this->messageBroker->getLogger()->emerg("Read " . strlen($data) . ": " . json_encode($data));
+                if ($outputName === 'SERVER') {
+                    //$this->messageBroker->getLogger()->emerg("Read " . strlen($data) . ": " . json_encode($data));
+                    //$this->messageBroker->getLogger()->err("Read $key");
+                }
 
-                        if (!$output->isReadable() || !$output->isWritable()) {
-                            $this->disconnectClient($key);
-                            continue;
+                try {
+                    while ($input->isReadable() && $input->select(0)) {
+                        $data = $input->read();
+
+                        //$this->messageBroker->getLogger()->emerg("[$key] Read " . strlen($data) . ": " . json_encode($data));
+                        $output->write($data);
+                        if (!$output->flush()) {
+                            $this->messageBroker->getLogger()->emerg("Flush failed");
                         }
 
-                        $output->write($data);
-                        $output->flush();
+                        $what = $outputName === 'SERVER' ? 'wrote to' : 'passed from';
+
+                        //$this->messageBroker->getLogger()->emerg("[FRONTEND] $what $key: " . strlen($data) . ": " . json_encode($data));
                     }
                 } catch (StreamException $exception) {
+                    //$data2 = json_encode($data);
+                    //$this->messageBroker->getLogger()->err("Exception ($outputName) $key: " . $exception->getMessage() . ": $data2");
                     $this->disconnectClient($key);
                     break;
                 }
@@ -358,55 +379,54 @@ class FrontendService
 
     private function drainStreams()
     {
-        //$this->messageBroker->getLogger()->debug("Deadstreams to check: " . count($this->deadStreams));
-        foreach ($this->deadStreams as $key => $stream) {
+        foreach ($this->lingeringStreams as $key => $stream) {
             $this->drainStream($key);
         }
     }
 
     private function drainStream(int $key)
     {
-        if (!isset($this->deadStreams[$key])) {
+        if (!isset($this->lingeringStreams[$key])) {
             return;
         }
 
         /** @var SocketStream $stream */
-        $stream = $this->deadStreams[$key]['stream'];
-        $uid = $this->deadStreams[$key]['key'];
-        $time = $this->deadStreams[$key]['time'];
-        $shatDown = $this->deadStreams[$key]['shatDown'];
+        $stream = $this->lingeringStreams[$key]['stream'];
+        $uid = $this->lingeringStreams[$key]['key'];
+        $time = $this->lingeringStreams[$key]['time'];
+        $shatDown = $this->lingeringStreams[$key]['shatDown'];
 
         $readBytes = 0;
 
         try {
-//            $now = time();
-//            // wait gracefully 2 secs...
-//            if ($now  < $time + 2) {
-//                return;
-//            }
+            if (!$shatDown) {
+                $stream->shutdown(STREAM_SHUT_RD);
+                $this->lingeringStreams[$key]['shatDown'] = true;
+            }
+            $now = time();
 
             if ($stream->isClosed()) {
-                unset ($this->deadStreams[$key]);
+                unset ($this->lingeringStreams[$key]);
                 $this->readSelector->unregister($stream);
-                $this->messageBroker->getLogger()->debug("Stream disconnected: $uid ($key)");
+                //$this->messageBroker->getLogger()->debug("Stream disconnected: $uid ($key)");
 
                 return;
             }
 
-//            if ($now > $time + 5) {
-//                unset ($this->deadStreams[$key]);
-//                $this->readSelector->unregister($stream);
-//                $stream->close();
-//                $this->messageBroker->getLogger()->debug("Stream disconnected forcefully: $uid ($key)");
-//
-//                return;
-//            }
+            if ($now > $time + 5) {
+                unset ($this->lingeringStreams[$key]);
+                $this->readSelector->unregister($stream);
+                $stream->close();
+                $this->messageBroker->getLogger()->warn("Stream disconnected forcefully: $uid ($key)");
+
+                return;
+            }
 
             // frontend connections must be checked against POLLIN revent
             $pollin = $stream->select(0);
 
             if (!$pollin) {
-                $this->messageBroker->getLogger()->debug("Stream hanging: $uid ($key)");
+                //$this->messageBroker->getLogger()->debug("Stream hanging: $uid ($key)");
                 return;
             }
 
@@ -415,7 +435,7 @@ class FrontendService
                 $readBytes += strlen($buffer);
             }
 
-            $this->messageBroker->getLogger()->debug("Stream to drain: $uid ($readBytes read)");
+            //$this->messageBroker->getLogger()->debug("Stream to drain: $uid ($readBytes read)");
 
             return;
         } catch (StreamException $exception) {
@@ -423,9 +443,9 @@ class FrontendService
         }
 
         if ($readBytes === 0) {
-            $this->messageBroker->getLogger()->debug("Drained stream: $uid ($key)");
+            //$this->messageBroker->getLogger()->debug("Drained stream: $uid ($key)");
             // its an EOF mark...
-            unset ($this->deadStreams[$key]);
+            unset ($this->lingeringStreams[$key]);
             $this->readSelector->unregister($stream);
             $stream->close();
         }
@@ -435,7 +455,7 @@ class FrontendService
     {
         if (isset($this->frontendStreams[$key])) {
             $stream = $this->frontendStreams[$key];
-            $this->deadStreams[] = [
+            $this->lingeringStreams[] = [
                 'key' => $key,
                 'stream' => $stream,
                 'time' => time(),
@@ -474,11 +494,11 @@ class FrontendService
     private function checkBackendConnection($uid)
     {
         $ipc = $this->workerPipe[$uid];
+        $exception = null;
         try {
-            $ipc->write(' ');
-            $ipc->flush();
-
-            return;
+            if ($ipc->isReadable() && !$ipc->select(0)) {
+                return;
+            }
 
         } catch (StreamException $exception) {
 
@@ -489,7 +509,7 @@ class FrontendService
         } catch (StreamException $exception) {
 
         }
-        //$this->getLogger()->debug("Disconnecting worker $uid");
+        //$this->messageBroker->getLogger()->debug("[FRONTEND] Disconnecting worker $uid: $exception");
         $this->disconnectClient($uid);
 
         unset ($this->workerPipe[$uid]);
@@ -500,14 +520,9 @@ class FrontendService
     private function connectToBackend(SocketStream $client)
     {
         foreach ($this->availableWorkers as $uid => $port) {
-            $opts = [
-                'socket' => [
-                    'tcp_nodelay' => true,
-                ],
-            ];
             $host = $this->workerHost;
 
-            $socket = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+            $socket = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 0, STREAM_CLIENT_CONNECT, $this->streamContext);
             if (!$socket) {
                 //unset($this->availableWorkers[$uid]);
                 $this->checkBackendConnection($uid);
@@ -520,8 +535,7 @@ class FrontendService
             }
 
             $downstream = new SocketStream($socket);
-            $downstream->setOption(SO_KEEPALIVE, 1);
-            $downstream->setOption(TCP_NODELAY, 1);
+            $this->setStreamOptions($downstream);
             $downstream->setBlocking(true);
             $this->backendStreams[$uid] = $downstream;
             $this->busyWorkers[$uid] = $port;
@@ -556,8 +570,7 @@ class FrontendService
         try {
             while ($connection = $this->registratorServer->accept()) {
                 $in = false;
-                $connection->setOption(TCP_NODELAY, 1);
-                $connection->setOption(SO_KEEPALIVE, 1);
+                $this->setStreamOptions($connection);
                 if ($connection->select(100)) {
                     while (false === $in) {
                         $in = $connection->read('!');
@@ -583,6 +596,16 @@ class FrontendService
         //}
     }
 
+    private function setStreamOptions(SocketStream $stream)
+    {
+        try {
+            $stream->setOption(SO_KEEPALIVE, 1);
+            $stream->setOption(TCP_NODELAY, 1);
+        } catch (UnsupportedOperationException $e) {
+            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
+        }
+    }
+
     private function handleBackends()
     {
         foreach ($this->workerPipe as $uid => $ipc) {
@@ -600,19 +623,12 @@ class FrontendService
             return;
         }
 
-        $opts = [
-            'socket' => [
-                'tcp_nodelay' => true,
-            ],
-        ];
-
         //$this->getLogger()->debug("Registering worker on {$this->leaderIpcAddress}");
 
-        $leaderPipe = @stream_socket_client('tcp://' . $this->registratorAddress, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $leaderPipe = @stream_socket_client('tcp://' . $this->registratorAddress, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, $this->streamContext);
         if ($leaderPipe) {
             $leaderPipe = new SocketStream($leaderPipe);
-            $leaderPipe->setOption(SO_KEEPALIVE, 1);
-            $leaderPipe->setOption(TCP_NODELAY, 1);
+            $this->setStreamOptions($leaderPipe);
             $leaderPipe->write("$workerUid:$port!");
             $leaderPipe->flush();
             $this->registratorPipe = $leaderPipe;

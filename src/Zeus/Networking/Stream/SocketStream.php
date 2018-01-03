@@ -2,6 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\StreamException;
 
@@ -9,6 +10,7 @@ use function stream_socket_get_name;
 use function socket_import_stream;
 use function socket_set_option;
 use function stream_set_blocking;
+use function stream_socket_shutdown;
 use function fflush;
 use function fclose;
 use function strlen;
@@ -22,6 +24,9 @@ use function substr;
  */
 class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
+    /** @var int */
+    private $shutdownOption = 0;
+
     public function __construct($resource, string $peerName = null)
     {
         parent::__construct($resource, $peerName);
@@ -50,7 +55,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         }
 
         if (!function_exists('socket_import_stream') || !function_exists('socket_set_option')) {
-            throw new \RuntimeException("This option is unsupported by current PHP configuration");
+            throw new UnsupportedOperationException("This option is unsupported by current PHP configuration");
         }
 
         $socket = socket_import_stream($this->getResource());
@@ -62,20 +67,22 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         $resource = $this->resource;
         $readMethod = $this->readCallback;
         fflush($resource);
-        stream_socket_shutdown($resource, STREAM_SHUT_WR);
+        stream_socket_shutdown($resource, STREAM_SHUT_RD);
         stream_set_blocking($resource, false);
-        while (strlen(@$readMethod($resource, 8192)) > 0) {
+        $read = [$this->resource];
+        $noop = [];
+        while ($this->doSelect($read, $noop, $noop, 0) && strlen(@$readMethod($resource, 8192)) > 0) {
             // read...
         };
         fclose($resource);
     }
 
     /**
-     * @return string|null Remote address (client IP) or null if unknown
+     * @return string Remote address (client IP) or '' if unknown
      */
     public function getRemoteAddress() : string
     {
-        return $this->peerName ? $this->peerName : @stream_socket_get_name($this->resource, true);
+        return $this->peerName ? $this->peerName : (string) @stream_socket_get_name($this->resource, true);
     }
 
     public function shutdown(int $operation)
@@ -92,7 +99,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
             throw new StreamException("Stream is not writable or readable");
         }
 
-        stream_socket_shutdown($this->resource, $operation);
+        @stream_socket_shutdown($this->resource, $operation);
     }
 
     /**
