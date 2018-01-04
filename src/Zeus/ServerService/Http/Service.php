@@ -3,7 +3,6 @@
 namespace Zeus\ServerService\Http;
 
 use Zend\Http\Request;
-use Zend\Http\Response;
 use Zend\Log\LoggerInterface;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;

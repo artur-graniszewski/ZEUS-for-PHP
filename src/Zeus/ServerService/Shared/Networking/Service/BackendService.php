@@ -6,7 +6,6 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Exception\StreamException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
@@ -134,8 +133,6 @@ class BackendService
                         return;
                     }
                 } catch (\Throwable $exception) {
-                    echo $exception;
-                    die();
                     $event->getWorker()->setWaiting();
 
                     return;

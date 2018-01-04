@@ -151,7 +151,6 @@ class FrontendService
     private function onWorkerCreate(WorkerEvent $event)
     {
         if ($this->registratorAddress) {
-            //$this->getLogger()->debug("Contacting with existing leader on " . $this->leaderIpcAddress);
             $event->setParam('leaderIpcAddress', $this->registratorAddress);
         }
     }
@@ -169,20 +168,39 @@ class FrontendService
 
     private function onLeaderLoop(WorkerEvent $event)
     {
-        //$this->messageBroker->getLogger()->debug("Select");
-        $this->readSelector->select(100);
-        //$this->messageBroker->getLogger()->debug("Register workers");
-        $this->addBackends();
-        //$this->messageBroker->getLogger()->debug("Unregister workers");
-        $this->handleBackends();
-        //$this->messageBroker->getLogger()->debug("Add clients");
-        $this->addClients();
-        //$this->messageBroker->getLogger()->debug("Disconnect clients");
-        $this->disconnectClients();
-        //$this->messageBroker->getLogger()->debug("Handle clients");
-        $this->handleClients();
-        //$this->messageBroker->getLogger()->debug("Loop done");
-        $this->drainStreams();
+        $now = microtime(true);
+        do {
+            //$this->messageBroker->getLogger()->debug("Select");
+            if (!$this->readSelector->select(100)) {
+                return;
+            }
+
+            $this->handleBackends();
+            $streams = $this->readSelector->getSelectedStreams();
+            foreach ($streams as $index => $stream) {
+                $resourceId = $stream->getResourceId();
+                if ($resourceId === $this->registratorServer->getSocket()->getResourceId()) {
+                    $this->addBackends();
+
+                    unset ($streams[$index]);
+                    continue;
+                }
+
+                if ($resourceId === $this->frontendServer->getSocket()->getResourceId()) {
+                    $this->addClients();
+
+                    unset ($streams[$index]);
+                    continue;
+                }
+            }
+
+            $this->drainStreams();
+            $this->disconnectClients();
+
+            if ($streams) {
+                $this->handleClients($streams);
+            }
+        } while ((microtime(true) - $now < 1));
     }
 
     private function startRegistratorServer()
@@ -213,8 +231,6 @@ class FrontendService
 
         if ($message instanceof LeaderElectedMessage) {
             /** @var LeaderElectedMessage $message */
-
-            //$this->getLogger()->debug("Announcing communication readiness on " . $message->getIpcAddress());
             $this->setRegistratorAddress($message->getIpcAddress());
 
             return;
@@ -225,7 +241,7 @@ class FrontendService
             return;
         }
 
-        $this->messageBroker->getLogger()->debug("Becoming pool leader");
+        $this->messageBroker->getLogger()->debug("Becoming frontend worker");
         $this->readSelector = new Selector();
         $this->writeSelector = new Selector();
         $this->startRegistratorServer();
@@ -233,7 +249,7 @@ class FrontendService
         $this->workerServer = null;
         $this->startFrontendServer(100);
 
-        $this->messageBroker->getLogger()->debug("Sending leader-elected message");
+        $this->messageBroker->getLogger()->debug("Asking backend workers to register themselves");
         $event->getTarget()->send(new LeaderElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
         $event->getTarget()->send(new LeaderElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
     }
@@ -303,78 +319,47 @@ class FrontendService
         }
     }
 
-    private function handleClients()
+    /**
+     * @param SocketStream[] $streamsToRead
+     */
+    private function handleClients($streamsToRead)
     {
-        if (!$this->frontendStreams) {
-
+        if (!$this->writeSelector->select(0)) {
             return;
         }
 
-        $now = microtime(true);
-        do {
-            if (!$this->readSelector->select(0)) {
-                return;
-            }
+        foreach ($streamsToRead as $input) {
+            $output = null;
+            $key = array_search($input, $this->frontendStreams);
 
-            $streamsToRead = $this->readSelector->getSelectedStreams(Selector::OP_READ);
-
-            $this->writeSelector->select(0);
-            $streamsToWrite = $this->writeSelector->getSelectedStreams(Selector::OP_WRITE);
-
-            if (!$streamsToWrite) {
-                break;
-            }
-
-            foreach ($streamsToRead as $index => $input) {
-                $output = null;
-                if ($input->getResourceId() === $this->registratorServer->getSocket()->getResourceId()) {
+            if ($key !== false) {
+                $output = $this->backendStreams[$key];
+                $outputName = 'SERVER';
+            } else {
+                $key = array_search($input, $this->backendStreams);
+                if (!$key) {
+                    //$this->readSelector->unregister($input);
                     continue;
                 }
-
-                $key = array_search($input, $this->frontendStreams);
-
-                if ($key !== false) {
-                    $output = $this->backendStreams[$key];
-                    $outputName = 'SERVER';
-                } else {
-                    $key = array_search($input, $this->backendStreams);
-                    if (!$key) {
-                        //$this->readSelector->unregister($input);
-                        continue;
-                    }
-                    $output = $this->frontendStreams[$key];
-                    $outputName = 'CLIENT';
-                }
-
-                if ($outputName === 'SERVER') {
-                    //$this->messageBroker->getLogger()->emerg("Read " . strlen($data) . ": " . json_encode($data));
-                    //$this->messageBroker->getLogger()->err("Read $key");
-                }
-
-                try {
-                    while ($input->isReadable() && $input->select(0)) {
-                        $data = $input->read();
-
-                        //$this->messageBroker->getLogger()->emerg("[$key] Read " . strlen($data) . ": " . json_encode($data));
-                        $output->write($data);
-                        if (!$output->flush()) {
-                            $this->messageBroker->getLogger()->emerg("Flush failed");
-                        }
-
-                        $what = $outputName === 'SERVER' ? 'wrote to' : 'passed from';
-
-                        //$this->messageBroker->getLogger()->emerg("[FRONTEND] $what $key: " . strlen($data) . ": " . json_encode($data));
-                    }
-                } catch (StreamException $exception) {
-                    //$data2 = json_encode($data);
-                    //$this->messageBroker->getLogger()->err("Exception ($outputName) $key: " . $exception->getMessage() . ": $data2");
-                    $this->disconnectClient($key);
-                    break;
-                }
+                $output = $this->frontendStreams[$key];
+                $outputName = 'CLIENT';
             }
-        } while ($streamsToRead && (microtime(true) - $now < 0.01));
 
-        return;
+            try {
+                while ($input->select(0)) {
+                    $data = $input->read();
+
+                    //$this->messageBroker->getLogger()->emerg("[$key] Read " . strlen($data) . ": " . json_encode($data));
+                    $output->write($data);
+                    if (!$output->flush()) {
+                        $this->messageBroker->getLogger()->emerg("Flush failed");
+                    }
+                }
+            } catch (StreamException $exception) {
+                $this->disconnectClient($key);
+                break;
+            }
+        }
     }
 
     private function drainStreams()
@@ -408,7 +393,6 @@ class FrontendService
             if ($stream->isClosed()) {
                 unset ($this->lingeringStreams[$key]);
                 $this->readSelector->unregister($stream);
-                //$this->messageBroker->getLogger()->debug("Stream disconnected: $uid ($key)");
 
                 return;
             }
@@ -426,7 +410,6 @@ class FrontendService
             $pollin = $stream->select(0);
 
             if (!$pollin) {
-                //$this->messageBroker->getLogger()->debug("Stream hanging: $uid ($key)");
                 return;
             }
 
@@ -434,8 +417,6 @@ class FrontendService
             while ('' !== ($buffer = $stream->read())) {
                 $readBytes += strlen($buffer);
             }
-
-            //$this->messageBroker->getLogger()->debug("Stream to drain: $uid ($readBytes read)");
 
             return;
         } catch (StreamException $exception) {
@@ -509,7 +490,6 @@ class FrontendService
         } catch (StreamException $exception) {
 
         }
-        //$this->messageBroker->getLogger()->debug("[FRONTEND] Disconnecting worker $uid: $exception");
         $this->disconnectClient($uid);
 
         unset ($this->workerPipe[$uid]);
@@ -543,6 +523,7 @@ class FrontendService
             $this->frontendStreams[$uid] = $client;
             $this->readSelector->register($downstream, Selector::OP_READ);
             $this->readSelector->register($client, Selector::OP_READ);
+
             $this->writeSelector->register($downstream, Selector::OP_WRITE);
             $this->writeSelector->register($client, Selector::OP_WRITE);
 
@@ -580,7 +561,6 @@ class FrontendService
                     $this->availableWorkers[$uid] = $port;
                     $this->workerPipe[$uid] = $connection;
                     $registeredWorkers++;
-                    //$this->getLogger()->debug("Registered worker #$uid");
 
                     continue;
                 }
@@ -590,10 +570,6 @@ class FrontendService
         } catch (SocketTimeoutException $exception) {
 
         }
-
-        //if ($registeredWorkers) {
-            //$this->getLogger()->debug("Registered $registeredWorkers workers");
-        //}
     }
 
     private function setStreamOptions(SocketStream $stream)
@@ -622,8 +598,6 @@ class FrontendService
         if (!$this->registratorAddress) {
             return;
         }
-
-        //$this->getLogger()->debug("Registering worker on {$this->leaderIpcAddress}");
 
         $leaderPipe = @stream_socket_client('tcp://' . $this->registratorAddress, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, $this->streamContext);
         if ($leaderPipe) {
