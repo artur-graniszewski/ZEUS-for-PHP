@@ -3,13 +3,13 @@
 namespace Zeus\Networking\Stream;
 
 /**
- * Interface FlushableConnectionInterface
+ * Interface FlushableStreamInterface
  * @package Zeus\Networking
  * @internal
  */
-interface FlushableConnectionInterface
+interface FlushableStreamInterface
 {
-    public function flush();
+    public function flush() : bool;
 
     public function setReadBufferSize(int $size);
 

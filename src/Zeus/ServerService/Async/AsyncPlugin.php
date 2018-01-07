@@ -7,7 +7,7 @@ use Zend\Mvc\Controller\Plugin\AbstractPlugin;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\Stream\AbstractStream;
 use Zeus\Networking\Stream\NetworkStreamInterface;
-use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\Networking\Stream\SelectableStreamInterface;
 use Zeus\Networking\Stream\SocketStream;
 
@@ -51,7 +51,7 @@ class AsyncPlugin extends AbstractPlugin
         } catch (UnsupportedOperationException $exception) {
             // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
         }
-        if ($stream instanceof FlushableConnectionInterface) {
+        if ($stream instanceof FlushableStreamInterface) {
             $stream->setWriteBufferSize(0);
         }
 

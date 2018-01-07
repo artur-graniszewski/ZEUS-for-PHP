@@ -19,7 +19,7 @@ use function feof;
  * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
-class AbstractStream extends AbstractPhpResource implements StreamInterface, FlushableConnectionInterface
+class AbstractStream extends AbstractPhpResource implements StreamInterface, FlushableStreamInterface
 {
     const DEFAULT_WRITE_BUFFER_SIZE = 65536;
     const DEFAULT_READ_BUFFER_SIZE = 65536;
@@ -196,7 +196,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         return $data === false ? '' : $data;
     }
 
-    public function write(string $data)
+    public function write(string $data) : int
     {
         if (!$this->isWritable()) {
             throw new StreamException("Stream is not writable");
@@ -204,8 +204,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
         $this->writeBuffer .= $data;
 
-        if (isset($this->writeBuffer[$this->writeBufferSize])) {
-            $this->doWrite($this->writeCallback);
+        if (!$this->writeBufferSize || isset($this->writeBuffer[$this->writeBufferSize])) {
+            return $this->doWrite($this->writeCallback);
+        } else {
+            return 0;
         }
     }
 

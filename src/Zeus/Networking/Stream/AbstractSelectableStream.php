@@ -122,4 +122,14 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     {
         $this->soTimeout = $milliseconds;
     }
+
+    /**
+     * @param Selector $selector
+     * @param int $operation See Selector::OP_READ, Selector::OP_WRITE, Selector::OP_ACCEPT
+     * @return SelectionKey
+     */
+    public function register(Selector $selector, int $operation) : SelectionKey
+    {
+        return $selector->register($this, $operation);
+    }
 }

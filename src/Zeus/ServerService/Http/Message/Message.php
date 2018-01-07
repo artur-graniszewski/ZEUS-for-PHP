@@ -8,7 +8,7 @@ use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
 use Zeus\ServerService\Http\Message\Helper\RegularEncoding;
 use Zeus\ServerService\Http\Message\Helper\FileUpload;
-use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use Zeus\Networking\Stream\NetworkStreamInterface;
@@ -507,7 +507,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         $this->requestsFinished++;
-        if ($this->connection instanceof FlushableConnectionInterface) {
+        if ($this->connection instanceof FlushableStreamInterface) {
             $this->connection->flush();
         }
 

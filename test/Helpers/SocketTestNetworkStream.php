@@ -3,11 +3,12 @@
 namespace ZeusTest\Helpers;
 
 use Zeus\Networking\Stream\NetworkStreamInterface;
-use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\FlushableStreamInterface;
+use Zeus\Networking\Stream\SelectableStreamInterface;
 
-class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnectionInterface
+class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStreamInterface
 {
-    protected $dataSent = null;
+    protected $dataSent = '';
 
     protected $isConnectionClosed = false;
 
@@ -17,16 +18,11 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
 
     protected $serverAddress = '127.0.0.1:7070';
 
-    /**
-     * Send data to the connection
-     * @param string $data
-     * @return NetworkStreamInterface
-     */
-    public function write($data)
+    public function write(string $data) : int
     {
         $this->dataSent .= $data;
 
-        return $this;
+        return strlen($data);
     }
 
     public function getRemoteAddress() : string
@@ -39,54 +35,27 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
         return $this->serverAddress;
     }
 
-    /**
-     * @param null $dataSent
-     * @return $this
-     */
-    public function setDataSent($dataSent)
+    public function setDataSent(string $dataSent)
     {
         $this->dataSent = $dataSent;
-
-        return $this;
     }
 
-    /**
-     * @param boolean $isConnectionClosed
-     * @return $this
-     */
-    public function setIsConnectionClosed($isConnectionClosed)
+    public function setIsConnectionClosed(bool $isConnectionClosed)
     {
         $this->isConnectionClosed = $isConnectionClosed;
-
-        return $this;
     }
 
-    /**
-     * @param string $remoteAddress
-     * @return $this
-     */
-    public function setRemoteAddress($remoteAddress)
+    public function setRemoteAddress(string $remoteAddress)
     {
         $this->remoteAddress = $remoteAddress;
-
-        return $this;
     }
 
-    /**
-     * @param string $serverAddress
-     * @return $this
-     */
-    public function setServerAddress($serverAddress)
+    public function setServerAddress(string $serverAddress)
     {
         $this->serverAddress = $serverAddress;
-
-        return $this;
     }
 
-    /**
-     * @return null|string
-     */
-    public function getSentData()
+    public function getSentData() : string
     {
         $data = $this->dataSent;
         $this->dataSent = '';
@@ -117,15 +86,9 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
         return $this->isConnectionWritable;
     }
 
-    /**
-     * @param bool $isConnectionWritable
-     * @return $this
-     */
-    public function setIsConnectionWritable($isConnectionWritable)
+    public function setIsConnectionWritable(bool $isConnectionWritable)
     {
         $this->isConnectionWritable = $isConnectionWritable;
-
-        return $this;
     }
 
     public function __construct($stream)
@@ -133,24 +96,20 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableConnec
 
     }
 
-    public function read($ending = false)
+    public function read(string $ending = '') : string
     {
         // TODO: Implement read() method.
     }
 
-    /**
-     * @param int $timeout
-     * @return bool
-     */
-    public function select($timeout)
+    public function select(int $timeout) : bool
     {
         // TODO: Implement select() method.
         return true;
     }
 
-    public function flush()
+    public function flush() : bool
     {
-        // TODO: Implement flush() method.
+        return true;
     }
 
     public function setWriteBufferSize(int $size)

@@ -3,7 +3,7 @@
 namespace Zeus\ServerService\Async\Message;
 
 use Zeus\Networking\Stream\NetworkStreamInterface;
-use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\ServerService\Async\UnserializeException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
@@ -76,7 +76,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onMessage(NetworkStreamInterface $connection, string $message)
     {
-        if ($connection instanceof FlushableConnectionInterface) {
+        if ($connection instanceof FlushableStreamInterface) {
             $connection->setWriteBufferSize(0);
         }
 

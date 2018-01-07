@@ -4,7 +4,7 @@ namespace Zeus\Kernel\IpcServer;
 
 use Zeus\Kernel\IpcServer;
 use Zeus\Networking\Stream\AbstractStream;
-use Zeus\Networking\Stream\FlushableConnectionInterface;
+use Zeus\Networking\Stream\FlushableStreamInterface;
 
 /**
  * Class SocketIpc
@@ -43,7 +43,7 @@ class SocketIpc extends IpcDriver
 
         $this->stream->write($data . "\0");
 
-        if ($this->stream instanceof FlushableConnectionInterface) {
+        if ($this->stream instanceof FlushableStreamInterface) {
             $this->stream->flush();
         }
     }

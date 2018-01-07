@@ -21,5 +21,5 @@ interface StreamInterface extends ResourceInterface
 
     public function isReadable() : bool;
 
-    public function write(string $data);
+    public function write(string $data): int;
 }

@@ -5,6 +5,8 @@ namespace Zeus\Networking;
 use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Networking\Stream\SelectableStreamInterface;
+use Zeus\Networking\Stream\SelectionKey;
+use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Util\UnitConverter;
 use function stream_socket_accept;
@@ -244,5 +246,15 @@ final class SocketServer
         }
 
         return $this->socketObject;
+    }
+
+    /**
+     * @param Selector $selector
+     * @param int $operation See Selector::OP_READ, Selector::OP_WRITE, Selector::OP_ACCEPT
+     * @return SelectionKey
+     */
+    public function register(Selector $selector, int $operation) : SelectionKey
+    {
+        return $selector->register($this->getSocket(), $operation);
     }
 }

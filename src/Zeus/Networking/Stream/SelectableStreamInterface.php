@@ -12,4 +12,6 @@ interface SelectableStreamInterface extends StreamInterface
     public function select(int $timeout) : bool;
 
     public function getLocalAddress() : string;
+
+    public function register(Selector $selector, int $operation) : SelectionKey;
 }
