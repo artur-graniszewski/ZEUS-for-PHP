@@ -42,6 +42,9 @@ abstract class AbstractPhpResource implements ResourceInterface
      */
     protected function setResource($resource)
     {
+        if (!is_resource($resource)) {
+            throw new \LogicException("Unsupported resource type");
+        }
         $this->streamId = (int) $resource;
         $this->resource = $resource;
 

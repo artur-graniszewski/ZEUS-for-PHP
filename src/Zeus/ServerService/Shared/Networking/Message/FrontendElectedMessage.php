@@ -2,11 +2,11 @@
 
 namespace Zeus\ServerService\Shared\Networking\Message;
 
-class LeaderElectedMessage
+class FrontendElectedMessage
 {
     private $ipcAddress = '';
 
-    public function __construct($ipcAddress)
+    public function __construct(string $ipcAddress)
     {
         $this->ipcAddress = $ipcAddress;
     }

@@ -11,27 +11,27 @@ namespace Zeus\Kernel\System;
 class Runtime
 {
     /** @var int */
-    protected $processorAmount = 0;
+    protected static $processorAmount = 0;
 
     /**
      * @return int
      */
-    public function getNumberOfProcessors() : int
+    public static function getNumberOfProcessors() : int
     {
-        if (!$this->processorAmount) {
-            $this->processorAmount = @ $this->detectNumberOfCores();
+        if (!static::$processorAmount) {
+            static::$processorAmount = @static::detectNumberOfCores();
         }
 
-        return $this->processorAmount;
+        return static::$processorAmount;
     }
 
     /**
      * @return int
      */
-    protected function detectNumberOfCores() : int
+    protected static function detectNumberOfCores() : int
     {
-        if (is_file('/proc/cpuInfo') && is_readable('/proc/cpuInfo')) {
-            $cpuInfo = file_get_contents('/proc/cpuInfo');
+        if (is_file('/proc/cpuinfo') && is_readable('/proc/cpuinfo')) {
+            $cpuInfo = file_get_contents('/proc/cpuinfo');
             if (preg_match_all('/^processor/m', $cpuInfo, $matches)) {
                 return count($matches[0]);
             }

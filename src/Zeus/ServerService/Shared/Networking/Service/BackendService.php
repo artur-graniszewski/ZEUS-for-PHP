@@ -10,7 +10,7 @@ use Zeus\Networking\Exception\StreamException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\SocketStream;
-use Zeus\ServerService\Shared\Networking\Message\ElectionMessage;
+use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 use function time;
@@ -70,7 +70,7 @@ class BackendService
     {
         $message = $event->getParams();
 
-        if ($message instanceof ElectionMessage) {
+        if ($message instanceof FrontendElectionMessage) {
             $this->isLeader = true;
             $this->getBackendServer()->close();
         }
@@ -110,7 +110,7 @@ class BackendService
             $this->startBackendServer($event);
         }
 
-        $leaderPipe = $this->messageBroker->getFrontend()->getRegistratorPipe($this->uid, $this->getBackendServer()->getLocalPort());
+        $leaderPipe = $this->messageBroker->getFrontend()->getFrontendIpcPipes($this->uid, $this->getBackendServer()->getLocalPort());
 
         if (!$leaderPipe) {
             sleep(1);

@@ -20,8 +20,8 @@ use function count;
 use function in_array;
 use function array_search;
 use function explode;
-use Zeus\ServerService\Shared\Networking\Message\ElectionMessage;
-use Zeus\ServerService\Shared\Networking\Message\LeaderElectedMessage;
+use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
+use Zeus\ServerService\Shared\Networking\Message\FrontendElectedMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 class FrontendService
@@ -62,14 +62,17 @@ class FrontendService
     /** @var SocketServer */
     private $registratorServer;
 
-    /** @var string */
-    private $registratorAddress;
+    /** @var string[] */
+    private $frontendIpcAddresses = [];
 
-    /** @var SocketStream */
-    private $registratorPipe;
+    /** @var SocketStream[] */
+    private $frontendIpcPipes = [];
 
     /** @var resource */
     private $streamContext;
+
+    /** @var int */
+    private $expectedFrontendWorkers;
 
     public function __construct(SocketMessageBroker $messageBroker)
     {
@@ -129,20 +132,24 @@ class FrontendService
 
     private function onWorkerCreate(WorkerEvent $event)
     {
-        if ($this->registratorAddress) {
-            $event->setParam('leaderIpcAddress', $this->registratorAddress);
+        if ($this->frontendIpcAddresses) {
+            $event->setParam('leaderIpcAddress', $this->frontendIpcAddresses);
         }
     }
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->registratorAddress = $event->getParam('leaderIpcAddress', $this->registratorAddress);
+        if ($event->getParam('leaderIpcAddress')) {
+            $this->frontendIpcAddresses = $event->getParam('leaderIpcAddress');
+        }
     }
 
     private function startLeaderElection(SchedulerEvent $event)
     {
-        $this->messageBroker->getLogger()->debug("Electing pool leader");
-        $event->getScheduler()->getIpc()->send(new ElectionMessage(), IpcServer::AUDIENCE_AMOUNT, 1);
+        $frontendsAmount = (int) max(1, \Zeus\Kernel\System\Runtime::getNumberOfProcessors() / 2);
+        //$frontendsAmount = 1;
+        $this->messageBroker->getLogger()->debug("Electing $frontendsAmount frontend worker(s)");
+        $event->getScheduler()->getIpc()->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
     }
 
     private function startRegistratorServer()
@@ -171,15 +178,18 @@ class FrontendService
     {
         $message = $event->getParams();
 
-        if ($message instanceof LeaderElectedMessage) {
-            /** @var LeaderElectedMessage $message */
-            $this->setRegistratorAddress($message->getIpcAddress());
+        if ($message instanceof FrontendElectedMessage) {
+            /** @var FrontendElectedMessage $message */
+            $this->addRegistratorAddress($message->getIpcAddress());
+            if ($this->frontendIpcPipes) {
+
+            }
 
             return;
         }
 
 
-        if (!$message instanceof ElectionMessage) {
+        if (!$message instanceof FrontendElectionMessage) {
             return;
         }
 
@@ -191,34 +201,29 @@ class FrontendService
         $this->startFrontendServer(100);
 
         $this->messageBroker->getLogger()->debug("Asking backend workers to register themselves");
-        $event->getTarget()->send(new LeaderElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
-        $event->getTarget()->send(new LeaderElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
+        $event->getTarget()->send(new FrontendElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
+        $event->getTarget()->send(new FrontendElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
     }
 
     private function onWorkerExit(WorkerEvent $event)
     {
-        if ($this->registratorPipe && !$this->registratorPipe->isClosed()) {
-            $this->registratorPipe->close();
-            $this->registratorPipe = null;
+        foreach ($this->frontendIpcPipes as $pipe) {
+            if ($pipe && !$pipe->isClosed()) {
+                $pipe->close();
+            }
         }
     }
 
-    public function setRegistratorAddress(string $address)
+    public function addRegistratorAddress(string $address)
     {
-        $this->registratorAddress = $address;
+        $this->frontendIpcAddresses[] = $address;
     }
 
     private function addClient()
     {
-        //static $id = 1;
-        //$this->availableWorkers = [$id++ => 80];
         try {
             if ($this->availableWorkers) {
-                $client = $this->getFrontendServer()->accept();
-                $client->setBlocking(false);
-                //$this->messageBroker->getLogger()->err("Connected");
-                $this->setStreamOptions($client);
-                $this->connectToBackend($client);
+                $this->connectToBackend();
             }
         } catch (SocketTimeoutException $exception) {
         }
@@ -278,17 +283,20 @@ class FrontendService
         }
     }
 
-    private function connectToBackend(SocketStream $client)
+    private function connectToBackend()
     {
         foreach ($this->availableWorkers as $uid => $port) {
             $host = $this->workerHost;
 
             $socket = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 0, STREAM_CLIENT_CONNECT, $this->streamContext);
             if (!$socket) {
-                $this->messageBroker->getLogger()->err("Connection refused: no backend server at $host:$port");
-                unset ($this->availableWorkers[$uid]);
                 continue;
             }
+
+            $client = $this->getFrontendServer()->accept();
+            $client->setBlocking(false);
+            //$this->messageBroker->getLogger()->err("Connected");
+            $this->setStreamOptions($client);
 
             $backend = new SocketStream($socket);
             $this->setStreamOptions($backend);
@@ -385,27 +393,33 @@ class FrontendService
         }
     }
 
-    public function getRegistratorPipe(int $workerUid, int $port)
+    public function getFrontendIpcPipes(int $workerUid, int $port)
     {
-        if ($this->registratorPipe) {
-            return $this->registratorPipe;
+        if (count($this->frontendIpcPipes) === count($this->frontendIpcAddresses)) {
+            return $this->frontendIpcPipes;
         }
 
-        if (!$this->registratorAddress) {
+        if (!$this->frontendIpcAddresses || count($this->frontendIpcAddresses) < $this->expectedFrontendWorkers) {
             return;
         }
 
-        $leaderPipe = @stream_socket_client('tcp://' . $this->registratorAddress, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, $this->streamContext);
-        if ($leaderPipe) {
-            $leaderPipe = new SocketStream($leaderPipe);
-            $this->setStreamOptions($leaderPipe);
-            $leaderPipe->write("$workerUid:$port!");
-            $leaderPipe->flush();
-            $this->registratorPipe = $leaderPipe;
-        } else {
-            $this->messageBroker->getLogger()->err("Could not connect to leader: $errstr [$errno]");
+        foreach ($this->frontendIpcAddresses as $id => $address) {
+            if (isset($this->frontendIpcPipes[$id])) {
+                continue;
+            }
+            $leaderPipe = @stream_socket_client('tcp://' . $address, $errno, $errstr, 0, STREAM_CLIENT_CONNECT, $this->streamContext);
+            if ($leaderPipe) {
+                $leaderPipe = new SocketStream($leaderPipe);
+                $this->setStreamOptions($leaderPipe);
+                $leaderPipe->write("$workerUid:$port!");
+                $leaderPipe->flush();
+                $this->frontendIpcPipes[$id] = $leaderPipe;
+                $this->messageBroker->getLogger()->debug("Attaching to frontend worker on address $address");
+            } else {
+                $this->messageBroker->getLogger()->err("Could not connect to leader: $errstr [$errno]");
+            }
         }
 
-        return $this->registratorPipe;
+        return $this->frontendIpcPipes;
     }
 }
