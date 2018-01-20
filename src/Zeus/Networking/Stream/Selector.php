@@ -28,10 +28,26 @@ class Selector
     /** @var mixed[] */
     private $selectedResources = [self::OP_READ => [], self::OP_WRITE => [], self::OP_ACCEPT => []];
 
+    private $allowedOperations = [
+        self::OP_ACCEPT, self::OP_WRITE, self:: OP_READ, self::OP_ALL
+    ];
+
     public function register(SelectableStreamInterface $stream, int $operation = self::OP_ALL) : SelectionKey
     {
-        if (!in_array($operation, range(self::OP_READ, self::OP_ALL))) {
+        if (!in_array($operation, $this->allowedOperations)) {
             throw new \LogicException("Invalid operation type: " . json_encode($operation));
+        }
+
+        if ($operation & self::OP_READ && !$stream->isReadable()) {
+            throw new \LogicException("Unable to register: stream is not readable");
+        }
+
+        if ($operation & self::OP_WRITE && !$stream->isWritable()) {
+            throw new \LogicException("Unable to register: stream is not writable");
+        }
+
+        if ($operation & self::OP_ACCEPT && $stream->isClosed()) {
+            throw new \LogicException("Unable to register: stream is closed");
         }
 
         $resource = $stream->getResource();
@@ -64,6 +80,10 @@ class Selector
 
     public function unregister(SelectableStreamInterface $stream, int $operation = self::OP_ALL)
     {
+        if (!in_array($operation, $this->allowedOperations)) {
+            throw new \LogicException("Invalid operation type: " . json_encode($operation));
+        }
+
         $resourceId = array_search($stream, $this->streams);
 
         if ($resourceId === false) {
@@ -102,7 +122,6 @@ class Selector
             unset ($this->selectedResources[self::OP_WRITE][$resourceId]);
             unset ($this->streamResources[self::OP_ACCEPT][$resourceId]);
             unset ($this->selectedResources[self::OP_ACCEPT][$resourceId]);
-
             unset ($this->selectionKeys[$resourceId]);
             unset ($this->streams[$resourceId]);
         }
@@ -114,14 +133,15 @@ class Selector
      */
     public function select(int $timeout = 0) : int
     {
-        foreach($this->streams as $key => $stream) {
-            if ($stream->isClosed()) {
-                unset ($this->streamResources[self::OP_READ][$key]);
-                unset ($this->streamResources[self::OP_WRITE][$key]);
-                unset ($this->streamResources[self::OP_ACCEPT][$key]);
-                unset ($this->selectionKeys[$key]);
-            }
-        }
+//        foreach($this->streams as $key => $stream) {
+//            if ($stream->isClosed()) {
+//                unset ($this->streamResources[self::OP_READ][$key]);
+//                unset ($this->streamResources[self::OP_WRITE][$key]);
+//                unset ($this->streamResources[self::OP_ACCEPT][$key]);
+//                unset ($this->selectionKeys[$key]);
+//                unset ($this->streams[$key]);
+//            }
+//        }
 
         $read = $this->streamResources[self::OP_READ] + $this->streamResources[self::OP_ACCEPT];
         $write = $this->streamResources[self::OP_WRITE];

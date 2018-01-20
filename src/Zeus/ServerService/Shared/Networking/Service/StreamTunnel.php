@@ -7,7 +7,7 @@ use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\Networking\Stream\SelectionKey;
 use Zeus\Networking\Stream\Selector;
 
-class StreamBuffer
+class StreamTunnel
 {
     /** @var SelectionKey  */
     private $srcSelectionKey;
@@ -53,6 +53,11 @@ class StreamBuffer
             return;
         }
 
+        if (!$this->srcSelectionKey->getStream()->isReadable()) {
+            $this->srcSelectionKey->cancel(Selector::OP_READ);
+            return;
+        }
+
         $data = $this->srcSelectionKey->getStream()->read();
 
         if ('' === $data) {
@@ -66,9 +71,11 @@ class StreamBuffer
     private function write(string $data)
     {
         $this->dataBuffer = '';
+        $dstStream = $this->dstSelectionKey->getStream();
+        $srcStream = $this->srcSelectionKey->getStream();
 
         if (!$this->isSaturated || $this->dstSelectionKey->isWritable()) {
-            $stream = $this->dstSelectionKey->getStream();
+            $stream = $dstStream;
             $wrote = $stream->write($data);
 
             if (($stream instanceof FlushableStreamInterface && $stream->flush()) || !isset($data[$wrote + 1])) {
@@ -77,7 +84,9 @@ class StreamBuffer
                 }
 
                 $this->isSaturated = false;
-                $this->srcSelectionKey->getStream()->register($this->srcSelectionKey->getSelector(), Selector::OP_READ);
+                if ($srcStream->isReadable()) {
+                    $this->srcSelectionKey->getStream()->register($this->srcSelectionKey->getSelector(), Selector::OP_READ);
+                }
                 $this->srcSelectionKey->cancel(Selector::OP_WRITE);
 
                 return;
@@ -96,9 +105,10 @@ class StreamBuffer
             }
 
             $this->isSaturated = true;
-            $this->dstSelectionKey->getStream()->register($this->dstSelectionKey->getSelector(), Selector::OP_WRITE);
+            if ($dstStream->isWritable()) {
+                $this->dstSelectionKey->getStream()->register($this->dstSelectionKey->getSelector(), Selector::OP_WRITE);
+            }
             $this->srcSelectionKey->cancel(Selector::OP_READ);
-
         }
     }
 }

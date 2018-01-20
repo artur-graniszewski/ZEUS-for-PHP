@@ -21,6 +21,9 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     /** @var int */
     protected $soTimeout = 1000;
 
+    /** @var string */
+    private $localAddress;
+
     /**
      * @param int $timeout Timeout in milliseconds
      * @return bool
@@ -48,11 +51,11 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     }
 
     /**
-     * @return string|null Server address (IP) or null if unknown
+     * @return string Server address (IP) or null if unknown
      */
     public function getLocalAddress() : string
     {
-        return @stream_socket_get_name($this->resource, false);
+        return $this->localAddress ? $this->localAddress : $this->localAddress = @stream_socket_get_name($this->resource, false);
     }
 
     /**
@@ -110,9 +113,6 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         return $sent;
     }
 
-    /**
-     * @return int
-     */
     public function getSoTimeout() : int
     {
         return $this->soTimeout;

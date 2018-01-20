@@ -102,25 +102,31 @@ class BackendService
         }
     }
 
+    private function sendStatusToFrontend(string $status) : bool
+    {
+        return $this->messageBroker->getFrontend()->sendStatusToFrontend($this->uid, $this->getBackendServer()->getLocalPort(), $status);
+    }
+
     private function onWorkerLoop(WorkerEvent $event)
     {
         $exception = null;
 
         if ($this->backendServer->isClosed()) {
-            $this->startBackendServer($event);
-        }
-
-        $leaderPipe = $this->messageBroker->getFrontend()->getFrontendIpcPipes($this->uid, $this->getBackendServer()->getLocalPort());
-
-        if (!$leaderPipe) {
-            sleep(1);
+            //$this->startBackendServer($event);
             return;
         }
 
+        //$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY);
         try {
             if (!$this->connection) {
+                if (!$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY)) {
+                    sleep(1);
+                    return;
+                }
+
                 try {
                     if ($this->backendServer->getSocket()->select(1000)) {
+                        //$this->messageBroker->getLogger()->debug(getmypid() . " connected");
                         $event->getWorker()->setRunning();
                         $connection = $this->backendServer->accept();
                         try {
@@ -133,25 +139,24 @@ class BackendService
                         return;
                     }
                 } catch (\Throwable $exception) {
+                    //$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY);
                     $event->getWorker()->setWaiting();
 
                     return;
                 }
 
                 $this->connection = $connection;
-                //$this->messageBroker->getLogger()->emerg("[BACKEND ] Opened");
                 $this->messageBroker->onOpen($connection);
             }
 
             if (!$this->connection->isReadable()) {
                 $this->connection = null;
+                $event->getWorker()->setWaiting();
                 return;
             }
-            $this->connection->select(100);
 
-            while ($this->connection->select(0)) {
+            while ($this->connection->select(5)) {
                 $data = $this->connection->read();
-                //$this->messageBroker->getLogger()->emerg("[BACKEND ] Read " . strlen($data) . ": " . json_encode($data));
                 if ($data !== '') {
                     $this->messageBroker->onMessage($this->connection, $data);
                     $this->connection->flush();
@@ -188,7 +193,6 @@ class BackendService
 
                 try {
                     $this->connection->close();
-                    //$this->messageBroker->getLogger()->emerg("[BACKEND ] Close");
                 } catch (\Exception $ex) {
                     // @todo: handle this case?
                 }

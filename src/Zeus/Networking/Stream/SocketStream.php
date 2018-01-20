@@ -24,9 +24,6 @@ use function substr;
  */
 class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
-    /** @var int */
-    private $shutdownOption = 0;
-
     public function __construct($resource, string $peerName = null)
     {
         parent::__construct($resource, $peerName);
@@ -77,6 +74,11 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         fclose($resource);
     }
 
+    public function isReadable() : bool
+    {
+        return $this->isReadable && $this->resource;
+    }
+
     /**
      * @return string Remote address (client IP) or '' if unknown
      */
@@ -109,22 +111,25 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
      */
     protected function doRead($readMethod, string $ending = '') : string
     {
+        $data = '';
         if (!$this->isReadable) {
             throw new StreamException("Stream is not readable");
         }
 
         if ($ending === '') {
-            $data = @$readMethod($this->resource, $this->readBufferSize);
+            if ($this->select(0)) {
+                $data = @$readMethod($this->resource, $this->readBufferSize);
 
-            if ((false === $data || '' === $data) && ($this->isEof() || $this->select(0))) {
-                // select() reported stream to have some data to read but buffer was empty, this means:
-                // "When a socket is at EOF, read returns without blocking (a zero-length read).
-                // This is basically the definition (from an application standpoint) of EOF."
+                if (false === $data || '' === $data) {
+                    // select() reported stream to have some data to read but buffer was empty, this means:
+                    // "When a socket is at EOF, read returns without blocking (a zero-length read).
+                    // This is basically the definition (from an application standpoint) of EOF."
 
-                $this->isReadable = false;
-                throw new StreamException("Stream is not readable");
-            } else {
-                $this->dataReceived += strlen($data);
+                    $this->isReadable = false;
+                    throw new StreamException("Stream is not readable");
+                } else {
+                    $this->dataReceived += strlen($data);
+                }
             }
 
             return $data;
@@ -140,7 +145,6 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
 
             if ($buffer === '' || $buffer === false) {
                 // stream had some data to read but buffer was empty, this is an EOF situation
-                @$readMethod($this->resource, 0);
                 $this->isReadable = false;
                 throw new StreamException("Stream is not readable");
             }

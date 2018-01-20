@@ -239,8 +239,11 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             foreach ($this->ipcSelector->getSelectedStreams() as $stream) {
                 try {
                     $stream->read();
-                } catch (\Exception $ex) {
-
+                } catch (\Throwable $ex) {
+                    $uid = array_search($stream, $this->ipcConnections);
+                    if ($uid) {
+                        $this->unregisterWorker($uid);
+                    }
                 }
             }
         }
@@ -304,8 +307,8 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     private function unregisterWorker(int $uid)
     {
         if (isset($this->ipcConnections[$uid])) {
-            $this->ipcConnections[$uid]->close();
             $this->ipcSelector->unregister($this->ipcConnections[$uid]);
+            $this->ipcConnections[$uid]->close();
             unset($this->ipcConnections[$uid]);
         }
 

@@ -59,9 +59,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         $this->peerName = $peerName;
     }
 
-    /**
-     * @return bool
-     */
     public function isReadable() : bool
     {
         return $this->isReadable && $this->resource && ($this->isReadable = !$this->isEof());

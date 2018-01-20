@@ -13,9 +13,7 @@ use Zeus\Networking\Stream\FlushableStreamInterface;
  */
 class SocketIpc extends IpcDriver
 {
-    /**
-     * @var AbstractStream
-     */
+    /** @var AbstractStream */
     public $stream;
 
     /** @var int */
@@ -40,11 +38,15 @@ class SocketIpc extends IpcDriver
         ];
 
         $data = $this->packMessage($payload);
+        $len = strlen($data) + 1;
+        while ($this->stream->write($data . "\0") < $len && !$this->stream instanceof FlushableStreamInterface) {
 
-        $this->stream->write($data . "\0");
+        }
 
         if ($this->stream instanceof FlushableStreamInterface) {
-            $this->stream->flush();
+            while (!$this->stream->flush()) {
+
+            }
         }
     }
 
@@ -55,6 +57,10 @@ class SocketIpc extends IpcDriver
         while ($data = $this->stream->read("\0")) {
             $message = $this->unpackMessage($data);
             $messages[] = $returnRaw ? $message : $message['msg'];
+        }
+
+        if ($this->stream->select(0)) {
+            trigger_error(json_encode($this->stream->read()));
         }
 
         return $messages;

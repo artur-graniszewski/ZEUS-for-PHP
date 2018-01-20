@@ -167,6 +167,7 @@ class Worker extends AbstractService
             $status->setIsLastTask($runsLeft === 1);
             $this->collectCycles();
             $exception = null;
+            //$this->getLogger()->debug("Worker loop");
             try {
                 $event = new WorkerEvent();
                 $event->setTarget($this);

@@ -11,6 +11,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
+use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -160,7 +161,7 @@ class IpcServer implements ListenerAggregateInterface
 
     private function handleIpcMessages()
     {
-        $selector = clone $this->ipcSelector;
+        $selector = $this->ipcSelector;
         $event = new IpcEvent();
         $event->setName(IpcEvent::EVENT_HANDLING_MESSAGES);
         $event->setParam('selector', $selector);
@@ -177,11 +178,11 @@ class IpcServer implements ListenerAggregateInterface
         }
 
         $streams = $selector->getSelectedStreams(Selector::OP_READ);
-
-
+        $failed = 0; $processed = 0; $ignored = 0;
         foreach ($streams as $stream) {
             /** @var SocketStream $stream */;
             if ($stream->getLocalAddress() !== $this->ipcServer->getLocalAddress()) {
+                $ignored++;
                 $event = new IpcEvent();
                 $event->setName(IpcEvent::EVENT_STREAM_READABLE);
 
@@ -199,11 +200,13 @@ class IpcServer implements ListenerAggregateInterface
                 $messages = $ipc->readAll(true);
 
                 $this->distributeMessages($messages);
-            } catch (\Exception $exception) {
+                $processed++;
+            } catch (StreamException $exception) {
+                $failed++;
+                $selector->unregister($stream);
+
                 $stream->close();
                 unset($this->ipcStreams[array_search($stream, $this->ipcStreams)]);
-                $this->ipcSelector->unregister($stream);
-                $selector->unregister($stream);
                 continue;
             }
         }
