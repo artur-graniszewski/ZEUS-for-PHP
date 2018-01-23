@@ -197,7 +197,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     public function onClose(NetworkStreamInterface $connection)
     {
         $this->requestPhase = static::REQUEST_PHASE_IDLE;
-        $connection->close();
+        if (!$connection->isClosed()) {
+            $connection->close();
+        }
         $this->initNewRequest();
         $this->restartKeepAliveCounter();
         $this->connection = null;

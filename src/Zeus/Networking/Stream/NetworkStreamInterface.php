@@ -7,7 +7,7 @@ namespace Zeus\Networking\Stream;
  * @package Zeus\Networking
  * @internal
  */
-interface NetworkStreamInterface
+interface NetworkStreamInterface extends StreamInterface
 {
     public function getLocalAddress() : string;
 

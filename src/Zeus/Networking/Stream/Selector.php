@@ -220,48 +220,4 @@ class Selector
 
         return array_values($result);
     }
-
-    /**
-     * @param int $operation
-     * @return SelectableStreamInterface[]
-     */
-    public function getSelectedStreams(int $operation = self::OP_ALL) : array
-    {
-        if (!in_array($operation, range(self::OP_READ, self::OP_ALL))) {
-            throw new \LogicException("Invalid operation type: " . json_encode($operation));
-        }
-
-        $streams = [];
-
-        foreach ($this->selectedResources as $type => $pool) {
-            foreach ($pool as $resource) {
-                $resourceId = (int)$resource;
-                if (!isset($this->streams[$resourceId])) {
-                    // stream was unregistered before executing getSelectedStreams()
-                    continue;
-                }
-                $stream = $this->streams[$resourceId];
-
-                if ($operation & self::OP_READ) {
-                    if (isset($this->streamResources[self::OP_READ][$resourceId]) && !isset($streams[$resourceId])) {
-                        $streams[$resourceId] = $stream;
-                    }
-                }
-
-                if ($operation & self::OP_WRITE) {
-                    if (isset($this->streamResources[self::OP_WRITE][$resourceId]) && !isset($streams[$resourceId])) {
-                        $streams[$resourceId] = $stream;
-                    }
-                }
-
-                if ($operation & self::OP_ACCEPT) {
-                    if (isset($this->streamResources[self::OP_ACCEPT][$resourceId]) && !isset($streams[$resourceId])) {
-                        $streams[$resourceId] = $stream;
-                    }
-                }
-            }
-        }
-
-        return array_values($streams);
-    }
 }

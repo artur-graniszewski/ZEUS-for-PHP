@@ -107,6 +107,17 @@ class BackendService
         return $this->messageBroker->getFrontend()->sendStatusToFrontend($this->uid, $this->getBackendServer()->getLocalPort(), $status);
     }
 
+    private function closeConnection(WorkerEvent $event)
+    {
+        if (!$this->connection->isClosed()) {
+            $this->connection->shutdown(STREAM_SHUT_RD);
+            $this->connection->close();
+        }
+
+        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
+        $event->getTarget()->setWaiting();
+        $this->connection = null;
+    }
     private function onWorkerLoop(WorkerEvent $event)
     {
         $exception = null;
@@ -126,7 +137,6 @@ class BackendService
 
                 try {
                     if ($this->backendServer->getSocket()->select(1000)) {
-                        //$this->messageBroker->getLogger()->debug(getmypid() . " connected");
                         $event->getWorker()->setRunning();
                         $connection = $this->backendServer->accept();
                         try {
@@ -155,11 +165,20 @@ class BackendService
                 return;
             }
 
-            while ($this->connection->select(5)) {
+            while ($this->connection->select(1000)) {
                 $data = $this->connection->read();
                 if ($data !== '') {
                     $this->messageBroker->onMessage($this->connection, $data);
-                    $this->connection->flush();
+
+                    do {
+                        $flushed = $this->connection->flush();
+                    } while (!$flushed);
+                } else {
+                    // its an EOF
+                    $this->messageBroker->onClose($this->connection);
+                    $this->closeConnection($event);
+
+                    return;
                 }
 
                 $this->onHeartBeat();
@@ -168,7 +187,7 @@ class BackendService
             $this->onHeartBeat();
 
             // nothing wrong happened, data was handled, resume main event
-            if ($this->connection->isReadable() && $this->connection->isWritable()) {
+            if (!$this->connection->isClosed()) {
                 return;
             }
         } catch (StreamException $streamException) {
@@ -177,28 +196,16 @@ class BackendService
         }
 
         if ($this->connection) {
-            if ($exception) {
-                try {
+            try {
+                if ($exception) {
                     $this->messageBroker->onError($this->connection, $exception);
-                } catch (\Throwable $exception) {
+                } else {
+                    $this->messageBroker->onClose($this->connection);
                 }
+            } catch (\Throwable $exception) {
             }
 
-            if (!$this->connection->isClosed()) {
-                try {
-                    $this->connection->flush();
-                } catch (\Exception $ex) {
-                    // @todo: handle this case?
-                }
-
-                try {
-                    $this->connection->close();
-                } catch (\Exception $ex) {
-                    // @todo: handle this case?
-                }
-
-            }
-            $this->connection = null;
+            $this->closeConnection($event);
         }
 
         $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);

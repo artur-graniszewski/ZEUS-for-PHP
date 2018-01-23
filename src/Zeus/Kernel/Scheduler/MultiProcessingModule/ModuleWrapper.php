@@ -171,14 +171,14 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 if ($this->ipcConnections) {
                     sleep(1);
                     $amount = count($this->ipcConnections);
-                    $this->getLogger()->info("Waiting $amount for workers to exit");
+                    $this->getLogger()->info("Waiting for $amount workers to exit");
                 }
             }
         }, SchedulerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
             $this->driver->onWorkerLoop($event);
-            $this->checkPipe();
 
+            $this->checkPipe();
             if ($this->isTerminating()) {
                 $event->getWorker()->setIsTerminating(true);
                 $event->stopPropagation(true);
@@ -236,7 +236,8 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     {
         // read all keep-alive messages
         if ($this->ipcSelector->select(0)) {
-            foreach ($this->ipcSelector->getSelectedStreams() as $stream) {
+            foreach ($this->ipcSelector->getSelectionKeys() as $key) {
+                $stream = $key->getStream();
                 try {
                     $stream->read();
                 } catch (\Throwable $ex) {
@@ -292,13 +293,21 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
     private function checkPipe()
     {
+        static $lastCheck;
+
         if (!$this->isTerminating()) {
             try {
-                $this->ipc->select(0);
-                $this->ipc->write("!");
-                $this->ipc->flush();
+                $now = time();
+                if ($lastCheck === $now) {
+                    return;
+                }
+
+                $lastCheck = $now;
+                if (($this->ipc->select(0) && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
+                    $this->setIsTerminating(true);
+                    return;
+                }
             } catch (\Throwable $exception) {
-                //$this->getLogger()->err((string) $exception); die();
                 $this->setIsTerminating(true);
             }
         }
@@ -307,12 +316,14 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     private function unregisterWorker(int $uid)
     {
         if (isset($this->ipcConnections[$uid])) {
-            $this->ipcSelector->unregister($this->ipcConnections[$uid]);
-            $this->ipcConnections[$uid]->close();
+            $connection = $this->ipcConnections[$uid];
             unset($this->ipcConnections[$uid]);
+            $this->ipcSelector->unregister($connection);
+            $connection->write('@');
+            $connection->flush();
+            $connection->shutdown(STREAM_SHUT_RD);
+            $connection->close();
         }
-
-        return $this;
     }
 
     private function registerWorker(int $uid, SocketServer $pipe)

@@ -73,7 +73,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             }
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
-        $eventSubscriber->getFrontend()->addRegistratorAddress('127.0.0.1:3333');
+        $eventSubscriber->getFrontend()->setRegistratorAddress('127.0.0.1:3333');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
@@ -149,7 +149,7 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
             throw new \RuntimeException("TEST");
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
-        $eventSubscriber->getFrontend()->addRegistratorAddress('127.0.0.1:3333');
+        $eventSubscriber->getFrontend()->setRegistratorAddress('127.0.0.1:3333');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 

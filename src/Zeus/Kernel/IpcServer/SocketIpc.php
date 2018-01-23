@@ -3,8 +3,9 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zeus\Kernel\IpcServer;
-use Zeus\Networking\Stream\AbstractStream;
+use Zeus\Networking\Exception\StreamException;
 use Zeus\Networking\Stream\FlushableStreamInterface;
+use Zeus\Networking\Stream\SelectableStreamInterface;
 
 /**
  * Class SocketIpc
@@ -13,11 +14,13 @@ use Zeus\Networking\Stream\FlushableStreamInterface;
  */
 class SocketIpc extends IpcDriver
 {
-    /** @var AbstractStream */
+    /** @var SelectableStreamInterface */
     public $stream;
 
     /** @var int */
-    protected $senderId;
+    private $senderId;
+
+    private $buffer = '';
 
     use MessagePackager;
 
@@ -50,17 +53,31 @@ class SocketIpc extends IpcDriver
         }
     }
 
+    public function isReadable() : bool
+    {
+        return $this->stream->select(0);
+    }
+
     public function readAll(bool $returnRaw = false) : array
     {
         $messages = [];
 
-        while ($data = $this->stream->read("\0")) {
-            $message = $this->unpackMessage($data);
-            $messages[] = $returnRaw ? $message : $message['msg'];
+        $buffer = $this->stream->read();
+        if ('' === $buffer) {
+            throw new StreamException("Connection closed");
         }
 
-        if ($this->stream->select(0)) {
-            trigger_error(json_encode($this->stream->read()));
+        $this->buffer .= $buffer;
+
+        if (false === ($pos = strrpos($this->buffer, "\0"))) {
+            return $messages;
+        }
+
+        $data = substr($this->buffer, 0, $pos);
+        $this->buffer = substr($this->buffer, $pos + 1);
+        foreach (explode("\0", $data) as $data) {
+            $message = $this->unpackMessage($data);
+            $messages[] = $returnRaw ? $message : $message['msg'];
         }
 
         return $messages;

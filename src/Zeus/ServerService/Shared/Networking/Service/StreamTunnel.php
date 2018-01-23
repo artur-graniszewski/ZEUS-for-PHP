@@ -61,6 +61,7 @@ class StreamTunnel
         $data = $this->srcSelectionKey->getStream()->read();
 
         if ('' === $data) {
+            $this->srcSelectionKey->getStream()->shutdown(STREAM_SHUT_RD);
             // EOF
             throw new StreamException("EOF");
         }

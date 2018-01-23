@@ -96,7 +96,8 @@ class IpcServer implements ListenerAggregateInterface
                 }
 
                 $uid = $ipcStream->read('!');
-                $this->ipcSelector->register($ipcStream, Selector::OP_READ);
+                $selectionKey = $this->ipcSelector->register($ipcStream, Selector::OP_READ);
+                $selectionKey->attach(new IpcSocketStream($ipcStream, $uid));
                 $this->ipcStreams[(int)$uid] = $ipcStream;
             }
         } catch (SocketTimeoutException $exception) {
@@ -172,21 +173,23 @@ class IpcServer implements ListenerAggregateInterface
         $this->lastTick = microtime(true);
         $diff = microtime($this->lastTick) - $lastTick;
 
-        $wait = (int) ($diff < 0.1 ? (0.1 - $diff) * 1000 : 100);
+        $wait = (int) ($diff < 1 ? (1 - $diff) * 1000 : 100);
         if (!$selector->select($wait)) {
             return;
         }
 
-        $streams = $selector->getSelectedStreams(Selector::OP_READ);
+        $keys = $selector->getSelectionKeys();
         $failed = 0; $processed = 0; $ignored = 0;
-        foreach ($streams as $stream) {
+        foreach ($keys as $key) {
             /** @var SocketStream $stream */;
+            $stream = $key->getStream();
             if ($stream->getLocalAddress() !== $this->ipcServer->getLocalAddress()) {
                 $ignored++;
                 $event = new IpcEvent();
                 $event->setName(IpcEvent::EVENT_STREAM_READABLE);
 
                 $event->setParam('selector', $selector);
+                $event->setParam('selectionKey', $key);
                 $event->setParam('stream', $stream);
                 $event->setTarget($this);
                 $this->getEventManager()->triggerEvent($event);
@@ -194,11 +197,11 @@ class IpcServer implements ListenerAggregateInterface
                 continue;
             }
 
-            $ipc = new IpcSocketStream($stream, 0);
+            /** @var IpcSocketStream $ipc */
+            $ipc = $key->getAttachment();
 
             try {
                 $messages = $ipc->readAll(true);
-
                 $this->distributeMessages($messages);
                 $processed++;
             } catch (StreamException $exception) {
@@ -225,6 +228,10 @@ class IpcServer implements ListenerAggregateInterface
 
     private function onWorkerLoop(WorkerEvent $event)
     {
+        if (!$this->ipcClient->isReadable()) {
+            return;
+        }
+
         $messages = $this->ipcClient->readAll(true);
         if (!$messages) {
             return;

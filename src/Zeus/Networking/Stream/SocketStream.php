@@ -84,7 +84,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
      */
     public function getRemoteAddress() : string
     {
-        return $this->peerName ? $this->peerName : (string) @stream_socket_get_name($this->resource, true);
+        return $this->peerName ? $this->peerName : $this->peerName = (string) @stream_socket_get_name($this->resource, true);
     }
 
     public function shutdown(int $operation)
@@ -117,10 +117,10 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         }
 
         if ($ending === '') {
-            if ($this->select(0)) {
+            //if ($this->select(0)) {
                 $data = @$readMethod($this->resource, $this->readBufferSize);
 
-                if (false === $data || '' === $data) {
+                if (false === $data) {
                     // select() reported stream to have some data to read but buffer was empty, this means:
                     // "When a socket is at EOF, read returns without blocking (a zero-length read).
                     // This is basically the definition (from an application standpoint) of EOF."
@@ -130,7 +130,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
                 } else {
                     $this->dataReceived += strlen($data);
                 }
-            }
+            //}
 
             return $data;
         }
@@ -139,11 +139,11 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         $data = '';
         $endingSize = strlen($ending);
 
-        while (!$this->isEof() && $this->select(0)) {
+        while (!$this->isEof()) {
             // @todo: add some checks if STREAM_PEEK is supported by $readMethod
             $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
 
-            if ($buffer === '' || $buffer === false) {
+            if ($buffer === false) {
                 // stream had some data to read but buffer was empty, this is an EOF situation
                 $this->isReadable = false;
                 throw new StreamException("Stream is not readable");

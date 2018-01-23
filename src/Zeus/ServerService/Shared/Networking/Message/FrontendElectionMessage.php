@@ -6,13 +6,21 @@ class FrontendElectionMessage
 {
     private $frontendsAmount;
 
-    public function __construct(int $frontendsAmount)
+    private $ipcAddress = '';
+
+    public function __construct(string $ipcAddress, int $frontendsAmount)
     {
+        $this->ipcAddress = $ipcAddress;
         $this->frontendsAmount;
     }
 
     public function getTargetFrontendsAmount() : int
     {
         return $this->frontendsAmount;
+    }
+
+    public function getIpcAddress() : string
+    {
+        return $this->ipcAddress;
     }
 }
