@@ -7,7 +7,7 @@ use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\Stream\PipeStream;
 use Zeus\Networking\Stream\Selector;
 
@@ -111,7 +111,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
                 if ($stream->select(0)) {
                     $this->pipeBuffer[$uid][$name] .= $stream->read();
                 }
-            } catch (StreamException $e) {
+            } catch (IOException $e) {
 
             }
         }
@@ -123,7 +123,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
             if (isset($this->stdErrStreams[$uid])) {
                 $this->stdErrStreams[$uid]->close();
             }
-        } catch (StreamException $ex) {
+        } catch (IOException $ex) {
 
         }
 
@@ -131,7 +131,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
             if (isset($this->stdOutStreams[$uid])) {
                 $this->stdOutStreams[$uid]->close();
             }
-        } catch (StreamException $ex) {
+        } catch (IOException $ex) {
 
         }
 
@@ -183,7 +183,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
             $this->stdOutStreams[$pid]->setBlocking(false);
             $this->stdErrStreams[$pid] = new PipeStream($pipes[2]);
             $this->stdErrStreams[$pid]->setBlocking(false);
-        } catch (StreamException $ex) {
+        } catch (IOException $ex) {
 
         }
         $this->pipeBuffer[$pid] = ['stdout' => '', 'stderr' => ''];
@@ -219,7 +219,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
             while ($data = $stream->read()) {
                 $this->pipeBuffer[$uid][$outputType] .= $data;
             }
-        } catch (StreamException $exception) {
+        } catch (IOException $exception) {
         }
 
         $this->flushBuffers($uid, false);

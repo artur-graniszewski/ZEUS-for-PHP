@@ -2,7 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 
 use function strlen;
 use function substr;
@@ -74,7 +74,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         $result = stream_set_blocking($this->resource, $isBlocking);
 
         if (!$result) {
-            throw new StreamException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
+            throw new IOException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
         }
 
         $this->isBlocking = $isBlocking;
@@ -86,15 +86,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function close()
     {
         if ($this->isClosed) {
-            throw new StreamException("Stream already closed");
+            throw new IOException("Stream already closed");
         }
 
         $exception = null;
-        try {
-            $this->flush();
-        } catch (\Exception $exception) {
-
-        }
 
         $this->isReadable = false;
         $this->isWritable = false;
@@ -115,7 +110,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     public function isClosed() : bool
     {
-        return $this->isClosed;
+        return $this->isClosed || ($this->isClosed = $this->isEof());
     }
 
     protected function doClose()
@@ -156,8 +151,8 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
      */
     protected function doRead($readMethod, string $ending = '') : string
     {
-        if (!$this->isReadable()) {
-            throw new StreamException("Stream is not readable");
+        if (!$this->isReadable() || $this->isEof()) {
+            throw new IOException("Stream is not readable");
         }
 
         if ($ending !== '') {
@@ -196,7 +191,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function write(string $data) : int
     {
         if (!$this->isWritable()) {
-            throw new StreamException("Stream is not writable");
+            throw new IOException("Stream is not writable");
         }
 
         $this->writeBuffer .= $data;

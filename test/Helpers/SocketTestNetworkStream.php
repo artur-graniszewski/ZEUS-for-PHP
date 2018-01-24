@@ -63,17 +63,15 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStream
         return $data;
     }
 
-    /**
-     * @return bool
-     */
-    public function isConnectionClosed()
+    public function isConnectionClosed() : bool
     {
         return $this->isConnectionClosed;
     }
 
-    public function isReadable()
+    public function isReadable() : bool
     {
         // TODO: Implement isReadable() method.
+        return true;
     }
 
     public function close()
@@ -81,7 +79,7 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStream
         $this->setIsConnectionClosed(true);
     }
 
-    public function isWritable()
+    public function isWritable() : bool
     {
         return $this->isConnectionWritable;
     }
@@ -120,5 +118,21 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStream
     public function setReadBufferSize(int $size)
     {
         // TODO: Implement setReadBufferSize() method.
+    }
+
+    public function getResource()
+    {
+        // TODO: Implement getResource() method.
+    }
+
+    public function getResourceId(): int
+    {
+        // TODO: Implement getResourceId() method.
+    }
+
+    public function isClosed(): bool
+    {
+        // TODO: Implement isClosed() method.
+        return false;
     }
 }

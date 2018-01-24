@@ -2,7 +2,7 @@
 
 namespace Zeus\Networking\Stream;
 
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Util\UnitConverter;
 use function stream_select;
 use function in_array;
@@ -87,7 +87,7 @@ class Selector
         $resourceId = array_search($stream, $this->streams);
 
         if ($resourceId === false) {
-            throw new StreamException("No such stream registered: $resourceId");
+            throw new IOException("No such stream registered: $resourceId");
         }
 
         if ($operation & self::OP_READ) {
@@ -133,15 +133,15 @@ class Selector
      */
     public function select(int $timeout = 0) : int
     {
-//        foreach($this->streams as $key => $stream) {
-//            if ($stream->isClosed()) {
-//                unset ($this->streamResources[self::OP_READ][$key]);
-//                unset ($this->streamResources[self::OP_WRITE][$key]);
-//                unset ($this->streamResources[self::OP_ACCEPT][$key]);
-//                unset ($this->selectionKeys[$key]);
-//                unset ($this->streams[$key]);
-//            }
-//        }
+        foreach($this->streams as $key => $stream) {
+            if ($stream->isClosed()) {
+                unset ($this->streamResources[self::OP_READ][$key]);
+                unset ($this->streamResources[self::OP_WRITE][$key]);
+                unset ($this->streamResources[self::OP_ACCEPT][$key]);
+                unset ($this->selectionKeys[$key]);
+                unset ($this->streams[$key]);
+            }
+        }
 
         $read = $this->streamResources[self::OP_READ] + $this->streamResources[self::OP_ACCEPT];
         $write = $this->streamResources[self::OP_WRITE];
@@ -149,13 +149,14 @@ class Selector
         if (!$read && !$write) {
             return 0;
         }
+
         $except = [];
 
         $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged === false) {
             $error = error_get_last();
-            throw new StreamException("Select failed: " . $error['message']);
+            throw new IOException("Select failed: " . $error['message']);
         }
         if ($streamsChanged === 0) {
             return 0;

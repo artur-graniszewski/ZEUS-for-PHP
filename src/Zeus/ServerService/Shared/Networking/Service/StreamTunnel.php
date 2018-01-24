@@ -2,7 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\Networking\Stream\SelectionKey;
 use Zeus\Networking\Stream\Selector;
@@ -63,7 +63,7 @@ class StreamTunnel
         if ('' === $data) {
             $this->srcSelectionKey->getStream()->shutdown(STREAM_SHUT_RD);
             // EOF
-            throw new StreamException("EOF");
+            throw new IOException("EOF");
         }
 
         $this->write($data);

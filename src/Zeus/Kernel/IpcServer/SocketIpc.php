@@ -3,7 +3,7 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zeus\Kernel\IpcServer;
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\Networking\Stream\SelectableStreamInterface;
 
@@ -64,7 +64,7 @@ class SocketIpc extends IpcDriver
 
         $buffer = $this->stream->read();
         if ('' === $buffer) {
-            throw new StreamException("Connection closed");
+            throw new IOException("Connection closed");
         }
 
         $this->buffer .= $buffer;

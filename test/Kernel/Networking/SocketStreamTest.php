@@ -2,6 +2,7 @@
 
 namespace ZeusTest\Kernel\Networking;
 
+use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 use Zeus\Networking\SocketServer;
 
@@ -16,7 +17,7 @@ class SocketStreamTest extends AbstractNetworkingTest
 
     public function setUp()
     {
-        $this->port = 7777;
+        $this->port = rand(7000, 8000);
         $this->server = new SocketServer($this->port);
         $this->server->setSoTimeout(1000);
     }
@@ -87,7 +88,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \Zeus\Networking\Exception\StreamException
+     * @expectedException \Zeus\Networking\Exception\IOException
      * @expectedExceptionMessage Stream already closed
      */
     public function testDoubleClose()
@@ -110,7 +111,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \Zeus\Networking\Exception\StreamException
+     * @expectedException \Zeus\Networking\Exception\IOException
      * @expectedExceptionMessage Stream is not readable
      */
     public function testExceptionWhenReadingOnClosedConnection()
@@ -124,7 +125,7 @@ class SocketStreamTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \Zeus\Networking\Exception\StreamException
+     * @expectedException \Zeus\Networking\Exception\IOException
      * @expectedExceptionMessage Stream is not writable
      */
     public function testWriteOnClosedConnection()
@@ -137,16 +138,24 @@ class SocketStreamTest extends AbstractNetworkingTest
         $connection->write("TEST");
     }
 
+    /**
+     * @expectedException \Zeus\Networking\Exception\IOException
+     * @expectedExceptionMessage Stream is not writable
+     */
     public function testWriteToDisconnectedClient()
     {
+        //$this->markTestIncomplete("Check why PHP fwrite-like functions report that entire string was written on a broken connection");
         $this->client = stream_socket_client('tcp://127.0.0.2:' . $this->port);
-        stream_set_blocking($this->client, false);
+        //stream_set_blocking($this->client, false);
         $connection = $this->server->accept();
         $this->assertTrue($connection->isReadable(), 'Connection should be readable');
+        fflush($this->client);
+        stream_socket_shutdown($this->client, STREAM_SHUT_RDWR);
         fclose($this->client);
+        $this->client = null;
         $connection->write("TEST!");
-        $connection->flush();
-        $this->assertFalse($connection->isReadable(), 'Connection should not be readable after client disconnection');
+        $wrote = $connection->flush();
+        $this->assertFalse($wrote, 'Flush should have failed');
     }
 
     /**
@@ -249,46 +258,14 @@ class SocketStreamTest extends AbstractNetworkingTest
         fclose($this->client);
     }
 
-    /**
-     * @expectedException \Zeus\Networking\Exception\StreamException
-     * @expectedExceptionMessage Stream is not readable
-     */
     public function testServerReadWhenDisconnected()
     {
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, true);
         $connection = $this->server->accept();
         fclose($this->client);
-        $connection->read();
-        $this->assertFalse($connection->isReadable(), 'Stream should not be readable when disconnected');
-    }
-
-    /**
-     * @expectedException \Zeus\Networking\Exception\StreamException
-     * @expectedExceptionMessage Stream is not readable
-     */
-    public function testServerSelectThrowsExceptionWhenDisconnected()
-    {
-        $this->client = stream_socket_client('tcp://localhost:' . $this->port);
-        stream_set_blocking($this->client, true);
-        $connection = $this->server->accept();
-        fclose($this->client);
-        $connection->read();
-        $connection->select(1000);
-    }
-
-    /**
-     * @expectedException \Zeus\Networking\Exception\StreamException
-     * @expectedExceptionMessage Stream is not readable
-     */
-    public function testSelectWhenDisconnected()
-    {
-        $this->client = stream_socket_client('tcp://localhost:' . $this->port);
-        stream_set_blocking($this->client, true);
-        $connection = $this->server->accept();
-        fclose($this->client);
-        $result = $connection->select(1000);
-        $this->assertTrue($result, 'Select should report stream as readable until read is performed on disconnected client');
+        $output = $connection->read();
+        $this->assertEmpty($output, 'Nothing should be read from stream');
     }
 
     /**

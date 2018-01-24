@@ -3,7 +3,7 @@
 namespace Zeus\Networking\Stream;
 
 use Zeus\Networking\Exception\SocketException;
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Util\UnitConverter;
 
 use function error_clear_last;
@@ -32,7 +32,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     public function select(int $timeout) : bool
     {
         if (!$this->isReadable()) {
-            throw new StreamException("Stream is not readable");
+            throw new IOException("Stream is not readable");
         }
 
         $write = $except = [];
@@ -43,7 +43,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
 
             return $result === 1;
 
-        } catch (StreamException $exception) {
+        } catch (IOException $exception) {
             $this->isReadable = false;
 
             throw $exception;
@@ -78,7 +78,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
             return 0;
         }
 
-        throw new StreamException("Stream select failed: " . $error['message']);
+        throw new IOException("Stream select failed: " . $error['message']);
     }
 
     /**
@@ -87,18 +87,19 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
      */
     protected function doWrite($writeMethod) : int
     {
+        if ($this->isEof()) {
+            $this->isWritable = false;
+            throw new SocketException(sprintf("Stream is not writable"));
+        }
         $size = strlen($this->writeBuffer);
         $sent = 0;
 
         while ($sent !== $size) {
             $wrote = @$writeMethod($this->resource, $this->writeBuffer);
-
             if ($wrote < 0 || false === $wrote) {
                 $this->isWritable = false;
 
-                if ($wrote < strlen($this->writeBuffer)) {
-                    throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
-                }
+                throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
             }
 
             if ($wrote) {

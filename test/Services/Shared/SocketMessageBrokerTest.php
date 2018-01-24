@@ -60,15 +60,15 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $worker->setLogger($event->getScheduler()->getLogger());
         $worker->setEventManager($events);
 
-        $received = null;
+        $received = [];
         $steps = 0;
         $message = new SocketTestMessage(function($connection, $data) use (&$received, &$steps) {
-            $received = $data;
+            $received[] = $data;
             $steps ++;
         }, function($connection) use (& $heartBeats) {
             $heartBeats++;
 
-            if ($heartBeats == 2) {
+            if ($heartBeats == 5) {
                 $connection->close();
             }
         });
@@ -111,8 +111,9 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event->setTarget($worker);
         $event->setWorker($worker);
         $events->triggerEvent($event);
-        $wrote = stream_socket_sendto($client, $requestString);
-        $this->assertEquals($wrote, strlen($requestString));
+        $requestString2 = "GET / HTTP/1.0\r\nConnection: close\r\n\r\n";
+        $wrote = stream_socket_sendto($client, $requestString2);
+        $this->assertEquals($wrote, strlen($requestString2));
         $events->triggerEvent($event);
 
         fclose($client);
@@ -123,9 +124,9 @@ class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
         $event->setWorker($worker);
         $events->triggerEvent($event);
 
-        $this->assertEquals($requestString, $received);
+        $this->assertEquals($requestString, $received[0]);
         $this->assertEquals(2, $steps, "Message should be fetched twice");
-        $this->assertEquals(1, $heartBeats, "Heartbeat should be called once between requests");
+        $this->assertGreaterThanOrEqual(1, $heartBeats, "Heartbeat should be called at least once between requests");
     }
 
     public function testSubscriberErrorHandling()

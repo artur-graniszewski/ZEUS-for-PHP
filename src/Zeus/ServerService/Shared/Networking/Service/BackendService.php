@@ -6,7 +6,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\SocketStream;
@@ -127,11 +127,10 @@ class BackendService
             return;
         }
 
-        //$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY);
         try {
             if (!$this->connection) {
                 if (!$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY)) {
-                    sleep(1);
+                    usleep(1000);
                     return;
                 }
 
@@ -169,7 +168,6 @@ class BackendService
                 $data = $this->connection->read();
                 if ($data !== '') {
                     $this->messageBroker->onMessage($this->connection, $data);
-
                     do {
                         $flushed = $this->connection->flush();
                     } while (!$flushed);
@@ -180,7 +178,6 @@ class BackendService
 
                     return;
                 }
-
                 $this->onHeartBeat();
             }
 
@@ -190,7 +187,7 @@ class BackendService
             if (!$this->connection->isClosed()) {
                 return;
             }
-        } catch (StreamException $streamException) {
+        } catch (IOException $streamException) {
             $this->onHeartBeat();
         } catch (\Throwable $exception) {
         }

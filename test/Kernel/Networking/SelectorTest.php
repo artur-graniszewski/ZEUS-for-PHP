@@ -83,7 +83,7 @@ class SelectorTest extends AbstractNetworkingTest
         $amountToRead = $selector->select(2000);
         $this->assertEquals(0, $amountToRead, "No stream should have been readable");
         $this->assertTrue(time() <= $now + 2, "Select method should have waited at least two seconds");
-        $this->assertEmpty($selector->getSelectedStreams(), "No streams should be returned");
+        $this->assertEmpty($selector->getSelectionKeys(), "No streams should be returned");
     }
 
     public function testSelectorOnClosedStream()
@@ -99,7 +99,7 @@ class SelectorTest extends AbstractNetworkingTest
 
         $amountToRead = $selector->select();
         $this->assertEquals(0, $amountToRead, "No stream should have been readable");
-        $this->assertEmpty($selector->getSelectedStreams(), "No streams should be returned");
+        $this->assertEmpty($selector->getSelectionKeys(), "No streams should be returned");
     }
 
     /**

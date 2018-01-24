@@ -7,8 +7,10 @@ use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Networking\Exception\SocketException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\SelectionKey;
 use Zeus\Networking\Stream\Selector;
@@ -126,8 +128,12 @@ class FrontendService
 
         $events->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
             if ($this->leaderPipe) {
-                $this->leaderPipe->flush();
-                $this->leaderPipe->shutdown(STREAM_SHUT_RD);
+                try {
+                    $this->leaderPipe->flush();
+                    $this->leaderPipe->shutdown(STREAM_SHUT_RD);
+                } catch (SocketException $ex) {
+
+                }
                 $this->leaderPipe->close();
             }
         }, 1000);
@@ -434,7 +440,11 @@ class FrontendService
         if ($data === '') {
             unset ($this->registeredWorkerStreams[$key]);
             $selectionKey->cancel();
-            $stream->flush();
+            try {
+                $stream->flush();
+            } catch (SocketException $ex) {
+
+            }
             $stream->shutdown(STREAM_SHUT_RD);
             $stream->close();
 

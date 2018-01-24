@@ -11,7 +11,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\Networking\Exception\StreamException;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\SocketServer;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
@@ -204,7 +204,7 @@ class IpcServer implements ListenerAggregateInterface
                 $messages = $ipc->readAll(true);
                 $this->distributeMessages($messages);
                 $processed++;
-            } catch (StreamException $exception) {
+            } catch (IOException $exception) {
                 $failed++;
                 $selector->unregister($stream);
 
