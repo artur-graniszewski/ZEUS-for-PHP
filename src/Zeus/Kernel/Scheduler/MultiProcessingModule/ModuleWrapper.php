@@ -8,6 +8,7 @@ use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\SocketServer;
@@ -319,9 +320,13 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $connection = $this->ipcConnections[$uid];
             unset($this->ipcConnections[$uid]);
             $this->ipcSelector->unregister($connection);
-            $connection->write('@');
-            $connection->flush();
-            $connection->shutdown(STREAM_SHUT_RD);
+            try {
+                $connection->write('@');
+                $connection->flush();
+                $connection->shutdown(STREAM_SHUT_RD);
+            } catch (IOException $ex) {
+
+            }
             $connection->close();
         }
     }

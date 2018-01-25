@@ -197,8 +197,13 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $selector = $event->getParam('selector');
 
         foreach ($this->workers as $uid => $worker) {
-            $selector->register($this->stdOutStreams[$uid], Selector::OP_READ);
-            $selector->register($this->stdErrStreams[$uid], Selector::OP_READ);
+            if ($this->stdOutStreams[$uid]->isReadable()) {
+                $selector->register($this->stdOutStreams[$uid], Selector::OP_READ);
+            }
+
+            if ($this->stdErrStreams[$uid]->isReadable()) {
+                $selector->register($this->stdErrStreams[$uid], Selector::OP_READ);
+            }
         }
     }
 
@@ -210,9 +215,11 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         if (in_array($stream, $this->stdOutStreams)) {
             $outputType = 'stdout';
             $uid = array_search($stream, $this->stdOutStreams);
-        } else {
+        } else if (in_array($stream, $this->stdErrStreams)) {
             $outputType = 'stderr';
             $uid = array_search($stream, $this->stdErrStreams);
+        } else {
+            return;
         }
 
         try {

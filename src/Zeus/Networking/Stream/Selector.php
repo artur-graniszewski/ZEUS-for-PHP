@@ -156,6 +156,11 @@ class Selector
 
         if ($streamsChanged === false) {
             $error = error_get_last();
+
+            if (strstr($error['message'], 'Interrupted system call')) {
+                return 0;
+            }
+
             throw new IOException("Select failed: " . $error['message']);
         }
         if ($streamsChanged === 0) {

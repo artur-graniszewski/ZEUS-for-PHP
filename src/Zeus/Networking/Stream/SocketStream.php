@@ -120,7 +120,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         }
 
         if ($ending === '') {
-                $data = @$readMethod($this->resource, $this->readBufferSize);
+            $data = @$readMethod($this->resource, $this->readBufferSize);
 
             if (false === $data) {
                 $this->isReadable = false;

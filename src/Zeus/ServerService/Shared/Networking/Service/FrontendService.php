@@ -247,8 +247,8 @@ class FrontendService
         $this->startFrontendServer(100);
         $this->setRegistratorAddress($message->getIpcAddress());
 
-        $event->getTarget()->send(new FrontendElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
-        $event->getTarget()->send(new FrontendElectedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_SERVER);
+        $event->getTarget()->send(new FrontendElectedMessage($message->getIpcAddress()), IpcServer::AUDIENCE_ALL);
+        $event->getTarget()->send(new FrontendElectedMessage($message->getIpcAddress()), IpcServer::AUDIENCE_SERVER);
     }
 
     public function setRegistratorAddress(string $address)
