@@ -18,9 +18,6 @@ use function strlen;
  */
 abstract class AbstractSelectableStream extends AbstractStream implements SelectableStreamInterface
 {
-    /** @var int */
-    protected $soTimeout = 1000;
-
     /** @var string */
     private $localAddress;
 
@@ -112,16 +109,6 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         $this->writeBuffer = '';
 
         return $sent;
-    }
-
-    public function getSoTimeout() : int
-    {
-        return $this->soTimeout;
-    }
-
-    public function setSoTimeout(int $milliseconds)
-    {
-        $this->soTimeout = $milliseconds;
     }
 
     /**

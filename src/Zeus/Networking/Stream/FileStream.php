@@ -7,7 +7,7 @@ namespace Zeus\Networking\Stream;
  * @package Zeus\ServerService\Shared\Networking
  * @internal
  */
-class FileStream extends AbstractStream
+class FileStream extends AbstractSelectableStream
 {
 
 }

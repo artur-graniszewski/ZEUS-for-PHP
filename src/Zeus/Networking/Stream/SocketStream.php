@@ -24,6 +24,9 @@ use function substr;
  */
 class SocketStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
+    /** @var int */
+    private $soTimeout = 1000;
+
     public function __construct($resource, string $peerName = null)
     {
         parent::__construct($resource, $peerName);
@@ -164,5 +167,15 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         $this->dataReceived += strlen($data);
 
         return $data === false ? '' : $data;
+    }
+
+    public function getSoTimeout() : int
+    {
+        return $this->soTimeout;
+    }
+
+    public function setSoTimeout(int $milliseconds)
+    {
+        $this->soTimeout = $milliseconds;
     }
 }

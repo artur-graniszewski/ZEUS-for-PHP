@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
+use LogicException;
 use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\Stream\FlushableStreamInterface;
 use Zeus\Networking\Stream\SelectionKey;
@@ -37,6 +38,9 @@ class StreamTunnel
 
     public function getId() : int
     {
+        if (null === $this->id) {
+            throw new LogicException('Tunnel ID is not set');
+        }
         return $this->id;
     }
 

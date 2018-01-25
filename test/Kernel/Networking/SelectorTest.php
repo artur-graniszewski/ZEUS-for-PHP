@@ -103,14 +103,24 @@ class SelectorTest extends AbstractNetworkingTest
     }
 
     /**
-     * @expectedException \LogicException
-     * @expectedExceptionMessage Invalid operation type: 0
+     * @expectedException \TypeError
      */
-    public function testOperationArgumentValidation()
+    public function testOperationArgumentTypeValidation()
     {
         $selector = new Selector();
         $stream = new SocketStream(fopen(__FILE__, "r"));
-        $selector->register($stream, false);
+        $selector->register($stream, "aa");
+    }
+
+    /**
+     * @expectedException \LogicException
+     * @expectedExceptionMessage Invalid operation type: -1
+     */
+    public function testOperationArgumentValueValidation()
+    {
+        $selector = new Selector();
+        $stream = new SocketStream(fopen(__FILE__, "r"));
+        $selector->register($stream, -1);
     }
 
     /**
@@ -120,7 +130,7 @@ class SelectorTest extends AbstractNetworkingTest
     public function testStreamArgumentValidation()
     {
         $selector = new Selector();
-        $stream = new FileStream(fopen(__FILE__, "r"));
+        $stream = new \stdClass();
         $selector->register($stream, false);
     }
 }
