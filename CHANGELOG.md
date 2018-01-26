@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.7.4
+- [Fix] Fixed deprecated license type in composer.json file
+
 ## Version 1.7.3
 - [Fix] Changed file name of coveralls binary used in Travis build
 - [Fix] Use older version of symfony/yaml for backward compatibility with PHP 5.6
