@@ -13,6 +13,7 @@ use Zeus\Networking\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Networking\Exception\IOException;
 use Zeus\Networking\SocketServer;
+use Zeus\Networking\Stream\SelectionKey;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 
@@ -96,7 +97,7 @@ class IpcServer implements ListenerAggregateInterface
                 }
 
                 $uid = $ipcStream->read('!');
-                $selectionKey = $this->ipcSelector->register($ipcStream, Selector::OP_READ);
+                $selectionKey = $this->ipcSelector->register($ipcStream, SelectionKey::OP_READ);
                 $selectionKey->attach(new IpcSocketStream($ipcStream, $uid));
                 $this->ipcStreams[(int)$uid] = $ipcStream;
             }

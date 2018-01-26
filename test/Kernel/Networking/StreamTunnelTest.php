@@ -16,8 +16,8 @@ class StreamTunnelTest extends AbstractNetworkingTest
         $selector = new Selector();
         $stream1 = new FileStream(fopen(__FILE__, 'r'));
         $stream2 = new FileStream(fopen(__FILE__, 'r'));
-        $key1 = $stream1->register($selector, Selector::OP_READ);
-        $key2 = $stream2->register($selector, Selector::OP_READ);
+        $key1 = $stream1->register($selector, SelectionKey::OP_READ);
+        $key2 = $stream2->register($selector, SelectionKey::OP_READ);
         $tunnel = new StreamTunnel($key1, $key2);
 
         return $tunnel;
@@ -37,8 +37,8 @@ class StreamTunnelTest extends AbstractNetworkingTest
         $selector = new Selector();
         $stream1 = new FileStream(fopen(__FILE__, 'r'));
         $stream2 = new FileStream(fopen(__FILE__, 'r'));
-        $key1 = $stream1->register($selector, Selector::OP_READ);
-        $key2 = $stream2->register($selector, Selector::OP_READ);
+        $key1 = $stream1->register($selector, SelectionKey::OP_READ);
+        $key2 = $stream2->register($selector, SelectionKey::OP_READ);
         $tunnel = new StreamTunnel($key1, $key2);
         $tunnel->setId(12);
         $this->assertEquals(12, $tunnel->getId(), "Getter should return ID set by setter");
@@ -51,14 +51,16 @@ class StreamTunnelTest extends AbstractNetworkingTest
         $dstStream = new DummySelectableStream(null);
         $srcStream->setReadable(true);
         $dstStream->setWritable(true);
-        $srcKey = $srcStream->register($selector, Selector::OP_READ);
-        $dstKey = $dstStream->register($selector, Selector::OP_WRITE);
+        $srcKey = $srcStream->register($selector, SelectionKey::OP_READ);
+        $dstKey = $dstStream->register($selector, SelectionKey::OP_WRITE);
         $srcKey->setReadable(true);
         $dstKey->setWritable(true);
         $tunnel = new StreamTunnel($srcKey, $dstKey);
 
         $srcStream->setDataToRead("test1");
         $tunnel->tunnel();
-        $this->assertEquals("test1", $dstKey->getStream()->getWrittenData());
+        $this->assertEquals($srcStream, $srcKey->getStream(), "Source streams should match");
+        $this->assertEquals($dstStream, $dstKey->getStream(), "Destrination streams should match");
+        $this->assertEquals("test1", $dstStream->getWrittenData());
     }
 }

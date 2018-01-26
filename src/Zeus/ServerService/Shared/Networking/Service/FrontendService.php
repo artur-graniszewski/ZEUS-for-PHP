@@ -159,7 +159,7 @@ class FrontendService
     {
         /** @var Selector $selector */
         $selector = $event->getParam('selector');
-        $selector->register($this->registratorServer->getSocket(), Selector::OP_ACCEPT);
+        $selector->register($this->registratorServer->getSocket(), SelectionKey::OP_ACCEPT);
     }
 
     private function checkWorkerOutput(IpcEvent $event)
@@ -221,7 +221,7 @@ class FrontendService
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
         $server->bind($this->messageBroker->getConfig()->getListenAddress(), $backlog, $this->messageBroker->getConfig()->getListenPort());
-        $server->register($this->frontendSelector, Selector::OP_ACCEPT);
+        $server->register($this->frontendSelector, SelectionKey::OP_ACCEPT);
         $this->frontendServer = $server;
     }
 
@@ -343,8 +343,8 @@ class FrontendService
             $this->backendStreams[$uid] = $backend;
             $this->frontendStreams[$uid] = $client;
 
-            $backendKey = $backend->register($this->frontendSelector, Selector::OP_READ);
-            $frontendKey = $client->register($this->frontendSelector, Selector::OP_READ);
+            $backendKey = $backend->register($this->frontendSelector, SelectionKey::OP_READ);
+            $frontendKey = $client->register($this->frontendSelector, SelectionKey::OP_READ);
             $fromFrontendBuffer = new StreamTunnel($frontendKey, $backendKey);
             $fromBackendBuffer = new StreamTunnel($backendKey, $frontendKey);
             $fromBackendBuffer->setId($uid);
@@ -421,7 +421,7 @@ class FrontendService
             $connection = $this->registratorServer->accept();
             $this->setStreamOptions($connection);
             $this->registeredWorkerStreams[] = $connection;
-            $selectionKey = $selector->register($connection, Selector::OP_READ);
+            $selectionKey = $selector->register($connection, SelectionKey::OP_READ);
             $selectionKey->attach(new ReadBuffer());
             $this->setStreamOptions($connection);
         } catch (SocketTimeoutException $exception) {

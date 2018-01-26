@@ -250,7 +250,7 @@ final class SocketServer
 
     /**
      * @param Selector $selector
-     * @param int $operation See Selector::OP_READ, Selector::OP_WRITE, Selector::OP_ACCEPT
+     * @param int $operation See SelectionKey::OP_READ, SelectionKey::OP_WRITE, SelectionKey::OP_ACCEPT
      * @return SelectionKey
      */
     public function register(Selector $selector, int $operation) : SelectionKey

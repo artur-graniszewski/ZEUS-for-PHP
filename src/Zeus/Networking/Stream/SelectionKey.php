@@ -4,11 +4,14 @@ namespace Zeus\Networking\Stream;
 
 class SelectionKey
 {
-    private $isReadable = false;
+    const OP_READ = 1;
+    const OP_WRITE = 2;
+    const OP_ACCEPT = 4;
+    const OP_ALL = 7;
 
-    private $isWritable = false;
+    private $readyOps = 0;
 
-    private $isAcceptable = false;
+    private $interestOps = 0;
 
     /** @var SelectableStreamInterface */
     private $stream;
@@ -31,45 +34,63 @@ class SelectionKey
 
     public function isReadable() : bool
     {
-        return $this->isReadable;
+        return $this->readyOps & SelectionKey::OP_READ;
     }
 
     public function isWritable() : bool
     {
-        return $this->isWritable;
+        return $this->readyOps & SelectionKey::OP_WRITE;
     }
 
     public function isAcceptable() : bool
     {
-        return $this->isAcceptable;
+        return $this->readyOps & SelectionKey::OP_ACCEPT;
     }
 
     public function setReadable(bool $true)
     {
-        $this->isReadable = $true;
+        $bit = (int) $true;
+
+        $this->readyOps ^= (-$bit ^ $this->readyOps) & SelectionKey::OP_READ;
     }
 
     public function setWritable(bool $true)
     {
-        $this->isWritable = $true;
+        $bit = (int) $true;
+
+        $this->readyOps ^= (-$bit ^ $this->readyOps) & SelectionKey::OP_WRITE;
     }
 
     public function setAcceptable(bool $true)
     {
-        $this->isAcceptable = $true;
+        $bit = (int) $true;
+
+        $this->readyOps ^= (-$bit ^ $this->readyOps) & SelectionKey::OP_ACCEPT;
     }
 
+    /**
+     * @param object $object
+     * @throws \TypeError
+     */
     public function attach($object)
     {
         if (!is_object($object)) {
-            throw new \LogicException("Input parameter must be of an object type");
+            throw new \TypeError("Input parameter must be of an object type");
         }
         $this->object = $object;
     }
 
+    /**
+     * @return object
+     * @throws \LogicException
+     */
     public function getAttachment()
     {
-        return $this->object;
+        if ($this->object) {
+            return $this->object;
+        }
+
+        throw new \LogicException("Attachment not present");
     }
 
     public function getSelector() : Selector
@@ -77,8 +98,31 @@ class SelectionKey
         return $this->selector;
     }
 
-    public function cancel($operation = Selector::OP_ALL)
+    public function cancel($operation = SelectionKey::OP_ALL)
     {
         $this->selector->unregister($this->stream, $operation);
+    }
+
+    public function getReadyOps() : int
+    {
+        return $this->readyOps;
+    }
+
+    public function getInterestOps() : int
+    {
+        return $this->interestOps;
+    }
+
+    /**
+     * @param int $ops
+     * @throws \LogicException
+     */
+    public function setInterestOps(int $ops)
+    {
+        if ($ops >= 0 && $ops <= static::OP_ALL) {
+            $this->interestOps = $ops;
+        } else {
+            throw new \LogicException("Invalid operation type: " . json_encode($ops));
+        }
     }
 }

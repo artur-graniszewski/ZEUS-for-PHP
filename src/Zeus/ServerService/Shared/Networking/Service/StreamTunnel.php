@@ -58,7 +58,7 @@ class StreamTunnel
         }
 
         if (!$this->srcSelectionKey->getStream()->isReadable()) {
-            $this->srcSelectionKey->cancel(Selector::OP_READ);
+            $this->srcSelectionKey->cancel(SelectionKey::OP_READ);
             return;
         }
 
@@ -90,9 +90,9 @@ class StreamTunnel
 
                 $this->isSaturated = false;
                 if ($srcStream->isReadable()) {
-                    $this->srcSelectionKey->getStream()->register($this->srcSelectionKey->getSelector(), Selector::OP_READ);
+                    $this->srcSelectionKey->getStream()->register($this->srcSelectionKey->getSelector(), SelectionKey::OP_READ);
                 }
-                $this->srcSelectionKey->cancel(Selector::OP_WRITE);
+                $this->srcSelectionKey->cancel(SelectionKey::OP_WRITE);
 
                 return;
             }
@@ -111,9 +111,9 @@ class StreamTunnel
 
             $this->isSaturated = true;
             if ($dstStream->isWritable()) {
-                $this->dstSelectionKey->getStream()->register($this->dstSelectionKey->getSelector(), Selector::OP_WRITE);
+                $this->dstSelectionKey->getStream()->register($this->dstSelectionKey->getSelector(), SelectionKey::OP_WRITE);
             }
-            $this->srcSelectionKey->cancel(Selector::OP_READ);
+            $this->srcSelectionKey->cancel(SelectionKey::OP_READ);
         }
     }
 }

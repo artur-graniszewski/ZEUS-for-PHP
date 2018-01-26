@@ -259,7 +259,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 $connection = $this->ipcServers[$uid]->accept();
                 $this->setStreamOptions($connection);
                 $this->ipcConnections[$uid] = $connection;
-                $this->ipcSelector->register($connection, Selector::OP_READ);
+                $this->ipcSelector->register($connection, SelectionKey::OP_READ);
                 $this->ipcServers[$uid]->close();
                 unset($this->ipcServers[$uid]);
             } catch (SocketTimeoutException $exception) {

@@ -10,9 +10,20 @@ class DummySelectableStream extends AbstractSelectableStream
 
     private $dataToRead = '';
 
+    private $resourceId = 0;
+
+    private static $resourceIndex = 0;
+
     public function __construct($resource, $peerName = null)
     {
+        static::$resourceIndex++;
 
+        $this->resourceId = static::$resourceIndex;
+    }
+
+    public function getResourceId(): int
+    {
+        return $this->resourceId;
     }
 
     public function setReadable(bool $isReadable)

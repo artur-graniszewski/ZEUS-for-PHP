@@ -3,7 +3,7 @@
 namespace ZeusTest\Kernel\Networking;
 
 use Zeus\Networking\SocketServer;
-use Zeus\Networking\Stream\FileStream;
+use Zeus\Networking\Stream\SelectionKey;
 use Zeus\Networking\Stream\Selector;
 use Zeus\Networking\Stream\SocketStream;
 
@@ -11,6 +11,29 @@ class SelectorTest extends AbstractNetworkingTest
 {
     const MIN_TEST_PORT = 7777;
     const MAX_TEST_PORT = 7787;
+
+    public function opsProvider()
+    {
+        return [
+            [SelectionKey::OP_READ],
+            [SelectionKey::OP_WRITE],
+            [SelectionKey::OP_ACCEPT],
+            [SelectionKey::OP_READ|SelectionKey::OP_WRITE],
+            [SelectionKey::OP_ACCEPT|SelectionKey::OP_READ],
+            [SelectionKey::OP_ACCEPT|SelectionKey::OP_WRITE],
+        ];
+    }
+    /**
+     * @param int $opBits
+     * @dataProvider opsProvider
+     */
+    public function testSelectionKeysInterestOpsModifiedBySelectorWhenRegistering(int $opBits)
+    {
+        $selector = new Selector();
+        $stream = new DummySelectableStream(null);
+        $key = $stream->register($selector, $opBits);
+        $this->assertEquals($opBits, $key->getInterestOps());
+    }
 
     public function testMultiSelectOnAcceptedSockets()
     {
@@ -27,9 +50,9 @@ class SelectorTest extends AbstractNetworkingTest
 
             $stream = $servers[$port]->accept();
             $streams[] = $stream;
-            $readSelector->register($stream, Selector::OP_READ);
-            $writeSelector->register($stream, Selector::OP_WRITE);
-            $fullSelector->register($stream, Selector::OP_ALL);
+            $readSelector->register($stream, SelectionKey::OP_READ);
+            $writeSelector->register($stream, SelectionKey::OP_WRITE);
+            $fullSelector->register($stream, SelectionKey::OP_ALL);
         }
 
         $amountToRead = $readSelector->select();
@@ -58,8 +81,8 @@ class SelectorTest extends AbstractNetworkingTest
 
             $stream = $servers[$port]->accept();
             $streams[] = $stream;
-            $readSelector->register($stream, Selector::OP_READ);
-            $fullSelector->register($stream, Selector::OP_ALL);
+            $readSelector->register($stream, SelectionKey::OP_READ);
+            $fullSelector->register($stream, SelectionKey::OP_ALL);
         }
 
         $amountToRead = $readSelector->select();
@@ -77,7 +100,7 @@ class SelectorTest extends AbstractNetworkingTest
         $server = $this->addServer(self::MIN_TEST_PORT);
         $this->addClient(self::MIN_TEST_PORT);
         $stream = $server->accept();
-        $selector->register($stream, Selector::OP_READ);
+        $selector->register($stream, SelectionKey::OP_READ);
 
         $now = time();
         $amountToRead = $selector->select(2000);
@@ -92,7 +115,7 @@ class SelectorTest extends AbstractNetworkingTest
         $server = $this->addServer(self::MIN_TEST_PORT);
         $this->addClient(self::MIN_TEST_PORT);
         $stream = $server->accept();
-        $selector->register($stream, Selector::OP_READ);
+        $selector->register($stream, SelectionKey::OP_READ);
         $stream->close();
 
         $this->assertTrue($stream->isClosed(), "Stream should be closed");
