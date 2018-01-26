@@ -80,7 +80,7 @@ class Selector
 
         $resourceId = array_search($stream, $this->streams);
 
-        if ($resourceId === false) {
+        if ($resourceId === false && !$stream->isClosed()) {
             throw new IOException("No such stream registered: $resourceId");
         }
 

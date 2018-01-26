@@ -6,6 +6,7 @@ use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerInterface;
+use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\Exception\IOException;

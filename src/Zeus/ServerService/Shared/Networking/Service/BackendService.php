@@ -104,6 +104,7 @@ class BackendService
 
     private function sendStatusToFrontend(string $status) : bool
     {
+        $this->messageBroker->getLogger()->debug("Listening on " . $this->getBackendServer()->getLocalPort());
         return $this->messageBroker->getFrontend()->sendStatusToFrontend($this->uid, $this->getBackendServer()->getLocalPort(), $status);
     }
 
@@ -118,14 +119,10 @@ class BackendService
         $event->getTarget()->setWaiting();
         $this->connection = null;
     }
+
     private function onWorkerLoop(WorkerEvent $event)
     {
         $exception = null;
-
-        if ($this->backendServer->isClosed()) {
-            //$this->startBackendServer($event);
-            return;
-        }
 
         try {
             if (!$this->connection) {

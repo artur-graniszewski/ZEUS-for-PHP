@@ -80,6 +80,8 @@ class FrontendService
     /** @var  SocketStream */
     private $leaderPipe;
 
+    private $registratorLaunched = false;
+
     public function __construct(SocketMessageBroker $messageBroker)
     {
         $this->messageBroker = $messageBroker;
@@ -114,9 +116,6 @@ class FrontendService
             }
         }, WorkerEvent::PRIORITY_REGULAR);
 
-        $events->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $event) {
-            $this->startLeaderElection($event);
-        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function (IpcEvent $event) {
             $this->onFrontendElected($event);
@@ -145,11 +144,16 @@ class FrontendService
                 $lasttime = $now;
                 $uids = array_keys($this->availableWorkers);
                 sort($uids);
-                //$this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
+                $this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
             }
         }, 1000);
-        $events->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $event) use ($events) {
-            $this->startRegistratorServer();
+        $events->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) use ($events) {
+            if ($this->registratorLaunched === true) {
+                return;
+            }
+
+            $this->registratorLaunched = true;
+            $this->startLeaderElection($event);
             $events->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
             $events->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
         }, 1000);
@@ -597,5 +601,6 @@ class FrontendService
         $server->setTcpNoDelay(true);
         $server->bind($this->backendHost, 1000, 0);
         $this->registratorServer = $server;
+        $this->messageBroker->getLogger()->debug("Starting registrator on port: " . $this->registratorServer->getLocalPort());
     }
 }
