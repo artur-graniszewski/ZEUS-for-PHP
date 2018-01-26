@@ -104,7 +104,6 @@ class BackendService
 
     private function sendStatusToFrontend(string $status) : bool
     {
-        $this->messageBroker->getLogger()->debug("Listening on " . $this->getBackendServer()->getLocalPort());
         return $this->messageBroker->getFrontend()->sendStatusToFrontend($this->uid, $this->getBackendServer()->getLocalPort(), $status);
     }
 
@@ -165,6 +164,10 @@ class BackendService
                 $data = $this->connection->read();
                 if ($data !== '') {
                     $this->messageBroker->onMessage($this->connection, $data);
+
+                    if ($this->connection->isClosed()) {
+                        break;
+                    }
                     do {
                         $flushed = $this->connection->flush();
                     } while (!$flushed);
@@ -178,10 +181,10 @@ class BackendService
                 $this->onHeartBeat();
             }
 
-            $this->onHeartBeat();
-
             // nothing wrong happened, data was handled, resume main event
             if (!$this->connection->isClosed()) {
+                $this->onHeartBeat();
+
                 return;
             }
         } catch (IOException $streamException) {

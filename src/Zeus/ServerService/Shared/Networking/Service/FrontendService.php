@@ -144,7 +144,7 @@ class FrontendService
                 $lasttime = $now;
                 $uids = array_keys($this->availableWorkers);
                 sort($uids);
-                $this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
+                //$this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
             }
         }, 1000);
         $events->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) use ($events) {

@@ -127,7 +127,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     public function isClosed() : bool
     {
-        return $this->isClosed || ($this->isClosed = $this->isEof());
+        return $this->isClosed;
     }
 
     protected function doClose()
@@ -139,7 +139,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     protected function isEof() : bool
     {
         // curious, if stream_get_meta_data() is executed before feof(), then feof() result will be altered and may lie
-        if (feof($this->resource)) {
+        if (@feof($this->resource)) {
             return true;
         }
         $info = @stream_get_meta_data($this->resource);
