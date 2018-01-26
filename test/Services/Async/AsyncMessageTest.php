@@ -4,7 +4,7 @@ namespace ZeusTest\Services\Async;
 
 use Opis\Closure\SerializableClosure;
 use PHPUnit_Framework_TestCase;
-use Zeus\Networking\Stream\NetworkStreamInterface;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Async\Message\Message;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 

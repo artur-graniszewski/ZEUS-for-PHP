@@ -4,7 +4,7 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
-use Zeus\Networking\Stream\NetworkStreamInterface;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
 use Zeus\ServerService\Shared\Networking\Service\FrontendService;

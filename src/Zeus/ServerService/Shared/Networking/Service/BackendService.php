@@ -6,10 +6,10 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\Exception\IOException;
+use Zeus\IO\Exception\IOException;
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\Networking\SocketServer;
-use Zeus\Networking\Stream\SocketStream;
+use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\SocketStream;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 

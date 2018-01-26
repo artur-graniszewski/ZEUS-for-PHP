@@ -3,10 +3,10 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use LogicException;
-use Zeus\Networking\Exception\IOException;
-use Zeus\Networking\Stream\FlushableStreamInterface;
-use Zeus\Networking\Stream\SelectionKey;
-use Zeus\Networking\Stream\Selector;
+use Zeus\IO\Exception\IOException;
+use Zeus\IO\Stream\FlushableStreamInterface;
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
 
 class StreamTunnel
 {

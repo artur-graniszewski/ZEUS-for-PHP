@@ -7,9 +7,9 @@ use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\Exception\IOException;
-use Zeus\Networking\Stream\PipeStream;
-use Zeus\Networking\Stream\Selector;
+use Zeus\IO\Exception\IOException;
+use Zeus\IO\Stream\PipeStream;
+use Zeus\IO\Stream\Selector;
 
 final class ProcessOpen extends AbstractProcessModule implements SeparateAddressSpaceInterface
 {

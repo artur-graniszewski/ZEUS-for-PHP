@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Networking\Stream;
+namespace Zeus\IO\Stream;
 
 abstract class AbstractPhpResource implements ResourceInterface
 {

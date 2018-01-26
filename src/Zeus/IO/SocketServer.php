@@ -1,13 +1,13 @@
 <?php
 
-namespace Zeus\Networking;
+namespace Zeus\IO;
 
-use Zeus\Networking\Exception\SocketException;
-use Zeus\Networking\Exception\SocketTimeoutException;
-use Zeus\Networking\Stream\SelectableStreamInterface;
-use Zeus\Networking\Stream\SelectionKey;
-use Zeus\Networking\Stream\Selector;
-use Zeus\Networking\Stream\SocketStream;
+use Zeus\IO\Exception\SocketException;
+use Zeus\IO\Exception\SocketTimeoutException;
+use Zeus\IO\Stream\SelectableStreamInterface;
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
+use Zeus\IO\Stream\SocketStream;
 use Zeus\Util\UnitConverter;
 use function stream_socket_accept;
 use function stream_socket_server;

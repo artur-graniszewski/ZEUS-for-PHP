@@ -1,8 +1,8 @@
 <?php
 
-namespace Zeus\Networking\Stream;
+namespace Zeus\IO\Stream;
 
-use Zeus\Networking\Exception\IOException;
+use Zeus\IO\Exception\IOException;
 
 use function strlen;
 use function substr;
@@ -24,9 +24,9 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     const DEFAULT_WRITE_BUFFER_SIZE = 65536;
     const DEFAULT_READ_BUFFER_SIZE = 65536;
 
-    protected $isWritable = true;
+    protected $isWritable = false;
 
-    protected $isReadable = true;
+    protected $isReadable = false;
 
     protected $isClosed = false;
 
@@ -57,6 +57,20 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     {
         parent::__construct($resource, $peerName);
         $this->peerName = $peerName;
+        $this->detectResourceMode();
+    }
+
+    protected function detectResourceMode()
+    {
+        $meta = stream_get_meta_data($this->getResource());
+        $mode = $meta['mode'];
+        if (preg_match('~([waxc]|r\+)~', $mode)) {
+            $this->isWritable = true;
+        }
+
+        if (preg_match('~(r|r\+|w\+|x\+|a\+|c\+)~', $mode)) {
+            $this->isReadable = true;
+        }
     }
 
     public function isReadable() : bool
@@ -71,10 +85,13 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     public function setBlocking(bool $isBlocking)
     {
-        $result = stream_set_blocking($this->resource, $isBlocking);
+        error_clear_last();
+        $result = @stream_set_blocking($this->resource, $isBlocking);
 
         if (!$result) {
-            throw new IOException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode");
+            $error = error_get_last();
+            $message = $error ? str_replace("stream_set_blocking(): ", '', $error['message']) : 'unknown error';
+            throw new IOException("Failed to switch the stream to a " . (!$isBlocking ? "non-" : "") . "blocking mode: " . $message);
         }
 
         $this->isBlocking = $isBlocking;
@@ -221,7 +238,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
         while ($sent !== $size) {
             $wrote = $writeMethod($this->resource, $this->writeBuffer);
-
             if ($wrote < 0 || false === $wrote) {
                 $this->isWritable = false;
                 break;

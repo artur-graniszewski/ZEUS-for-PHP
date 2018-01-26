@@ -2,9 +2,9 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\Networking\Stream\NetworkStreamInterface;
-use Zeus\Networking\Stream\FlushableStreamInterface;
-use Zeus\Networking\Stream\SelectableStreamInterface;
+use Zeus\IO\Stream\NetworkStreamInterface;
+use Zeus\IO\Stream\FlushableStreamInterface;
+use Zeus\IO\Stream\SelectableStreamInterface;
 
 class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStreamInterface
 {

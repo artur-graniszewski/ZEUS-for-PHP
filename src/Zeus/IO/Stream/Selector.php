@@ -1,8 +1,8 @@
 <?php
 
-namespace Zeus\Networking\Stream;
+namespace Zeus\IO\Stream;
 
-use Zeus\Networking\Exception\IOException;
+use Zeus\IO\Exception\IOException;
 use Zeus\Util\UnitConverter;
 use function stream_select;
 use function array_search;

@@ -1,10 +1,10 @@
 <?php
 
-namespace Zeus\Networking\Stream;
+namespace Zeus\IO\Stream;
 
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\Networking\Exception\SocketException;
-use Zeus\Networking\Exception\IOException;
+use Zeus\IO\Exception\SocketException;
+use Zeus\IO\Exception\IOException;
 
 use function stream_socket_get_name;
 use function socket_import_stream;
@@ -36,6 +36,12 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
 
         $this->writeCallback = 'stream_socket_sendto';
         $this->readCallback = 'stream_socket_recvfrom';
+    }
+
+    protected function detectResourceMode()
+    {
+        $this->isReadable = true;
+        $this->isWritable = true;
     }
 
     /**

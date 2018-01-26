@@ -9,7 +9,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilitie
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\SocketServer;
+use Zeus\IO\SocketServer;
 
 class DummyMpm extends AbstractModule
 {

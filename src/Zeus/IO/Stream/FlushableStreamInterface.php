@@ -1,10 +1,10 @@
 <?php
 
-namespace Zeus\Networking\Stream;
+namespace Zeus\IO\Stream;
 
 /**
  * Interface FlushableStreamInterface
- * @package Zeus\Networking
+ * @package Zeus\IO
  * @internal
  */
 interface FlushableStreamInterface

@@ -1,9 +1,9 @@
 <?php
 
-namespace Zeus\Networking\Stream;
+namespace Zeus\IO\Stream;
 
-use Zeus\Networking\Exception\SocketException;
-use Zeus\Networking\Exception\IOException;
+use Zeus\IO\Exception\SocketException;
+use Zeus\IO\Exception\IOException;
 use Zeus\Util\UnitConverter;
 
 use function error_clear_last;
@@ -91,19 +91,17 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         $size = strlen($this->writeBuffer);
         $sent = 0;
 
-        while ($sent !== $size) {
-            $wrote = @$writeMethod($this->resource, $this->writeBuffer);
-            if ($wrote < 0 || false === $wrote) {
-                $this->isWritable = false;
+        $wrote = @$writeMethod($this->resource, $this->writeBuffer);
+        if ($wrote < 0 || false === $wrote) {
+            $this->isWritable = false;
 
-                throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
-            }
+            throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
+        }
 
-            if ($wrote) {
-                $sent += $wrote;
-                $this->writeBuffer = substr($this->writeBuffer, $wrote);
-            }
-        };
+        if ($wrote) {
+            $sent += $wrote;
+            $this->writeBuffer = substr($this->writeBuffer, $wrote);
+        }
 
         $this->dataSent += $sent;
         $this->writeBuffer = '';

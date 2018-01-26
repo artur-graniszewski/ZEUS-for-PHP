@@ -3,9 +3,9 @@
 namespace Zeus\Kernel\IpcServer;
 
 use Zeus\Kernel\IpcServer;
-use Zeus\Networking\Exception\IOException;
-use Zeus\Networking\Stream\FlushableStreamInterface;
-use Zeus\Networking\Stream\SelectableStreamInterface;
+use Zeus\IO\Exception\IOException;
+use Zeus\IO\Stream\FlushableStreamInterface;
+use Zeus\IO\Stream\SelectableStreamInterface;
 
 /**
  * Class SocketIpc

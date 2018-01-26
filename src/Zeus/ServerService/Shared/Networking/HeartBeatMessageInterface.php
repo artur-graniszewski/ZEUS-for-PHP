@@ -2,7 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-use Zeus\Networking\Stream\NetworkStreamInterface;
+use Zeus\IO\Stream\NetworkStreamInterface;
 
 /**
  * Interface HeartBeatMessageInterface

@@ -5,11 +5,11 @@ namespace Zeus\ServerService\Async;
 use Opis\Closure\SerializableClosure;
 use Zend\Mvc\Controller\Plugin\AbstractPlugin;
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\Networking\Stream\AbstractStream;
-use Zeus\Networking\Stream\NetworkStreamInterface;
-use Zeus\Networking\Stream\FlushableStreamInterface;
-use Zeus\Networking\Stream\SelectableStreamInterface;
-use Zeus\Networking\Stream\SocketStream;
+use Zeus\IO\Stream\AbstractStream;
+use Zeus\IO\Stream\NetworkStreamInterface;
+use Zeus\IO\Stream\FlushableStreamInterface;
+use Zeus\IO\Stream\SelectableStreamInterface;
+use Zeus\IO\Stream\SocketStream;
 
 // Plugin class
 class AsyncPlugin extends AbstractPlugin

@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Networking\Exception;
+namespace Zeus\IO\Exception;
 
 class IOException extends \RuntimeException
 {

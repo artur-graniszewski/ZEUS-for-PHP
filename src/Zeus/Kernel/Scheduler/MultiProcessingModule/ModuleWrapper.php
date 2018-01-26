@@ -8,12 +8,12 @@ use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Networking\Exception\IOException;
-use Zeus\Networking\Exception\SocketTimeoutException;
+use Zeus\IO\Exception\IOException;
+use Zeus\IO\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\Networking\SocketServer;
-use Zeus\Networking\Stream\Selector;
-use Zeus\Networking\Stream\SocketStream;
+use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\Selector;
+use Zeus\IO\Stream\SocketStream;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
