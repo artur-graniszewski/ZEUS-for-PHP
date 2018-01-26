@@ -2,7 +2,7 @@
   "name": "zeus-server/zf3-server",
   "description": "A native PHP, event-driven, preemptive Multitasking Runtime Environment and Service Management System integrated with Zend Framework 3. It's main purpose is to perform multiple tasks (processes) concurrently. ",
   "type": "library",
-  "license": "LGPL-3.0",
+  "license": "LGPL-3.0-only",
   "authors": [
     {
       "name": "Artur Graniszewski",
