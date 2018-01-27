@@ -78,7 +78,7 @@ class Worker extends AbstractService
         $now = time();
         if ($status->getCode() === WorkerState::RUNNING) {
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
-                return $this;
+                return;
             }
         }
 
@@ -101,7 +101,7 @@ class Worker extends AbstractService
         $now = time();
         if ($status->getCode() === WorkerState::WAITING) {
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
-                return $this;
+                return;
             }
         }
 
@@ -167,7 +167,6 @@ class Worker extends AbstractService
             $status->setIsLastTask($runsLeft === 1);
             $this->collectCycles();
             $exception = null;
-            //$this->getLogger()->debug("Worker loop");
             try {
                 $event = new WorkerEvent();
                 $event->setTarget($this);

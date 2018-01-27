@@ -8,6 +8,7 @@ use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
 use Zeus\ServerService\Shared\Networking\Service\FrontendService;
+use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 
 /**
  * Class SocketMessageBroker
@@ -27,17 +28,26 @@ final class SocketMessageBroker
     /** @var BackendService */
     private $backendService;
 
+    /** @var RegistratorService */
+    private $registratorService;
+
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
         $this->config = $config;
         $this->message = $message;
         $this->frontendService = new FrontendService($this);
         $this->backendService = new BackendService($this);
+        $this->registratorService = new RegistratorService($this);
     }
 
     public function getFrontend() : FrontendService
     {
         return $this->frontendService;
+    }
+
+    public function getRegistrator() : RegistratorService
+    {
+        return $this->registratorService;
     }
 
     public function getBackend() : BackendService
@@ -49,6 +59,7 @@ final class SocketMessageBroker
     {
         $this->frontendService->attach($events);
         $this->backendService->attach($events);
+        $this->registratorService->attach($events);
     }
 
     public function getConfig() : AbstractNetworkServiceConfig

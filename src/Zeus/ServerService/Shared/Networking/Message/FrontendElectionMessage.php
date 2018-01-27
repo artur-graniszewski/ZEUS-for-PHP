@@ -4,23 +4,15 @@ namespace Zeus\ServerService\Shared\Networking\Message;
 
 class FrontendElectionMessage
 {
-    private $frontendsAmount;
+    private $frontendsAmount = 0;
 
-    private $ipcAddress = '';
-
-    public function __construct(string $ipcAddress, int $frontendsAmount)
+    public function __construct(int $frontendsAmount)
     {
-        $this->ipcAddress = $ipcAddress;
-        $this->frontendsAmount;
+        $this->frontendsAmount = $frontendsAmount;
     }
 
     public function getTargetFrontendsAmount() : int
     {
         return $this->frontendsAmount;
-    }
-
-    public function getIpcAddress() : string
-    {
-        return $this->ipcAddress;
     }
 }

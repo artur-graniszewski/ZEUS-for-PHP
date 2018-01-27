@@ -154,7 +154,6 @@ class IpcServer implements ListenerAggregateInterface
         }
 
         $ipcStream = new SocketStream($socket);
-        $ipcStream->setBlocking(false);
         $this->setStreamOptions($ipcStream);
         $ipcStream->write("$uid!");
         $ipcStream->flush();

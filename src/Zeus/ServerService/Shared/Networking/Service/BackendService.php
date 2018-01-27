@@ -18,7 +18,7 @@ use function time;
 class BackendService
 {
     /** @var bool */
-    private $isLeader = false;
+    private $isBackend = true;
 
     /** @var int */
     private $lastTickTime = 0;
@@ -46,7 +46,7 @@ class BackendService
     public function attach(EventManagerInterface $events)
     {
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->onWorkerInit($event);
+            $this->startBackendServer($event);
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
@@ -54,7 +54,7 @@ class BackendService
         }, 1000);
 
         $events->attach(WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
-            if ($this->isLeader) {
+            if (!$this->isBackend) {
                 return;
             }
 
@@ -62,22 +62,25 @@ class BackendService
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
-            $this->onLeaderElected($event);
+            $this->onFrontendElected($event);
         }, WorkerEvent::PRIORITY_FINALIZE);
     }
 
-    private function onLeaderElected(IpcEvent $event)
+    private function onFrontendElected(IpcEvent $event)
     {
         $message = $event->getParams();
 
+        // @todo: BackendService should not contain such logic! 
         if ($message instanceof FrontendElectionMessage) {
-            $this->isLeader = true;
+            $this->isBackend = false;
             $this->getBackendServer()->close();
         }
     }
 
     private function onWorkerExit(WorkerEvent $event)
     {
+        $this->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE);
+
         if ($this->backendServer && !$this->backendServer->isClosed()) {
             $this->backendServer->close();
             $this->backendServer = null;
@@ -102,9 +105,9 @@ class BackendService
         }
     }
 
-    private function sendStatusToFrontend(string $status) : bool
+    private function notifyRegistrator(string $status) : bool
     {
-        return $this->messageBroker->getFrontend()->sendStatusToFrontend($this->uid, $this->getBackendServer()->getLocalPort(), $status);
+        return $this->messageBroker->getRegistrator()->notifyRegistrator($this->uid, $this->getBackendServer()->getLocalPort(), $status);
     }
 
     private function closeConnection(WorkerEvent $event)
@@ -125,7 +128,7 @@ class BackendService
 
         try {
             if (!$this->connection) {
-                if (!$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY)) {
+                if (!$this->notifyRegistrator(RegistratorService::STATUS_WORKER_READY)) {
                     usleep(1000);
                     return;
                 }
@@ -230,10 +233,5 @@ class BackendService
         $worker = $event->getWorker();
         $this->uid = $worker->getUid();
         $this->backendServer = $server;
-    }
-
-    private function onWorkerInit(WorkerEvent $event)
-    {
-        $this->startBackendServer($event);
     }
 }
