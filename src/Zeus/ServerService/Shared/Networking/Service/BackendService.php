@@ -14,6 +14,7 @@ use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 use function time;
+use function usleep;
 
 class BackendService
 {

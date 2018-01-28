@@ -2,6 +2,8 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
+use function strpos;
+
 class ReadBuffer
 {
     private $data = '';
@@ -15,6 +17,7 @@ class ReadBuffer
     {
         $data = $this->data;
         $this->data = '';
+
         return $data;
     }
 

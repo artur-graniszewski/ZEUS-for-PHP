@@ -17,6 +17,12 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Shared\Networking\Message\RegistratorStartedMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
+use function stream_context_create;
+use function stream_socket_client;
+use function substr;
+use function explode;
+use function in_array;
+
 class RegistratorService
 {
     const STATUS_WORKER_READY = 'ready';

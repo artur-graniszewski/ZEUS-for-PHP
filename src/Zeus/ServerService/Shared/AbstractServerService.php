@@ -25,9 +25,9 @@ abstract class AbstractServerService implements ServerServiceInterface
      */
     public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
     {
-        $this->scheduler = $scheduler;
-        $this->config = $config;
-        $this->logger = $logger;
+        $this->setScheduler($scheduler);
+        $this->setConfig($config);
+        $this->setLogger($logger);
     }
 
     public function start()
@@ -43,7 +43,7 @@ abstract class AbstractServerService implements ServerServiceInterface
     /**
      * @return mixed[]
      */
-    public function getConfig()
+    public function getConfig() : array
     {
         return $this->config;
     }
@@ -51,15 +51,12 @@ abstract class AbstractServerService implements ServerServiceInterface
     /**
      * @param mixed[] $config
      */
-    public function setConfig($config)
+    public function setConfig(array $config)
     {
         $this->config = $config;
     }
 
-    /**
-     * @return Scheduler
-     */
-    public function getScheduler()
+    public function getScheduler() : Scheduler
     {
         return $this->scheduler;
     }
@@ -69,10 +66,7 @@ abstract class AbstractServerService implements ServerServiceInterface
         $this->scheduler = $scheduler;
     }
 
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger()
+    public function getLogger() : LoggerInterface
     {
         return $this->logger;
     }

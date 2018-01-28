@@ -75,7 +75,7 @@ final class SocketMessageBroker
     public function getLogger() : LoggerInterface
     {
         if (!isset($this->logger)) {
-            throw new \LogicException("Logger not available");
+            throw new \LogicException("Logger not set");
         }
         return $this->logger;
     }

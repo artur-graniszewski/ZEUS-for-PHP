@@ -19,6 +19,9 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerFlowManager;
 
+use function microtime;
+use function array_keys;
+
 /**
  * Class Scheduler
  * @package Zeus\Kernel\Scheduler

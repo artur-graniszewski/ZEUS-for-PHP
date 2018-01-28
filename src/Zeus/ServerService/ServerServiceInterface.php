@@ -19,5 +19,5 @@ interface ServerServiceInterface
 
     public function stop();
 
-    public function getConfig();
+    public function getConfig() : array;
 }

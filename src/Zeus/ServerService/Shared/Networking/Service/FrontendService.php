@@ -17,8 +17,10 @@ use Zeus\IO\Stream\SocketStream;
 use function microtime;
 use function stream_socket_client;
 use function count;
+use function max;
 use function in_array;
 use function array_search;
+use function stream_context_create;
 use function explode;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectedMessage;
@@ -299,9 +301,8 @@ class FrontendService
                 }
                 $t4 = microtime(true);
                 //trigger_error(sprintf("LOOP STEP DONE IN T1: %5f, T2: %5f", $t2 - $t1, $t4 - $t3));
-                continue;
             }
-        } while ((microtime(true) - $now < 1));
+        } while (microtime(true) - $now < 1);
     }
 
     private function setStreamOptions(SocketStream $stream)

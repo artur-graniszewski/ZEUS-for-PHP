@@ -6,7 +6,8 @@ use LogicException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\FlushableStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
-use Zeus\IO\Stream\Selector;
+
+use function substr;
 
 class StreamTunnel
 {
