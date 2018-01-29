@@ -3,6 +3,8 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use Zend\EventManager\EventManagerInterface;
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -18,6 +20,9 @@ use function usleep;
 
 class BackendService
 {
+    /** @var Selector */
+    protected $backendServerSelector;
+
     /** @var bool */
     private $isBackend = true;
 
@@ -135,7 +140,7 @@ class BackendService
                 }
 
                 try {
-                    if ($this->backendServer->getSocket()->select(1000)) {
+                    if ($this->backendServerSelector->select(1000)) {
                         $event->getWorker()->setRunning();
                         $connection = $this->backendServer->accept();
                         try {
@@ -234,5 +239,7 @@ class BackendService
         $worker = $event->getWorker();
         $this->uid = $worker->getUid();
         $this->backendServer = $server;
+        $this->backendServerSelector = new Selector();
+        $this->backendServerSelector->register($this->backendServer->getSocket(), SelectionKey::OP_ACCEPT);
     }
 }

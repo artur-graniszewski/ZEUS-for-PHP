@@ -2,6 +2,9 @@
 
 namespace Zeus\IO\Stream;
 
+use LogicException;
+use TypeError;
+
 class SelectionKey
 {
     const OP_READ = 1;
@@ -75,14 +78,14 @@ class SelectionKey
     public function attach($object)
     {
         if (!is_object($object)) {
-            throw new \TypeError("Input parameter must be of an object type");
+            throw new TypeError("Input parameter must be of an object type");
         }
         $this->object = $object;
     }
 
     /**
      * @return object
-     * @throws \LogicException
+     * @throws LogicException
      */
     public function getAttachment()
     {
@@ -90,7 +93,7 @@ class SelectionKey
             return $this->object;
         }
 
-        throw new \LogicException("Attachment not present");
+        throw new LogicException("Attachment not present");
     }
 
     public function getSelector() : Selector
@@ -115,14 +118,14 @@ class SelectionKey
 
     /**
      * @param int $ops
-     * @throws \LogicException
+     * @throws LogicException
      */
     public function setInterestOps(int $ops)
     {
         if ($ops >= 0 && $ops <= static::OP_ALL) {
             $this->interestOps = $ops;
         } else {
-            throw new \LogicException("Invalid operation type: " . json_encode($ops));
+            throw new LogicException("Invalid operation type: " . json_encode($ops));
         }
     }
 }

@@ -9,18 +9,18 @@ use Zeus\Kernel\IpcServer;
  * @package Zeus\Kernel\IpcServer
  * @internal
  */
-abstract class IpcDriver
+interface IpcDriver
 {
     /**
      * @param mixed $message
      * @param string $audience
      * @param int $number
      */
-    public abstract function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0);
+    public function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0);
 
     /**
      * @param bool $returnRaw
      * @return mixed[]
      */
-    public abstract function readAll(bool $returnRaw = false) : array;
+    public function readAll(bool $returnRaw = false) : array;
 }

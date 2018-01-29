@@ -93,7 +93,7 @@ class RegistratorService
 //                $lasttime = $now;
 //                $uids = array_keys($this->availableWorkers);
 //                sort($uids);
-//                //$this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
+//                $this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
 //            }
 //        }, 1000);
         $events->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) use ($events) {
@@ -107,7 +107,7 @@ class RegistratorService
             $events->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
             $event->getScheduler()->getIpc()->send(new RegistratorStartedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
             $event->getScheduler()->getIpc()->send(new RegistratorStartedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_SELF);
-        }, 1000);
+        }, -1000);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
             if ($this->registratorStream) {
@@ -355,7 +355,7 @@ class RegistratorService
             return;
         }
 
-        list($status, $uid, $port) = explode(":", $buffer->getData());
+        list($status, $uid, $port) = explode(":", $buffer->read());
 
         switch ($status) {
             case self::STATUS_WORKER_READY:

@@ -11,11 +11,15 @@ use function socket_import_stream;
 use function socket_set_option;
 use function stream_set_blocking;
 use function stream_socket_shutdown;
+use function stream_set_write_buffer;
+use function stream_set_read_buffer;
+use function function_exists;
 use function fflush;
 use function fclose;
 use function strlen;
 use function strpos;
 use function substr;
+use function in_array;
 
 /**
  * Class SocketStream

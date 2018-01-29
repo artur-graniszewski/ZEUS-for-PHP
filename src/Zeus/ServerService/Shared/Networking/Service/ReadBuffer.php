@@ -3,6 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use function strpos;
+use function substr;
 
 class ReadBuffer
 {
@@ -13,12 +14,38 @@ class ReadBuffer
         $this->data .= $data;
     }
 
-    public function getData() : string
+    public function read(int $size = 0) : string
     {
-        $data = $this->data;
-        $this->data = '';
+        if ($size === 0) {
+            $data = $this->data;
+            $this->data = '';
+
+            return $data;
+        }
+
+        $data = substr($this->data, 0, $size);
+        $this->data = substr($this->data, $size);
 
         return $data;
+    }
+
+    public function peek(int $size = 0) : string
+    {
+        if ($size === 0) {
+            return $this->data;
+        }
+
+        return substr($this->data, 0, $size);
+    }
+
+    public function skip(int $size)
+    {
+        $this->data = substr($this->data, $size);
+    }
+
+    public function __toString()
+    {
+        return $this->read();
     }
 
     public function find(string $mark) : int

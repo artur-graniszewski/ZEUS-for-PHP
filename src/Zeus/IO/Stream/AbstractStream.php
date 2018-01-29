@@ -4,9 +4,12 @@ namespace Zeus\IO\Stream;
 
 use Zeus\IO\Exception\IOException;
 
+use function preg_match;
 use function strlen;
 use function substr;
 use function stream_set_blocking;
+use function error_clear_last;
+use function error_get_last;
 use function stream_get_meta_data;
 use function stream_get_line;
 use function fclose;
@@ -44,7 +47,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     protected $readCallback = 'stream_get_contents';
 
-    protected $peerName;
+    protected $peerName = '';
 
     protected $isBlocking = true;
 

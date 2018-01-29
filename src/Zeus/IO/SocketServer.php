@@ -12,12 +12,7 @@ use Zeus\Util\UnitConverter;
 use function stream_socket_accept;
 use function stream_socket_server;
 use function stream_socket_get_name;
-use function stream_set_blocking;
 use function stream_context_create;
-use function stream_socket_shutdown;
-use function socket_import_stream;
-use function socket_set_option;
-use function fclose;
 use function end;
 use function explode;
 use function current;
@@ -186,8 +181,7 @@ final class SocketServer
             throw new SocketException("Socket must be bound first");
         }
 
-        $socket = socket_import_stream($this->resource);
-        socket_set_option($socket, SOL_SOCKET, $option, $value);
+        $this->getSocket()->setOption($option, $value);
     }
 
     public function close()
@@ -196,10 +190,7 @@ final class SocketServer
             throw new SocketException("Server already stopped");
         }
 
-        @stream_set_blocking($this->resource, true);
-        @stream_socket_shutdown($this->resource, STREAM_SHUT_RD);
-//        fread($this->socket, 4096);
-        fclose($this->resource);
+        $this->getSocket()->close();
         $this->resource = null;
         $this->isClosed = true;
     }
@@ -239,7 +230,7 @@ final class SocketServer
         $this->soTimeout = $soTimeout;
     }
 
-    public function getSocket() : SelectableStreamInterface
+    public function getSocket() : SocketStream
     {
         if (!$this->socketObject) {
             $this->socketObject = new SocketStream($this->resource);

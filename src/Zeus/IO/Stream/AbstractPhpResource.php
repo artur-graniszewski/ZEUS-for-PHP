@@ -2,6 +2,10 @@
 
 namespace Zeus\IO\Stream;
 
+use LogicException;
+
+use function is_resource;
+
 abstract class AbstractPhpResource implements ResourceInterface
 {
     /** @var resource */
@@ -38,16 +42,13 @@ abstract class AbstractPhpResource implements ResourceInterface
 
     /**
      * @param resource $resource
-     * @return $this
      */
     protected function setResource($resource)
     {
         if (!is_resource($resource)) {
-            throw new \LogicException("Unsupported resource type");
+            throw new LogicException("Unsupported resource type");
         }
         $this->streamId = (int) $resource;
         $this->resource = $resource;
-
-        return $this;
     }
 }

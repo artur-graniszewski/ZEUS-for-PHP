@@ -6,13 +6,16 @@ use Zeus\Kernel\IpcServer;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\FlushableStreamInterface;
 use Zeus\IO\Stream\SelectableStreamInterface;
+use Zeus\ServerService\Shared\Networking\Service\ReadBuffer;
+
+use function strlen;
 
 /**
  * Class SocketIpc
  * @package Zeus\Kernel\IpcServer
  * @internal
  */
-class SocketIpc extends IpcDriver
+class SocketIpc extends ReadBuffer implements IpcDriver
 {
     /** @var SelectableStreamInterface */
     public $stream;
@@ -20,15 +23,21 @@ class SocketIpc extends IpcDriver
     /** @var int */
     private $senderId;
 
-    private $buffer = '';
-
     use MessagePackager;
 
-    public function __construct($stream, $senderId)
+    public function __construct($stream)
+    {
+        $this->stream = $stream;
+    }
+
+    public function setId(int $senderId)
     {
         $this->senderId = $senderId;
+    }
 
-        $this->stream = $stream;
+    public function getId() : int
+    {
+        return $this->senderId;
     }
 
     public function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
@@ -60,24 +69,31 @@ class SocketIpc extends IpcDriver
 
     public function readAll(bool $returnRaw = false) : array
     {
-        $messages = [];
+        $messages = $this->decodeMessages($returnRaw);
+        if ($messages) {
+            return $messages;
+        }
 
         $buffer = $this->stream->read();
+
         if ('' === $buffer) {
             throw new IOException("Connection closed");
         }
 
-        $this->buffer .= $buffer;
+        $this->append($buffer);
 
-        if (false === ($pos = strrpos($this->buffer, "\0"))) {
-            return $messages;
-        }
+        return $this->decodeMessages($returnRaw);
+    }
 
-        $data = substr($this->buffer, 0, $pos);
-        $this->buffer = substr($this->buffer, $pos + 1);
-        foreach (explode("\0", $data) as $data) {
-            $message = $this->unpackMessage($data);
+    private function decodeMessages(bool $returnRaw)
+    {
+        $messages = [];
+        $pos = $this->find("\0");
+
+        while (0 < $pos) {
+            $message = $this->unpackMessage($this->read($pos + 1));
             $messages[] = $returnRaw ? $message : $message['msg'];
+            $pos = $this->find("\0");
         }
 
         return $messages;

@@ -4,9 +4,14 @@ namespace Zeus\IO\Stream;
 
 use Zeus\IO\Exception\IOException;
 use Zeus\Util\UnitConverter;
+use LogicException;
 use function stream_select;
 use function array_search;
+use function array_values;
 use function count;
+use function strstr;
+use function error_get_last;
+use function error_clear_last;
 
 class Selector
 {
@@ -15,6 +20,7 @@ class Selector
 
     /** @var mixed[] */
     private $streams = [];
+
     private $streamResources = [SelectionKey::OP_READ => [], SelectionKey::OP_WRITE => [], SelectionKey::OP_ACCEPT => []];
 
     /** @var mixed[] */
@@ -23,19 +29,19 @@ class Selector
     public function register(SelectableStreamInterface $stream, int $operation = SelectionKey::OP_ALL) : SelectionKey
     {
         if ($operation < 0 || $operation > SelectionKey::OP_ALL) {
-            throw new \LogicException("Invalid operation type: " . json_encode($operation));
+            throw new LogicException("Invalid operation type: " . json_encode($operation));
         }
 
         if ($operation & SelectionKey::OP_READ && !$stream->isReadable()) {
-            throw new \LogicException("Unable to register: stream is not readable");
+            throw new LogicException("Unable to register: stream is not readable");
         }
 
         if ($operation & SelectionKey::OP_WRITE && !$stream->isWritable()) {
-            throw new \LogicException("Unable to register: stream is not writable");
+            throw new LogicException("Unable to register: stream is not writable");
         }
 
         if ($operation & SelectionKey::OP_ACCEPT && $stream->isClosed()) {
-            throw new \LogicException("Unable to register: stream is closed");
+            throw new LogicException("Unable to register: stream is closed");
         }
 
         $resource = $stream->getResource();
@@ -75,7 +81,7 @@ class Selector
     public function unregister(SelectableStreamInterface $stream, int $operation = SelectionKey::OP_ALL)
     {
         if ($operation < 0 || $operation > SelectionKey::OP_ALL) {
-            throw new \LogicException("Invalid operation type: " . json_encode($operation));
+            throw new LogicException("Invalid operation type: " . json_encode($operation));
         }
 
         $resourceId = array_search($stream, $this->streams);
@@ -146,6 +152,7 @@ class Selector
 
         $except = [];
 
+        error_clear_last();
         $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged === false) {

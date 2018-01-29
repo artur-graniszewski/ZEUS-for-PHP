@@ -2,13 +2,13 @@
 
 namespace Zeus\IO\Stream;
 
-use Zeus\IO\Exception\SocketException;
 use Zeus\IO\Exception\IOException;
 use Zeus\Util\UnitConverter;
 
 use function error_clear_last;
 use function error_get_last;
 use function stream_select;
+use function stream_socket_get_name;
 use function strlen;
 
 /**
@@ -86,7 +86,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     {
         if ($this->isEof()) {
             $this->isWritable = false;
-            throw new SocketException(sprintf("Stream is not writable"));
+            throw new IOException(sprintf("Stream is not writable"));
         }
         $size = strlen($this->writeBuffer);
         $sent = 0;
@@ -95,7 +95,7 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
         if ($wrote < 0 || false === $wrote) {
             $this->isWritable = false;
 
-            throw new SocketException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
+            throw new IOException(sprintf("Stream is not writable, sent %d bytes out of %d", max(0, $sent), $size));
         }
 
         if ($wrote) {
