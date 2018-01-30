@@ -94,7 +94,7 @@ class IpcServer implements ListenerAggregateInterface
             while (true) {
                 $ipcStream = $this->ipcServer->accept();
                 // @todo: remove setBlocking(), now its needed in ZeusTest\SchedulerTest unit tests, otherwise they hang
-                $ipcStream->setBlocking(true);
+                $ipcStream->setBlocking(false);
                 $this->setStreamOptions($ipcStream);
 
                 $this->inboundStreams[] = $ipcStream;
