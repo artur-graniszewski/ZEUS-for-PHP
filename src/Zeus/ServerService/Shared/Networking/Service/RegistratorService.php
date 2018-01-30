@@ -14,7 +14,6 @@ use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\ServerService\Shared\Networking\Message\RegistratorStartedMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 use function stream_context_create;
@@ -82,10 +81,6 @@ class RegistratorService
             $this->onWorkerInit($event);
         }, WorkerEvent::PRIORITY_REGULAR + 1);
 
-        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function (IpcEvent $event) {
-            $this->onIpcMessage($event);
-        }, WorkerEvent::PRIORITY_FINALIZE);
-
 //        $events->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) use ($events) {
 //            static $lasttime;
 //            $now = time();
@@ -96,18 +91,12 @@ class RegistratorService
 //                $this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
 //            }
 //        }, 1000);
-        $events->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) use ($events) {
-            if ($this->registratorLaunched === true) {
-                return;
-            }
 
+        $events->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $event) use ($events) {
             $this->startRegistratorServer();
-            $this->registratorLaunched = true;
             $events->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
             $events->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
-            $event->getScheduler()->getIpc()->send(new RegistratorStartedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_ALL);
-            $event->getScheduler()->getIpc()->send(new RegistratorStartedMessage($this->registratorServer->getLocalAddress()), IpcServer::AUDIENCE_SELF);
-        }, -1000);
+        }, 100000);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
             if ($this->registratorStream) {
@@ -123,18 +112,6 @@ class RegistratorService
                 $this->registratorStream->close();
             }
         }, 1000);
-    }
-
-    private function onIpcMessage(IpcEvent $event)
-    {
-        $message = $event->getParams();
-
-        if ($message instanceof RegistratorStartedMessage) {
-            /** @var RegistratorStartedMessage $message */
-            $this->setRegistratorAddress($message->getIpcAddress());
-
-            return;
-        }
     }
 
     public function setRegistratorAddress(string $address)
@@ -286,6 +263,7 @@ class RegistratorService
         $server->bind($this->backendHost, 1000, 0);
         $this->registratorServer = $server;
         $this->messageBroker->getLogger()->debug("Registrator listening on: " . $this->registratorServer->getLocalAddress());
+        $this->setRegistratorAddress($this->registratorServer->getLocalAddress());
     }
 
     private function onIpcSelect(IpcEvent $event)

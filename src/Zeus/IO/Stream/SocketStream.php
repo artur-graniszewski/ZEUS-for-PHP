@@ -153,7 +153,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
             // @todo: add some checks if STREAM_PEEK is supported by $readMethod
             $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
 
-            if ($buffer === false) {
+            if ($buffer === false && $this->isBlocking()) {
                 // stream had some data to read but buffer was empty, this is an EOF situation
                 $this->isReadable = false;
                 throw new IOException("Stream is not readable");

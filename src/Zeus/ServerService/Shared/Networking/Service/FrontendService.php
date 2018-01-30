@@ -23,11 +23,12 @@ use function array_search;
 use function stream_context_create;
 use function explode;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
-use Zeus\ServerService\Shared\Networking\Message\FrontendElectedMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 class FrontendService
 {
+    private $uid = 0;
+
     /** @var bool */
     private $isBusy = false;
 
@@ -67,6 +68,10 @@ class FrontendService
 
     public function attach(EventManagerInterface $events)
     {
+        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+            $this->uid = $event->getWorker()->getUid();
+        }, WorkerEvent::PRIORITY_REGULAR);
+
         $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
             try {
                 if (!$this->isFrontend) {
@@ -126,22 +131,16 @@ class FrontendService
     {
         $message = $event->getParams();
 
-        if ($message instanceof FrontendElectedMessage && !$this->isFrontend) {
-
-            return;
-        }
-
         if (!$message instanceof FrontendElectionMessage) {
             return;
         }
 
-        $this->messageBroker->getLogger()->debug("Registering as a frontend worker");
+        $this->messageBroker->getLogger()->debug("Becoming frontend worker");
+        $this->messageBroker->getRegistrator()->notifyRegistrator($this->uid, 0, RegistratorService::STATUS_WORKER_GONE);
         $this->frontendSelector = new Selector();
         $this->isFrontend = true;
         $this->workerServer = null;
         $this->startFrontendServer(100);
-
-        $event->getTarget()->send(new FrontendElectedMessage(), IpcServer::AUDIENCE_ALL);
     }
 
     private function addClient()

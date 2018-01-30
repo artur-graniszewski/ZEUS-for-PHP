@@ -86,6 +86,7 @@ class IpcServer implements ListenerAggregateInterface
         $server->setSoTimeout(0);
         $server->bind($this->ipcHost, 30000, 0);
         $this->ipcServer = $server;
+        $server->getSocket()->register($this->ipcSelector, SelectionKey::OP_ACCEPT);
     }
 
     private function checkInboundConnections()
@@ -119,7 +120,7 @@ class IpcServer implements ListenerAggregateInterface
             return false;
         }
 
-        $data = $buffer->read($pos + 1);;
+        $data = $buffer->read($pos + 1);
 
         $uid = (int) $data;
         $buffer->setId($uid);
@@ -143,7 +144,7 @@ class IpcServer implements ListenerAggregateInterface
     {
         foreach ($this->ipcStreams as $uid => $ipcStream) {
             try {
-                if (!$ipcStream->isClosed() && $ipcStream->isReadable() && $ipcStream->isWritable()) {
+                if (!$ipcStream->isClosed()) {
                     continue;
                 }
             } catch (\Exception $exception) {
@@ -170,16 +171,17 @@ class IpcServer implements ListenerAggregateInterface
         ];
 
         $host = $this->ipcHost;
-        $socket = @stream_socket_client("tcp://$host:$ipcPort", $errno, $errstr, 1, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $socket = @stream_socket_client("tcp://$host:$ipcPort", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, stream_context_create($opts));
 
         if (!$socket) {
             throw new \RuntimeException("IPC connection failed: $errstr [$errno]");
         }
 
         $ipcStream = new SocketStream($socket);
+        $ipcStream->setBlocking(false);
         $this->setStreamOptions($ipcStream);
         $ipcStream->write("$uid!");
-        $ipcStream->flush();
+        do {$done = $ipcStream->flush(); } while (!$done);
         $this->ipcClient = new IpcSocketStream($ipcStream);
         $this->ipcClient->setId($uid);
     }
@@ -201,6 +203,8 @@ class IpcServer implements ListenerAggregateInterface
         if (!$selector->select($wait)) {
             return;
         }
+
+        $messages = [];
 
         $keys = $selector->getSelectionKeys();
         $failed = 0; $processed = 0; $ignored = 0;
@@ -224,6 +228,11 @@ class IpcServer implements ListenerAggregateInterface
                 continue;
             }
 
+            if ($key->isAcceptable()) {
+                $this->checkInboundConnections();
+                continue;
+            }
+
             /** @var IpcSocketStream $ipc */
             $ipc = $key->getAttachment();
 
@@ -231,8 +240,13 @@ class IpcServer implements ListenerAggregateInterface
                 try {
                     if (!$this->addNewIpcClients($key)) {
                         // request is incomplete
-                        // @todo: check why continue clause can KILL entire scheduler (infinite recursion or stack overflow?)
-                        //continue;
+                        continue;
+                    }
+
+                    if ($ipc->peek(1) === '') {
+                        // read was already performed and no more data's left in the buffer
+                        // ignore this stream until next select
+                        continue;
                     }
 
                 } catch (IOException $exception) {
@@ -246,17 +260,22 @@ class IpcServer implements ListenerAggregateInterface
             }
 
             try {
-                $messages = $ipc->readAll(true);
-                $this->distributeMessages($messages);
+                $messages = array_merge($messages, $ipc->readAll(true));
                 $processed++;
             } catch (IOException $exception) {
                 $failed++;
                 $selector->unregister($stream);
-
                 $stream->close();
                 unset($this->ipcStreams[array_search($stream, $this->ipcStreams)]);
                 continue;
             }
+        }
+
+        try {
+
+            $this->distributeMessages($messages);
+        } catch (IOException $exception) {
+            // @todo: report such exception!
         }
 
         if (count($this->queuedMessages) > 0) {
@@ -349,9 +368,8 @@ class IpcServer implements ListenerAggregateInterface
                     $event->setParams($message);
                     $event->setTarget($this);
                     $this->getEventManager()->triggerEvent($event);
-                    $cids = [];
 
-                    break;
+                    return;
                 default:
                     $cids = [];
                     break;
@@ -424,9 +442,9 @@ class IpcServer implements ListenerAggregateInterface
             });
 
             $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function() {
-                $this->checkInboundConnections();
-                $this->removeIpcClients();
                 $this->handleIpcMessages();
+                $this->removeIpcClients();
+
             }, SchedulerEvent::PRIORITY_REGULAR + 1);
         }, 100000);
     }

@@ -52,10 +52,7 @@ class SocketIpc extends ReadBuffer implements IpcDriver
         ];
 
         $data = $this->packMessage($payload);
-        $len = strlen($data) + 1;
-        while ($this->stream->write($data . "\0") < $len && !$this->stream instanceof FlushableStreamInterface) {
-
-        }
+        $this->stream->write($data . "\0");
 
         if ($this->stream instanceof FlushableStreamInterface) {
             while (!$this->stream->flush()) {
@@ -81,7 +78,7 @@ class SocketIpc extends ReadBuffer implements IpcDriver
         $buffer = $this->stream->read();
 
         if ('' === $buffer) {
-            throw new IOException("Connection closed");
+            throw new IOException("Buffer is empty");
         }
 
         $this->append($buffer);
