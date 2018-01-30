@@ -19,7 +19,7 @@ use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
 /**
- * @runTestsInSeparateProcesses
+ * @runTestsInSeparateProcesses2
  * @preserveGlobalState disabled
  */
 class SchedulerTest extends PHPUnit_Framework_TestCase
@@ -126,7 +126,7 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
     {
         return [
             [1, 1, 1, 1],
-            [2, 1, 1, 2],
+            [3, 1, 1, 2],
 
             [4, 8, 3, 11],
             [4, 10, 3, 13],
@@ -140,9 +140,9 @@ class SchedulerTest extends PHPUnit_Framework_TestCase
             [7, 10, 3, 13],
             [3, 25, 3, 28],
 
-            [2, 8, 4, 12],
+            [3, 8, 4, 12],
             [3, 10, 5, 15],
-            [2, 25, 6, 31],
+            [3, 25, 6, 31],
         ];
     }
 

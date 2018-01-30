@@ -272,7 +272,6 @@ class IpcServer implements ListenerAggregateInterface
         }
 
         try {
-
             $this->distributeMessages($messages);
         } catch (IOException $exception) {
             // @todo: report such exception!
@@ -309,11 +308,12 @@ class IpcServer implements ListenerAggregateInterface
     }
 
     /**
-     * @param mixed $messages
+     * @param mixed[] $messages
      */
     private function distributeMessages(array $messages)
     {
         foreach ($messages as $payload) {
+            $cids = [];
             $audience = $payload['aud'];
             $message = $payload['msg'];
             $senderId = $payload['sid'];
@@ -369,7 +369,7 @@ class IpcServer implements ListenerAggregateInterface
                     $event->setTarget($this);
                     $this->getEventManager()->triggerEvent($event);
 
-                    return;
+                    break;
                 default:
                     $cids = [];
                     break;
