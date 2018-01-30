@@ -9,7 +9,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 final class PosixProcess extends AbstractProcessModule implements SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
 {
     /** @var int Parent PID */
-    public $ppid;
+    private $ppid;
 
     /**
      * PosixProcess constructor.

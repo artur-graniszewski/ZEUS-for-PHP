@@ -243,6 +243,37 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(98765, $triggeredEvent->getWorker()->getUid(), 'Correct process UID should be returned on its termination');
     }
 
+    /**
+     * @expectedException \Zeus\Kernel\Scheduler\Exception\SchedulerException
+     * @expectedExceptionMessage Could not create a descendant process
+     */
+    public function testExceptionOnForkFailure()
+    {
+        $worker = new Scheduler\Worker();
+        $scheduler = $this->getScheduler(1);
+        $em = new EventManager(new SharedEventManager());
+        $em->attach(WorkerEvent::EVENT_TERMINATED, function($event) use (&$triggeredEvent) {
+            $triggeredEvent = $event;
+        });
+
+        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock->setPcntlWaitPids([98765]);
+        $pcntlMock->setForkResult(-1);
+
+        PosixProcess::setPcntlBridge($pcntlMock);
+        $schedulerEvent = new SchedulerEvent();
+        $schedulerEvent->setScheduler($scheduler);
+        $workerEvent = new WorkerEvent();
+        $workerEvent->setWorker($worker);
+        $posixProcess = $this->getMpm($scheduler);
+        $posixProcess->setSchedulerEvent($schedulerEvent);
+        $posixProcess->setWorkerEvent($workerEvent);
+        $posixProcess->setEventManager($em);
+
+        $workerEvent->setName(WorkerEvent::EVENT_CREATE);
+        $em->triggerEvent($workerEvent);
+    }
+
     public function signalsProvider()
     {
         return [
@@ -282,6 +313,35 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         $pcntlMock->setPpid(12345);
 
         $event->setName(SchedulerEvent::EVENT_LOOP);
+        $em->triggerEvent($event);
+
+        $this->assertNotNull($triggeredEvent);
+        $logArray = $pcntlMock->getExecutionLog();
+        $this->assertEquals(2, $this->countMethodInExecutionLog($logArray, 'pcntlWait'), 'Wait for signal should be performed');
+        $this->assertEquals(2, $this->countMethodInExecutionLog($logArray, 'pcntlSignalDispatch'), 'Signal dispatching should be performed');
+        $this->assertEquals(getmypid(), $triggeredEvent->getParam('uid'), 'Correct process UID should be returned on its termination');
+    }
+
+    public function testDetectionOfWorkerParentTermination()
+    {
+        $this->markTestIncomplete();
+        $scheduler = $this->getScheduler(1);
+        $em = new EventManager(new SharedEventManager());
+        $triggeredEvent = null;
+        $em->attach(WorkerEvent::EVENT_EXIT, function($event) use (&$triggeredEvent) {
+            $triggeredEvent = $event;
+        });
+
+        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock->setPpid(1234567890);
+
+        PosixProcess::setPcntlBridge($pcntlMock);
+        $event = new WorkerEvent();
+        $posixProcess = $this->getMpm($scheduler);
+
+        //$scheduler->start(false);
+
+        $event->setName(WorkerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
 
         $this->assertNotNull($triggeredEvent);
