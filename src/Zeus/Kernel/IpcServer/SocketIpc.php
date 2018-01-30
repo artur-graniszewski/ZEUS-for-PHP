@@ -2,6 +2,8 @@
 
 namespace Zeus\Kernel\IpcServer;
 
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
 use Zeus\Kernel\IpcServer;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\FlushableStreamInterface;
@@ -64,7 +66,9 @@ class SocketIpc extends ReadBuffer implements IpcDriver
 
     public function isReadable() : bool
     {
-        return $this->stream->select(0);
+        $selector = new Selector();
+        $this->stream->register($selector, SelectionKey::OP_READ);
+        return (bool) $selector->select(0);
     }
 
     public function readAll(bool $returnRaw = false) : array

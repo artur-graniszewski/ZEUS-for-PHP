@@ -371,7 +371,6 @@ class IpcServer implements ListenerAggregateInterface
                     unset($this->ipcStreams[$cid]);
                     $this->ipcSelector->unregister($this->ipcStreams[$cid]);
                 }
-//                trigger_error("SENT $message FROM $senderId TO $cid ($audience)");
             }
         }
     }

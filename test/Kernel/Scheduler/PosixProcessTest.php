@@ -8,6 +8,7 @@ use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -16,7 +17,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use ZeusTest\Helpers\PcntlMockBridge;
 use ZeusTest\Helpers\ZeusFactories;
 
-class PosixProcessTest// extends PHPUnit_Framework_TestCase
+class PosixProcessTest extends PHPUnit_Framework_TestCase
 {
     use ZeusFactories;
 
@@ -50,7 +51,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         return $found;
     }
 
-    private function getMpm(Scheduler $scheduler) : PosixProcess
+    private function getMpm(Scheduler $scheduler) : ModuleWrapper
     {
         $sm = $this->getServiceManager();
         $logger = new Logger();
@@ -64,6 +65,9 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         ]);
 
         $this->assertInstanceOf(PosixProcess::class, $service);
+
+        $service = new ModuleWrapper($service);
+        $service->setLogger($scheduler->getLogger());
         return $service;
     }
 
@@ -95,7 +99,13 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $scheduler->start(false);
-        $service->onSchedulerLoop($event);
+        $em = $scheduler->getEventManager();
+        $event = new SchedulerEvent();
+        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
+        $event->setName(SchedulerEvent::EVENT_LOOP);
+        $event->setParam('uid', 123456);
+        $em->triggerEvent($event);
 
         $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixProcess');
     }
@@ -138,15 +148,15 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $em = new EventManager(new SharedEventManager());
         $em->getSharedManager()->attach('*', $initialEventType, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
-        });
+        }, -10000);
 
         $pcntlMock = new PcntlMockBridge();
         $pcntlMock->setForkResult($forcedForkValue);
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new WorkerEvent();
         $event->setWorker(new Scheduler\Worker());
-        $posixProcess = new PosixProcess();
-        $posixProcess->attach($em);
+        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess->setEventManager($em);
 
         $event->setName($initialEventType);
         $em->triggerEvent($event);
@@ -156,7 +166,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         }
 
         if (!is_null($expectedForkValue)) {
-            $this->assertEquals($expectedForkValue, $triggeredEvent->getParam('uid'));
+            $this->assertEquals($expectedForkValue, $triggeredEvent->getWorker()->getUid());
         }
 
         $this->assertEquals($isInitExpected, $triggeredEvent->getParam('initWorker'));
@@ -171,7 +181,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
         $posixProcess = $this->getMpm($scheduler);
-        $posixProcess->attach($em);
+        $posixProcess->setEventManager($em);
 
         $pcntlMock = new PcntlMockBridge();
         PosixProcess::setPcntlBridge($pcntlMock);
@@ -186,53 +196,51 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
         $event->setName(WorkerEvent::EVENT_TERMINATE);
-
+        $event->setParam('uid', 123456);
         $event->setParam('soft', false);
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
-        $this->assertEquals(123456, $logArray[6][1][0], 'Kill signal should be sent to a certain process');
-        $this->assertEquals(SIGKILL, $logArray[6][1][1], 'Correct type of kill signal should be sent to a certain process');
+        $this->assertEquals(123456, $logArray[1][1][0], 'Kill signal should be sent to a certain process');
+        $this->assertEquals(SIGKILL, $logArray[1][1][1], 'Correct type of kill signal should be sent to a certain process');
         $this->assertEquals(WorkerEvent::EVENT_TERMINATE, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
 
     public function testDetectionOfProcessTermination()
     {
-        $this->markTestIncomplete();
+        $worker = new Scheduler\Worker();
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
-        $em->attach(WorkerEvent::EVENT_EXIT, function($event) use (&$triggeredEvent) {
+        $em->attach(WorkerEvent::EVENT_TERMINATED, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
         $pcntlMock = new PcntlMockBridge();
         $pcntlMock->setPcntlWaitPids([98765]);
+        $pcntlMock->setForkResult(98765);
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $schedulerEvent = new SchedulerEvent();
+        $schedulerEvent->setScheduler($scheduler);
         $workerEvent = new WorkerEvent();
-        $workerEvent->setWorker(new Scheduler\Worker());
+        $workerEvent->setWorker($worker);
         $posixProcess = $this->getMpm($scheduler);
         $posixProcess->setSchedulerEvent($schedulerEvent);
         $posixProcess->setWorkerEvent($workerEvent);
-        $posixProcess->attach($em);
+        $posixProcess->setEventManager($em);
 
-        $posixProcess->startWorker();
-//        $workerEvent->setName(WorkerEvent::EVENT_WORKER_INIT);
-//        $em->triggerEvent($workerEvent);
-//
-//        $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_START);
-//        $em->triggerEvent($schedulerEvent);
-//
-//        $schedulerEvent->setName(SchedulerEvent::EVENT_SCHEDULER_LOOP);
-//        $em->triggerEvent($schedulerEvent);
+        $workerEvent->setName(WorkerEvent::EVENT_CREATE);
+        $em->triggerEvent($workerEvent);
+
+        $schedulerEvent->setName(SchedulerEvent::EVENT_LOOP);
+        $em->triggerEvent($schedulerEvent);
 
         $this->assertNotNull($triggeredEvent);
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(2, $this->countMethodInExecutionLog($logArray, 'pcntlWait'), 'Wait for signal should be performed');
-        $this->assertEquals(98765, $triggeredEvent->getParam('uid'), 'Correct process UID should be returned on its termination');
+        $this->assertEquals(98765, $triggeredEvent->getWorker()->getUid(), 'Correct process UID should be returned on its termination');
     }
 
     public function signalsProvider()
@@ -250,9 +258,9 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
      * @dataProvider signalsProvider
      * @param $signal
      */
-    public function testDetectionOfSchedulerTermination($signal)
+    public function testDetectionOfSchedulerTermination(int $signal)
     {
-        $this->markTestIncomplete();
+        $this->markTestSkipped("Signal handling is currently disabled in PosixProcess MPM");
         $em = new EventManager(new SharedEventManager());
         $em->attach(SchedulerEvent::EVENT_STOP, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
@@ -260,15 +268,18 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
 
         $pcntlMock = new PcntlMockBridge();
         $pcntlMock->setSignal($signal);
+        $pcntlMock->setPpid(1234);
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess();
+        $posixProcess = new ModuleWrapper(new PosixProcess());
         $posixProcess->setSchedulerEvent($event);
-        $posixProcess->attach($em);
+        $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::EVENT_START);
         $em->triggerEvent($event);
+
+        $pcntlMock->setPpid(12345);
 
         $event->setName(SchedulerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
@@ -314,7 +325,7 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $pcntlMock = new PosixProcess\PcntlBridge();
         PosixProcess::setPcntlBridge($pcntlMock);
 
-        $this->assertEquals(extension_loaded('pcntl'), PosixProcess::isSupported(false), 'PCNTL should be ' . (extension_loaded('pcntl') ? 'enabled' : 'disabled'));
+        $this->assertEquals(extension_loaded('pcntl'), PosixProcess::isSupported(), 'PCNTL should be ' . (extension_loaded('pcntl') ? 'enabled' : 'disabled'));
     }
 
     public function testDetectionIfPcntlIsSupportedOrNot()
@@ -322,21 +333,18 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
         $pcntlMock = new PcntlMockBridge();
         PosixProcess::setPcntlBridge($pcntlMock);
 
-        $exceptionCatched = 0;
+        $status = [];
 
         foreach ([true, false] as $isSupported) {
             $pcntlMock->setIsSupported($isSupported);
-            $this->assertEquals($isSupported, PosixProcess::isSupported(false), ('PCNTL should be ' . $isSupported ? 'enabled' : 'disabled'));
-            if (!$isSupported) {
-                try {
-                    $this->assertEquals($isSupported, PosixProcess::isSupported(true), ('PCNTL should be ' . $isSupported ? 'enabled' : 'disabled'));
-                } catch (\RuntimeException $e) {
-                    $exceptionCatched++;
-                }
-            }
+
+            $status[$isSupported] = '';
+
+            $this->assertEquals($isSupported, PosixProcess::isSupported($status[$isSupported]), ('PCNTL should be ' . $isSupported ? 'enabled' : 'disabled'));
         }
 
-        $this->assertEquals(1, $exceptionCatched, 'One exception should be thrown when PCNTL was unavailable');
+        $this->assertEquals("PCNTL extension is required by PosixProcess but disabled in PHP", $status[false], 'Error message should be returned if MPM driver is not supported');
+        $this->assertEquals("", $status[true], 'No error message should be returned if MPM driver is not supported');
     }
 
     public function testIfSetSsidIsPerformedOnStartup()
@@ -346,8 +354,8 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess();
-        $posixProcess->attach($em);
+        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
         $em->triggerEvent($event);
@@ -370,13 +378,14 @@ class PosixProcessTest// extends PHPUnit_Framework_TestCase
 
     public function testIfProcMaskIsUsedOnProcessStateChanges()
     {
+        $this->markTestSkipped('This test may no longer be needed?');
         $em = new EventManager(new SharedEventManager());
         $pcntlMock = new PcntlMockBridge();
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new PosixProcess();
-        $posixProcess->attach($em);
+        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::EVENT_START);
         $em->triggerEvent($event);

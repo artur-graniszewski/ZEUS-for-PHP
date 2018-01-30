@@ -34,7 +34,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
     /**
      * @return int
      */
-    public function posixSetsid()
+    public function posixSetsid() : int
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -44,7 +44,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
     /**
      * @return bool
      */
-    public function pcntlSignalDispatch()
+    public function pcntlSignalDispatch() : bool
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -71,7 +71,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
      * @param mixed $oldSet
      * @return bool
      */
-    public function pcntlSigprocmask($action, array $signals, &$oldSet = null)
+    public function pcntlSigprocmask(int $action, array $signals, &$oldSet = null)
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -83,7 +83,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
      * @param int $options
      * @return int
      */
-    public function pcntlWait(&$status, $options)
+    public function pcntlWait(int &$status, int $options) : int
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -108,7 +108,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
      * @param bool $restartSysCalls
      * @return bool
      */
-    public function pcntlSignal($signal, $handler, $restartSysCalls = true)
+    public function pcntlSignal(int $signal, $handler, bool $restartSysCalls = true) : bool
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
         $this->signalHandlers[$signal] = $handler;
@@ -119,7 +119,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
     /**
      * @return int
      */
-    public function pcntlFork()
+    public function pcntlFork() : int
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -145,7 +145,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
     /**
      * @return int
      */
-    public function posixGetPpid()
+    public function posixGetPpid() : int
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -157,7 +157,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
      * @param int $signal
      * @return bool
      */
-    public function posixKill($pid, $signal)
+    public function posixKill(int $pid, int $signal) : bool
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -165,10 +165,9 @@ class PcntlMockBridge implements PcntlBridgeInterface
     }
 
     /**
-     * @throws \Exception
      * @internal
      */
-    public function isSupported()
+    public function isSupported() : bool
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
@@ -178,7 +177,7 @@ class PcntlMockBridge implements PcntlBridgeInterface
     /**
      * @param bool $isSupported
      */
-    public function setIsSupported($isSupported)
+    public function setIsSupported(bool $isSupported)
     {
         $this->isSupported = $isSupported;
     }
