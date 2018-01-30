@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
 use Zend\EventManager\EventManagerInterface;
+use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -165,8 +166,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $startParams = escapeshellarg(json_encode($event->getParams()));
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
-
-        $process = \proc_open($command, $descriptors, $pipes, getcwd());
+        $process = \proc_open($command, $descriptors, $pipes, getcwd(), $_ENV, []);
         if ($process === false) {
             throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
         }
