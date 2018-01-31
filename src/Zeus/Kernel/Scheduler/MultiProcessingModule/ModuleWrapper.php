@@ -56,6 +56,9 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     /** @var LoggerInterface */
     private $logger;
 
+    /** @var Selector */
+    private $parentIpcSelector;
+
     public function __construct(MultiProcessingModuleInterface $driver)
     {
         $errorMessage = '';
@@ -239,6 +242,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         // read all keep-alive messages
         if ($this->ipcSelector->select(0)) {
             foreach ($this->ipcSelector->getSelectionKeys() as $key) {
+                /** @var SocketStream $stream */
                 $stream = $key->getStream();
                 try {
                     $stream->read();
@@ -279,6 +283,8 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         } else {
             $this->ipc = new SocketStream($stream);
             $this->ipc->setBlocking(false);
+            $this->parentIpcSelector = new Selector();
+            $this->ipc->register($this->parentIpcSelector, SelectionKey::OP_READ);
             $this->setStreamOptions($this->ipc);
         }
     }
@@ -305,7 +311,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 }
 
                 $lastCheck = $now;
-                if (($this->ipc->select(0) && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
+                if (($this->parentIpcSelector->select(0) === 1 && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
                     $this->setIsTerminating(true);
                     return;
                 }

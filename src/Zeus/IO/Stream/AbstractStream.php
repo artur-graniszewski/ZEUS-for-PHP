@@ -155,54 +155,23 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
         return $this->isWritable && $this->resource;
     }
 
-    /**
-     * @param string $ending
-     * @return string
-     */
-    public function read(string $ending = '') : string
+    public function read(int $size = 0) : string
     {
-        return $this->doRead($this->readCallback, $ending);
+        return $this->doRead($this->readCallback, $size);
     }
 
     /**
      * @param callable $readMethod
-     * @param string $ending
+     * @param int $size
      * @return string
      */
-    protected function doRead($readMethod, string $ending = '') : string
+    protected function doRead($readMethod, int $size = 0) : string
     {
         if (!$this->isReadable() || $this->isEof()) {
             throw new IOException("Stream is not readable");
         }
 
-        if ($ending !== '') {
-            $data = '';
-            $endingSize = strlen($ending);
-
-            while (!$this->isEof()) {
-                $pos = ftell($this->resource);
-
-                // @todo: replace this function, as it uses PHP buffers which collide with STREAM_PEEK behaviour
-                $buffer = @stream_get_line($this->resource, $this->readBufferSize, $ending);
-
-                if ($buffer === '') {
-                    break;
-                }
-
-                $data .= $buffer;
-
-                $newPos = ftell($this->resource);
-                if ($newPos === $pos + strlen($buffer) + $endingSize) {
-
-                    break;
-                }
-                break;
-            }
-
-        } else {
-            $data = @$readMethod($this->resource, $this->readBufferSize);
-        }
-
+        $data = @$readMethod($this->resource, $size ? $size : $this->readBufferSize);
         $this->dataReceived += strlen($data);
 
         return $data === false ? '' : $data;

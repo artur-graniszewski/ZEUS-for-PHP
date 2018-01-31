@@ -135,13 +135,21 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         }
 
         // check stdOut and stdErr...
-        foreach (['stdout' => $this->stdOutStreams[$uid], 'stderr' => $this->stdErrStreams[$uid]] as $name => $stream) {
-            try {
-                if ($stream->select(0)) {
-                    $this->pipeBuffer[$uid][$name] .= $stream->read();
-                }
-            } catch (IOException $e) {
+        $selector = new Selector();
+        foreach (['stdout' => $this->stdOutStreams[$uid], 'stderr' => $this->stdErrStreams[$uid]] as $type => $stream) {
+            /** @var PipeStream $stream */
+            if (!$stream->isReadable()) {
+                // @todo: handle this somehow here?
+                continue;
+            }
+            $key = $stream->register($selector, SelectionKey::OP_READ);
+            $key->attach((object) ['type' => $type]);
+        }
 
+        if ($selector->select(0) > 0) {
+            foreach ($selector->getSelectionKeys() as $key) {
+                $type = $key->getAttachment()->type;
+                $this->pipeBuffer[$uid][$type] .= $key->getStream()->read();
             }
         }
 

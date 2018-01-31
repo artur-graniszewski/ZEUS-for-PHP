@@ -81,7 +81,7 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
         stream_set_blocking($resource, false);
         $read = [$this->resource];
         $noop = [];
-        while ($this->doSelect($read, $noop, $noop, 0) && strlen(@$readMethod($resource, 8192)) > 0) {
+        while (@stream_select($read, $noop, $noop, 0) && strlen(@$readMethod($resource, 8192)) > 0) {
             // read...
         };
         fclose($resource);
@@ -123,60 +123,25 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
 
     /**
      * @param callable $readMethod
-     * @param string $ending
+     * @param int $size
      * @return string
      */
-    protected function doRead($readMethod, string $ending = '') : string
+    protected function doRead($readMethod, int $size = 0) : string
     {
         if (!$this->isReadable) {
             throw new IOException("Stream is not readable");
         }
 
-        if ($ending === '') {
-            $data = @$readMethod($this->resource, $this->readBufferSize);
+        $data = @$readMethod($this->resource, $size ? $size : $this->readBufferSize);
 
-            if (false === $data) {
-                $this->isReadable = false;
-                throw new IOException("Stream is not readable");
-            } else {
-                $this->dataReceived += strlen($data);
-            }
-
-            return $data;
+        if (false === $data) {
+            $this->isReadable = false;
+            throw new IOException("Stream is not readable");
+        } else {
+            $this->dataReceived += strlen($data);
         }
 
-        // @todo: buffer internally until ending is found, return false until ending is found
-        $data = '';
-        $endingSize = strlen($ending);
-
-        while (!$this->isEof()) {
-            // @todo: add some checks if STREAM_PEEK is supported by $readMethod
-            $buffer = @$readMethod($this->resource, $this->readBufferSize, STREAM_PEEK);
-
-            if ($buffer === false && $this->isBlocking()) {
-                // stream had some data to read but buffer was empty, this is an EOF situation
-                $this->isReadable = false;
-                throw new IOException("Stream is not readable");
-            }
-
-            $pos = strpos($buffer, $ending);
-            if (false !== $pos) {
-                $buffer = substr($buffer, 0, $pos);
-                $pos += $endingSize;
-            } else {
-                $pos = strlen($buffer);
-            }
-
-            @$readMethod($this->resource, $pos);
-
-            $data .= $buffer;
-
-            break;
-        }
-
-        $this->dataReceived += strlen($data);
-
-        return $data === false ? '' : $data;
+        return $data;
     }
 
     public function getSoTimeout() : int

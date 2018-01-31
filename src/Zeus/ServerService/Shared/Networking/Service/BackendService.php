@@ -169,7 +169,9 @@ class BackendService
                 return;
             }
 
-            while ($this->connection->select(1000)) {
+            $selector = new Selector();
+            $this->connection->register($selector, SelectionKey::OP_READ);
+            while ($selector->select(1000) > 0) {
                 $data = $this->connection->read();
                 if ($data !== '') {
                     $this->messageBroker->onMessage($this->connection, $data);

@@ -17,7 +17,7 @@ interface StreamInterface extends ResourceInterface
 
     public function isWritable() : bool;
 
-    public function read(string $ending = '') : string;
+    public function read(int $size = 0) : string;
 
     public function isReadable() : bool;
 

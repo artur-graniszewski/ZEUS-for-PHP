@@ -94,7 +94,7 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStream
 
     }
 
-    public function read(string $ending = '') : string
+    public function read(int $size = 0) : string
     {
         // TODO: Implement read() method.
     }

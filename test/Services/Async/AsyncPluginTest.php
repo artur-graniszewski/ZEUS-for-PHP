@@ -88,7 +88,7 @@ class AsyncPluginTest extends PHPUnit_Framework_TestCase
 
     /**
      * @expectedException \RuntimeException
-     * @expectedExceptionMessage Async call failed, server response: "BAD_REQUEST"
+     * @expectedExceptionMessage Async call failed: server reported bad request
      */
     public function testErrorHandlingOnRun()
     {

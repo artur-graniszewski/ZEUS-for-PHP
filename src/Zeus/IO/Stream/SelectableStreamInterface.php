@@ -9,7 +9,5 @@ namespace Zeus\IO\Stream;
  */
 interface SelectableStreamInterface extends StreamInterface
 {
-    public function select(int $timeout) : bool;
-
     public function register(Selector $selector, int $operation) : SelectionKey;
 }

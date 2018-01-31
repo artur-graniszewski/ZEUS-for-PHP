@@ -5,10 +5,13 @@ namespace Zeus\ServerService\Async;
 use Opis\Closure\SerializableClosure;
 use Zend\Mvc\Controller\Plugin\AbstractPlugin;
 use Zeus\Exception\UnsupportedOperationException;
+use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\AbstractStream;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\FlushableStreamInterface;
 use Zeus\IO\Stream\SelectableStreamInterface;
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
 
 // Plugin class
@@ -97,9 +100,22 @@ class AsyncPlugin extends AbstractPlugin
             throw new \RuntimeException("Async call failed: unable to issue async call");
         }
 
-        $response = $socket->select(100) ? $socket->read("\n") : false;
-        if (!$response || $response !== "PROCESSING") {
+        $selector = new Selector();
+        $socket->register($selector, SelectionKey::OP_READ);
+        $response = $selector->select(100) > 0 ? $socket->read(11) : false;
+        if (!$response || $response !== "PROCESSING\n") {
+            try {
+                if ($selector->select(100) > 0) {
+                    $buffer = $socket->read(10);
+                    $response .= $buffer;
+                }
+            } catch (IOException $exception) {
+            }
             $socket->close();
+
+            if ($response === "BAD_REQUEST\n") {
+                throw new \RuntimeException("Async call failed: server reported bad request", 1);
+            }
             throw new \RuntimeException(sprintf("Async call failed, %s", false === $response ? "no response from server" : "server response: " . json_encode($response)));
         }
 
@@ -135,7 +151,9 @@ class AsyncPlugin extends AbstractPlugin
                     throw new \RuntimeException("Async call failed: server connection lost", 1);
                 }
 
-                if (!$socket->select(0)) {
+                $selector = new Selector();
+                $socket->register($selector, SelectionKey::OP_READ);
+                if (0 === $selector->select(0)) {
                     continue;
                 }
 
@@ -170,10 +188,12 @@ class AsyncPlugin extends AbstractPlugin
             throw new \LogicException(sprintf("Invalid callback ID: %s", $callId));
         }
 
-        $result = $this->handles[$callId]->select(0);
+        $selector = new Selector();
+        $this->handles[$callId]->register($selector, SelectionKey::OP_READ);
+        $result = $selector->select(0);
 
         // report as working if no data is readable yet
-        return $result === false;
+        return $result === 0;
     }
 
     protected function doJoin(AbstractStream $socket)

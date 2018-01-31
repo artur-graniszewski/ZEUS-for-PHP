@@ -72,7 +72,7 @@ class DummySelectableStream extends AbstractSelectableStream
         return $wrote;
     }
 
-    protected function doRead($readMethod, string $ending = ''): string
+    protected function doRead($readMethod, int $size = 0): string
     {
         $data = $this->dataToRead;
         $this->dataToRead = '';

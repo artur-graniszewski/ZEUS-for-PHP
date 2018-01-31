@@ -22,60 +22,11 @@ abstract class AbstractSelectableStream extends AbstractStream implements Select
     private $localAddress;
 
     /**
-     * @param int $timeout Timeout in milliseconds
-     * @return bool
-     * @throws \Exception
-     */
-    public function select(int $timeout) : bool
-    {
-        if (!$this->isReadable()) {
-            throw new IOException("Stream is not readable");
-        }
-
-        $write = $except = [];
-        $read = [$this->resource];
-
-        try {
-            $result = $this->doSelect($read, $write, $except, $timeout);
-
-            return $result === 1;
-
-        } catch (IOException $exception) {
-            $this->isReadable = false;
-
-            throw $exception;
-        }
-    }
-
-    /**
      * @return string Server address (IP) or null if unknown
      */
     public function getLocalAddress() : string
     {
         return $this->localAddress ? $this->localAddress : $this->localAddress = @stream_socket_get_name($this->resource, false);
-    }
-
-    /**
-     * @param resource[] $read
-     * @param resource[] $write
-     * @param resource[] $except
-     * @param int $timeout
-     * @return int
-     */
-    protected function doSelect(& $read, & $write, & $except, $timeout) : int
-    {
-        error_clear_last();
-        $result = @stream_select($read, $write, $except, 0, $timeout > 0 ? UnitConverter::convertMillisecondsToMicroseconds($timeout) : 0);
-        if ($result !== false) {
-            return $result;
-        }
-
-        $error = error_get_last();
-        if (strstr($error['message'], 'Interrupted system call')) {
-            return 0;
-        }
-
-        throw new IOException("Stream select failed: " . $error['message']);
     }
 
     /**
