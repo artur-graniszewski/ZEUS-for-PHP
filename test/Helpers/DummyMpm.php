@@ -6,7 +6,6 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\AbstractModule;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\SocketServer;

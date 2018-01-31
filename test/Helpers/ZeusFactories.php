@@ -94,7 +94,6 @@ trait ZeusFactories
         $moduleConfig = require realpath(__DIR__ . "/../../config/module.config.php");
 
         $serviceConfig = ArrayUtils::merge($serviceConfig, $moduleConfig);
-
         $serviceConfig = ArrayUtils::merge($serviceConfig,
             [
                 'zeus_process_manager' => [
@@ -119,6 +118,7 @@ trait ZeusFactories
                 ]
             ]
         );
+
 
         $serviceConfig = ArrayUtils::merge($serviceConfig, $customConfig);
 
@@ -179,8 +179,8 @@ trait ZeusFactories
 
         $scheduler->setIsTerminating(false);
         $scheduler->setIpc($ipcServer);
-        $scheduler->getMultiProcessingModule()->getWrapper()->setEventManager($events);
-        $scheduler->getMultiProcessingModule()->getWrapper()->setSchedulerEvent($scheduler->getSchedulerEvent());
+//        $scheduler->getMultiProcessingModule()->getWrapper()->setEventManager($events);
+//        $scheduler->getMultiProcessingModule()->getWrapper()->setSchedulerEvent($scheduler->getSchedulerEvent());
 
         $worker = new Worker();
         $worker->setIpc($scheduler->getIpc());

@@ -6,6 +6,8 @@ use Zend\EventManager\EventManagerInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\Exception\IOException;
@@ -26,9 +28,27 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     protected $pipeBuffer = [];
 
+    /** @var ProcessOpenBridgeInterface */
+    private static $procOpenBridge;
+
+    protected static function getProcessBridge() : ProcessOpenBridgeInterface
+    {
+        if (!isset(static::$procOpenBridge)) {
+            static::$procOpenBridge = new ProcessOpenBridge();
+        }
+
+        return static::$procOpenBridge;
+    }
+
+
+    public static function setProcessBridge(ProcessOpenBridgeInterface $bridge)
+    {
+        static::$procOpenBridge = $bridge;
+    }
+
     public static function isSupported(& $errorMessage = '') : bool
     {
-        $isSupported = function_exists('proc_open') && function_exists('proc_get_status');
+        $isSupported = static::getProcessBridge()->isSupported();
 
         if (!$isSupported) {
             $className = basename(str_replace('\\', '/', static::class));
@@ -45,8 +65,16 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
      */
     public function __construct()
     {
-        $this->stdout = @fopen('php://stdout', 'w');
-        $this->stderr = @fopen('php://stderr', 'w');
+        $this->stdout = static::getProcessBridge()->getStdOut();
+        $this->stderr = static::getProcessBridge()->getStdErr();
+
+        if (!$this->stdout) {
+            $this->stdout = @fopen('php://stdout', 'w');
+        }
+
+        if (!$this->stderr) {
+            $this->stderr = @fopen('php://stderr', 'w');
+        }
     }
 
     public function __destruct()
@@ -91,7 +119,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         parent::onWorkersCheck($event);
 
         foreach ($this->workers as $pid => $worker) {
-            $status = proc_get_status($worker['resource']);
+            $status = static::getProcessBridge()->getProcStatus($worker['resource']);
 
             if (!$status['running']) {
                 $this->cleanProcessPipes($pid);
@@ -117,7 +145,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
             }
         }
 
-        $this->flushBuffers($uid, false);
+        $this->flushBuffers($uid, true);
         unset ($this->pipeBuffer[$uid]);
 
         try {
@@ -166,12 +194,12 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $startParams = escapeshellarg(json_encode($event->getParams()));
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
-        $process = \proc_open($command, $descriptors, $pipes, getcwd(), $_ENV, []);
+        $process = static::getProcessBridge()->procOpen($command, $descriptors, $pipes, getcwd(), $_ENV, []);
         if ($process === false) {
             throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
         }
 
-        $status = \proc_get_status($process);
+        $status = static::getProcessBridge()->getProcStatus($process);
         $pid = $status['pid'];
 
         $this->workers[$pid] = [
