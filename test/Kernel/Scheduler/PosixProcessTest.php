@@ -404,7 +404,7 @@ class PosixProcessTest extends PHPUnit_Framework_TestCase
         }
 
         $this->assertEquals("PCNTL extension is required by PosixProcess but disabled in PHP", $status[false], 'Error message should be returned if MPM driver is not supported');
-        $this->assertEquals("", $status[true], 'No error message should be returned if MPM driver is not supported');
+        $this->assertEquals("", $status[true], 'No error message should be returned if MPM driver is supported');
     }
 
     public function testIfSetSsidIsPerformedOnStartup()
