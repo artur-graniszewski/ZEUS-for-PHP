@@ -14,6 +14,14 @@ use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\PipeStream;
 use Zeus\IO\Stream\Selector;
 
+use function escapeshellarg;
+use function strrpos;
+use function substr;
+use function array_search;
+use function fwrite;
+use function fclose;
+use function fopen;
+
 final class ProcessOpen extends AbstractProcessModule implements SeparateAddressSpaceInterface
 {
     protected $stdout;
