@@ -88,7 +88,9 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
 
     public function setBlocking(bool $isBlocking)
     {
-        error_clear_last();
+        if (function_exists('error_clear_last')) {
+            error_clear_last();
+        };
         $result = @stream_set_blocking($this->resource, $isBlocking);
 
         if (!$result) {

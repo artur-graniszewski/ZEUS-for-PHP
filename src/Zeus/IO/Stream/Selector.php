@@ -152,7 +152,9 @@ class Selector
 
         $except = [];
 
-        error_clear_last();
+        if (function_exists('error_clear_last')) {
+            error_clear_last();
+        };
         $streamsChanged = @stream_select($read, $write, $except, 0, UnitConverter::convertMillisecondsToMicroseconds($timeout));
 
         if ($streamsChanged === false) {

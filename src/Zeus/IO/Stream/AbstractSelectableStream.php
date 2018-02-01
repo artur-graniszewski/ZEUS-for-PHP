@@ -3,10 +3,7 @@
 namespace Zeus\IO\Stream;
 
 use Zeus\IO\Exception\IOException;
-use Zeus\Util\UnitConverter;
 
-use function error_clear_last;
-use function error_get_last;
 use function stream_select;
 use function stream_socket_get_name;
 use function strlen;

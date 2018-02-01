@@ -59,6 +59,9 @@ class ProcessTitle implements ListenerAggregateInterface
             }
         }
 
+        if (defined('HHVM_VERSION')) {
+            return false;
+        }
         return true;
     }
 
