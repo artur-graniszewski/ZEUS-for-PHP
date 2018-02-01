@@ -2,10 +2,10 @@
 
 namespace ZeusTest\IO;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zeus\IO\SocketServer;
 
-abstract class AbstractIOTest extends PHPUnit_Framework_TestCase
+abstract class AbstractIOTest extends \PHPUnit\Framework\TestCase
 {
     /** @var SocketServer[] */
     protected $servers = [];

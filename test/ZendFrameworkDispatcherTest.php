@@ -2,7 +2,7 @@
 
 namespace ZeusTest;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Http\Request;
 use Zend\Http\Response;
@@ -10,7 +10,7 @@ use Zeus\Module;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
 use ZeusTest\Helpers\ZeusFactories;
 
-class ZendFrameworkDispatcherTest extends PHPUnit_Framework_TestCase
+class ZendFrameworkDispatcherTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

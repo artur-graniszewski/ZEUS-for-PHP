@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\EventManager\EventInterface;
 use Zend\Log\Logger;
@@ -22,7 +22,7 @@ use ZeusTest\Helpers\ZeusFactories;
  * @runTestsInSeparateProcesses2
  * @preserveGlobalState disabled
  */
-class SchedulerTest extends PHPUnit_Framework_TestCase
+class SchedulerTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Shared;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -12,7 +12,7 @@ use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 
-class SocketMessageBrokerTest extends PHPUnit_Framework_TestCase
+class SocketMessageBrokerTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

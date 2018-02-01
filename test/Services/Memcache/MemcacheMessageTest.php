@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Memcache;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Cache\Storage\Adapter\Filesystem;
 use Zend\Cache\Storage\Adapter\Memory;
 use Zeus\IO\Stream\NetworkStreamInterface;
@@ -10,7 +10,7 @@ use Zeus\Module;
 use Zeus\ServerService\Memcache\Message\Message;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 
-class MemcacheMessageTest extends PHPUnit_Framework_TestCase
+class MemcacheMessageTest extends \PHPUnit\Framework\TestCase
 {
     /** @var NetworkStreamInterface */
     protected $connection;

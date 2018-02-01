@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
@@ -17,7 +17,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use ZeusTest\Helpers\PcntlMockBridge;
 use ZeusTest\Helpers\ZeusFactories;
 
-class PosixProcessTest extends PHPUnit_Framework_TestCase
+class PosixProcessTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

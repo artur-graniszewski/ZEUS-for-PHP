@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
@@ -14,7 +14,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
 
-class SchedulerStatusTest extends PHPUnit_Framework_TestCase
+class SchedulerStatusTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

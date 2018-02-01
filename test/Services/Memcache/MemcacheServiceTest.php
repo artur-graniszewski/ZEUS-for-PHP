@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Memcache;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Cache\Service\StorageAdapterPluginManagerFactory;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
 use Zend\Cache\Service\StoragePluginManagerFactory;
@@ -16,7 +16,7 @@ use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;
 use ZeusTest\Helpers\ZeusFactories;
 
-class MemcacheServiceTest extends PHPUnit_Framework_TestCase
+class MemcacheServiceTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

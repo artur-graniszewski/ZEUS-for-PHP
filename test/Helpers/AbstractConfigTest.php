@@ -2,9 +2,9 @@
 
 namespace ZeusTest\Helpers;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 
-abstract class AbstractConfigTestHelper extends PHPUnit_Framework_TestCase
+abstract class AbstractConfigTestHelper extends \PHPUnit\Framework\TestCase
 {
     protected $configClass;
 

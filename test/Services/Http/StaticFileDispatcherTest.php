@@ -2,13 +2,13 @@
 
 namespace ZeusTest\Services\Http;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use ZeusTest\Helpers\DummyFileDispatcher;
 
-class StaticFileDispatcherTest extends PHPUnit_Framework_TestCase
+class StaticFileDispatcherTest extends \PHPUnit\Framework\TestCase
 {
     protected function getTmpDir()
     {

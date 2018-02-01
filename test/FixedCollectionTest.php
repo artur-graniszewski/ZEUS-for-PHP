@@ -2,10 +2,10 @@
 
 namespace ZeusTest;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\Shared\FixedCollection;
 
-class FixedCollectionTest extends PHPUnit_Framework_TestCase
+class FixedCollectionTest extends \PHPUnit\Framework\TestCase
 {
     protected function getDefaultCollection()
     {

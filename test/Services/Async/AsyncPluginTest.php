@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Async;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\IO\SocketServer;
 use Zeus\ServerService\Async\AsyncPlugin;
@@ -10,7 +10,7 @@ use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Async\Service;
 
-class AsyncPluginTest extends PHPUnit_Framework_TestCase
+class AsyncPluginTest extends \PHPUnit\Framework\TestCase
 {
     /** @var SocketServer */
     protected $server;

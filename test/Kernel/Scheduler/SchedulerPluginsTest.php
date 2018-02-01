@@ -2,14 +2,14 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\Plugin\DropPrivileges;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
 use ZeusTest\Helpers\ZeusFactories;
 
-class SchedulerPluginsTest extends PHPUnit_Framework_TestCase
+class SchedulerPluginsTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

@@ -3,7 +3,7 @@
 namespace ZeusTest\Services\Async;
 
 use Opis\Closure\SerializableClosure;
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Async\Message\Message;
 use ZeusTest\Helpers\SocketTestNetworkStream;
@@ -12,7 +12,7 @@ use ZeusTest\Helpers\SocketTestNetworkStream;
  * @runTestsInSeparateProcesses
  * @preserveGlobalState disabled
  */
-class AsyncMessageTest extends PHPUnit_Framework_TestCase
+class AsyncMessageTest extends \PHPUnit\Framework\TestCase
 {
     /** @var NetworkStreamInterface|SocketTestNetworkStream */
     protected $connection;

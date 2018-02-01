@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Http;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
@@ -11,7 +11,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Helpers\ZeusFactories;
 
-class HttpServiceTest extends PHPUnit_Framework_TestCase
+class HttpServiceTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

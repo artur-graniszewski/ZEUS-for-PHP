@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
@@ -13,7 +13,7 @@ use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\DummyServerService;
 use ZeusTest\Helpers\ZeusFactories;
 
-class ServerServiceManagerTest extends PHPUnit_Framework_TestCase
+class ServerServiceManagerTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

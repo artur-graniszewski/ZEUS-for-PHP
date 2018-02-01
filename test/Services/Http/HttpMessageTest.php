@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Http;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Http\Header\ContentLength;
 use Zend\Http\Header\TransferEncoding;
 use Zend\Http\Request;
@@ -13,7 +13,7 @@ use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 
-class HttpMessageTest extends PHPUnit_Framework_TestCase
+class HttpMessageTest extends \PHPUnit\Framework\TestCase
 {
     protected $fileHandle;
 

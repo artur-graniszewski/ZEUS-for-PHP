@@ -2,7 +2,7 @@
 
 namespace ZeusTest;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Http\Request;
 use Zend\Http\Response;
@@ -20,7 +20,7 @@ use ZeusTest\Helpers\ZeusFactories;
  * @runTestsInSeparateProcesses
  * @preserveGlobalState disabled
  */
-class ZeusControllerTest extends PHPUnit_Framework_TestCase
+class ZeusControllerTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 

@@ -2,7 +2,7 @@
 
 namespace ZeusTest;
 
-use PHPUnit_Framework_TestCase;
+use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\ModuleManager\Listener\ConfigListener;
 use Zend\ModuleManager\ModuleEvent;
@@ -10,7 +10,7 @@ use Zend\ModuleManager\ModuleManager;
 use Zeus\Module;
 use ZeusTest\Helpers\ZeusFactories;
 
-class ZeusModuleTest extends PHPUnit_Framework_TestCase
+class ZeusModuleTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;
 
