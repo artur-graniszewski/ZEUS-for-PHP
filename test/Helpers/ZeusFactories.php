@@ -106,7 +106,7 @@ trait ZeusFactories
                             'multiprocessing_module' => DummyMpm::class,
                             'max_processes' => 32,
                             'max_process_tasks' => 100,
-                            'min_spare_processes' => 3,
+                            'min_spare_processes' => 2,
                             'max_spare_processes' => 5,
                             'start_processes' => 8,
                             'enable_process_cache' => true,
