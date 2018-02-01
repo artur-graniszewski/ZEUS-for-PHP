@@ -70,13 +70,16 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
     public function testTimeout()
     {
-        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be opened before timeout");
+        $this->assertFalse($this->connection->isClosed(), "Connection should be opened before timeout");
 
-        for($i = 0; $i < 10000; $i++) {
+        $this->memcache->setConnectionTimeout(10);
+        for($i = 0; $i < 9; $i++) {
             $this->memcache->onHeartBeat($this->connection);
+            $this->assertFalse($this->connection->isClosed(), "Connection should be opened before timeout");
         }
 
-        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be closed after timeout");
+        $this->memcache->onHeartBeat($this->connection);
+        $this->assertTrue($this->connection->isClosed(), "Connection should be closed after timeout");
     }
 
     /**
@@ -173,6 +176,30 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
 
         $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be kept alive");
         $this->assertEquals("END\r\n", $result);
+    }
+
+    public function testIncompleteCommand()
+    {
+        $result = $this->send("get testkey");
+
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEmpty($result);
+    }
+
+    public function testIncompleteData()
+    {
+        $result = $this->send("set testkey4 12121212 100 10\r\n12345");
+
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEmpty($result);
+    }
+
+    public function testCorruptedData()
+    {
+        $result = $this->send("set testkey4 12121212 100 5\r\n1234567");
+
+        $this->assertFalse($this->connection->isConnectionClosed(), "Connection should be kept alive");
+        $this->assertEquals("ERROR\r\n", $result);
     }
 
     public function testInvalidCommand()
@@ -302,6 +329,12 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("0\r\n", $response);
     }
 
+    public function testMathCommandsOnNotDeclaredKey()
+    {
+        $response = $this->send("incr invalidKey1 2\r\n");
+        $this->assertEquals("NOT_FOUND\r\n", $response);
+    }
+
     public function testMathCommandsOnNonNumericValue()
     {
         $ttl = time() + 5;
@@ -353,6 +386,9 @@ class MemcacheMessageTest extends PHPUnit_Framework_TestCase
         $this->assertEquals("STORED\r\n", $response);
         $response = $this->send("get testkey10\r\n");
         $this->assertEquals("VALUE testkey10 2 9\r\n123456789\r\nEND\r\n", $response);
+
+        $response = $this->send("append invalidKey10 3\r\n789\r\n");
+        $this->assertEquals("NOT_FOUND\r\n", $response);
     }
 
     public function testTouchCommand()

@@ -12,6 +12,19 @@ use Zeus\ServerService\Shared\Exception\PrerequisitesNotMetException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 
+use function strpos;
+use function strlen;
+use function ltrim;
+use function sha1;
+use function call_user_func_array;
+use function is_int;
+use function ctype_digit;
+use function time;
+use function getmypid;
+use function crc32;
+use function explode;
+use function preg_match;
+
 /**
  * Class Message
  * @package Zeus\ServerService\Memcache\Message
@@ -23,40 +36,43 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
     const DATA_LINE = 2;
 
     /** @var bool */
-    protected $storeFlags = true;
+    private $storeFlags = true;
 
     /** @var bool */
-    protected $trackStats = true;
+    private $trackStats = true;
 
     /** @var bool */
-    protected $useNativeCas = false;
+    private $useNativeCas = false;
 
     /** @var string */
-    protected $buffer = '';
+    private $buffer = '';
 
     /** @var int */
-    protected $expectedPayloadSize = 0;
+    private $expectedPayloadSize = 0;
 
     /** @var int */
-    protected $lineType = self::COMMAND_LINE;
+    private $lineType = self::COMMAND_LINE;
 
     /** @var mixed[] */
-    protected $activeCommand = null;
+    private $activeCommand = null;
 
     /** @var bool */
-    protected $noReply = false;
+    private $noReply = false;
 
     /** @var NetworkStreamInterface */
-    protected $connection;
+    private $connection;
 
     /** @var StorageInterface */
-    protected $cache;
+    private $cache;
 
     /** @var StorageInterface */
-    protected $status;
+    private $status;
 
     /** @var int */
-    protected $ttl = 0;
+    private $connectionTime = 0;
+
+    /** @var int */
+    private $connectionTimeout = 10000;
 
     /**
      * Message constructor.
@@ -76,11 +92,21 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
-        $this->ttl++;
+        $this->connectionTime++;
 
-        if ($this->ttl > 10000) {
+        if ($this->connectionTime >= $this->connectionTimeout) {
             $connection->close();
         }
+    }
+
+    public function setConnectionTimeout(int $connectionTimeout)
+    {
+        $this->connectionTimeout = $connectionTimeout;
+    }
+
+    public function getConnectionTimeout() : int
+    {
+        return $this->connectionTimeout;
     }
 
     /**
@@ -89,7 +115,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onOpen(NetworkStreamInterface $connection)
     {
-        $this->ttl = 0;
+        $this->connectionTime = 0;
         $this->connection = $connection;
         $this->connection->setWriteBufferSize(0);
     }
@@ -120,7 +146,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onMessage(NetworkStreamInterface $connection, string $message)
     {
-        $this->ttl = 0;
+        $this->connectionTime = 0;
         $this->buffer .= $message;
 
         if ($this->lineType === static::COMMAND_LINE) {

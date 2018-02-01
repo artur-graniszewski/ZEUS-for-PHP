@@ -132,7 +132,6 @@ class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStream
 
     public function isClosed(): bool
     {
-        // TODO: Implement isClosed() method.
-        return false;
+        return $this->isConnectionClosed;
     }
 }
