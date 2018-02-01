@@ -59,7 +59,7 @@ class ProcessTitle implements ListenerAggregateInterface
             }
         }
 
-        return function_exists('cli_get_process_title') && function_exists('cli_set_process_title');
+        return true;
     }
 
     /**
