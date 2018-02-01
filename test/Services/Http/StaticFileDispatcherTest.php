@@ -58,7 +58,7 @@ class StaticFileDispatcherTest extends \PHPUnit\Framework\TestCase
         $dispatcher->dispatch($request, $response);
 
         $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
-        $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
+        $this->assertEquals('text/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
 
         $request = Request::fromString("GET test_xml HTTP/1.0\r\n\r\n");
         $response = new Response();
@@ -66,7 +66,7 @@ class StaticFileDispatcherTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals(Response::STATUS_CODE_200, $response->getStatusCode());
 
-        $this->assertEquals('application/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
+        $this->assertEquals('text/xml', $response->getHeaders()->get('Content-Type')->getFieldValue());
     }
 
     public function testFileExtensionBlacklist()

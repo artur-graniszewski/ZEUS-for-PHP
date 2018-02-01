@@ -959,7 +959,7 @@ class MimeType
         'xltx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
         'xlw' => 'application/vnd.ms-excel',
         'xm' => 'audio/xm',
-        'xml' => 'application/xml',
+        'xml' => 'text/xml',
         'xo' => 'application/vnd.olpc-sugar',
         'xop' => 'application/xop+xml',
         'xpi' => 'application/x-xpinstall',
@@ -1000,7 +1000,6 @@ class MimeType
     {
         $extension = pathinfo($fileName, PATHINFO_EXTENSION);
 
-        //return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : mime_content_type($fileName);
         return (isset(static::$mimeTypes[$extension])) ? static::$mimeTypes[$extension] : static::getMimeMagic($fileName);
     }
 
@@ -1015,6 +1014,6 @@ class MimeType
         fclose($tmpFile);
         unlink($tmpFileName);
 
-        return $magicType ? $magicType : 'text/plain';
+        return $magicType ? str_replace('application/xml', 'text/xml', $magicType) : 'text/plain';
     }
 }
