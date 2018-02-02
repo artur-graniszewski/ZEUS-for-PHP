@@ -2,6 +2,7 @@
 
 namespace Zeus\IO;
 
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\SocketException;
 use Zeus\IO\Exception\SocketTimeoutException;
 use Zeus\IO\Stream\SelectableStreamInterface;
@@ -74,6 +75,9 @@ final class SocketServer
 
     public function setReuseAddress(bool $reuse)
     {
+        if (defined("HHVM_VERSION")) {
+            throw new UnsupportedOperationException("Reuse address feature is not supported by HHVM");
+        }
         $this->reuseAddress = $reuse;
 
         return $this;
@@ -167,7 +171,7 @@ final class SocketServer
         }
 
         if (defined("HHVM_VERSION")) {
-            // HHVM sets invalid peer name in stream_socket_accept function
+            // HHVM sets invalid peer name in stream_socket_accept function, for example: "\u0018:35180"
             $peerName = @stream_socket_get_name($newSocket, true);
         }
         $connection = new SocketStream($newSocket, $peerName);

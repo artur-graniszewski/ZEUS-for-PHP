@@ -126,7 +126,10 @@ class SocketMessageBrokerTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals($requestString, $received[0]);
         $this->assertEquals(2, $steps, "Message should be fetched twice");
-        $this->assertGreaterThanOrEqual(1, $heartBeats, "Heartbeat should be called at least once between requests");
+
+        // phpunit is broken on HHVM in case of assertGreatherThanOrEqual()
+        // the error message is: __SystemLib\Error: Parameter $constraints is variadic and has a type constraint (PHPUnit\Framework\Constraint\Constraint); variadic params with type constraints are not supported in non-Hack files
+        $this->assertTrue($heartBeats >= 1, "Heartbeat should be called at least once between requests");
     }
 
     public function testSubscriberErrorHandling()

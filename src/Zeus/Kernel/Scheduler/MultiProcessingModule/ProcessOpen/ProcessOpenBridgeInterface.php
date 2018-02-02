@@ -10,19 +10,19 @@ interface ProcessOpenBridgeInterface
 
     public function getProcStatus($resource);
 
-    public function setStdOut($resource);
+    public function setStdOut(string $path);
 
-    public function setStdErr($resource);
-
-    /**
-     * @return resource
-     * @internal
-     */
-    public function getStdOut();
+    public function setStdErr(string $path);
 
     /**
      * @return resource
      * @internal
      */
-    public function getStdErr();
+    public function getStdOut() : string;
+
+    /**
+     * @return resource
+     * @internal
+     */
+    public function getStdErr() : string;
 }

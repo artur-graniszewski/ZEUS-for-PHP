@@ -11,6 +11,12 @@ use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
+/**
+ * Class SchedulerStatus
+ * @package Zeus\Kernel\Scheduler\Plugin
+ * @codeCoverageIgnore
+ * @deprecated
+ */
 class SchedulerStatus implements ListenerAggregateInterface
 {
     /** @var mixed[] */

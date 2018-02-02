@@ -23,6 +23,10 @@ use function fwrite;
 use function fclose;
 use function fopen;
 
+/**
+ * Class ProcessOpenWithPipe
+ * @package Zeus\Kernel\Scheduler\MultiProcessingModule
+ */
 final class ProcessOpen extends AbstractProcessModule implements SeparateAddressSpaceInterface
 {
     protected $stdout;
@@ -62,8 +66,13 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         if (!$isSupported) {
             $className = basename(str_replace('\\', '/', static::class));
 
-            $errorMessage = sprintf("proc_open() and proc_get_status() are required by %s but disabled in PHP",
-                $className);
+            if (defined("HHVM_VERSION")) {
+                $errorMessage = sprintf("HHVM does not support pipes as IPC transport",
+                    $className);
+            } else {
+                $errorMessage = sprintf("proc_open() and proc_get_status() are required by %s but disabled in PHP",
+                    $className);
+            }
         }
 
         return $isSupported;
@@ -74,15 +83,12 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
      */
     public function __construct()
     {
-        $this->stdout = static::getProcessBridge()->getStdOut();
-        $this->stderr = static::getProcessBridge()->getStdErr();
-
         if (!$this->stdout) {
-            $this->stdout = @fopen('php://stdout', 'w');
+            $this->stdout = @fopen(static::getProcessBridge()->getStdOut(), 'w');
         }
 
         if (!$this->stderr) {
-            $this->stderr = @fopen('php://stderr', 'w');
+            $this->stderr = @fopen(static::getProcessBridge()->getStdErr(), 'w');
         }
     }
 

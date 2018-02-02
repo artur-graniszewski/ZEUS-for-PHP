@@ -4,13 +4,13 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen;
 
 class ProcessOpenBridge implements ProcessOpenBridgeInterface
 {
-    private $stdOut;
+    private $stdOut = 'php://stdout';
 
-    private $stdErr;
+    private $stdErr = 'php://stderr';
 
     public function isSupported() : bool
     {
-        return function_exists('proc_open') && function_exists('proc_get_status');
+        return function_exists('proc_open') && function_exists('proc_get_status') && !defined("HHVM_VERSION");
     }
 
     public function procOpen($command, $descriptors, array & $pipes, $cwd, $env, $options)
@@ -25,30 +25,22 @@ class ProcessOpenBridge implements ProcessOpenBridgeInterface
         return proc_get_status($resource);
     }
 
-    public function setStdOut($resource)
+    public function setStdOut(string $path)
     {
-        $this->stdOut = $resource;
+        $this->stdOut = $path;
     }
 
-    public function setStdErr($resource)
+    public function setStdErr(string $path)
     {
-        $this->stdErr = $resource;
+        $this->stdErr = $path;
     }
 
-    /**
-     * @return resource
-     * @internal
-     */
-    public function getStdOut()
+    public function getStdOut() : string
     {
         return $this->stdOut;
     }
 
-    /**
-     * @return resource
-     * @internal
-     */
-    public function getStdErr()
+    public function getStdErr() : string
     {
         return $this->stdErr;
     }

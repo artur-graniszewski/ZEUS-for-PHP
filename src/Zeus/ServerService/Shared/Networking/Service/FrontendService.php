@@ -22,6 +22,7 @@ use function in_array;
 use function array_search;
 use function stream_context_create;
 use function explode;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
@@ -102,8 +103,15 @@ class FrontendService
 
     private function startFrontendElection(SchedulerEvent $event)
     {
-        $frontendsAmount = (int) max(1, \Zeus\Kernel\System\Runtime::getNumberOfProcessors() / 2);
-        $this->messageBroker->getLogger()->debug("Electing $frontendsAmount frontend worker(s)");
+        $cpus = Runtime::getNumberOfProcessors();
+        if (defined("HHVM_VERSION")) {
+            // HHVM does not support SO_REUSEADDR ?
+            $frontendsAmount = 1;
+            $this->messageBroker->getLogger()->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
+        } else {
+            $frontendsAmount = (int) max(1, $cpus / 2);
+        }
+        $this->messageBroker->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
         $event->getScheduler()->getIpc()->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
     }
 
@@ -119,7 +127,11 @@ class FrontendService
     private function startFrontendServer(int $backlog)
     {
         $server = new SocketServer();
-        $server->setReuseAddress(true);
+        try {
+            $server->setReuseAddress(true);
+        } catch (UnsupportedOperationException $exception) {
+            $this->messageBroker->getLogger()->warn("Reuse address feature for Socket Streams is unsupported");
+        }
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
         $server->bind($this->messageBroker->getConfig()->getListenAddress(), $backlog, $this->messageBroker->getConfig()->getListenPort());
