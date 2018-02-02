@@ -11,8 +11,25 @@ class BasicStreamTest extends AbstractIOTest
      * @expectedExceptionMessage Failed to switch the stream to a non-blocking mode: supplied resource is not a valid stream resource
      * @expectedException \Zeus\IO\Exception\IOException
      */
-    public function testFailOnSetBlocking()
+    public function testFailOnSetBlockingForPHP()
     {
+        if (defined("HHVM_VERSION")) {
+            $this->markTestSkipped("This is a PHP-only test");
+        }
+        $stream = new FileStream(fopen(__FILE__, 'r'));
+        fclose($stream->getResource());
+        $stream->setBlocking(false);
+    }
+
+    /**
+     * @expectedExceptionMessage Failed to switch the stream to a non-blocking mode: unknown error
+     * @expectedException \Zeus\IO\Exception\IOException
+     */
+    public function testFailOnSetBlockingForHHVM()
+    {
+        if (!defined("HHVM_VERSION")) {
+            $this->markTestSkipped("This is a HHVM-only test");
+        }
         $stream = new FileStream(fopen(__FILE__, 'r'));
         fclose($stream->getResource());
         $stream->setBlocking(false);

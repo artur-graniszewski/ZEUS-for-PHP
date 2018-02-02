@@ -166,6 +166,10 @@ final class SocketServer
             throw new SocketTimeoutException('Socket timed out');
         }
 
+        if (defined("HHVM_VERSION")) {
+            // HHVM sets invalid peer name in stream_socket_accept function
+            $peerName = @stream_socket_get_name($newSocket, true);
+        }
         $connection = new SocketStream($newSocket, $peerName);
 
         return $connection;
