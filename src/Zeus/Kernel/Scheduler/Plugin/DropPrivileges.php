@@ -2,23 +2,33 @@
 
 namespace Zeus\Kernel\Scheduler\Plugin;
 
+use RuntimeException;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
+use function posix_getegid;
+use function posix_geteuid;
+use function posix_getgrnam;
+use function posix_getpwnam;
+use function posix_setegid;
+use function posix_setgid;
+use function posix_setuid;
+use function posix_seteuid;
+
 class DropPrivileges implements ListenerAggregateInterface
 {
     /** @var mixed[] */
-    protected $eventHandles = [];
+    private $eventHandles = [];
 
     /** @var mixed[] */
-    protected $options;
+    private $options;
 
     /** @var int */
-    protected $uid;
+    private $uid;
 
     /** @var int */
-    protected $gid;
+    private $gid;
 
     /**
      * EffectiveUser constructor.
@@ -29,19 +39,19 @@ class DropPrivileges implements ListenerAggregateInterface
         $this->options = $options;
 
         if (!isset($options['user']) || !isset($options['group'])) {
-            throw new \RuntimeException("Both user name and group name must be specified");
+            throw new RuntimeException("Both user name and group name must be specified");
         }
         $user = posix_getpwnam($options['user']);
 
         if ($user === false) {
-            throw new \RuntimeException("Invalid user name: " . $options['user']);
+            throw new RuntimeException("Invalid user name: " . $options['user']);
         }
         $this->uid = (int) $user["uid"];
 
         $group = posix_getgrnam($options['group']);
 
         if ($group === false) {
-            throw new \RuntimeException("Invalid group name: " . $options['user']);
+            throw new RuntimeException("Invalid group name: " . $options['user']);
         }
         $this->gid = (int) $group["gid"];
 
@@ -66,7 +76,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->eventHandles[] = $events->getSharedManager()->attach('*', WorkerEvent::EVENT_INIT, function() {
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_INIT, function() {
             $this->onWorkerInit();
         }, $priority);
     }
@@ -80,7 +90,7 @@ class DropPrivileges implements ListenerAggregateInterface
     public function detach(EventManagerInterface $events)
     {
         foreach ($this->eventHandles as $handle) {
-            //$events->getSharedManager()->detach($handle);
+            $events->detach($handle);
         }
     }
 
@@ -95,7 +105,7 @@ class DropPrivileges implements ListenerAggregateInterface
         $result = $asEffectiveUser ? $this->posixSetEgid($gid) : $this->posixSetGid($gid);
 
         if ($result !== true) {
-            throw new \RuntimeException("Failed to switch to the group ID: " . $gid);
+            throw new RuntimeException("Failed to switch to the group ID: " . $gid);
         }
     }
 
@@ -104,7 +114,7 @@ class DropPrivileges implements ListenerAggregateInterface
         $result = $asEffectiveUser ? $this->posixSetEuid($uid) : $this->posixSetUid($uid);
 
         if ($result !== true) {
-            throw new \RuntimeException("Failed to switch to the user ID: " . $uid);
+            throw new RuntimeException("Failed to switch to the user ID: " . $uid);
         }
     }
 

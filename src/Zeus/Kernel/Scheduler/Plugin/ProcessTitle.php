@@ -12,17 +12,18 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use function cli_set_process_title;
 use function function_exists;
 use function strtolower;
+use function sprintf;
 use function preg_replace;
+use function defined;
+use function explode;
+use function posix_getuid;
 
 class ProcessTitle implements ListenerAggregateInterface
 {
     use AddUnitsToNumbers;
 
-    /** @var EventManagerInterface */
-    protected $events;
-
     /** @var mixed[] */
-    protected $eventHandles = [];
+    private $eventHandles = [];
 
     protected function setTitle(string $title)
     {
@@ -39,22 +40,21 @@ class ProcessTitle implements ListenerAggregateInterface
             return;
         }
 
-        $events = $events->getSharedManager();
-        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_CREATE, [$this, 'onWorkerStarting'], $priority);
-        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_WAITING, [$this, 'onWorkerWaiting'], $priority);
-        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_TERMINATE, [$this, 'onWorkerTerminate'], $priority);
-        $this->eventHandles[] = $events->attach('*', WorkerEvent::EVENT_RUNNING, [$this, 'onWorkerRunning'], $priority);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], $priority);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_STOP, [$this, 'onSchedulerStop'], $priority);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_LOOP, [$this, 'onSchedulerLoop'], $priority);
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_CREATE, [$this, 'onWorkerStarting'], $priority);
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_WAITING, [$this, 'onWorkerWaiting'], $priority);
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_TERMINATE, [$this, 'onWorkerTerminate'], $priority);
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_RUNNING, [$this, 'onWorkerRunning'], $priority);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], $priority);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_STOP, [$this, 'onSchedulerStop'], $priority);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, [$this, 'onSchedulerLoop'], $priority);
     }
 
     private function isSupported() : bool
     {
         if (PHP_OS === 'Darwin') {
             // only root can change the process name...
-            if (!function_exists('posix_getuid') || posix_getuid() != 0) {
+            if (!function_exists('posix_getuid') || posix_getuid() !== 0) {
                 return false;
             }
         }
@@ -113,7 +113,7 @@ class ProcessTitle implements ListenerAggregateInterface
     public function detach(EventManagerInterface $events)
     {
         foreach ($this->eventHandles as $handle) {
-            //$events->getSharedManager()->detach($handle);
+            $events->detach($handle);
         }
     }
 }
