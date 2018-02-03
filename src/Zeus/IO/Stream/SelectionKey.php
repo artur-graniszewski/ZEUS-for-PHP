@@ -3,7 +3,7 @@
 namespace Zeus\IO\Stream;
 
 use LogicException;
-use TypeError;
+use function json_encode;
 
 class SelectionKey
 {
@@ -19,7 +19,8 @@ class SelectionKey
     /** @var SelectableStreamInterface */
     private $stream;
 
-    private $object;
+    /** @var mixed */
+    private $attachment;
 
     /** @var Selector */
     private $selector;
@@ -72,28 +73,19 @@ class SelectionKey
     }
 
     /**
-     * @param object $object
-     * @throws \TypeError
+     * @param mixed $attachment
      */
-    public function attach($object)
+    public function attach($attachment)
     {
-        if (!is_object($object)) {
-            throw new TypeError("Input parameter must be of an object type");
-        }
-        $this->object = $object;
+        $this->attachment = $attachment;
     }
 
     /**
-     * @return object
-     * @throws LogicException
+     * @return mixed
      */
     public function getAttachment()
     {
-        if ($this->object) {
-            return $this->object;
-        }
-
-        throw new LogicException("Attachment not present");
+        return $this->attachment;
     }
 
     public function getSelector() : Selector

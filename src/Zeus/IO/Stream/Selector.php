@@ -12,11 +12,15 @@ use function count;
 use function strstr;
 use function error_get_last;
 use function error_clear_last;
+use function function_exists;
 
-class Selector
+class Selector extends AbstractSelector
 {
     /** @var SelectionKey[] */
     private $selectionKeys = [];
+
+    /** @var SelectionKey[] */
+    private $selectedKeys = [];
 
     /** @var mixed[] */
     private $streams = [];
@@ -123,8 +127,17 @@ class Selector
             unset ($this->streamResources[SelectionKey::OP_ACCEPT][$resourceId]);
             unset ($this->selectedResources[SelectionKey::OP_ACCEPT][$resourceId]);
             unset ($this->selectionKeys[$resourceId]);
+            unset ($this->selectedKeys[$resourceId]);
             unset ($this->streams[$resourceId]);
         }
+    }
+
+    /**
+     * @return SelectionKey[]
+     */
+    public function getKeys() : array
+    {
+        return $this->selectionKeys;
     }
 
     /**
@@ -139,6 +152,7 @@ class Selector
                 unset ($this->streamResources[SelectionKey::OP_WRITE][$key]);
                 unset ($this->streamResources[SelectionKey::OP_ACCEPT][$key]);
                 unset ($this->selectionKeys[$key]);
+                unset ($this->selectedKeys[$key]);
                 unset ($this->streams[$key]);
             }
         }
@@ -188,13 +202,12 @@ class Selector
 
         $streamsChanged = count($uniqueStreams);
 
+        $this->computeSelectedKeys();
+
         return $streamsChanged;
     }
 
-    /**
-     * @return SelectionKey[]
-     */
-    public function getSelectionKeys() : array
+    private function computeSelectedKeys()
     {
         $result = [];
 
@@ -227,6 +240,22 @@ class Selector
             }
         }
 
-        return array_values($result);
+        $this->selectedKeys = array_values($result);
+    }
+
+    /**
+     * @return SelectionKey[]
+     */
+    public function getSelectionKeys() : array
+    {
+        return $this->selectedKeys;
+    }
+
+    /**
+     * @param SelectionKey[] $keys
+     */
+    protected function setSelectionKeys(array $keys)
+    {
+        $this->selectedKeys = $keys;
     }
 }
