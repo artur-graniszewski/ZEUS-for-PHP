@@ -12,6 +12,7 @@ use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
+use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
@@ -52,6 +53,9 @@ final class Scheduler extends AbstractService
     /** @var WorkerFlowManager */
     private $workerFlowManager;
 
+    /** @var Reactor */
+    private $reactor;
+
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
@@ -67,8 +71,14 @@ final class Scheduler extends AbstractService
         return $this->status;
     }
 
+    public function getReactor() : Reactor
+    {
+        return $this->reactor;
+    }
+
     public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
     {
+        $this->reactor = new Reactor();
         $this->workerFlowManager = new WorkerFlowManager();
         $this->workerFlowManager->setScheduler($this);
         $event = new SchedulerEvent();
@@ -77,8 +87,8 @@ final class Scheduler extends AbstractService
         $this->setSchedulerEvent($event);
 
         $this->setConfig($config);
-        $this->status = new WorkerState($this->getConfig()->getServiceName());
-        $this->workers = new WorkerCollection($this->getConfig()->getMaxProcesses());
+        $this->status = new WorkerState($config->getServiceName());
+        $this->workers = new WorkerCollection($config->getMaxProcesses());
 
         $this->discipline = $discipline;
         $discipline->setConfig($config);
@@ -349,10 +359,6 @@ final class Scheduler extends AbstractService
         $this->triggerEvent(SchedulerEvent::EVENT_STOP, ['exception' => $exception]);
     }
 
-    /**
-     * @param int $uid
-     * @param bool $isSoftStop
-     */
     private function stopWorker(int $uid, bool $isSoftStop)
     {
         $this->workerFlowManager->stopWorker($uid, $isSoftStop);
@@ -456,7 +462,14 @@ final class Scheduler extends AbstractService
     private function mainLoop()
     {
         do {
-            $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
+            $this->getReactor()->mainLoop(
+                function() {
+                    $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
+                    if ($this->isTerminating()) {
+                        $this->getReactor()->setTerminating(true);
+                    }
+                }
+            );
         } while (!$this->isTerminating());
 
         $this->getLogger()->debug("Scheduler loop finished");

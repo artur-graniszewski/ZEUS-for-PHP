@@ -14,7 +14,7 @@ use function error_get_last;
 use function error_clear_last;
 use function function_exists;
 
-class Selector extends AbstractSelector
+class Selector extends AbstractStreamSelector
 {
     /** @var SelectionKey[] */
     private $selectionKeys = [];

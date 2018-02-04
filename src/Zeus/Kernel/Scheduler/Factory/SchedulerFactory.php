@@ -41,6 +41,10 @@ class SchedulerFactory implements FactoryInterface
         $schedulerDiscipline =
             isset($config['scheduler_discipline']) ? $container->get($config['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
+        $scheduler = new Scheduler($configObject, $schedulerDiscipline);
+        $scheduler->setEventManager($eventManager);
+        $scheduler->setLogger($logger);
+
         $ipcServer = new IpcServer();
         $ipcServer->setEventManager($container->build('zeus-event-manager'));
         $ipcServer->attach($eventManager);
@@ -52,10 +56,6 @@ class SchedulerFactory implements FactoryInterface
             'event_manager' => $eventManager,
             'ipc_server' => $ipcServer
         ]);
-
-        $scheduler = new Scheduler($configObject, $schedulerDiscipline);
-        $scheduler->setEventManager($eventManager);
-        $scheduler->setLogger($logger);
 
         $workerEvent = new Scheduler\WorkerEvent();
         $workerEvent->setScheduler($scheduler);

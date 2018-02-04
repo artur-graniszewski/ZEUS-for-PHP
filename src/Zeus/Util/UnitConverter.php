@@ -5,20 +5,25 @@ namespace Zeus\Util;
 class UnitConverter
 {
     /**
-     * @param int $milliseconds
+     * @param float $milliseconds
      * @return float Seconds
      */
-    public static function convertMillisecondsToSeconds(int $milliseconds) : float
+    public static function convertMillisecondsToSeconds(float $milliseconds) : float
     {
         return $milliseconds > 0 ? $milliseconds / 1000 : 0.0;
     }
 
     /**
-     * @param int $milliseconds
-     * @return int Microseconds
+     * @param float $milliseconds
+     * @return float Microseconds
      */
-    public static function convertMillisecondsToMicroseconds(int $milliseconds) : int
+    public static function convertMillisecondsToMicroseconds(float $milliseconds) : float
     {
-        return $milliseconds > 0 ? $milliseconds * 1000 : 0;
+        return $milliseconds > 0 ? $milliseconds * 1000 : 0.0;
+    }
+
+    public static function convertMicrosecondsToMilliseconds(float $microseconds) : float
+    {
+        return $microseconds > 0 ? $microseconds / 1000 : 0.0;
     }
 }

@@ -3,29 +3,35 @@
 namespace Zeus\Kernel\Scheduler;
 
 use LogicException;
+use TypeError;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
-use Zeus\Exception\UnsupportedOperationException;
-use Zeus\IO\Stream\AbstractSelector;
-
-use function microtime;
-use function array_search;
-use function array_keys;
-use function call_user_func;
-use Zeus\IO\Stream\SelectableStreamInterface;
+use Zeus\IO\Stream\AbstractSelectorAggregate;
+use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
+use Zeus\Util\Math;
+use Zeus\Util\UnitConverter;
+
+use function key;
+use function microtime;
+use function array_search;
+use function array_merge;
+use function array_keys;
+use function call_user_func;
+use function call_user_func_array;
+use function is_callable;
+use function max;
 
 /**
  * Class Reactor
  * @package Zeus\Kernel\Scheduler
- * @codeCoverageIgnore
  */
-class Reactor extends AbstractSelector implements EventManagerAwareInterface
+class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInterface
 {
     use EventManagerAwareTrait;
 
-    /** @var Selector */
+    /** @var AbstractStreamSelector */
     private $reactor;
 
     /** @var float */
@@ -42,33 +48,56 @@ class Reactor extends AbstractSelector implements EventManagerAwareInterface
     /** @var mixed[] */
     private $selectorTimeouts;
 
+    private $timers = [];
+
     /** @var SelectionKey[] */
     private $selectedKeys;
+
+    /** @var int Timeout in milliseconds, 1000 ms = 1 s */
+    private $timerResolution = 1000;
 
     public function __construct()
     {
         $this->reactor = new Selector();
     }
 
-    public function mainLoop()
+    public function getNextTimeout() : int
     {
+        $lastTick = $this->lastTick;
+        $this->lastTick = microtime(true);
+        $diff = UnitConverter::convertMicrosecondsToMilliseconds(microtime($this->lastTick) - $lastTick);
+
+        $wait = (int) max(0, $this->timerResolution - $diff);
+
+        return $wait;
+    }
+
+    public function mainLoop($callback)
+    {
+        if (!is_callable($callback)) {
+            throw new TypeError("Invalid callback parameter");
+        }
+
         do {
-            $this->selectedKeys = [];
-            $selector = $this->getSelector();
+            call_user_func($callback, $this);
 
-            $lastTick = $this->lastTick;
-            $this->lastTick = microtime(true);
-            $diff = microtime($this->lastTick) - $lastTick;
+            $wait = $this->getNextTimeout();
+            $changed = $this->select($wait);
 
-            $wait = (int)($diff < 1 ? (1 - $diff) * 1000 : 100);
-            if (0 === $this->select($wait)) {
+            if (0 === $changed) {
                 continue;
             }
 
             $selectorIdsToNotify = [];
-            foreach ($selector->getSelectionKeys() as $key) {
-                $selectorIdsToNotify[$key->getAttachment()][] = $key;
-                $this->selectedKeys[] = $key;
+            foreach ($this->getSelectionKeys() as $key) {
+                $attachment = $key->getAttachment();
+                $selectorId = $attachment['id'];
+                /** @var SelectionKey $originalKey */
+                $originalKey = $attachment['key'];
+                $originalKey->setReadable($key->isReadable());
+                $originalKey->setWritable($key->isWritable());
+                $originalKey->setAcceptable($key->isAcceptable());
+                $selectorIdsToNotify[$selectorId][] = $originalKey;
             }
 
             foreach (array_keys($selectorIdsToNotify) as $id) {
@@ -82,13 +111,13 @@ class Reactor extends AbstractSelector implements EventManagerAwareInterface
     public function select(int $timeout = 0) : int
     {
         $selector = $this->getSelector();
-        $amount = $selector->select();
+        $amount = $selector->select($timeout);
         $this->selectedKeys = $selector->getSelectionKeys();
 
         return $amount;
     }
 
-    public function getSelector() : Selector
+    public function getSelector() : AbstractStreamSelector
     {
         $reactor = clone $this->reactor;
 
@@ -96,15 +125,18 @@ class Reactor extends AbstractSelector implements EventManagerAwareInterface
             $keys = $selector->getKeys();
 
             foreach ($keys as $key) {
-                $key->getStream()->register($reactor, $key->getInterestOps());
-                $key->attach($index);
+                $key2 = $key->getStream()->register($reactor, $key->getInterestOps());
+                $key2->attach([
+                    'id' => $index,
+                    'key' => $key,
+                ]);
             }
         }
 
         return $reactor;
     }
 
-    public function setSelector(Selector $selector)
+    public function setSelector(AbstractStreamSelector $selector)
     {
         $this->reactor = $selector;
     }
@@ -119,14 +151,65 @@ class Reactor extends AbstractSelector implements EventManagerAwareInterface
         return $this->isTerminating;
     }
 
-    public function observeSelector(Selector $selector, $callback, int $timeout)
+    /**
+     * @param AbstractStreamSelector $selector
+     * @param $callback
+     * @param int $timeout Timeout in milliseconds
+     */
+    public function register(AbstractStreamSelector $selector, $callback, int $timeout)
     {
+        $timeout *= 1000;
         $this->selectorCallbacks[] = $callback;
         $this->observedSelectors[] = $selector;
-        $this->selectorTimeouts[] = ['nextTick' => 0.0, 'timout' => $timeout];
+        $nextTick = microtime(true) + $timeout;
+        $this->selectorTimeouts[] = ['nextTick' => $nextTick, 'timeout' => $timeout];
+
+        $this->updateTimerResolution();
     }
 
-    public function unregisterSelector(Selector $selector)
+    /**
+     * @param callable $callback
+     * @param int $timeout Timeout in milliseconds
+     * @param bool $isPeriodic
+     * @return mixed Timer ID
+     */
+    public function registerTimer($callback, int $timeout, bool $isPeriodic)
+    {
+        $timeout *= 1000;
+        $nextTick = microtime(true) + $timeout;
+        $this->timers[] = ['callback' => $callback, 'nextTick' => $nextTick, 'timeout' => $timeout, 'periodic' => $isPeriodic];
+
+        $this->updateTimerResolution();
+
+        return key($this->timers);
+    }
+
+    private function updateTimerResolution()
+    {
+        $timeouts = [1000];
+        foreach (array_merge($this->timers, $this->selectorTimeouts) as $timer) {
+            $timeouts[] = $timer['timeout'];
+        }
+
+        if (!isset($timeouts[1])) {
+            $this->timerResolution = $timeouts[0];
+            return;
+        }
+
+        $this->timerResolution = call_user_func_array([Math::class, 'gcd'], $timeouts);
+    }
+
+    /**
+     * @param mixed $id Timer ID
+     */
+    public function unregisterTimer($id)
+    {
+        if (!isset($this->timers[$id])) {
+            throw new LogicException("Cannot unregister: unknown timer");
+        }
+    }
+
+    public function unregister(AbstractStreamSelector $selector)
     {
         $index = array_search($selector, $this->observedSelectors);
 
@@ -137,16 +220,6 @@ class Reactor extends AbstractSelector implements EventManagerAwareInterface
         unset ($this->observedSelectors[$index]);
         unset ($this->selectorCallbacks[$index]);
         unset ($this->selectorTimeouts[$index]);
-    }
-
-    public function register(SelectableStreamInterface $stream, int $operation = SelectionKey::OP_ALL) : SelectionKey
-    {
-        throw new UnsupportedOperationException("Direct registration of Streams is unsupported by Reactor");
-    }
-
-    public function unregister(SelectableStreamInterface $stream, int $operation = SelectionKey::OP_ALL)
-    {
-        throw new UnsupportedOperationException("Direct unregistration of Streams is unsupported by Reactor");
     }
 
     /**
@@ -179,6 +252,6 @@ class Reactor extends AbstractSelector implements EventManagerAwareInterface
      */
     protected function setSelectionKeys(array $keys)
     {
-        $this->setSelectionKeys = $keys;
+        $this->selectedKeys = $keys;
     }
 }

@@ -6,8 +6,10 @@ use Throwable;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\SocketIpc as IpcSocketStream;
+use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\Exception\SocketTimeoutException;
@@ -30,6 +32,8 @@ use function get_called_class;
 class IpcServer implements ListenerAggregateInterface
 {
     private $ipcHost = '127.0.0.2';
+
+    private $isSchedulerRegistered = false;
 
     const AUDIENCE_ALL = 'aud_all';
     const AUDIENCE_ANY = 'aud_any';
@@ -61,8 +65,7 @@ class IpcServer implements ListenerAggregateInterface
     /** @var mixed[] */
     private $queuedMessages = [];
 
-    /** @var float */
-    private $lastTick;
+    private $isKernelRegistered = false;
 
     public function __construct()
     {
@@ -186,23 +189,13 @@ class IpcServer implements ListenerAggregateInterface
         $this->ipcClient->setId($uid);
     }
 
-    private function handleIpcMessages()
+    private function handleIpcMessages(AbstractStreamSelector $selector)
     {
-        $selector = $this->ipcSelector;
         $event = new IpcEvent();
         $event->setName(IpcEvent::EVENT_HANDLING_MESSAGES);
         $event->setParam('selector', $selector);
         $event->setTarget($this);
         $this->getEventManager()->triggerEvent($event);
-
-        $lastTick = $this->lastTick;
-        $this->lastTick = microtime(true);
-        $diff = microtime($this->lastTick) - $lastTick;
-
-        $wait = (int) ($diff < 1 ? (1 - $diff) * 1000 : 100);
-        if (!$selector->select($wait)) {
-            return;
-        }
 
         $messages = [];
 
@@ -235,6 +228,9 @@ class IpcServer implements ListenerAggregateInterface
 
             /** @var IpcSocketStream $ipc */
             $ipc = $key->getAttachment();
+            if (!$ipc) {
+                var_dump($key->isReadable(), $key->isAcceptable(), $key->isWritable());
+            }
 
             if (in_array($stream, $this->inboundStreams)) {
                 try {
@@ -406,8 +402,11 @@ class IpcServer implements ListenerAggregateInterface
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $sharedManager = $events->getSharedManager();
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function() {
-            $this->handleIpcMessages();
+        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function(SchedulerEvent $event) {
+            if (!$this->isKernelRegistered) {
+                $this->useReactor($event->getScheduler()->getReactor());
+                $this->isKernelRegistered = true;
+            }
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() {
@@ -441,12 +440,24 @@ class IpcServer implements ListenerAggregateInterface
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
 
-            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function() {
-                $this->handleIpcMessages();
+            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
+                if (!$this->isSchedulerRegistered) {
+                    $this->useReactor($event->getScheduler()->getReactor());
+                    $this->isSchedulerRegistered = true;
+                }
+
                 $this->removeIpcClients();
 
             }, SchedulerEvent::PRIORITY_REGULAR + 1);
         }, 100000);
+    }
+
+    public function useReactor(Reactor $reactor)
+    {
+        // $this->handleIpcMessages();
+        $reactor->register($this->ipcSelector, function(AbstractStreamSelector $selector) {
+            $this->handleIpcMessages($selector);
+        }, 1000);
     }
 
     /**
