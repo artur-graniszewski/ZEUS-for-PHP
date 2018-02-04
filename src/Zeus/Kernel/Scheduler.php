@@ -123,7 +123,6 @@ final class Scheduler extends AbstractService
         }, SchedulerEvent::PRIORITY_FINALIZE);
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, function() {
-            $this->collectCycles();
             $this->manageWorkers();
         });
 
@@ -325,7 +324,6 @@ final class Scheduler extends AbstractService
     {
         $plugins = $this->getPluginRegistry()->count();
         $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
-        $this->collectCycles();
 
         try {
             if (!$launchAsDaemon) {
