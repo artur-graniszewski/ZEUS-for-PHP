@@ -51,7 +51,6 @@ matrix:
         - HHVMPHP7="yes"
   allow_failures:
     - php: hhvm
-    - php: 7.0
 
 notifications:
   email: true

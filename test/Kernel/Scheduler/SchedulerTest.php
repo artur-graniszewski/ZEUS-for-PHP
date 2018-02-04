@@ -19,7 +19,7 @@ use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
 /**
- * @runTestsInSeparateProcesses2
+ * @runTestsInSeparateProcesses
  * @preserveGlobalState disabled
  */
 class SchedulerTest extends \PHPUnit\Framework\TestCase
