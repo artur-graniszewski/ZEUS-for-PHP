@@ -137,7 +137,7 @@ class Selector extends AbstractStreamSelector
      */
     public function getKeys() : array
     {
-        return $this->selectionKeys;
+        return array_values($this->selectionKeys);
     }
 
     /**

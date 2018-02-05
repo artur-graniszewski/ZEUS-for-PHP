@@ -6,6 +6,7 @@ use LogicException;
 use TypeError;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Stream\AbstractSelectorAggregate;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
@@ -46,12 +47,12 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
     private $selectorCallbacks = [];
 
     /** @var mixed[] */
-    private $selectorTimeouts;
+    private $selectorTimeouts = [];
 
     private $timers = [];
 
     /** @var SelectionKey[] */
-    private $selectedKeys;
+    private $selectedKeys = [];
 
     /** @var int Timeout in milliseconds, 1000 ms = 1 s */
     private $timerResolution = 1000;
@@ -89,7 +90,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             }
 
             $selectorIdsToNotify = [];
-            foreach ($this->getSelectionKeys() as $key) {
+            foreach ($this->selectedKeys as $key) {
                 $attachment = $key->getAttachment();
                 $selectorId = $attachment['id'];
                 /** @var SelectionKey $originalKey */
@@ -155,9 +156,14 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
      * @param AbstractStreamSelector $selector
      * @param $callback
      * @param int $timeout Timeout in milliseconds
+     * @throws TypeError
      */
     public function register(AbstractStreamSelector $selector, $callback, int $timeout)
     {
+        if (!is_callable($callback)) {
+            throw new TypeError("Invalid callback parameter");
+        }
+
         $timeout *= 1000;
         $this->selectorCallbacks[] = $callback;
         $this->observedSelectors[] = $selector;
@@ -172,9 +178,14 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
      * @param int $timeout Timeout in milliseconds
      * @param bool $isPeriodic
      * @return mixed Timer ID
+     * @throws TypeError
      */
     public function registerTimer($callback, int $timeout, bool $isPeriodic)
     {
+        if (!is_callable($callback)) {
+            throw new TypeError("Invalid callback parameter");
+        }
+
         $timeout *= 1000;
         $nextTick = microtime(true) + $timeout;
         $this->timers[] = ['callback' => $callback, 'nextTick' => $nextTick, 'timeout' => $timeout, 'periodic' => $isPeriodic];
@@ -207,6 +218,8 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         if (!isset($this->timers[$id])) {
             throw new LogicException("Cannot unregister: unknown timer");
         }
+
+        unset ($this->timers[$id]);
     }
 
     public function unregister(AbstractStreamSelector $selector)
@@ -244,7 +257,13 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
      */
     public function getSelectionKeys() : array
     {
-        return $this->selectedKeys;
+        $result = [];
+
+        foreach ($this->selectedKeys as $key) {
+            $attachment = $key->getAttachment();
+            $result[] = $attachment['key'];
+        }
+        return $result;
     }
 
     /**
@@ -252,6 +271,6 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
      */
     protected function setSelectionKeys(array $keys)
     {
-        $this->selectedKeys = $keys;
+        throw new UnsupportedOperationException("Cannot set selection keys in Reactor");
     }
 }
