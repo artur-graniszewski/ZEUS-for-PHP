@@ -2,6 +2,14 @@
 
 namespace Zeus\Kernel\Scheduler\Status;
 
+use function function_exists;
+use function getrusage;
+use function ceil;
+use function min;
+use function max;
+use function getmypid;
+use function microtime;
+
 /**
  * Current status of the worker.
  */
@@ -180,9 +188,6 @@ class WorkerState
         return $this->time;
     }
 
-    /**
-     * @return int
-     */
     public function getProcessId() : int
     {
         return $this->processId ? $this->processId : getmypid();

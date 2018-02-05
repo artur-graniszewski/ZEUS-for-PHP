@@ -5,6 +5,9 @@ namespace Zeus\ServerService\Http\ZendFramework;
 use Zend\Mvc\Service;
 use Zend\ServiceManager\ServiceManager;
 
+use function array_unique;
+use function array_merge;
+
 /**
  * Class ApplicationProxy
  * @package Zeus\ServerService\Http\ZendFramework

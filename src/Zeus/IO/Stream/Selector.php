@@ -5,6 +5,7 @@ namespace Zeus\IO\Stream;
 use Zeus\IO\Exception\IOException;
 use Zeus\Util\UnitConverter;
 use LogicException;
+
 use function stream_select;
 use function array_search;
 use function array_values;

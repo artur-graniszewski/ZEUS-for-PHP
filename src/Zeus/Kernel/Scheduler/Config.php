@@ -2,6 +2,8 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use function getcwd;
+
 /**
  * Server configuration class.
  */
@@ -50,9 +52,6 @@ class Config extends \Zend\Config\Config implements ConfigInterface
         $this->offsetSet('enable_process_cache', $isEnabled);
     }
 
-    /**
-     * @return int
-     */
     public function getStartProcesses() : int
     {
         return $this->get('start_processes', 0);

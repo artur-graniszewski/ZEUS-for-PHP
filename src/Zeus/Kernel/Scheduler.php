@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel;
 
+use Throwable;
 use Zend\Log\Logger;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
@@ -21,7 +22,13 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerFlowManager;
 
 use function microtime;
+use function sprintf;
 use function array_keys;
+use function file_get_contents;
+use function file_put_contents;
+use function unlink;
+use function usleep;
+use function set_exception_handler;
 
 /**
  * Class Scheduler
@@ -207,7 +214,7 @@ final class Scheduler extends AbstractService
 
         try {
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
-        } catch (\Exception $ex) {
+        } catch (Throwable $ex) {
             $this->getLogger()->err("Exception occurred: " . $ex->getMessage());
             $event->getWorker()->setIsTerminating(true);
             $event->setParam('exception', $ex);
@@ -335,7 +342,7 @@ final class Scheduler extends AbstractService
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
             $this->workerFlowManager->startWorker(['server' => true]);
 
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->handleException($exception);
         }
     }
@@ -352,7 +359,7 @@ final class Scheduler extends AbstractService
         $this->getLogger()->debug("Scheduler stop event finished");
     }
 
-    private function handleException(\Throwable $exception)
+    private function handleException(Throwable $exception)
     {
         $this->triggerEvent(SchedulerEvent::EVENT_STOP, ['exception' => $exception]);
     }

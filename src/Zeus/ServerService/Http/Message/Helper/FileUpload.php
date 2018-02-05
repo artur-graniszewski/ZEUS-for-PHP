@@ -2,9 +2,27 @@
 
 namespace Zeus\ServerService\Http\Message\Helper;
 
+use InvalidArgumentException;
 use Zend\Http\Header\GenericHeader;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Request;
+
+use function tempnam;
+use function substr;
+use function strlen;
+use function strpos;
+use function trim;
+use function fopen;
+use function fwrite;
+use function fclose;
+use function file_exists;
+use function filesize;
+use function unlink;
+use function sys_get_temp_dir;
+use function stream_get_meta_data;
+use function strtolower;
+use function explode;
+use function preg_match;
 
 trait FileUpload
 {
@@ -32,7 +50,7 @@ trait FileUpload
         if (!isset($this->currentFormDataInfo['tmp_name'])) {
             // file not opened yet, check the boundary
             if (substr($request->getContent(), 0, $pos) !== $boundaryLine) {
-                throw new \InvalidArgumentException("Boundary missing in multipart data", Response::STATUS_CODE_400);
+                throw new InvalidArgumentException("Boundary missing in multipart data", Response::STATUS_CODE_400);
             }
 
             $tmpFileName = tempnam(sys_get_temp_dir(), 'php_upload_');
@@ -103,7 +121,7 @@ trait FileUpload
             return;
         }
 
-        throw new \InvalidArgumentException("Unknown content-disposition parameter: $part", Response::STATUS_CODE_400);
+        throw new InvalidArgumentException("Unknown content-disposition parameter: $part", Response::STATUS_CODE_400);
     }
 
     protected function parseRequestFileData(Request $request)
@@ -179,7 +197,7 @@ trait FileUpload
             $request->setContent('');
         }
 
-        return $this;
+        return;
 
         // there may be a boundary hidden here, fetch more data
     }

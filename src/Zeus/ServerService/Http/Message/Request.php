@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Http\Message;
 
+use InvalidArgumentException;
 use Zend\Stdlib\Parameters;
 use Zend\Http\Request as ZendRequest;
 
@@ -42,13 +43,13 @@ class Request extends ZendRequest
      *
      * @param  string $buffer
      * @param  bool $allowCustomMethods
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      * @return Request
      */
     public static function fromStringOfHeaders(string $buffer, bool $allowCustomMethods) : Request
     {
         if ("\r\n\r\n" !== substr($buffer, -4)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'An EOM was not found at the end of request buffer'
             );
         }
@@ -64,7 +65,7 @@ class Request extends ZendRequest
 
         $regex = '#^(?P<method>' . $methods . ')\s(?P<uri>[^ ]*)(?:\sHTTP\/(?P<version>\d+\.\d+)){1}\r\n#S';
         if (!preg_match($regex, $buffer, $matches)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'A valid request line was not found in the provided string '
             );
         }

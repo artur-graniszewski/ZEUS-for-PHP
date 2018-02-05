@@ -7,6 +7,7 @@ use Zeus\IO\Exception\SocketException;
 use Zeus\IO\Exception\IOException;
 
 use function stream_socket_get_name;
+use function stream_select;
 use function socket_import_stream;
 use function socket_set_option;
 use function stream_set_blocking;

@@ -47,10 +47,7 @@ abstract class AbstractProcessModule extends AbstractModule
         $worker->setUid($pid);
     }
 
-    /**
-     * @return PcntlBridgeInterface
-     */
-    protected static function getPcntlBridge()
+    protected static function getPcntlBridge() : PcntlBridgeInterface
     {
         if (!isset(static::$pcntlBridge)) {
             static::$pcntlBridge = new PcntlBridge();

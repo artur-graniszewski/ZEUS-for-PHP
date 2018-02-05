@@ -17,11 +17,15 @@ use Zeus\IO\Stream\Selector;
 use function escapeshellarg;
 use function basename;
 use function strrpos;
+use function sprintf;
 use function substr;
 use function array_search;
+use function json_encode;
+use function in_array;
 use function fwrite;
 use function fclose;
 use function fopen;
+use function defined;
 
 /**
  * Class ProcessOpenWithPipe

@@ -8,6 +8,7 @@ use function unserialize;
 use function serialize;
 use function is_object;
 use function strpos;
+use function substr;
 use function is_array;
 
 trait MessagePackager

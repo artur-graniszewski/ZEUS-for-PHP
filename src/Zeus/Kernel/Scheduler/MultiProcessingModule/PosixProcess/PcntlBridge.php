@@ -2,6 +2,16 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 
+use function posix_setsid;
+use function pcntl_sigprocmask;
+use function pcntl_wait;
+use function pcntl_signal;
+use function pcntl_fork;
+use function posix_getppid;
+use function posix_kill;
+use function is_callable;
+use function extension_loaded;
+
 /**
  * Class PcntlBridge
  * @package Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess

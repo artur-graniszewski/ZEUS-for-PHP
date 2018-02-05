@@ -2,6 +2,19 @@
 
 namespace Zeus\Kernel\System;
 
+use function is_file;
+use function is_readable;
+use function file_get_contents;
+use function preg_match_all;
+use function count;
+use function substr;
+use function strtoupper;
+use function popen;
+use function stream_get_contents;
+use function fgets;
+use function pclose;
+use function preg_match;
+
 /**
  * Class Runtime
  * @package Zeus\Kernel\Scheduler\System

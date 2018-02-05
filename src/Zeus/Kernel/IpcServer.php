@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel;
 
+use RuntimeException;
 use Throwable;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
@@ -23,6 +24,7 @@ use Zeus\IO\Stream\SocketStream;
 use function count;
 use function in_array;
 use function array_keys;
+use function array_merge;
 use function array_rand;
 use function array_search;
 use function microtime;
@@ -177,7 +179,7 @@ class IpcServer implements ListenerAggregateInterface
         $socket = @stream_socket_client("tcp://$host:$ipcPort", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, stream_context_create($opts));
 
         if (!$socket) {
-            throw new \RuntimeException("IPC connection failed: $errstr [$errno]");
+            throw new RuntimeException("IPC connection failed: $errstr [$errno]");
         }
 
         $ipcStream = new SocketStream($socket);
@@ -228,9 +230,6 @@ class IpcServer implements ListenerAggregateInterface
 
             /** @var IpcSocketStream $ipc */
             $ipc = $key->getAttachment();
-            if (!$ipc) {
-                var_dump($key->isReadable(), $key->isAcceptable(), $key->isWritable());
-            }
 
             if (in_array($stream, $this->inboundStreams)) {
                 try {

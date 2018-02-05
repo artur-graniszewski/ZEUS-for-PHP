@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Http\Message\Helper;
 
+use InvalidArgumentException;
 use Zend\Http\Request;
 use Zend\Http\Response;
 
@@ -24,7 +25,7 @@ trait RegularEncoding
         }
 
         if (!ctype_digit($expectedBodyLength) || $expectedBodyLength < 0) {
-            throw new \InvalidArgumentException("Invalid or missing Content-Length header: $expectedBodyLength", Response::STATUS_CODE_400);
+            throw new InvalidArgumentException("Invalid or missing Content-Length header: $expectedBodyLength", Response::STATUS_CODE_400);
         }
 
         $expectedBodyLength = (int) $expectedBodyLength;
@@ -33,7 +34,7 @@ trait RegularEncoding
         if ($this->contentReceived < $expectedBodyLength) {
             // check if message fits into the gap...
             if ($messageLength + $this->contentReceived > $expectedBodyLength) {
-                throw new \InvalidArgumentException("Request body is larger than set in the Content-Length header", Response::STATUS_CODE_400);
+                throw new InvalidArgumentException("Request body is larger than set in the Content-Length header", Response::STATUS_CODE_400);
             }
 
             $request->setContent($request->getContent() . $message);

@@ -6,6 +6,11 @@ use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
+use function basename;
+use function str_replace;
+use function sprintf;
+use function getmypid;
+
 final class PosixProcess extends AbstractProcessModule implements SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
 {
     /** @var int Parent PID */

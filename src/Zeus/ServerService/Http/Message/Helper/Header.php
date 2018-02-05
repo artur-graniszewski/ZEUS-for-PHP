@@ -2,6 +2,8 @@
 
 namespace Zeus\ServerService\Http\Message\Helper;
 
+use Exception;
+use InvalidArgumentException;
 use Zend\Http\Response;
 use Zeus\ServerService\Http\Message\Request;
 use Zend\Validator\Hostname as HostnameValidator;
@@ -27,7 +29,7 @@ trait Header
 
         if ($request->getVersion() === Request::VERSION_11) {
             if (!$fullHost) {
-                throw new \InvalidArgumentException("Missing host header", Response::STATUS_CODE_400);
+                throw new InvalidArgumentException("Missing host header", Response::STATUS_CODE_400);
             }
         }
 
@@ -104,9 +106,9 @@ trait Header
         try {
             $request = Request::fromStringOfHeaders($this->headers, false);
             $this->headers = null;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->headers = null;
-            throw new \InvalidArgumentException('Incorrect headers: ' . $this->headers, Response::STATUS_CODE_400);
+            throw new InvalidArgumentException('Incorrect headers: ' . $this->headers, Response::STATUS_CODE_400);
         }
 
         $request->getUri()->setScheme('http');
@@ -147,7 +149,7 @@ trait Header
             case null:
                 return 'identity';
             default:
-                throw new \InvalidArgumentException("Not supported transfer encoding", Response::STATUS_CODE_501);
+                throw new InvalidArgumentException("Not supported transfer encoding", Response::STATUS_CODE_501);
         }
     }
 }

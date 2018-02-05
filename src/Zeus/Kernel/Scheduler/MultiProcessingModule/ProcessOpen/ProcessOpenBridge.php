@@ -2,6 +2,11 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen;
 
+use function function_exists;
+use function proc_open;
+use function proc_get_status;
+use function defined;
+
 class ProcessOpenBridge implements ProcessOpenBridgeInterface
 {
     private $stdOut = 'php://stdout';

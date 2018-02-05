@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Http\Message;
 
+use Throwable;
 use Zend\Http\Header\KeepAlive;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
@@ -25,11 +26,17 @@ use function ob_end_flush;
 use function function_exists;
 use function preg_match;
 use function in_array;
+use function explode;
+use function sprintf;
+use function str_replace;
 use function deflate_init;
 use function deflate_add;
 use function fclose;
+use function fread;
+use function feof;
 use function is_resource;
 use function gmdate;
+use function getmypid;
 
 class Message implements MessageComponentInterface, HeartBeatMessageInterface
 {
@@ -158,10 +165,10 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /**
      * @param NetworkStreamInterface $connection
-     * @param \Throwable $exception
-     * @throws \Throwable
+     * @param Throwable $exception
+     * @throws Throwable
      */
-    public function onError(NetworkStreamInterface $connection, \Throwable $exception)
+    public function onError(NetworkStreamInterface $connection, Throwable $exception)
     {
         if (!$connection->isWritable()) {
             $this->onClose($connection);
@@ -263,7 +270,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     /**
      * @param NetworkStreamInterface $connection
      * @param callback $callback
-     * @throws \Throwable
+     * @throws Throwable
      */
     protected function dispatchRequest(NetworkStreamInterface $connection, $callback)
     {
@@ -278,7 +285,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
 
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
 
         }
 
@@ -527,11 +534,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
     /**
      * @param Request $request
-     * @param \Throwable $exception
+     * @param Throwable $exception
      * @return Response
      * @internal param Response $response
      */
-    protected function dispatchError(Request $request, \Throwable $exception) : Response
+    protected function dispatchError(Request $request, Throwable $exception) : Response
     {
         $statusCode = $exception->getCode() >= Response::STATUS_CODE_400 ? $exception->getCode() : Response::STATUS_CODE_500;
 

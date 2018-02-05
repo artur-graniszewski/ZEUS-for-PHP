@@ -7,6 +7,12 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadBootstrap;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
+use function basename;
+use function sprintf;
+use function file_put_contents;
+use function json_encode;
+use function version_compare;
+
 final class PosixThread extends AbstractModule implements SeparateAddressSpaceInterface
 {
     use GarbageCollector;

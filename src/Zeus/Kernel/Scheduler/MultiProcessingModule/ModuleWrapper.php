@@ -2,6 +2,9 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
+use LogicException;
+use RuntimeException;
+use Throwable;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventsCapableInterface;
@@ -15,6 +18,12 @@ use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
+
+use function is_callable;
+use function sleep;
+use function time;
+use function array_search;
+use function stream_socket_client;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
@@ -63,7 +72,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     {
         $errorMessage = '';
         if (!$driver::isSupported($errorMessage)) {
-            throw new \RuntimeException($errorMessage);
+            throw new RuntimeException($errorMessage);
         }
 
         $this->driver = $driver;
@@ -80,7 +89,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     public function getSchedulerEvent(): SchedulerEvent
     {
         if (!$this->schedulerEvent) {
-            throw new \LogicException("Scheduler event not set");
+            throw new LogicException("Scheduler event not set");
         }
 
         return clone $this->schedulerEvent;
@@ -94,7 +103,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     public function getWorkerEvent(): WorkerEvent
     {
         if (!$this->workerEvent) {
-            throw new \LogicException("Worker event not set");
+            throw new LogicException("Worker event not set");
         }
 
         $workerEvent = clone $this->workerEvent;
@@ -132,7 +141,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     public function getLogger(): LoggerInterface
     {
         if (!isset($this->logger)) {
-            throw new \LogicException("Logger is not set");
+            throw new LogicException("Logger is not set");
         }
 
         return $this->logger;
@@ -246,7 +255,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 $stream = $key->getStream();
                 try {
                     $stream->read();
-                } catch (\Throwable $ex) {
+                } catch (Throwable $ex) {
                     $uid = array_search($stream, $this->ipcConnections);
                     if ($uid) {
                         $this->unregisterWorker($uid);
@@ -315,7 +324,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                     $this->setIsTerminating(true);
                     return;
                 }
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 $this->setIsTerminating(true);
             }
         }

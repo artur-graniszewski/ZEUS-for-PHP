@@ -2,6 +2,7 @@
 
 namespace Zeus\IO\Stream;
 
+use OutOfRangeException;
 use Zeus\IO\Exception\IOException;
 
 use function preg_match;
@@ -12,6 +13,7 @@ use function error_clear_last;
 use function error_get_last;
 use function stream_get_meta_data;
 use function stream_get_line;
+use function function_exists;
 use function fclose;
 use function fflush;
 use function ftell;
@@ -232,7 +234,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function setWriteBufferSize(int $size)
     {
         if ($size < 0) {
-            throw new \OutOfRangeException("Write buffer size must be greater than or equal 0");
+            throw new OutOfRangeException("Write buffer size must be greater than or equal 0");
         }
         $this->writeBufferSize = $size;
     }
@@ -240,7 +242,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface, Flu
     public function setReadBufferSize(int $size)
     {
         if ($size <= 0) {
-            throw new \OutOfRangeException("Read buffer size must be greater than 0");
+            throw new OutOfRangeException("Read buffer size must be greater than 0");
         }
         $this->readBufferSize = $size;
     }

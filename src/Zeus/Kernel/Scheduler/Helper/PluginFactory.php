@@ -5,6 +5,14 @@ namespace Zeus\Kernel\Scheduler\Helper;
 use Interop\Container\ContainerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 
+use function is_int;
+use function is_object;
+use function is_string;
+use function class_exists;
+use function in_array;
+use function is_array;
+use function class_implements;
+
 /**
  * Class PluginFactory
  * @package Zeus\Kernel\Scheduler\Helper

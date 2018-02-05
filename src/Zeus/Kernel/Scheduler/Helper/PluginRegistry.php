@@ -2,8 +2,12 @@
 
 namespace Zeus\Kernel\Scheduler\Helper;
 
+use LogicException;
 use SplObjectStorage;
 use Zend\EventManager\ListenerAggregateInterface;
+
+use function get_class;
+use function sprintf;
 
 /**
  * Class PluginRegistry
@@ -33,13 +37,13 @@ trait PluginRegistry
      *
      * @param  ListenerAggregateInterface $plugin
      * @param  int                    $priority
-     * @throws \LogicException
+     * @throws LogicException
      */
     public function addPlugin(ListenerAggregateInterface $plugin, int $priority = 1)
     {
         $registry = $this->getPluginRegistry();
         if ($registry->contains($plugin)) {
-            throw new \LogicException(sprintf(
+            throw new LogicException(sprintf(
                 'Plugin of type "%s" already registered',
                 get_class($plugin)
             ));
@@ -66,7 +70,7 @@ trait PluginRegistry
      * Unregister an already registered plugin
      *
      * @param  ListenerAggregateInterface $plugin
-     * @throws \LogicException
+     * @throws LogicException
      */
     public function removePlugin(ListenerAggregateInterface $plugin)
     {

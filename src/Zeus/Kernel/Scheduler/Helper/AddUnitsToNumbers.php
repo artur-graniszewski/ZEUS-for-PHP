@@ -2,6 +2,11 @@
 
 namespace Zeus\Kernel\Scheduler\Helper;
 
+use function floor;
+use function log;
+use function pow;
+use function round;
+
 trait AddUnitsToNumbers
 {
     public function addUnitsToNumber(int $value, int $precision = 2) : string

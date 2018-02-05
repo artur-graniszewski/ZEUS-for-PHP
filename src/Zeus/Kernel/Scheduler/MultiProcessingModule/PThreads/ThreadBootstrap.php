@@ -2,7 +2,11 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
-class ThreadBootstrap extends \Thread
+use Thread;
+use function count;
+use function var_export;
+
+class ThreadBootstrap extends Thread
 {
     public $server;
     public $argv;
@@ -37,7 +41,7 @@ class ThreadBootstrap extends \Thread
                     require_once($_SERVER[\'SCRIPT_NAME\']);
                 ?>';
 
-        $this->id = \Thread::getCurrentThreadId();
+        $this->id = Thread::getCurrentThreadId();
 
         eval ($php);
         exit();

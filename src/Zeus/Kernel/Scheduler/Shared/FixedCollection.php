@@ -1,7 +1,19 @@
 <?php
 namespace Zeus\Kernel\Scheduler\Shared;
 
-class FixedCollection implements \Iterator, \ArrayAccess, \Countable
+use ArrayAccess;
+use Countable;
+use Iterator;
+use RuntimeException;
+use SplFixedArray;
+
+use function array_filter;
+use function array_combine;
+use function array_search;
+use function array_values;
+use function count;
+
+class FixedCollection implements Iterator, ArrayAccess, Countable
 {
     protected $ids = [];
 
@@ -14,8 +26,8 @@ class FixedCollection implements \Iterator, \ArrayAccess, \Countable
 
     public function __construct($arraySize)
     {
-        $this->ids = new \SplFixedArray($arraySize);
-        $this->values = new \SplFixedArray($arraySize);
+        $this->ids = new SplFixedArray($arraySize);
+        $this->values = new SplFixedArray($arraySize);
     }
 
     /**
@@ -94,7 +106,7 @@ class FixedCollection implements \Iterator, \ArrayAccess, \Countable
             }
         }
 
-        throw new \RuntimeException("Array slots exhausted");
+        throw new RuntimeException("Array slots exhausted");
     }
 
     /**

@@ -4,6 +4,9 @@ namespace Zeus\IO\Stream;
 
 use Zeus\IO\Exception\IOException;
 
+use function fseek;
+use function ftell;
+
 /**
  * Class FileStream
  * @package Zeus\ServerService\Shared\Networking

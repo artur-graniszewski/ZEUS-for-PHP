@@ -2,8 +2,6 @@
 
 namespace ZeusTest\Helpers;
 
-use \PHPUnit\Framework\TestCase;
-
 abstract class AbstractConfigTestHelper extends \PHPUnit\Framework\TestCase
 {
     protected $configClass;
