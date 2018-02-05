@@ -220,6 +220,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         }
 
         unset ($this->timers[$id]);
+        $this->updateTimerResolution();
     }
 
     public function unregister(AbstractStreamSelector $selector)
@@ -233,6 +234,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         unset ($this->observedSelectors[$index]);
         unset ($this->selectorCallbacks[$index]);
         unset ($this->selectorTimeouts[$index]);
+        $this->updateTimerResolution();
     }
 
     /**

@@ -86,7 +86,10 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
         });
 
         $keys2 = $reactor->getSelectionKeys();
-        $allKeys = $reactor->getKeys();
+        $allKeys1 = $reactor->getKeys();
+
+        $reactor->unregister($stdOutSelector);
+        $allKeys2 = $reactor->getKeys();
 
         $stdOut->close();
         $stdErr->close();
@@ -97,7 +100,8 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($isStdInReadable, "stdin should not be readable");
         $this->assertEquals([$stdOutKey], $keys1, "Only stdout selection key should be returned in first test iteration");
         $this->assertEquals([$stdOutKey, $stdErrKey], $keys2, "Both stdout and stderr selection keys should be returned in second test iteration");
-        $this->assertEquals([$stdOutKey, $stdErrKey, $stdInKey], $allKeys, "All registered selection keys should be returned in second test iteration");
+        $this->assertEquals([$stdOutKey, $stdErrKey, $stdInKey], $allKeys1, "All registered selection keys should be returned in second test iteration");
+        $this->assertEquals([$stdErrKey, $stdInKey], $allKeys2, "All registered selection keys should be returned in third test iteration");
     }
 
     public function testSetSelector()
