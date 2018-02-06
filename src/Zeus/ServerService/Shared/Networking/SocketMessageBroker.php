@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
+use LogicException;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
 use Zeus\IO\Stream\NetworkStreamInterface;
@@ -75,7 +76,7 @@ final class SocketMessageBroker
     public function getLogger() : LoggerInterface
     {
         if (!isset($this->logger)) {
-            throw new \LogicException("Logger not set");
+            throw new LogicException("Logger not set");
         }
         return $this->logger;
     }

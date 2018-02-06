@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Error;
 use Throwable;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
@@ -130,7 +131,7 @@ class Worker extends AbstractService
         $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
     }
 
-    public function terminate(\Throwable $exception = null)
+    public function terminate(Throwable $exception = null)
     {
         $status = $this->getStatus();
 
@@ -174,9 +175,9 @@ class Worker extends AbstractService
                 $event->setParams($status->toArray());
                 $this->getEventManager()->triggerEvent($event);
 
-            } catch (\Error $exception) {
+            } catch (Error $exception) {
                 $this->terminate($exception);
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 $this->reportException($exception);
             }
 

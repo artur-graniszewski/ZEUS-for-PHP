@@ -29,6 +29,7 @@ class RegistratorService
     const STATUS_WORKER_BUSY = 'busy';
     const STATUS_WORKER_GONE = 'gone';
     const STATUS_WORKER_FAILED = 'failed';
+    const IPC_ADDRESS_EVENT_PARAM = 'zeusRegistratorIpcAddress';
 
     /** @var SocketMessageBroker */
     private $messageBroker;
@@ -119,17 +120,22 @@ class RegistratorService
         $this->backendRegistrator = $address;
     }
 
+    public function getRegistratorAddress() : string
+    {
+        return $this->backendRegistrator;
+    }
+
     private function onWorkerCreate(WorkerEvent $event)
     {
         if ($this->backendRegistrator) {
-            $event->setParam('leaderIpcAddress', $this->backendRegistrator);
+            $event->setParam(static::IPC_ADDRESS_EVENT_PARAM, $this->backendRegistrator);
         }
     }
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        if ($event->getParam('leaderIpcAddress')) {
-            $this->setRegistratorAddress($event->getParam('leaderIpcAddress'));
+        if ($event->getParam(static::IPC_ADDRESS_EVENT_PARAM)) {
+            $this->setRegistratorAddress($event->getParam(static::IPC_ADDRESS_EVENT_PARAM));
         }
     }
 

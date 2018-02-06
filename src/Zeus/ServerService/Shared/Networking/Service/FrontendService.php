@@ -2,6 +2,8 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
+use LogicException;
+use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
@@ -86,7 +88,7 @@ class FrontendService
                 }
 
                 $this->onFrontendLoop($event);
-            } catch (\Throwable $ex) {
+            } catch (Throwable $ex) {
                 $this->messageBroker->getLogger()->err((string) $ex);
             }
         }, WorkerEvent::PRIORITY_REGULAR);
@@ -118,7 +120,7 @@ class FrontendService
     public function getFrontendServer() : SocketServer
     {
         if (!$this->frontendServer) {
-            throw new \LogicException("Frontend server not available");
+            throw new LogicException("Frontend server not available");
         }
 
         return $this->frontendServer;
@@ -189,7 +191,7 @@ class FrontendService
                     $frontendStream->shutdown(STREAM_SHUT_RD);
                 }
 
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 $this->messageBroker->getLogger()->err($exception);
             }
             if (!$frontendStream->isClosed()) {
@@ -206,7 +208,7 @@ class FrontendService
 
                     $backendStream->shutdown(STREAM_SHUT_RD);
                 }
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 $this->messageBroker->getLogger()->err($exception);
             }
 
@@ -304,7 +306,7 @@ class FrontendService
 
                 try {
                     $buffer->tunnel();
-                } catch (\Throwable $exception) {
+                } catch (Throwable $exception) {
                     /** @var SocketStream $input */
                     $this->disconnectClient($uid);
                     $uidsToIgnore[] = $uid;
