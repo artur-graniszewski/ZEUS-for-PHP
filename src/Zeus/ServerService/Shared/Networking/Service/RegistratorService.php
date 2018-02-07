@@ -8,10 +8,11 @@ use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
 use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\Scheduler\AbstractEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
@@ -57,6 +58,9 @@ class RegistratorService
     /** @var resource */
     private $streamContext;
 
+    /** @var Selector */
+    private $workerSelector;
+
     public function __construct()
     {
         $this->streamContext = stream_context_create([
@@ -64,6 +68,8 @@ class RegistratorService
                 'tcp_nodelay' => true,
             ],
         ]);
+
+        $this->workerSelector = new Selector();
     }
 
     public function attach(EventManagerInterface $events)
@@ -87,11 +93,7 @@ class RegistratorService
 //            }
 //        }, 1000);
 
-        $events->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $event) use ($events) {
-            $this->startRegistratorServer();
-            $events->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
-            $events->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
-        }, 100000);
+        $events->attach(SchedulerEvent::EVENT_START, function($e) { $this->registerObservers($e); }, -9000);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
             if ($this->registratorStream) {
@@ -241,13 +243,27 @@ class RegistratorService
         }
     }
 
-    private function addBackend(Selector $selector)
+    private function checkWorkerOutput(AbstractStreamSelector $selector)
+    {
+        foreach ($selector->getSelectionKeys() as $selectionKey) {
+            try {
+                $this->checkBackendStatus($selectionKey);
+            } catch (IOException $ex) {
+                $stream = $selectionKey->getStream();
+                $selectionKey->cancel();
+
+                $stream->close();
+            }
+        }
+    }
+
+    private function addBackend(AbstractStreamSelector $selector)
     {
         try {
             $connection = $this->registratorServer->accept();
             $this->setStreamOptions($connection);
             $this->registeredWorkerStreams[] = $connection;
-            $selectionKey = $selector->register($connection, SelectionKey::OP_READ);
+            $selectionKey = $connection->register($this->workerSelector, SelectionKey::OP_READ);
             $selectionKey->attach(new ReadBuffer());
             $this->setStreamOptions($connection);
         } catch (SocketTimeoutException $exception) {
@@ -266,39 +282,13 @@ class RegistratorService
         $this->setRegistratorAddress($this->registratorServer->getLocalAddress());
     }
 
-    private function onIpcSelect(IpcEvent $event)
+    private function registerObservers(AbstractEvent $event)
     {
         /** @var Selector $selector */
-        $selector = $event->getParam('selector');
-        $selector->register($this->registratorServer->getSocket(), SelectionKey::OP_ACCEPT);
-    }
-
-    private function checkWorkerOutput(IpcEvent $event)
-    {
-        /** @var SocketStream $stream */
-        $stream = $event->getParam('stream');
-
-        /** @var Selector $selector */
-        $selector = $event->getParam('selector');
-
-        if ($stream === $this->registratorServer->getSocket()) {
-            $this->addBackend($selector);
-            return;
-        }
-
-        if (!in_array($stream, $this->registeredWorkerStreams)) {
-            return;
-        }
-
-        $selectionKey = $event->getParam('selectionKey');
-
-        try {
-            $this->checkBackendStatus($selectionKey);
-        } catch (IOException $ex) {
-            $stream = $selectionKey->getStream();
-            $selectionKey->cancel();
-            $stream->close();
-        }
+        $selector = new Selector();
+        $this->registratorServer->getSocket()->register($selector, SelectionKey::OP_ACCEPT);
+        $event->getScheduler()->observeSelector($selector, function() use ($selector) {$this->addBackend($selector);}, function() {}, 1000);
+        $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
     }
 
     private function checkBackendStatus(SelectionKey $selectionKey)
