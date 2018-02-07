@@ -3,8 +3,10 @@
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
 use Zend\EventManager\EventManagerInterface;
+use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\Scheduler\AbstractEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridgeInterface;
@@ -47,6 +49,9 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     /** @var ProcessOpenBridgeInterface */
     private static $procOpenBridge;
+
+    /** @var Selector */
+    private $workerSelector;
 
     protected static function getProcessBridge() : ProcessOpenBridgeInterface
     {
@@ -94,6 +99,8 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         if (!$this->stderr) {
             $this->stderr = @fopen(static::getProcessBridge()->getStdErr(), 'w');
         }
+
+        $this->workerSelector = new Selector();
     }
 
     public function __destruct()
@@ -104,8 +111,13 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public function attach(EventManagerInterface $eventManager)
     {
-        $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_HANDLING_MESSAGES, function($e) { $this->onIpcSelect($e); }, -9000);
-        $eventManager->getSharedManager()->attach('*', IpcEvent::EVENT_STREAM_READABLE, function($e) { $this->checkWorkerOutput($e); }, -9000);
+        $eventManager->attach(SchedulerEvent::EVENT_START, function(AbstractEvent $event) {
+            $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
+        }, -9000);
+
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(AbstractEvent $event) {
+            $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
+        }, -9000);
     }
 
     public function onWorkerTerminated(WorkerEvent $event)
@@ -177,6 +189,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
         try {
             if (isset($this->stdErrStreams[$uid])) {
+                $this->workerSelector->unregister($this->stdErrStreams[$uid]);
                 $this->stdErrStreams[$uid]->close();
             }
         } catch (IOException $ex) {
@@ -185,6 +198,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
         try {
             if (isset($this->stdOutStreams[$uid])) {
+                $this->workerSelector->unregister($this->stdOutStreams[$uid]);
                 $this->stdOutStreams[$uid]->close();
             }
         } catch (IOException $ex) {
@@ -236,8 +250,10 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         try {
             $this->stdOutStreams[$pid] = new PipeStream($pipes[1]);
             $this->stdOutStreams[$pid]->setBlocking(false);
+            $this->stdOutStreams[$pid]->register($this->workerSelector, SelectionKey::OP_READ);
             $this->stdErrStreams[$pid] = new PipeStream($pipes[2]);
             $this->stdErrStreams[$pid]->setBlocking(false);
+            $this->stdErrStreams[$pid]->register($this->workerSelector, SelectionKey::OP_READ);
         } catch (IOException $ex) {
 
         }
@@ -246,45 +262,31 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         return $pid;
     }
 
-    private function onIpcSelect(IpcEvent $event)
+    private function checkWorkerOutput(AbstractStreamSelector $selector)
     {
-        /** @var Selector $selector */
-        $selector = $event->getParam('selector');
+        foreach ($selector->getSelectionKeys() as $key) {
+            /** @var PipeStream $stream */
+            $stream = $key->getStream();
 
-        foreach ($this->workers as $uid => $worker) {
-            if ($this->stdOutStreams[$uid]->isReadable()) {
-                $selector->register($this->stdOutStreams[$uid], SelectionKey::OP_READ);
+            if (in_array($stream, $this->stdOutStreams)) {
+                $outputType = 'stdout';
+                $uid = array_search($stream, $this->stdOutStreams);
+            } else if (in_array($stream, $this->stdErrStreams)) {
+                $outputType = 'stderr';
+                $uid = array_search($stream, $this->stdErrStreams);
+            } else {
+                return;
             }
 
-            if ($this->stdErrStreams[$uid]->isReadable()) {
-                $selector->register($this->stdErrStreams[$uid], SelectionKey::OP_READ);
+            try {
+                while ($data = $stream->read()) {
+                    $this->pipeBuffer[$uid][$outputType] .= $data;
+                }
+            } catch (IOException $exception) {
             }
+
+            $this->flushBuffers($uid, false);
         }
-    }
-
-    private function checkWorkerOutput(IpcEvent $event)
-    {
-        /** @var PipeStream $stream */
-        $stream = $event->getParam('stream');
-
-        if (in_array($stream, $this->stdOutStreams)) {
-            $outputType = 'stdout';
-            $uid = array_search($stream, $this->stdOutStreams);
-        } else if (in_array($stream, $this->stdErrStreams)) {
-            $outputType = 'stderr';
-            $uid = array_search($stream, $this->stdErrStreams);
-        } else {
-            return;
-        }
-
-        try {
-            while ($data = $stream->read()) {
-                $this->pipeBuffer[$uid][$outputType] .= $data;
-            }
-        } catch (IOException $exception) {
-        }
-
-        $this->flushBuffers($uid, false);
     }
 
     public function onKernelStart(SchedulerEvent $event)

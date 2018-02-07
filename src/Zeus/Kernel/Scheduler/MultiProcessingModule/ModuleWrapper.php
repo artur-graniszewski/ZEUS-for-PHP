@@ -22,6 +22,7 @@ use Zeus\IO\Stream\SocketStream;
 use function is_callable;
 use function sleep;
 use function time;
+use function count;
 use function array_search;
 use function stream_socket_client;
 

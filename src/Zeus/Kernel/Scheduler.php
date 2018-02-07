@@ -484,17 +484,16 @@ final class Scheduler extends AbstractService
 
     private function kernelLoop()
     {
-        while (!$this->isTerminating()) {
-            $time = microtime(true);
-            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
-            $diff = microtime(true) - $time;
-
-            if ($diff < 0.1) {
-                $diff = 1 - $diff;
-                // wait for 0.1 sec
-                usleep($diff * 100000);
-            }
-        }
+        do {
+            $this->getReactor()->mainLoop(
+                function() {
+                    $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
+                    if ($this->isTerminating()) {
+                        $this->getReactor()->setTerminating(true);
+                    }
+                }
+            );
+        } while (!$this->isTerminating());
     }
 
     /**
