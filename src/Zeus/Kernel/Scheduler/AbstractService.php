@@ -52,7 +52,7 @@ abstract class AbstractService implements EventsCapableInterface, EventManagerAw
         return $this->ipcAdapter;
     }
 
-    public function setIsTerminating(bool $isTerminating)
+    public function setTerminating(bool $isTerminating)
     {
         $this->isTerminating = $isTerminating;
     }

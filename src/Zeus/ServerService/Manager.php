@@ -169,7 +169,7 @@ final class Manager
                     $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
                     $this->getEventManager()->triggerEvent($event);
                 } else {
-                    $schedulerEvent->getScheduler()->setIsTerminating(true);
+                    $schedulerEvent->getScheduler()->setTerminating(true);
                 }
             }, -10000);
 

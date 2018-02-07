@@ -3,6 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\Kernel\IpcServer;
@@ -20,6 +21,8 @@ use function usleep;
 
 class BackendService
 {
+    use LoggerAwareTrait;
+
     /** @var Selector */
     protected $backendServerSelector;
 

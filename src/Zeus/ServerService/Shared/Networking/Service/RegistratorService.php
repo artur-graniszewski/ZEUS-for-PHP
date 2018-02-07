@@ -3,6 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
@@ -10,11 +11,9 @@ use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 use function stream_context_create;
 use function stream_socket_client;
@@ -24,15 +23,14 @@ use function in_array;
 
 class RegistratorService
 {
+    use LoggerAwareTrait;
+
     const STATUS_WORKER_READY = 'ready';
     const STATUS_WORKER_LOCK = 'lock';
     const STATUS_WORKER_BUSY = 'busy';
     const STATUS_WORKER_GONE = 'gone';
     const STATUS_WORKER_FAILED = 'failed';
     const IPC_ADDRESS_EVENT_PARAM = 'zeusRegistratorIpcAddress';
-
-    /** @var SocketMessageBroker */
-    private $messageBroker;
 
     /** @var int[] */
     private $availableWorkers = [];
@@ -46,9 +44,6 @@ class RegistratorService
     /** @var SocketStream[] */
     private $registeredWorkerStreams = [];
 
-    /** @var bool */
-    private $registratorLaunched = false;
-
     /** @var string */
     private $lastStatus;
 
@@ -61,10 +56,8 @@ class RegistratorService
     /** @var resource */
     private $streamContext;
 
-    public function __construct(SocketMessageBroker $messageBroker)
+    public function __construct()
     {
-        $this->messageBroker = $messageBroker;
-
         $this->streamContext = stream_context_create([
             'socket' => [
                 'tcp_nodelay' => true,
@@ -89,7 +82,7 @@ class RegistratorService
 //                $lasttime = $now;
 //                $uids = array_keys($this->availableWorkers);
 //                sort($uids);
-//                $this->messageBroker->getLogger()->debug("Available backend workers: " . json_encode($uids));
+//                $this->getLogger()->debug("Available backend workers: " . json_encode($uids));
 //            }
 //        }, 1000);
 
@@ -147,7 +140,7 @@ class RegistratorService
 
         $socket = @stream_socket_client('tcp://' . $this->backendRegistrator, $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->streamContext);
         if (!$socket) {
-            $this->messageBroker->getLogger()->err("Could not connect to leader: $errstr [$errno]");
+            $this->getLogger()->err("Could not connect to leader: $errstr [$errno]");
             return false;
         }
         $registratorStream = new SocketStream($socket);
@@ -207,7 +200,7 @@ class RegistratorService
         };
 
         if (!$flushed) {
-            $this->messageBroker->getLogger()->err("Unable to lock the backend worker: failed to send the data");
+            $this->getLogger()->err("Unable to lock the backend worker: failed to send the data");
             return [0, 0];
         }
 
@@ -219,7 +212,7 @@ class RegistratorService
 
                 if ('' === $buffer) {
                     // EOF
-                    $this->messageBroker->getLogger()->err("Unable to lock the backend worker: connection broken, read [$status]");
+                    $this->getLogger()->err("Unable to lock the backend worker: connection broken, read [$status]");
                     return [0, 0];
                 }
 
@@ -228,7 +221,7 @@ class RegistratorService
 
             $timeout--;
             if ($timeout < 0) {
-                $this->messageBroker->getLogger()->err("Unable to lock the backend worker: timeout detected, read: [$status]");
+                $this->getLogger()->err("Unable to lock the backend worker: timeout detected, read: [$status]");
                 return [0, 0];
             }
         }
@@ -268,7 +261,7 @@ class RegistratorService
         $server->setTcpNoDelay(true);
         $server->bind($this->backendHost, 1000, 0);
         $this->registratorServer = $server;
-        $this->messageBroker->getLogger()->debug("Registrator listening on: " . $this->registratorServer->getLocalAddress());
+        $this->getLogger()->debug("Registrator listening on: " . $this->registratorServer->getLocalAddress());
         $this->setRegistratorAddress($this->registratorServer->getLocalAddress());
     }
 
@@ -344,11 +337,11 @@ class RegistratorService
         switch ($status) {
             case self::STATUS_WORKER_READY:
                 $this->availableWorkers[$uid] = $port;
-                //$this->messageBroker->getLogger()->debug("Worker $uid marked as ready");
+                //$this->getLogger()->debug("Worker $uid marked as ready");
                 break;
 //            case self::STATUS_WORKER_BUSY:
 //                unset ($this->availableWorkers[$uid]);
-//                //$this->messageBroker->getLogger()->debug("Worker $uid marked as busy");
+//                //$this->getLogger()->debug("Worker $uid marked as busy");
 //                break;
 
             case self::STATUS_WORKER_LOCK:
@@ -356,11 +349,11 @@ class RegistratorService
                 $uid = key($this->availableWorkers);
                 $port = current($this->availableWorkers);
                 if (!$uid) {
-                    //$this->messageBroker->getLogger()->alert("No available backend workers: " . count($this->availableWorkers));
+                    //$this->getLogger()->alert("No available backend workers: " . count($this->availableWorkers));
                     $stream->write("0:0@");
                 } else {
                     unset ($this->availableWorkers[$uid]);
-                    //$this->messageBroker->getLogger()->debug("Worker $uid at $port locked for frontend $frontendUid");
+                    //$this->getLogger()->debug("Worker $uid at $port locked for frontend $frontendUid");
                     $stream->write("$uid:$port@");
                 }
 
@@ -376,11 +369,11 @@ class RegistratorService
 
             case self::STATUS_WORKER_FAILED:
                 unset ($this->availableWorkers[$uid]);
-                $this->messageBroker->getLogger()->err("Worker $uid marked as failed");
+                $this->getLogger()->err("Worker $uid marked as failed");
                 break;
 
             default:
-                $this->messageBroker->getLogger()->err("Unsupported status [$status] of a worker $uid");
+                $this->getLogger()->err("Unsupported status [$status] of a worker $uid");
                 break;
         }
     }

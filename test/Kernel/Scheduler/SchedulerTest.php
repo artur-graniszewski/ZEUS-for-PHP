@@ -58,7 +58,7 @@ class SchedulerTest extends \PHPUnit\Framework\TestCase
     {
         $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
-        $scheduler->setIsTerminating(true);
+        $scheduler->setTerminating(true);
         $scheduler->start(false);
 
         $this->assertTrue($scheduler->isTerminating());
@@ -72,7 +72,7 @@ class SchedulerTest extends \PHPUnit\Framework\TestCase
         $events = $scheduler->getEventManager();
         $counter = 0;
         $events->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $e) use (&$counter) {
-            $e->getScheduler()->setIsTerminating(true);
+            $e->getScheduler()->setTerminating(true);
             $counter++;
         });
 
@@ -186,7 +186,7 @@ class SchedulerTest extends \PHPUnit\Framework\TestCase
         $sm->attach('*', WorkerEvent::EVENT_CREATE,
             function(WorkerEvent $e) use (&$scheduler, $em) {
                 $e->stopPropagation(true);
-                $scheduler->setIsTerminating(false);
+                $scheduler->setTerminating(false);
             }, WorkerEvent::PRIORITY_FINALIZE - 1
         );
 
@@ -349,7 +349,7 @@ class SchedulerTest extends \PHPUnit\Framework\TestCase
         $sm->attach('*', WorkerEvent::EVENT_CREATE,
             function(WorkerEvent $e) use (&$scheduler) {
                 $e->stopPropagation(true);
-                $scheduler->setIsTerminating(false);
+                $scheduler->setTerminating(false);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 
@@ -436,7 +436,7 @@ class SchedulerTest extends \PHPUnit\Framework\TestCase
         $this->assertGreaterThan(0, $amountOfScheduledProcesses, "Scheduler should try to create some processes on its startup");
 
         $event->setName(SchedulerEvent::EVENT_STOP);
-        $scheduler->setIsTerminating(false);
+        $scheduler->setTerminating(false);
         $scheduler->getEventManager()->triggerEvent($event);
 
         $this->assertEquals(0, count($unknownProcesses), 'No unknown processes should have been terminated');

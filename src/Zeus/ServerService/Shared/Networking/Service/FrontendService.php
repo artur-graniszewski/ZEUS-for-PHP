@@ -5,6 +5,7 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 use LogicException;
 use Throwable;
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -18,18 +19,18 @@ use Zeus\IO\Stream\SocketStream;
 
 use function microtime;
 use function stream_socket_client;
-use function count;
 use function max;
 use function in_array;
-use function array_search;
+use function defined;
 use function stream_context_create;
-use function explode;
 use Zeus\Kernel\System\Runtime;
+use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
-use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 
 class FrontendService
 {
+    use LoggerAwareTrait;
+
     private $uid = 0;
 
     /** @var bool */
@@ -40,9 +41,6 @@ class FrontendService
 
     /** @var string */
     private $workerHost = '127.0.0.3';
-
-    /** @var SocketMessageBroker */
-    private $messageBroker;
 
     /** @var SocketStream[] */
     private $backendStreams = [];
@@ -59,9 +57,16 @@ class FrontendService
     /** @var resource */
     private $streamContext;
 
-    public function __construct(SocketMessageBroker $messageBroker)
+    /** @var RegistratorService */
+    private $registrator;
+
+    /** @var AbstractNetworkServiceConfig */
+    private $config;
+
+    public function __construct(RegistratorService $registrator, AbstractNetworkServiceConfig $config)
     {
-        $this->messageBroker = $messageBroker;
+        $this->config = $config;
+        $this->registrator = $registrator;
         $this->streamContext = stream_context_create([
             'socket' => [
                 'tcp_nodelay' => true,
@@ -89,7 +94,7 @@ class FrontendService
 
                 $this->onFrontendLoop($event);
             } catch (Throwable $ex) {
-                $this->messageBroker->getLogger()->err((string) $ex);
+                $this->getLogger()->err((string) $ex);
             }
         }, WorkerEvent::PRIORITY_REGULAR);
 
@@ -109,11 +114,11 @@ class FrontendService
         if (defined("HHVM_VERSION")) {
             // HHVM does not support SO_REUSEADDR ?
             $frontendsAmount = 1;
-            $this->messageBroker->getLogger()->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
+            $this->getLogger()->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
         } else {
             $frontendsAmount = (int) max(1, $cpus / 2);
         }
-        $this->messageBroker->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
+        $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
         $event->getScheduler()->getIpc()->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
     }
 
@@ -132,11 +137,11 @@ class FrontendService
         try {
             $server->setReuseAddress(true);
         } catch (UnsupportedOperationException $exception) {
-            $this->messageBroker->getLogger()->warn("Reuse address feature for Socket Streams is unsupported");
+            $this->getLogger()->warn("Reuse address feature for Socket Streams is unsupported");
         }
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
-        $server->bind($this->messageBroker->getConfig()->getListenAddress(), $backlog, $this->messageBroker->getConfig()->getListenPort());
+        $server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
         $server->register($this->frontendSelector, SelectionKey::OP_ACCEPT);
         $this->frontendServer = $server;
     }
@@ -149,8 +154,8 @@ class FrontendService
             return;
         }
 
-        $this->messageBroker->getLogger()->debug("Becoming frontend worker");
-        $this->messageBroker->getRegistrator()->notifyRegistrator($this->uid, 0, RegistratorService::STATUS_WORKER_GONE);
+        $this->getLogger()->debug("Becoming frontend worker");
+        $this->registrator->notifyRegistrator($this->uid, 0, RegistratorService::STATUS_WORKER_GONE);
         $this->frontendSelector = new Selector();
         $this->isFrontend = true;
         $this->workerServer = null;
@@ -192,7 +197,7 @@ class FrontendService
                 }
 
             } catch (Throwable $exception) {
-                $this->messageBroker->getLogger()->err($exception);
+                $this->getLogger()->err($exception);
             }
             if (!$frontendStream->isClosed()) {
                 $frontendStream->close();
@@ -209,7 +214,7 @@ class FrontendService
                     $backendStream->shutdown(STREAM_SHUT_RD);
                 }
             } catch (Throwable $exception) {
-                $this->messageBroker->getLogger()->err($exception);
+                $this->getLogger()->err($exception);
             }
 
             if (!$backendStream->isClosed()) {
@@ -220,14 +225,11 @@ class FrontendService
 
     private function connectToBackend()
     {
-        $registrator = $this->messageBroker->getRegistrator();
+        $registrator = $this->registrator;
         while (true) {
-            $t1 = microtime(true);
             list($uid, $port) = $registrator->getBackendWorker();
-            $t2 = microtime(true);
-            //$this->messageBroker->getLogger()->debug("Worker locked in " . sprintf("%5f", $t2 - $t1));
             if ($uid == 0) {
-                $this->messageBroker->getLogger()->warn("Waiting for availability of a backend worker");
+                $this->getLogger()->warn("Waiting for availability of a backend worker");
                 return;
             }
             $host = $this->workerHost;
@@ -235,7 +237,7 @@ class FrontendService
             $socket = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->streamContext);
             if (!$socket) {
                 $registrator->notifyRegistrator($uid, $port, RegistratorService::STATUS_WORKER_FAILED);
-                $this->messageBroker->getLogger()->err("Connection refused: backend worker $uid failed");
+                $this->getLogger()->err("Connection refused: backend worker $uid failed");
                 continue;
             }
 
@@ -277,9 +279,7 @@ class FrontendService
                 $last = $now;
             }
 
-            $t1 = microtime(true);
             $keys = $this->frontendSelector->getSelectionKeys();
-            $t2 = microtime(true);
 
             $uidsToIgnore = [];
             foreach ($keys as $index => $selectionKey) {
@@ -292,10 +292,9 @@ class FrontendService
                         continue;
                     }
 
-                    $this->messageBroker->getLogger()->err("Unknown resource id selected");
+                    $this->getLogger()->err("Unknown resource id selected");
                 }
 
-                $t3 = microtime(true);
                 /** @var StreamTunnel $buffer */
                 $buffer = $selectionKey->getAttachment();
                 $uid = $buffer->getId();
@@ -312,8 +311,6 @@ class FrontendService
                     $uidsToIgnore[] = $uid;
                     return;// disconnect may have altered other streams in selector, reset it
                 }
-                $t4 = microtime(true);
-                //trigger_error(sprintf("LOOP STEP DONE IN T1: %5f, T2: %5f", $t2 - $t1, $t4 - $t3));
             }
         } while (microtime(true) - $now < 1);
     }

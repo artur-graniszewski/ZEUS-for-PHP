@@ -141,7 +141,7 @@ final class Scheduler extends AbstractService
 
                 $e->stopPropagation(true);
                 $this->startLifeCycle();
-                $e->getWorker()->setIsTerminating(true);
+                $e->getWorker()->setTerminating(true);
 
             }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -216,7 +216,7 @@ final class Scheduler extends AbstractService
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (Throwable $ex) {
             $this->getLogger()->err("Exception occurred: " . $ex->getMessage());
-            $event->getWorker()->setIsTerminating(true);
+            $event->getWorker()->setTerminating(true);
             $event->setParam('exception', $ex);
         }
     }
@@ -291,7 +291,7 @@ final class Scheduler extends AbstractService
             throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
         }
 
-        $this->setIsTerminating(true);
+        $this->setTerminating(true);
 
         $this->log(Logger::INFO, "Terminating scheduler $uid");
         $this->stopWorker($uid, true);
@@ -386,7 +386,7 @@ final class Scheduler extends AbstractService
             $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
         }
 
-        $this->setIsTerminating(true);
+        $this->setTerminating(true);
 
         $this->log(Logger::INFO, "Terminating scheduled workers");
 

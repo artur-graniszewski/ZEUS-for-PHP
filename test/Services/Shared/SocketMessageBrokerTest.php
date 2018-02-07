@@ -3,7 +3,6 @@
 namespace ZeusTest\Services\Shared;
 
 use Zeus\Kernel\Scheduler;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Http\Config;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
@@ -30,8 +29,7 @@ class SocketMessageBrokerTest extends \PHPUnit\Framework\TestCase
         $initPassed = false;
         $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
-        $broker = new SocketMessageBroker($this->config, new Message(function() {}));
-        $broker->setLogger($scheduler->getLogger());
+        $broker = new SocketMessageBroker($this->config, new Message(function() {}), $scheduler->getLogger());
         $broker->attach($scheduler->getEventManager());
 
         $events = $scheduler->getEventManager();
@@ -44,7 +42,7 @@ class SocketMessageBrokerTest extends \PHPUnit\Framework\TestCase
             $this->assertEquals($broker->getRegistrator()->getRegistratorAddress(), $e->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM), 'Registrator address should be passed as event param');
             $initPassed = true;
             $e->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, "testAddress");
-            $e->getWorker()->setIsTerminating(true);
+            $e->getWorker()->setTerminating(true);
         }, 100000);
 
         $events->attach(Scheduler\WorkerEvent::EVENT_EXIT, function(Scheduler\WorkerEvent $e) {

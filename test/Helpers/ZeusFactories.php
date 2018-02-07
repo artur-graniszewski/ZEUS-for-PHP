@@ -163,7 +163,7 @@ trait ZeusFactories
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {
-                    $e->getScheduler()->setIsTerminating(true);
+                    $e->getScheduler()->setTerminating(true);
                 }
 
                 if ($loopCallback) {
@@ -173,11 +173,11 @@ trait ZeusFactories
         }
 
         $sm->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
-            $e->getScheduler()->setIsTerminating(true);
+            $e->getScheduler()->setTerminating(true);
             $e->stopPropagation(true);
         }, 10000000);
 
-        $scheduler->setIsTerminating(false);
+        $scheduler->setTerminating(false);
         $scheduler->setIpc($ipcServer);
 //        $scheduler->getMultiProcessingModule()->getWrapper()->setEventManager($events);
 //        $scheduler->getMultiProcessingModule()->getWrapper()->setSchedulerEvent($scheduler->getSchedulerEvent());

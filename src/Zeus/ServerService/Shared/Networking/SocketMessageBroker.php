@@ -4,6 +4,7 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use LogicException;
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
@@ -17,11 +18,10 @@ use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
  */
 final class SocketMessageBroker
 {
+    use LoggerAwareTrait;
+
     /** @var MessageComponentInterface */
     private $message;
-
-    /** @var LoggerInterface */
-    private $logger;
 
     /** @var FrontendService */
     private $frontendService;
@@ -32,13 +32,16 @@ final class SocketMessageBroker
     /** @var RegistratorService */
     private $registratorService;
 
-    public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
+    public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger)
     {
         $this->config = $config;
         $this->message = $message;
-        $this->frontendService = new FrontendService($this);
         $this->backendService = new BackendService($this);
-        $this->registratorService = new RegistratorService($this);
+        $this->backendService->setLogger($logger);
+        $this->registratorService = new RegistratorService();
+        $this->registratorService->setLogger($logger);
+        $this->frontendService = new FrontendService($this->registratorService, $config);
+        $this->frontendService->setLogger($logger);
     }
 
     public function getFrontend() : FrontendService
@@ -66,19 +69,6 @@ final class SocketMessageBroker
     public function getConfig() : AbstractNetworkServiceConfig
     {
         return $this->config;
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-    }
-
-    public function getLogger() : LoggerInterface
-    {
-        if (!isset($this->logger)) {
-            throw new LogicException("Logger not set");
-        }
-        return $this->logger;
     }
 
     public function onHeartBeat(NetworkStreamInterface $connection)

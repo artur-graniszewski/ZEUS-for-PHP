@@ -55,7 +55,7 @@ class WorkerFlowManager
         $events = $this->scheduler->getEventManager();
 
         $worker = $this->getWorker();
-        $worker->setIsTerminating(false);
+        $worker->setTerminating(false);
 
         // worker create...
         $event = $this->getWorkerEvent(WorkerEvent::EVENT_CREATE);

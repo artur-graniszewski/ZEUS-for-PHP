@@ -108,7 +108,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
         $workerEvent = clone $this->workerEvent;
         $workerEvent->setParams([]);
-        $workerEvent->getWorker()->setIsTerminating(false);
+        $workerEvent->getWorker()->setTerminating(false);
 
         return $workerEvent;
     }
@@ -194,7 +194,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
             $this->checkPipe();
             if ($this->isTerminating()) {
-                $event->getWorker()->setIsTerminating(true);
+                $event->getWorker()->setTerminating(true);
                 $event->stopPropagation(true);
             }
         }, WorkerEvent::PRIORITY_INITIALIZE);
@@ -207,7 +207,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $this->driver->onWorkersCheck($event);
 
             if ($this->isTerminating() && !$wasExiting) {
-                $event->getScheduler()->setIsTerminating(true);
+                $event->getScheduler()->setTerminating(true);
                 $event->stopPropagation(true);
             }
         }, -9000);
