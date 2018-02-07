@@ -4,6 +4,8 @@ namespace Zeus\Kernel;
 
 use Throwable;
 use Zend\Log\Logger;
+use Zeus\IO\Stream\AbstractSelector;
+use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\AbstractService;
@@ -511,5 +513,25 @@ final class Scheduler extends AbstractService
     public function getMultiProcessingModule() : MultiProcessingModuleInterface
     {
         return $this->multiProcessingModule;
+    }
+
+    public function observeSelector(AbstractStreamSelector $selector, $onSelectCallback, $onTimeoutCallback, int $timeout)
+    {
+        $this->getReactor()->observe($selector,
+            function(AbstractStreamSelector $selector) use ($onSelectCallback) {
+                $event = $this->getSchedulerEvent();
+                $event->setName(SchedulerEvent::EVENT_SELECT);
+                $event->setParam('selector', $selector);
+                $this->getEventManager()->triggerEvent($event);
+                $onSelectCallback($selector);
+            },
+            function(AbstractStreamSelector $selector) use ($onTimeoutCallback) {
+                $event = $this->getSchedulerEvent();
+                $event->setName(SchedulerEvent::EVENT_SELECT_TIMEOUT);
+                $event->setParam('selector', $selector);
+                $this->getEventManager()->triggerEvent($event);
+                $onTimeoutCallback($selector);
+            },
+            $timeout);
     }
 }

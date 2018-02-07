@@ -16,6 +16,7 @@ class SchedulerEvent extends AbstractEvent
     const EVENT_LOOP = 'schedulerLoop';
     const EVENT_TICK = 'schedulerTick';
     const EVENT_SELECT = 'schedulerSelect';
+    const EVENT_SELECT_TIMEOUT = 'schedulerSelectTimeout';
 
 
     // WARNING: the following INTERNAL_* events should not be used in custom projects

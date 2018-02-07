@@ -403,7 +403,9 @@ class IpcServer implements ListenerAggregateInterface
         $sharedManager = $events->getSharedManager();
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function(SchedulerEvent $event) {
             if (!$this->isKernelRegistered) {
-                $this->useReactor($event->getScheduler()->getReactor());
+                $event->getScheduler()->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
+                    $this->handleIpcMessages($selector);
+                }, function() {}, 1000);
                 $this->isKernelRegistered = true;
             }
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
@@ -441,7 +443,9 @@ class IpcServer implements ListenerAggregateInterface
 
             $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
                 if (!$this->isSchedulerRegistered) {
-                    $this->useReactor($event->getScheduler()->getReactor());
+                    $event->getScheduler()->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
+                        $this->handleIpcMessages($selector);
+                    }, function() {}, 1000);
                     $this->isSchedulerRegistered = true;
                 }
 
@@ -449,14 +453,6 @@ class IpcServer implements ListenerAggregateInterface
 
             }, SchedulerEvent::PRIORITY_REGULAR + 1);
         }, 100000);
-    }
-
-    public function useReactor(Reactor $reactor)
-    {
-        // $this->handleIpcMessages();
-        $reactor->register($this->ipcSelector, function(AbstractStreamSelector $selector) {
-            $this->handleIpcMessages($selector);
-        }, 1000);
     }
 
     /**

@@ -62,9 +62,9 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
         $stdErr = new PipeStream(fopen("php://stderr", "w"));
         $stdErrKey = $stdErr->register($stdErrSelector, SelectionKey::OP_WRITE);
 
-        $reactor->register($stdOutSelector, function() use (& $isStdOutWritable) {
+        $reactor->observe($stdOutSelector, function() use (& $isStdOutWritable) {
             $isStdOutWritable = true;
-        }, 1000);
+        }, function() {}, 1000);
 
         $reactor->mainLoop(function(Reactor $reactor) {
             $reactor->setTerminating(true);
@@ -73,13 +73,13 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
         $isStdOutWritable1 = $isStdOutWritable;
         $keys1 = $reactor->getSelectionKeys();
 
-        $reactor->register($stdErrSelector, function() use (& $isStdErrWritable) {
+        $reactor->observe($stdErrSelector, function() use (& $isStdErrWritable) {
             $isStdErrWritable = true;
-        }, 1000);
+        }, function() {}, 1000);
 
-        $reactor->register($stdInSelector, function() use (& $isStdInReadable) {
+        $reactor->observe($stdInSelector, function() use (& $isStdInReadable) {
             $isStdInReadable = true;
-        }, 1000);
+        }, function() {}, 1000);
 
         $reactor->mainLoop(function(Reactor $reactor) {
             $reactor->setTerminating(true);
@@ -128,6 +128,6 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
     public function testInvalidSelectorCallback()
     {
         $reactor = new Reactor();
-        $reactor->register(new Selector(), 'zzzzzzzzzzzzzzz', 100);
+        $reactor->observe(new Selector(), 'zzzzzzzzzzzzzzz', function() {}, 100);
     }
 }

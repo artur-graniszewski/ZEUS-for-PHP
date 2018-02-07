@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\Scheduler;
 
 use LogicException;
+use OutOfRangeException;
 use TypeError;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
@@ -31,6 +32,9 @@ use function max;
 class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInterface
 {
     use EventManagerAwareTrait;
+
+    /** @var int */
+    protected $timerResolutionTolerance = 10;
 
     /** @var AbstractStreamSelector */
     private $reactor;
@@ -62,6 +66,19 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         $this->reactor = new Selector();
     }
 
+    public function setTimerResolutionTolerance(int $percentage)
+    {
+        if ($percentage > 20 || $percentage < 0) {
+            throw new OutOfRangeException("Tolerance should be in range of 0-20%");
+        }
+        $this->timerResolutionTolerance = $percentage;
+    }
+
+    public function getTimerResolutionTolerance() : int
+    {
+        return $this->timerResolutionTolerance;
+    }
+
     public function getNextTimeout() : int
     {
         $lastTick = $this->lastTick;
@@ -73,14 +90,14 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         return $wait;
     }
 
-    public function mainLoop($callback)
+    public function mainLoop($mainLoopCallback)
     {
-        if (!is_callable($callback)) {
+        if (!is_callable($mainLoopCallback)) {
             throw new TypeError("Invalid callback parameter");
         }
 
         do {
-            call_user_func($callback, $this);
+            call_user_func($mainLoopCallback, $this);
 
             $wait = $this->getNextTimeout();
             $changed = $this->select($wait);
@@ -104,9 +121,30 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             foreach (array_keys($selectorIdsToNotify) as $id) {
                 $observedSelector = $this->observedSelectors[$id];
                 $observedSelector->setSelectionKeys($selectorIdsToNotify[$id]);
-                call_user_func($this->selectorCallbacks[$id], $this->observedSelectors[$id]);
+                $callback = $this->selectorCallbacks[$id]['onSelect'];
+                unset($this->observedSelectors[$id]);
+                unset($this->selectorCallbacks[$id]);
+                unset($this->selectorTimeouts[$id]);
+                call_user_func($callback, $observedSelector);
             }
+
+            $this->checkSelectTimeouts();
         } while (!$this->isTerminating());
+    }
+
+    private function checkSelectTimeouts()
+    {
+        $now = microtime(true);
+        foreach ($this->selectorTimeouts as $id => $timeout) {
+            if ($now > $timeout['nextTick']) {
+                $callback = $this->selectorCallbacks[$id]['onTimeout'];
+                $observedSelector = $this->observedSelectors[$id];
+                unset($this->observedSelectors[$id]);
+                unset($this->selectorCallbacks[$id]);
+                unset($this->selectorTimeouts[$id]);
+                call_user_func($callback, $observedSelector);
+            }
+        }
     }
 
     public function select(int $timeout = 0) : int
@@ -154,20 +192,22 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
 
     /**
      * @param AbstractStreamSelector $selector
-     * @param $callback
+     * @param $onSelectCallback
      * @param int $timeout Timeout in milliseconds
      * @throws TypeError
      */
-    public function register(AbstractStreamSelector $selector, $callback, int $timeout)
+    public function observe(AbstractStreamSelector $selector, $onSelectCallback, $onTimeoutCallback, int $timeout)
     {
-        if (!is_callable($callback)) {
+        if (!is_callable($onSelectCallback)) {
             throw new TypeError("Invalid callback parameter");
         }
 
         $timeout *= 1000;
-        $this->selectorCallbacks[] = $callback;
+        $this->selectorCallbacks[] = ['onSelect' => $onSelectCallback, 'onTimeout' => $onTimeoutCallback];
         $this->observedSelectors[] = $selector;
         $nextTick = microtime(true) + $timeout;
+        $nextTick += $nextTick * ($this->getTimerResolutionTolerance() / 100);
+
         $this->selectorTimeouts[] = ['nextTick' => $nextTick, 'timeout' => $timeout];
 
         $this->updateTimerResolution();
@@ -188,6 +228,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
 
         $timeout *= 1000;
         $nextTick = microtime(true) + $timeout;
+        $nextTick += $nextTick * ($this->getTimerResolutionTolerance() / 100);
         $this->timers[] = ['callback' => $callback, 'nextTick' => $nextTick, 'timeout' => $timeout, 'periodic' => $isPeriodic];
 
         $this->updateTimerResolution();
