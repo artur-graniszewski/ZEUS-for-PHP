@@ -72,7 +72,7 @@ class SocketMessageTest extends \PHPUnit\Framework\TestCase
                 $connection->close();
             }
         });
-        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
+        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->getRegistrator()->setRegistratorAddress('127.0.0.1:3333');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
@@ -152,7 +152,7 @@ class SocketMessageTest extends \PHPUnit\Framework\TestCase
         $message = new SocketTestMessage(function($connection, $data) use (&$received) {
             throw new \RuntimeException("TEST");
         });
-        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message);
+        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->getRegistrator()->setRegistratorAddress('127.0.0.1:3333');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
