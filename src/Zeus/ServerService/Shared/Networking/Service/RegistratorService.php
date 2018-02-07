@@ -93,7 +93,9 @@ class RegistratorService
 //            }
 //        }, 1000);
 
-        $events->attach(SchedulerEvent::EVENT_START, function($e) { $this->registerObservers($e); }, -9000);
+        $events->attach(SchedulerEvent::EVENT_START, function($e) {
+            $this->startRegistratorServer();
+            $this->registerObservers($e); }, -9000);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
             if ($this->registratorStream) {
