@@ -2,6 +2,8 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
+use LogicException;
+use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\SelectionKey;
@@ -155,7 +157,7 @@ class BackendService
                     } else {
                         return;
                     }
-                } catch (\Throwable $exception) {
+                } catch (Throwable $exception) {
                     //$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY);
                     $event->getWorker()->setWaiting();
 
@@ -203,7 +205,7 @@ class BackendService
             }
         } catch (IOException $streamException) {
             $this->onHeartBeat();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
         }
 
         if ($this->connection) {
@@ -213,7 +215,7 @@ class BackendService
                 } else {
                     $this->messageBroker->onClose($this->connection);
                 }
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
             }
 
             $this->closeConnection($event);
@@ -230,7 +232,7 @@ class BackendService
     public function getBackendServer() : SocketServer
     {
         if (!$this->backendServer) {
-            throw new \LogicException("Backend server not initiated");
+            throw new LogicException("Backend server not initiated");
         }
         return $this->backendServer;
     }

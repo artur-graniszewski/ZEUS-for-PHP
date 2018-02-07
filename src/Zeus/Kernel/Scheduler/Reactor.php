@@ -122,9 +122,9 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
                 $observedSelector = $this->observedSelectors[$id];
                 $observedSelector->setSelectionKeys($selectorIdsToNotify[$id]);
                 $callback = $this->selectorCallbacks[$id]['onSelect'];
-                unset($this->observedSelectors[$id]);
-                unset($this->selectorCallbacks[$id]);
-                unset($this->selectorTimeouts[$id]);
+//                unset($this->observedSelectors[$id]);
+//                unset($this->selectorCallbacks[$id]);
+//                unset($this->selectorTimeouts[$id]);
                 call_user_func($callback, $observedSelector);
             }
 
@@ -139,9 +139,9 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             if ($now > $timeout['nextTick']) {
                 $callback = $this->selectorCallbacks[$id]['onTimeout'];
                 $observedSelector = $this->observedSelectors[$id];
-                unset($this->observedSelectors[$id]);
-                unset($this->selectorCallbacks[$id]);
-                unset($this->selectorTimeouts[$id]);
+//                unset($this->observedSelectors[$id]);
+//                unset($this->selectorCallbacks[$id]);
+//                unset($this->selectorTimeouts[$id]);
                 call_user_func($callback, $observedSelector);
             }
         }
@@ -306,6 +306,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             $attachment = $key->getAttachment();
             $result[] = $attachment['key'];
         }
+
         return $result;
     }
 

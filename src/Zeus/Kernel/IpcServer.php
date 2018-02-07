@@ -10,7 +10,6 @@ use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\SocketIpc as IpcSocketStream;
-use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\Exception\SocketTimeoutException;
@@ -403,9 +402,7 @@ class IpcServer implements ListenerAggregateInterface
         $sharedManager = $events->getSharedManager();
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function(SchedulerEvent $event) {
             if (!$this->isKernelRegistered) {
-                $event->getScheduler()->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
-                    $this->handleIpcMessages($selector);
-                }, function() {}, 1000);
+                $this->setSelector($event->getScheduler());
                 $this->isKernelRegistered = true;
             }
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
@@ -443,9 +440,7 @@ class IpcServer implements ListenerAggregateInterface
 
             $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
                 if (!$this->isSchedulerRegistered) {
-                    $event->getScheduler()->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
-                        $this->handleIpcMessages($selector);
-                    }, function() {}, 1000);
+                    $this->setSelector($event->getScheduler());
                     $this->isSchedulerRegistered = true;
                 }
 
@@ -453,6 +448,28 @@ class IpcServer implements ListenerAggregateInterface
 
             }, SchedulerEvent::PRIORITY_REGULAR + 1);
         }, 100000);
+    }
+
+    private function setSelector(Scheduler $scheduler)
+    {
+//        $scheduler->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) use ($scheduler) {
+//            $this->handleIpcMessages($selector);
+//
+//            $scheduler->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
+//                $this->handleIpcMessages($selector);
+//            }, function() use ($scheduler) {
+//                $this->setSelector($scheduler);
+//
+//            }, 1000);
+//        }, function() {}, 1000);
+
+        $scheduler->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
+                $this->handleIpcMessages($selector);
+            }, function() {
+
+
+            }, 1000);
+
     }
 
     /**

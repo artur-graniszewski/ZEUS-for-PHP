@@ -18,6 +18,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use function stream_context_create;
 use function stream_socket_client;
 use function substr;
+use function current;
 use function explode;
 use function in_array;
 
