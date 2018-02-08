@@ -4,7 +4,6 @@ namespace Zeus\Kernel;
 
 use Throwable;
 use Zend\Log\Logger;
-use Zeus\IO\Stream\AbstractSelector;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
@@ -29,7 +28,6 @@ use function array_keys;
 use function file_get_contents;
 use function file_put_contents;
 use function unlink;
-use function usleep;
 use function set_exception_handler;
 
 /**
@@ -298,6 +296,7 @@ final class Scheduler extends AbstractService
         $this->log(Logger::INFO, "Terminating scheduler $uid");
         $this->stopWorker($uid, true);
         $this->log(Logger::INFO, "Workers checked");
+        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP);
 
         unlink($fileName);
     }

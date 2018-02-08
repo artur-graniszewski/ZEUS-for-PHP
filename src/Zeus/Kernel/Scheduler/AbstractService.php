@@ -12,8 +12,10 @@ abstract class AbstractService implements EventsCapableInterface, EventManagerAw
 {
     use EventManagerAwareTrait;
 
+    /** @var IpcServer */
     private $ipcAdapter;
 
+    /** @var LoggerInterface */
     private $logger;
 
     /** @var ConfigInterface */

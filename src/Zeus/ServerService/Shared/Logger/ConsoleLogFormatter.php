@@ -6,6 +6,9 @@ use Zend\Console\ColorInterface;
 use Zend\Console\Adapter\AdapterInterface;
 use Zend\Log\Formatter\FormatterInterface;
 
+use function str_pad;
+use function sprintf;
+
 class ConsoleLogFormatter extends StreamLogFormatter implements FormatterInterface
 {
     /** @var AdapterInterface */

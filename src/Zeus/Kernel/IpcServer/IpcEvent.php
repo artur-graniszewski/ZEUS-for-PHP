@@ -10,8 +10,6 @@ class IpcEvent extends Event
 {
     const EVENT_MESSAGE_SEND = 'ipcMessageSend';
     const EVENT_MESSAGE_RECEIVED = 'ipcMessageReceived';
-    const EVENT_HANDLING_MESSAGES = 'ipcMessageHandling';
-    const EVENT_STREAM_READABLE = 'ipcDataReceived';
 
     protected $ipcInstance = '';
 

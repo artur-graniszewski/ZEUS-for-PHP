@@ -2,7 +2,6 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-use LogicException;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;

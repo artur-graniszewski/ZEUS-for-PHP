@@ -158,4 +158,9 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
     {
         // TODO: Implement onWorkerLoop() method.
     }
+
+    public function onKernelStop(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelStop() method.
+    }
 }

@@ -5,7 +5,6 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
-use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\AbstractEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
@@ -322,5 +321,10 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
     public function onWorkerLoop(WorkerEvent $event)
     {
         // TODO: Implement onWorkerLoop() method.
+    }
+
+    public function onKernelStop(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelStop() method.
     }
 }

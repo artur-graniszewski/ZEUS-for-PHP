@@ -23,6 +23,8 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
 
     public abstract function onKernelLoop(SchedulerEvent $event);
 
+    public abstract function onKernelStop(SchedulerEvent $event);
+
     public abstract function onWorkerCreate(WorkerEvent $event);
 
     public abstract function onSchedulerStop(SchedulerEvent $event);

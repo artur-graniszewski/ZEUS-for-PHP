@@ -8,6 +8,7 @@ class ManagerEvent extends Event
 {
     const EVENT_MANAGER_INIT = 'managerInit';
     const EVENT_MANAGER_LOOP = 'managerLoop';
+    const EVENT_MANAGER_STOP = 'managerStop';
     const EVENT_SERVICE_START = 'serviceStart';
     const EVENT_SERVICE_STOP = 'serviceStop';
 

@@ -113,4 +113,9 @@ class DummyMpm extends AbstractModule
     {
         // TODO: Implement onWorkersCheck() method.
     }
+
+    public function onKernelStop(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelStop() method.
+    }
 }

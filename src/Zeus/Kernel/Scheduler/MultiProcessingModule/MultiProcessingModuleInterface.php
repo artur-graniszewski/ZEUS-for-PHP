@@ -19,6 +19,8 @@ interface MultiProcessingModuleInterface
 
     public function onKernelLoop(SchedulerEvent $event);
 
+    public function onKernelStop(SchedulerEvent $event);
+
     /* Scheduler Event handlers */
     public function onSchedulerInit(SchedulerEvent $schedulerEvent);
 

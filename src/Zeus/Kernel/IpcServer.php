@@ -3,7 +3,6 @@
 namespace Zeus\Kernel;
 
 use RuntimeException;
-use Throwable;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
@@ -26,7 +25,6 @@ use function array_keys;
 use function array_merge;
 use function array_rand;
 use function array_search;
-use function microtime;
 use function stream_socket_client;
 use function get_called_class;
 
@@ -151,13 +149,13 @@ class IpcServer implements ListenerAggregateInterface
                 if (!$ipcStream->isClosed()) {
                     continue;
                 }
-            } catch (\Exception $exception) {
+            } catch (IOException $exception) {
 
             }
 
             try {
                 $ipcStream->close();
-            } catch (\Exception $exception) {
+            } catch (IOException $exception) {
 
             }
 
@@ -192,35 +190,13 @@ class IpcServer implements ListenerAggregateInterface
 
     private function handleIpcMessages(AbstractStreamSelector $selector)
     {
-        $event = new IpcEvent();
-        $event->setName(IpcEvent::EVENT_HANDLING_MESSAGES);
-        $event->setParam('selector', $selector);
-        $event->setTarget($this);
-        $this->getEventManager()->triggerEvent($event);
-
         $messages = [];
 
         $keys = $selector->getSelectionKeys();
-        $failed = 0; $processed = 0; $ignored = 0;
+        $failed = 0; $processed = 0;
         foreach ($keys as $key) {
             /** @var SocketStream $stream */;
             $stream = $key->getStream();
-            if ($stream->getLocalAddress() !== $this->ipcServer->getLocalAddress()) {
-                $ignored++;
-                $event = new IpcEvent();
-                $event->setName(IpcEvent::EVENT_STREAM_READABLE);
-
-                $event->setParam('selector', $selector);
-                $event->setParam('selectionKey', $key);
-                $event->setParam('stream', $stream);
-                $event->setTarget($this);
-                try {
-                    $this->getEventManager()->triggerEvent($event);
-                } catch (Throwable $exception) {
-                    // @todo: handle such exception, or at least report in in the logger
-                }
-                continue;
-            }
 
             if ($key->isAcceptable()) {
                 $this->checkInboundConnections();

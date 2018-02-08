@@ -2,6 +2,8 @@
 
 namespace Zeus\Controller;
 
+use InvalidArgumentException;
+use Throwable;
 use Zend\Console\Console;
 use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
@@ -55,7 +57,7 @@ class MainController extends AbstractActionController
     public function dispatch(RequestInterface $request, ResponseInterface $response = null)
     {
         if (!$request instanceof ConsoleRequest) {
-            throw new \InvalidArgumentException(sprintf(
+            throw new InvalidArgumentException(sprintf(
                 '%s can only dispatch requests in a console environment',
                 get_called_class()
             ));
@@ -92,7 +94,7 @@ class MainController extends AbstractActionController
                     $this->stopServicesCommand($serviceName);
                     break;
             }
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->logger->err(sprintf("Exception (%d): %s in %s on line %d",
                 $exception->getCode(),
                 addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
@@ -175,7 +177,7 @@ class MainController extends AbstractActionController
     /**
      * @param string $serviceName
      */
-    protected function listServicesCommand($serviceName)
+    private function listServicesCommand($serviceName)
     {
         $services = $this->getServices($serviceName, false);
 
@@ -210,7 +212,7 @@ class MainController extends AbstractActionController
      * @param bool $mustBeRunning
      * @throws \Exception
      */
-    protected function stopServices($services, bool $mustBeRunning)
+    private function stopServices($services, bool $mustBeRunning)
     {
         $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
 
@@ -226,7 +228,7 @@ class MainController extends AbstractActionController
         $this->stopServices($this->services, false);
     }
 
-    protected function stopServicesCommand($serviceName)
+    private function stopServicesCommand($serviceName)
     {
         $services = $this->getServices($serviceName, false);
         $this->stopServices($services, false);

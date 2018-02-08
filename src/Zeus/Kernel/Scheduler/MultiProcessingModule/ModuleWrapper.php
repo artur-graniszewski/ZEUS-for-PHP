@@ -25,6 +25,7 @@ use function time;
 use function count;
 use function array_search;
 use function stream_socket_client;
+use function in_array;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
@@ -173,6 +174,22 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $this->driver->onKernelStart($e);
             $this->driver->onWorkersCheck($e);
         });
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP, function (SchedulerEvent $e) {
+            try {
+                foreach ($this->ipcServers as $server) {
+                    $server->getSocket()->shutdown(STREAM_SHUT_RD);
+                    $server->getSocket()->close();
+                }
+
+                if ($this->ipc && !$this->ipc->isClosed()) {
+                    $this->ipc->close();
+                }
+            } catch (Throwable $e) {
+
+            }
+            $this->driver->onKernelStop($e);
+            $this->driver->onWorkersCheck($e);
+        });
         $eventManager->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $e) {
             $this->driver->onSchedulerInit($e);
         }, -9000);
@@ -208,6 +225,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $this->driver->onWorkersCheck($event);
 
             if ($this->isTerminating() && !$wasExiting) {
+
                 $event->getScheduler()->setTerminating(true);
                 $event->stopPropagation(true);
             }
@@ -224,8 +242,11 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $this->driver->onWorkerTerminate($e);
             $this->unregisterWorker($e->getParam('uid'));
         }, -9000);
-        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function (SchedulerEvent $e) {
-            $this->driver->onKernelLoop($e);
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function (SchedulerEvent $event) {
+            $this->registerWorkers();
+            $this->driver->onWorkersCheck($event);
+
+            $this->driver->onKernelLoop($event);
         }, -9000);
         $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function (WorkerEvent $e) {
             $this->driver->onWorkerTerminated($e);
@@ -313,22 +334,25 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     {
         static $lastCheck;
 
-        if (!$this->isTerminating()) {
-            try {
-                $now = time();
-                if ($lastCheck === $now) {
-                    return;
-                }
-
-                $lastCheck = $now;
-                if (($this->parentIpcSelector->select(0) === 1 && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
-                    $this->setIsTerminating(true);
-                    return;
-                }
-            } catch (Throwable $exception) {
-                $this->setIsTerminating(true);
-            }
+        if ($this->isTerminating()) {
+            return;
         }
+
+        try {
+            $now = time();
+            if ($lastCheck === $now) {
+                return;
+            }
+
+            $lastCheck = $now;
+            if ($this->ipc->isClosed() || ($this->parentIpcSelector->select(0) === 1 && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
+                $this->setIsTerminating(true);
+                return;
+            }
+        } catch (Throwable $exception) {
+            $this->setIsTerminating(true);
+        }
+
     }
 
     private function unregisterWorker(int $uid)

@@ -26,16 +26,6 @@ class WorkerFlowManager
         return $event;
     }
 
-    private function getSchedulerEvent(string $eventName) : SchedulerEvent
-    {
-        $event = new SchedulerEvent();
-        $event->setName($eventName);
-        $event->setScheduler($this->scheduler);
-        $event->setTarget($this->scheduler);
-
-        return $event;
-    }
-
     private function getWorker() : Worker
     {
         $worker = new Worker();

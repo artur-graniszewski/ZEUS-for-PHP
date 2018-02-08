@@ -2,6 +2,8 @@
 
 namespace Zeus\ServerService;
 
+use RuntimeException;
+use Throwable;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerInterface;
@@ -66,10 +68,7 @@ final class Manager
         }, -10000);
     }
 
-    /**
-     * @return ManagerEvent
-     */
-    protected function getEvent()
+    protected function getEvent() : ManagerEvent
     {
         if (!$this->event) {
             $this->event = new ManagerEvent();
@@ -82,7 +81,7 @@ final class Manager
     public function getService(string $serviceName) : ServerServiceInterface
     {
         if (!isset($this->services[$serviceName]['service'])) {
-            throw new \RuntimeException("Service \"$serviceName\" not found");
+            throw new RuntimeException("Service \"$serviceName\" not found");
         }
 
         $service = $this->services[$serviceName]['service'];
@@ -116,7 +115,7 @@ final class Manager
         ];
     }
 
-    public function registerBrokenService(string $serviceName, \Throwable $exception)
+    public function registerBrokenService(string $serviceName, Throwable $exception)
     {
         $this->brokenServices[$serviceName] = $exception;
         $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $exception->getMessage()));
@@ -125,7 +124,7 @@ final class Manager
     }
 
     /**
-     * @return \Throwable[]
+     * @return Throwable[]
      */
     public function getBrokenServices()
     {
@@ -140,9 +139,10 @@ final class Manager
     protected function doStartService(string $serviceName)
     {
         $service = $this->getService($serviceName);
+        $scheduler = $service->getScheduler();
 
         /** @var EventManager $eventManager */
-        $eventManager = $service->getScheduler()->getEventManager();
+        $eventManager = $scheduler->getEventManager();
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_START);
@@ -165,7 +165,6 @@ final class Manager
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP,
             function (SchedulerEvent $schedulerEvent) use ($service, $event) {
                 if (!$event->propagationIsStopped()) {
-                    pcntl_signal_dispatch(); //@todo: URGENT! REPLACE me with something more platform agnostic!
                     $event->setName(ManagerEvent::EVENT_MANAGER_LOOP);
                     $this->getEventManager()->triggerEvent($event);
                 } else {
@@ -173,12 +172,17 @@ final class Manager
                 }
             }, -10000);
 
+        $this->eventHandles[] = $eventManager->attach(ManagerEvent::EVENT_MANAGER_STOP,
+            function (ManagerEvent $event) use ($scheduler) {
+                $this->logger->info("Service manager stopped");
+            }, 10000);
+
         $exception = null;
         try {
             $this->getEventManager()->triggerEvent($event);
 
             $service->start();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->registerBrokenService($serviceName, $exception);
         }
     }
@@ -228,7 +232,7 @@ final class Manager
      * @param ServerServiceInterface[] $services
      * @param bool $mustBeRunning
      * @return int Amount of services which Manager was unable to stop
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function stopServices(array $services, bool $mustBeRunning)
     {
@@ -240,7 +244,7 @@ final class Manager
             try {
                 $this->stopService($service);
                 $servicesStopped++;
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 if ($mustBeRunning) {
                     throw $exception;
                 }
@@ -250,6 +254,12 @@ final class Manager
         if ($servicesAmount !== $servicesStopped) {
             $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
         }
+
+
+        $event = $this->getEvent();
+        $event->setName(ManagerEvent::EVENT_MANAGER_STOP);
+        $event->setError(null);
+        $this->getEventManager()->triggerEvent($event);
 
         $this->logger->notice(sprintf("Stopped %d service(s)", $servicesStopped));
 
