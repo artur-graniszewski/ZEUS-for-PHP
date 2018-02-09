@@ -184,7 +184,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 if ($this->ipc && !$this->ipc->isClosed()) {
                     $this->ipc->close();
                 }
-            } catch (Throwable $e) {
+            } catch (Throwable $ex) {
 
             }
             $this->driver->onKernelStop($e);
