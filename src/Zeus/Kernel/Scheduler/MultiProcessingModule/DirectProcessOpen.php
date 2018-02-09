@@ -167,4 +167,9 @@ final class DirectProcessOpen extends AbstractProcessModule implements SeparateA
     {
         // TODO: Implement onWorkerLoop() method.
     }
+
+    public function onKernelStop(SchedulerEvent $event)
+    {
+        // TODO: Implement onKernelStop() method.
+    }
 }
