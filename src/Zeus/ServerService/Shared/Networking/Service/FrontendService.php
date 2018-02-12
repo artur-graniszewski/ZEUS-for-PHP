@@ -16,6 +16,9 @@ use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
+use Zeus\Kernel\System\Runtime;
+use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
+use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 
 use function microtime;
 use function stream_socket_client;
@@ -23,9 +26,6 @@ use function max;
 use function in_array;
 use function defined;
 use function stream_context_create;
-use Zeus\Kernel\System\Runtime;
-use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
-use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 
 class FrontendService
 {
@@ -110,6 +110,8 @@ class FrontendService
 
     private function startFrontendElection(SchedulerEvent $event)
     {
+        $config = $this->config;
+        $this->getLogger()->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
         $cpus = Runtime::getNumberOfProcessors();
         if (defined("HHVM_VERSION")) {
             // HHVM does not support SO_REUSEADDR ?
@@ -133,6 +135,7 @@ class FrontendService
 
     private function startFrontendServer(int $backlog)
     {
+        $config = $this->config;
         $server = new SocketServer();
         try {
             $server->setReuseAddress(true);
@@ -141,7 +144,7 @@ class FrontendService
         }
         $server->setSoTimeout(0);
         $server->setTcpNoDelay(true);
-        $server->bind($this->config->getListenAddress(), $backlog, $this->config->getListenPort());
+        $server->bind($config->getListenAddress(), $backlog, $config->getListenPort());
         $server->register($this->frontendSelector, SelectionKey::OP_ACCEPT);
         $this->frontendServer = $server;
     }

@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\Plugin;
 
+use RuntimeException;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Exception\IOException;
@@ -16,7 +17,7 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 /**
  * Class SchedulerStatus
  * @package Zeus\Kernel\Scheduler\Plugin
- * @deprecated
+ * @internal
  */
 class SchedulerStatus implements ListenerAggregateInterface
 {
@@ -36,17 +37,33 @@ class SchedulerStatus implements ListenerAggregateInterface
     /** @var SocketServer */
     private $statusServer;
 
-    /** @var string */
-    private $hostname = '127.0.0.4';
+    private $options = [];
 
-    /** @var int */
-    private $port = 8000;
+    public function __construct(array $options = [])
+    {
+        if (!isset($options['ipc_type']) || $options['ipc_type'] !== 'socket') {
+            throw new RuntimeException("Invalid IPC type selected");
+        }
+
+        if (isset($options['listen_port']) && isset($options['listen_address'])) {
+            $this->options = $options;
+
+            return;
+        }
+
+        throw new RuntimeException("Listen port or address is missing");
+    }
+
+    public function getOptions() : array
+    {
+        return $this->options;
+    }
 
     protected function init(SchedulerEvent $event)
     {
         $scheduler = $event->getScheduler();
         $server = new SocketServer();
-        $server->bind($this->hostname, null, $this->port);
+        $server->bind($this->options['listen_address'], null, $this->options['listen_port']);
         $this->statusServer = $server;
 
         $this->selector = new Selector();
@@ -80,8 +97,11 @@ class SchedulerStatus implements ListenerAggregateInterface
     public static function getStatus(Scheduler $scheduler)
     {
         try {
-            /** @todo: ASAP! make it configurable per scheduler!!!! */
-            $socket = @stream_socket_client("tcp://127.0.0.4:8000", $errno, $errstr, 10);
+            /** @var SchedulerStatus $statusPlugin */
+            $statusPlugin = $scheduler->getPluginByClass(static::class);
+            $options = $statusPlugin->getOptions();
+            $socketName = sprintf("tcp://%s:%d", $options['listen_address'], $options['listen_port']);
+            $socket = @stream_socket_client($socketName, $errno, $errstr, 10);
             if (!$socket) {
                 return null;
             }

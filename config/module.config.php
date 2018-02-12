@@ -107,7 +107,11 @@ return $config = [
                 'enable_process_cache' => true,
                 'plugins' => [
                     ProcessTitle::class,
-                    SchedulerStatus::class,
+                    SchedulerStatus::class => [
+                        'ipc_type' => 'socket',
+                        'listen_address' => '127.0.0.4',
+                        'listen_port' => 8000
+                    ],
                     /*
                     \Zeus\Kernel\Scheduler\Plugin\DropPrivileges::class => [
                         'user' => 'www-data',

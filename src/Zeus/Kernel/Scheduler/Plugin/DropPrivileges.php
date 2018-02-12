@@ -34,7 +34,7 @@ class DropPrivileges implements ListenerAggregateInterface
      * EffectiveUser constructor.
      * @param mixed[] $options
      */
-    public function __construct(array $options)
+    public function __construct(array $options = [])
     {
         $this->options = $options;
 

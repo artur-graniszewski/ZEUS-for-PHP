@@ -60,10 +60,24 @@ trait PluginRegistry
      */
     public function getPluginRegistry()
     {
-        if (! $this->pluginRegistry instanceof SplObjectStorage) {
+        if (!$this->pluginRegistry instanceof SplObjectStorage) {
             $this->pluginRegistry = new SplObjectStorage();
         }
         return $this->pluginRegistry;
+    }
+
+    public function getPluginByClass(string $className) : ListenerAggregateInterface
+    {
+        foreach ($this->getPluginRegistry() as $plugin) {
+            if (get_class($plugin) === $className || in_array($className, class_parents($plugin))) {
+                return $plugin;
+            }
+        }
+
+        throw new LogicException(sprintf(
+            'Plugin of type "%s" not found',
+            $className
+        ));
     }
 
     /**
