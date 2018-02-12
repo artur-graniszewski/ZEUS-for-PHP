@@ -7,12 +7,15 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\AbstractStream;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+
+use function microtime;
 
 /**
  * Class SchedulerStatus
@@ -69,7 +72,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         $this->selector = new Selector();
         $server->getSocket()->register($this->selector, SelectionKey::OP_ACCEPT);
         $scheduler->observeSelector($this->selector, function() {
-            $this->onSchedulerLoop();
+            $this->onSelect();
         }, function() {}, 10000);
 
         $this->schedulerStatus = new WorkerState($event->getTarget()->getConfig()->getServiceName());
@@ -99,20 +102,31 @@ class SchedulerStatus implements ListenerAggregateInterface
         try {
             /** @var SchedulerStatus $statusPlugin */
             $statusPlugin = $scheduler->getPluginByClass(static::class);
-            $options = $statusPlugin->getOptions();
-            $socketName = sprintf("tcp://%s:%d", $options['listen_address'], $options['listen_port']);
-            $socket = @stream_socket_client($socketName, $errno, $errstr, 10);
-            if (!$socket) {
-                return null;
-            }
-            $stream = new SocketStream($socket);
+            $stream = $statusPlugin->getUpstream();
+
             $response = $stream->read();
             $status = json_decode($response, true);
 
             return $status;
         } catch (IOException $ex) {
             return null;
+        } catch (RuntimeException $ex) {
+            return null;
         }
+    }
+
+    public function getUpstream() : AbstractStream
+    {
+        $options = $this->getOptions();
+        $socketName = sprintf("tcp://%s:%d", $options['listen_address'], $options['listen_port']);
+        $socket = @stream_socket_client($socketName, $errno, $errstr, 10);
+        if (!$socket) {
+            throw new RuntimeException("Connection failed");
+        }
+
+        $stream = new SocketStream($socket);
+
+        return $stream;
     }
 
     /**
@@ -128,7 +142,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
     }
 
-    private function onSchedulerLoop()
+    private function onSelect()
     {
         $stream = $this->statusServer->accept();
         $scheduler = $this->scheduler;

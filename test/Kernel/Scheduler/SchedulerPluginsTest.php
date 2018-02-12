@@ -6,7 +6,6 @@ use \PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\Plugin\DropPrivileges;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-
 use ZeusTest\Helpers\ZeusFactories;
 
 class SchedulerPluginsTest extends \PHPUnit\Framework\TestCase
@@ -17,7 +16,7 @@ class SchedulerPluginsTest extends \PHPUnit\Framework\TestCase
      * @param mixed[] $plugin
      * @return \Zeus\Kernel\Scheduler
      */
-    protected function getSchedulerWithPlugin(array $plugin)
+    private function getSchedulerWithPlugin(array $plugin)
     {
         $sm = $this->getServiceManager(
             [
