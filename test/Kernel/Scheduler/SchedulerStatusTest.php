@@ -2,19 +2,18 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use \PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
 use Zeus\Kernel\Scheduler;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
 
-class SchedulerStatusTest extends \PHPUnit\Framework\TestCase
+class SchedulerStatusTest extends TestCase
 {
     use ZeusFactories;
 
@@ -89,11 +88,10 @@ class SchedulerStatusTest extends \PHPUnit\Framework\TestCase
 
     public function testSchedulerStatusInOfflineSituation()
     {
-        $this->markTestIncomplete("Scheduler status view is broken and must be refactored");
         $scheduler = $this->getScheduler(1);
         $schedulerStatusView = new SchedulerStatusView(Console::getInstance());
         $service = $this->getService($scheduler);
         $statusOutput = $schedulerStatusView->getStatus($service);
-        $this->assertFalse($statusOutput, 'No output should be present when service is offline');
+        $this->assertEquals('', $statusOutput, 'No output should be present when service is offline');
     }
 }

@@ -4,9 +4,11 @@ namespace Zeus\Kernel\Scheduler\Plugin;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
-use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\IpcServer\Message;
+use Zeus\IO\Exception\IOException;
+use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
+use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
@@ -14,28 +16,48 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 /**
  * Class SchedulerStatus
  * @package Zeus\Kernel\Scheduler\Plugin
- * @codeCoverageIgnore
  * @deprecated
  */
 class SchedulerStatus implements ListenerAggregateInterface
 {
     /** @var mixed[] */
-    protected $eventHandles = [];
-
-    protected $refreshStatus = false;
+    private $eventHandles = [];
 
     /** @var Scheduler */
-    protected $scheduler;
+    private $scheduler;
 
     /** @var float */
-    protected $startTime;
-    protected $schedulerStatus;
+    private $startTime;
+    private $schedulerStatus;
+
+    /** @var Selector */
+    private $selector;
+
+    /** @var SocketServer */
+    private $statusServer;
+
+    /** @var string */
+    private $hostname = '127.0.0.4';
+
+    /** @var int */
+    private $port = 8000;
 
     protected function init(SchedulerEvent $event)
     {
+        $scheduler = $event->getScheduler();
+        $server = new SocketServer();
+        $server->bind($this->hostname, null, $this->port);
+        $this->statusServer = $server;
+
+        $this->selector = new Selector();
+        $server->getSocket()->register($this->selector, SelectionKey::OP_ACCEPT);
+        $scheduler->observeSelector($this->selector, function() {
+            $this->onSchedulerLoop();
+        }, function() {}, 10000);
+
         $this->schedulerStatus = new WorkerState($event->getTarget()->getConfig()->getServiceName());
         $this->startTime = microtime(true);
-        $this->scheduler = $event->getTarget();
+        $this->scheduler = $scheduler;
     }
 
     /**
@@ -44,37 +66,11 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 100)
     {
-        $events = $events->getSharedManager();
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_START, function(SchedulerEvent $e) use ($events, $priority) {
-            $this->init($e);
-            $this->eventHandles[] = $events->attach('*', IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onWorkerMessage($e);}, $priority);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $e) {
+            if (!$this->statusServer) {
+                $this->init($e);
+            }
         }, $priority);
-        $this->eventHandles[] = $events->attach('*', SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $e) { $this->onSchedulerLoop();}, $priority);
-    }
-
-    protected function onWorkerMessage(IpcEvent $event)
-    {
-        /** @var Scheduler\Status\StatusMessage $message */
-        $message = $event->getParams();
-
-        if (!$message instanceof Scheduler\Status\StatusMessage) {
-            return;
-        }
-
-        $message = $message->getParams();
-
-        switch ($message['type']) {
-            case Message::IS_STATUS_REQUEST:
-                $this->refreshStatus = true;
-                $event->stopPropagation(true);
-                break;
-
-            case Message::IS_STATUS:
-                if ($message['extra']['status']['code'] === WorkerState::RUNNING) {
-                    $this->scheduler->getStatus()->incrementNumberOfFinishedTasks();
-                }
-                break;
-        }
     }
 
     /**
@@ -83,32 +79,20 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public static function getStatus(Scheduler $scheduler)
     {
-        $ipc = $scheduler->getIpc();
+        try {
+            /** @todo: ASAP! make it configurable per scheduler!!!! */
+            $socket = @stream_socket_client("tcp://127.0.0.4:8000", $errno, $errstr, 10);
+            if (!$socket) {
+                return null;
+            }
+            $stream = new SocketStream($socket);
+            $response = $stream->read();
+            $status = json_decode($response, true);
 
-        $payload = [
-            'type' => Message::IS_STATUS_REQUEST,
-            'message' => 'fetchStatus',
-            'extra' => [
-                'uid' => getmypid(),
-                'logger' => __CLASS__
-            ]
-        ];
-
-        $ipc->send($payload, IpcServer::AUDIENCE_SERVER);
-
-        $timeout = 5;
-        $result = null;
-        do {
-            $result = $ipc->receive(1);
-            usleep(1000);
-            $timeout--;
-        } while (!$result && $timeout >= 0);
-
-        if ($result) {
-            return $result['extra'];
+            return $status;
+        } catch (IOException $ex) {
+            return null;
         }
-
-        return null;
     }
 
     /**
@@ -126,27 +110,26 @@ class SchedulerStatus implements ListenerAggregateInterface
 
     private function onSchedulerLoop()
     {
+        $stream = $this->statusServer->accept();
         $scheduler = $this->scheduler;
 
-        if (!$this->refreshStatus) {
-            return;
-        }
-
         $payload = [
-            'type' => Message::IS_STATUS,
-            'message' => 'statusSent',
-            'extra' => [
-                'uid' => getmypid(),
-                'logger' => __CLASS__,
-                'process_status' => $scheduler->getWorkers()->toArray(),
-                'scheduler_status' => $scheduler->getStatus()->toArray(),
-            ]
+            'uid' => getmypid(),
+            'logger' => __CLASS__,
+            'process_status' => $scheduler->getWorkers()->toArray(),
+            'scheduler_status' => $scheduler->getStatus()->toArray(),
         ];
 
-        $payload['extra']['scheduler_status']['total_traffic'] = 0;
-        $payload['extra']['scheduler_status']['start_timestamp'] = $this->startTime;
+        $payload['scheduler_status']['total_traffic'] = 0;
+        $payload['scheduler_status']['start_timestamp'] = $this->startTime;
 
-        $scheduler->getSchedulerIpc()->send(1, $payload);
-        $this->refreshStatus = false;
+        // @todo: make it non-blocking somehow
+        try {
+            $stream->write(json_encode($payload));
+            do {
+            } while (!$stream->flush());
+        } catch (IOException $ex) {
+            $stream->close();
+        }
     }
 }

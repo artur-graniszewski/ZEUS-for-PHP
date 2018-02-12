@@ -66,7 +66,7 @@ class SchedulerStatusView
         $payload = SchedulerStatus::getStatus($this->scheduler);
 
         if (!$payload) {
-            return false;
+            return '';
         }
 
         $output .= $console->colorize('Service: ' . $this->getScheduler()->getConfig()->getServiceName() . PHP_EOL . PHP_EOL, ColorInterface::LIGHT_BLUE);
