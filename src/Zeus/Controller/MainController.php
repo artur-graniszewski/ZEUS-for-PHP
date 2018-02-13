@@ -17,19 +17,16 @@ use Zeus\ServerService\ServerServiceInterface;
 class MainController extends AbstractActionController
 {
     /** @var mixed[] */
-    protected $config;
+    private $config;
 
     /** @var Manager */
-    protected $manager;
+    private $manager;
 
     /** @var ServerServiceInterface[] */
-    protected $services = [];
+    private $services = [];
 
     /** @var LoggerInterface */
-    protected $logger;
-
-    /** @var int */
-    protected $servicesRunning = 0;
+    private $logger;
 
     /**
      * ZeusController constructor.
@@ -40,15 +37,9 @@ class MainController extends AbstractActionController
         $this->config = $config;
     }
 
-    /**
-     * @param Manager $manager
-     * @return $this
-     */
     public function setManager(Manager $manager)
     {
         $this->manager = $manager;
-
-        return $this;
     }
 
     /**
@@ -95,18 +86,18 @@ class MainController extends AbstractActionController
                     break;
             }
         } catch (Throwable $exception) {
-            $this->logger->err(sprintf("Exception (%d): %s in %s on line %d",
+            $this->getLogger()->err(sprintf("Exception (%d): %s in %s on line %d",
                 $exception->getCode(),
                 addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
                 $exception->getFile(),
                 $exception->getLine()
             ));
-            $this->logger->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+            $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
             $this->doExit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
     }
 
-    protected function doExit(int $code)
+    private function doExit(int $code)
     {
         exit($code);
     }
@@ -116,7 +107,7 @@ class MainController extends AbstractActionController
      * @param bool $autoStartOnly
      * @return string[]
      */
-    protected function getServices(string $serviceName = null, bool $autoStartOnly = false) : array
+    private function getServices(string $serviceName = null, bool $autoStartOnly = false) : array
     {
         if ($this->reportBrokenServices($serviceName)) {
             return [];
@@ -133,7 +124,7 @@ class MainController extends AbstractActionController
      * @param string $serviceName
      * @return bool
      */
-    protected function reportBrokenServices($serviceName)
+    private function reportBrokenServices($serviceName)
     {
         $result = false;
         $brokenServices = $this->manager->getBrokenServices();
@@ -145,7 +136,7 @@ class MainController extends AbstractActionController
                 /** @var \Exception $exception */
                 $exception = $brokenServices[$serviceName];
                 $exceptionMessage = $exception->getPrevious() ? $exception->getPrevious()->getMessage() : $exception->getMessage();
-                $this->logger->err("Service \"$serviceName\" is broken: " . $exceptionMessage);
+                $this->getLogger()->err("Service \"$serviceName\" is broken: " . $exceptionMessage);
                 $result = true;
             }
         }
@@ -156,7 +147,7 @@ class MainController extends AbstractActionController
     /**
      * @param string $serviceName
      */
-    protected function getStatusCommand($serviceName)
+    private function getStatusCommand($serviceName)
     {
         $services = $this->getServices($serviceName, false);
 
@@ -164,13 +155,13 @@ class MainController extends AbstractActionController
             $status = $this->manager->getServiceStatus($serviceName, new SchedulerStatusView(Console::getInstance()));
 
             if ($status) {
-                $this->logger->info($status);
+                $this->getLogger()->info($status);
 
                 return;
 
             }
 
-            $this->logger->err("Service \"$serviceName\" is offline or too busy to respond");
+            $this->getLogger()->err("Service \"$serviceName\" is offline or too busy to respond");
         }
     }
 
@@ -191,15 +182,15 @@ class MainController extends AbstractActionController
         }
 
         if ($output) {
-            $this->logger->info('Configuration details:' . $output);
+            $this->getLogger()->info('Configuration details:' . $output);
 
             return;
         }
 
-        $this->logger->err('No Server Service found');
+        $this->getLogger()->err('No Server Service found');
     }
 
-    protected function startServicesCommand(string $serviceName = null)
+    private function startServicesCommand(string $serviceName = null)
     {
         $services = $this->getServices($serviceName, true);
 
