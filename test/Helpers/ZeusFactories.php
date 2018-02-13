@@ -129,6 +129,17 @@ trait ZeusFactories
         return $sm;
     }
 
+    public function triggerSchedulerLoop(Scheduler $scheduler)
+    {
+        $em = $scheduler->getEventManager();
+        $event = new SchedulerEvent();
+        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
+        $event->setName(SchedulerEvent::EVENT_LOOP);
+        // first event may register workers
+        $em->triggerEvent($event);
+    }
+
     /**
      * @param int $mainLoopIterations
      * @param callback $loopCallback

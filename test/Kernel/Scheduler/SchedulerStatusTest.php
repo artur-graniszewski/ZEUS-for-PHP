@@ -12,6 +12,7 @@ use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
+use ZeusTest\IO\DummySelectableStream;
 
 class SchedulerStatusTest extends TestCase
 {
@@ -67,7 +68,7 @@ class SchedulerStatusTest extends TestCase
             ]
         );
 
-        return $this->getScheduler(1, null, $sm);
+        return $this->getScheduler(2, null, $sm);
     }
 
     /**
@@ -77,29 +78,49 @@ class SchedulerStatusTest extends TestCase
     {
         $pluginBuilder = $this->getMockBuilder(SchedulerStatus::class);
         $pluginBuilder->setMethods([
-            'getUpstream',
+            'getSchedulerStream',
         ]);
 
-        $pluginBuilder->disableOriginalConstructor();
+        $pluginBuilder->enableOriginalConstructor();
+        $pluginBuilder->setConstructorArgs([[
+            'ipc_type' => 'socket',
+            'listen_address' => '127.0.0.4',
+            'listen_port' => 8000
+        ]]
+        );
         $plugin = $pluginBuilder->getMock();
 
         return $plugin;
     }
 
+    /**
+     * @return \PHPUnit_Framework_MockObject_MockObject|Scheduler\Reactor
+     */
+    protected function getReactorMock()
+    {
+        $mockBuilder = $this->getMockBuilder(Scheduler\Reactor::class);
+        $mockBuilder->setMethods([
+            'observeSelector',
+        ]);
+
+        $mockBuilder->disableOriginalConstructor();
+        $mock = $mockBuilder->getMock();
+
+        return $mock;
+    }
+
     public function testSchedulerStatus()
     {
+        $dummyStream = new DummySelectableStream(null);
+        $mockedPlugin = $this->getPluginMock();
+        $mockedPlugin->expects($this->atLeastOnce())->method("getSchedulerStream")->will($this->returnValue($dummyStream));
+
         $this->markTestSkipped("Scheduler Status feature is being refactored");
         $logger = new Logger();
         $logger->addWriter(new Noop());
         $statusOutputs = [];
 
-        $scheduler = $this->getSchedulerWithPlugin([
-            SchedulerStatus::class => [
-                'ipc_type' => 'socket',
-                'listen_address' => '127.0.0.5',
-                'listen_port' => 12345
-            ]
-        ]);
+        $scheduler = $this->getSchedulerWithPlugin([$mockedPlugin]);
 
         $em = $scheduler->getEventManager();
         $em->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
@@ -115,17 +136,22 @@ class SchedulerStatusTest extends TestCase
             }
         );
 
-        /** @var SchedulerStatus $realPlugin */
-        $realPlugin = $scheduler->getPluginByClass(SchedulerStatus::class);
-        $mockedPlugin = $this->getPluginMock();
-        $mockedPlugin->expects($this->atLeastOnce())->method("getUpstream")->will($this->returnValue(true));
-        $scheduler->removePlugin($realPlugin);
-        $scheduler->addPlugin($mockedPlugin);
+        $mockedReactor = $this->getReactorMock();
+        $mockedReactor->expects($this->atLeastOnce())->method("observeSelector")->will($this->returnValue($dummyStream));
+
+//        $mockedReactor->expects($this->atLeastOnce())->method("observeSelector")->will($this->returnCallback(
+//            function($selector, $onSelectCallback) use ($mockedReactor) {
+//                die();
+//                $onSelectCallback($mockedReactor);
+//            }
+//        ));
+
+        $scheduler->setReactor($mockedReactor);
         $scheduler->setLogger($logger);
         $scheduler->start(false);
-        $realStream = $realPlugin->getUpstream();
 
         $statusOutput = SchedulerStatus::getStatus($scheduler);
+
         $this->assertFalse($statusOutputs[0], "First Scheduler's iteration should not receive status request");
         $this->assertEquals(1, preg_match('~Service Status~', $statusOutputs[2]), 'Output should contain Server Service status');
     }

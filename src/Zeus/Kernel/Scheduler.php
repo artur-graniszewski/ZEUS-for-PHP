@@ -85,7 +85,7 @@ final class Scheduler extends AbstractService
 
     public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
     {
-        $this->reactor = new Reactor();
+        $this->setReactor(new Reactor());
         $this->workerFlowManager = new WorkerFlowManager();
         $this->workerFlowManager->setScheduler($this);
         $event = new SchedulerEvent();
@@ -531,5 +531,10 @@ final class Scheduler extends AbstractService
                 $onTimeoutCallback($selector);
             },
             $timeout);
+    }
+
+    public function setReactor(Reactor $reactor)
+    {
+        $this->reactor = $reactor;
     }
 }

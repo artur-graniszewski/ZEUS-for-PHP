@@ -15,7 +15,12 @@ use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
+use function stream_socket_client;
 use function microtime;
+use function json_encode;
+use function json_decode;
+use function sprintf;
+use function getmypid;
 
 /**
  * Class SchedulerStatus
@@ -62,7 +67,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         return $this->options;
     }
 
-    protected function init(SchedulerEvent $event)
+    private function init(SchedulerEvent $event)
     {
         $scheduler = $event->getScheduler();
         $server = new SocketServer();
@@ -71,11 +76,14 @@ class SchedulerStatus implements ListenerAggregateInterface
 
         $this->selector = new Selector();
         $server->getSocket()->register($this->selector, SelectionKey::OP_ACCEPT);
+
+
         $scheduler->observeSelector($this->selector, function() {
-            $this->onSelect();
+            $stream = $this->getClientStream();
+            $this->sendStatus($stream);
         }, function() {}, 10000);
 
-        $this->schedulerStatus = new WorkerState($event->getTarget()->getConfig()->getServiceName());
+        $this->schedulerStatus = new WorkerState($event->getScheduler()->getConfig()->getServiceName());
         $this->startTime = microtime(true);
         $this->scheduler = $scheduler;
     }
@@ -102,7 +110,7 @@ class SchedulerStatus implements ListenerAggregateInterface
         try {
             /** @var SchedulerStatus $statusPlugin */
             $statusPlugin = $scheduler->getPluginByClass(static::class);
-            $stream = $statusPlugin->getUpstream();
+            $stream = $statusPlugin->getSchedulerStream();
 
             $response = $stream->read();
             $status = json_decode($response, true);
@@ -115,7 +123,14 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
     }
 
-    public function getUpstream() : AbstractStream
+    public function getClientStream() : AbstractStream
+    {
+        $stream = $this->statusServer->accept();
+
+        return $stream;
+    }
+
+    public function getSchedulerStream() : AbstractStream
     {
         $options = $this->getOptions();
         $socketName = sprintf("tcp://%s:%d", $options['listen_address'], $options['listen_port']);
@@ -142,9 +157,8 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
     }
 
-    private function onSelect()
+    private function sendStatus(AbstractStream $stream)
     {
-        $stream = $this->statusServer->accept();
         $scheduler = $this->scheduler;
 
         $payload = [
