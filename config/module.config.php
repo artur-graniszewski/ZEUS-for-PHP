@@ -10,7 +10,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFac
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen;
-use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
+use Zeus\ServerService\Plugin\SchedulerStatus;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
@@ -107,11 +107,6 @@ return $config = [
                 'enable_process_cache' => true,
                 'plugins' => [
                     ProcessTitle::class,
-                    SchedulerStatus::class => [
-                        'ipc_type' => 'socket',
-                        'listen_address' => '127.0.0.4',
-                        'listen_port' => 8000
-                    ],
                     /*
                     \Zeus\Kernel\Scheduler\Plugin\DropPrivileges::class => [
                         'user' => 'www-data',
@@ -135,6 +130,13 @@ return $config = [
                         'phtml'
                     ],
                 ],
+                'plugins' => [
+                    SchedulerStatus::class => [
+                        'ipc_type' => 'socket',
+                        'listen_address' => '127.0.0.4',
+                        'listen_port' => 8000
+                    ],
+                ]
                 //'logger_adapter' => LoggerInterface::class // optional
             ],
             'zeus_memcache' => [
@@ -148,6 +150,13 @@ return $config = [
                     'server_cache' => 'zeus_server_cache',
                     'client_cache' => 'zeus_client_cache',
                 ],
+                'plugins' => [
+                    SchedulerStatus::class => [
+                        'ipc_type' => 'socket',
+                        'listen_address' => '127.0.0.4',
+                        'listen_port' => 8001
+                    ],
+                ]
             ],
             'zeus_async' => [
                 'auto_start' => false,
@@ -158,6 +167,13 @@ return $config = [
                     'listen_port' => 9999,
                     'listen_address' => '127.0.0.1',
                 ],
+                'plugins' => [
+                    SchedulerStatus::class => [
+                        'ipc_type' => 'socket',
+                        'listen_address' => '127.0.0.4',
+                        'listen_port' => 8002
+                    ],
+                ]
             ]
         ]
     ],

@@ -4,6 +4,7 @@ namespace Zeus\Kernel\Scheduler\Factory;
 
 use Interop\Container\ContainerInterface;
 use Interop\Container\Exception\ContainerException;
+use RuntimeException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
@@ -88,6 +89,6 @@ class SchedulerFactory implements FactoryInterface
                 return $config;
             }
         }
-        throw new \RuntimeException("Missing scheduler configuration for $schedulerName");
+        throw new RuntimeException("Missing scheduler configuration for $schedulerName");
     }
 }
