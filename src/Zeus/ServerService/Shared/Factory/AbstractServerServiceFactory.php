@@ -4,11 +4,14 @@ namespace Zeus\ServerService\Shared\Factory;
 
 use Interop\Container\ContainerInterface;
 
+use ReflectionClass;
 use Zend\ServiceManager\Factory\AbstractFactoryInterface;
+use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\ServerService\ServerServiceInterface;
 
 class AbstractServerServiceFactory implements AbstractFactoryInterface
 {
+    use PluginFactory;
 
     /**
      * Can the factory create an instance for the service?
@@ -23,7 +26,7 @@ class AbstractServerServiceFactory implements AbstractFactoryInterface
             return false;
         }
 
-        $class = new \ReflectionClass($requestedName);
+        $class = new ReflectionClass($requestedName);
 
         return $class->implementsInterface(ServerServiceInterface::class);
     }
@@ -45,6 +48,8 @@ class AbstractServerServiceFactory implements AbstractFactoryInterface
         $config = isset($options['config']) ? $options['config'] : [];
         
         $adapter = new $requestedName($config['service_settings'], $options['scheduler_adapter'], $options['logger_adapter']);
+
+        $this->startPlugins($container, $options['scheduler_adapter'], isset($config['plugins']) ? $config['plugins'] : []);
 
         return $adapter;
     }

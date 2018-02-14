@@ -10,12 +10,13 @@ class DummyServerService extends AbstractServerService implements ServerServiceI
 {
     public function start()
     {
-        if (isset($this->config['hang']) && $this->config['hang']) {
+        $config = $this->getConfig();
+        if (isset($config['hang']) && $config['hang']) {
             return;
         }
 
         $event = new SchedulerEvent();
-        $this->logger->info("SERVICE STARTED");
+        $this->getLogger()->info("SERVICE STARTED");
         $event->setName(SchedulerEvent::EVENT_STOP);
         $this->getScheduler()->getEventManager()->triggerEvent($event);
     }

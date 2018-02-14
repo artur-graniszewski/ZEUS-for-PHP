@@ -10,7 +10,6 @@ use Zend\Uri\Uri;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
@@ -20,7 +19,7 @@ use Zeus\ServerService\Shared\AbstractSocketServerService;
 class Service extends AbstractSocketServerService
 {
     /** @var Worker */
-    protected $process;
+    private $worker;
 
     public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
     {
@@ -49,21 +48,20 @@ class Service extends AbstractSocketServerService
 
     public function start()
     {
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->process = $event->getTarget();
+        $this->getScheduler()->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+            $this->worker = $event->getWorker();
         });
 
-        $this->config['logger'] = get_class();
+        $config = $this->getConfig();
+        $config['logger'] = get_class();
+        $this->setConfig($config);
 
         parent::start();
     }
 
-    /**
-     * @return Worker
-     */
-    public function getProcess()
+    public function getWorker() : Worker
     {
-        return $this->process;
+        return $this->worker;
     }
 
     public function logRequest(RequestInterface $httpRequest, ResponseInterface $httpResponse)
@@ -78,7 +76,7 @@ class Service extends AbstractSocketServerService
         //$port = isset($defaultPorts[$uri->getScheme()]) && $defaultPorts[$uri->getScheme()] == $uri->getPort() ? '' : ':' . $uri->getPort();
         //$hostString = sprintf("%s%s", $uri->getHost(), $port);
 
-        $this->logger->$priority(sprintf('%s - - "%s %s HTTP/%s" %d %d "%s" "%s"',
+        $this->getLogger()->$priority(sprintf('%s - - "%s %s HTTP/%s" %d %d "%s" "%s"',
             $httpRequest->getMetadata('remoteAddress'),
             $httpRequest->getMethod(),
             $uriString,

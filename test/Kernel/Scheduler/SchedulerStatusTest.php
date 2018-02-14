@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
-use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
+use Zeus\ServerService\Plugin\SchedulerStatus;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use Zeus\Kernel\Scheduler\WorkerEvent;

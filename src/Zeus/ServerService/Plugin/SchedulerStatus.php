@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeus\Kernel\Scheduler\Plugin;
+namespace Zeus\ServerService\Plugin;
 
 use RuntimeException;
 use Zend\EventManager\EventManagerInterface;

@@ -14,8 +14,8 @@ class AbstractSocketServerService extends AbstractServerService
      */
     protected function getServer(MessageComponentInterface $messageComponent, AbstractNetworkServiceConfig $config)
     {
-        $broker = new SocketMessageBroker($config, $messageComponent, $this->logger);
-        $broker->attach($this->scheduler->getEventManager());
+        $broker = new SocketMessageBroker($config, $messageComponent, $this->getLogger());
+        $broker->attach($this->getScheduler()->getEventManager());
 
         return $broker;
     }

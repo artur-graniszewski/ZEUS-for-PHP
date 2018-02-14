@@ -5,7 +5,7 @@ namespace Zeus\Kernel\Scheduler\Status;
 use Zend\Console\ColorInterface;
 
 use Zeus\Kernel\Scheduler\Helper\AddUnitsToNumbers;
-use Zeus\Kernel\Scheduler\Plugin\SchedulerStatus;
+use Zeus\ServerService\Plugin\SchedulerStatus;
 use Zeus\Kernel\Scheduler;
 use Zend\Console\Adapter\AdapterInterface;
 use Zeus\ServerService\ServerServiceInterface;

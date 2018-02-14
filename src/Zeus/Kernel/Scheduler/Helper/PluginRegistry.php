@@ -17,7 +17,7 @@ use function sprintf;
 trait PluginRegistry
 {
     /** @var SplObjectStorage */
-    protected $pluginRegistry;
+    private $pluginRegistry;
 
     /**
      * Check if a plugin is registered

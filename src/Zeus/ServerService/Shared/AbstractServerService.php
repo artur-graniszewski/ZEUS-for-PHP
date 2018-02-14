@@ -8,14 +8,16 @@ use Zeus\ServerService\ServerServiceInterface;
 
 abstract class AbstractServerService implements ServerServiceInterface
 {
+    use Scheduler\Helper\PluginRegistry;
+
     /** @var mixed[] */
-    protected $config;
+    private $config;
 
     /** @var Scheduler */
-    protected $scheduler;
+    private $scheduler;
 
     /** @var LoggerInterface */
-    protected $logger;
+    private $logger;
 
     /**
      * AbstractService constructor.
