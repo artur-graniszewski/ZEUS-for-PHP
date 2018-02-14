@@ -151,7 +151,6 @@ class Worker extends AbstractService
         $event->setTarget($this);
         $event->setWorker($this);
         $event->setName(WorkerEvent::EVENT_EXIT);
-        $event->setParams($payload); // @todo: remove this line?
         $event->setParam('status', $status);
 
         $this->getEventManager()->triggerEvent($event);
@@ -172,7 +171,7 @@ class Worker extends AbstractService
                 $event->setTarget($this);
                 $event->setWorker($this);
                 $event->setName(WorkerEvent::EVENT_LOOP);
-                $event->setParams($status->toArray());
+                $event->setParam('status', $status);
                 $this->getEventManager()->triggerEvent($event);
 
             } catch (Error $exception) {

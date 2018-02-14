@@ -146,6 +146,7 @@ class BackendService
 
                 try {
                     if ($this->backendServerSelector->select(1000)) {
+                        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
                         $event->getWorker()->setRunning();
                         $connection = $this->backendServer->accept();
                         try {
@@ -221,8 +222,7 @@ class BackendService
             $this->closeConnection($event);
         }
 
-        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
-        $event->getTarget()->setWaiting();
+        $event->getWorker()->setWaiting();
 
         if ($exception) {
             throw $exception;

@@ -233,15 +233,15 @@ final class Scheduler extends AbstractService
 
         /** @var WorkerState $processStatus */
         $processStatus = $message['extra']['status'];
-        $pid = $processStatus['uid'];
+        $uid = $processStatus['uid'];
 
         // worker status changed, update this information server-side
-        if (isset($this->workers[$pid])) {
-            if ($this->workers[$pid]['code'] !== $processStatus['code']) {
+        if (isset($this->workers[$uid])) {
+            if ($this->workers[$uid]['code'] !== $processStatus['code']) {
                 $processStatus['time'] = microtime(true);
             }
 
-            $this->workers[$pid] = $processStatus;
+            $this->workers[$uid] = $processStatus;
         }
     }
 

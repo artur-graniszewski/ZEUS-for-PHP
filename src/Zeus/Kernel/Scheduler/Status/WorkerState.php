@@ -40,57 +40,57 @@ class WorkerState
      *
      * @var int
      */
-    protected $processId;
+    private $processId;
 
     /**
-     * Process status code.
+     * Worker status code.
      *
      * @var int
      */
-    protected $code;
+    private $code;
 
     /**
      * Timestamp of the last status change.
      *
      * @var float
      */
-    protected $time;
+    private $time;
 
     /** @var float */
-    protected $startTime = 0;
+    private $startTime = 0;
 
     /** @var float */
-    protected $currentUserCpuTime = 0;
+    private $currentUserCpuTime = 0;
 
     /** @var float */
-    protected $currentSysCpuTime = 0;
+    private $currentSysCpuTime = 0;
 
     /** @var int */
-    protected $tasksFinished = 0;
+    private $tasksFinished = 0;
 
     /** @var int */
-    protected $tasksPerSecond = 0;
+    private $tasksPerSecond = 0;
 
     /** @var int */
-    protected $tasksInThisSecond = 0;
+    private $tasksInThisSecond = 0;
 
     /** @var string */
-    protected $serviceName = null;
+    private $serviceName = null;
 
     /** @var float */
-    protected $cpuUsage = null;
+    private $cpuUsage = null;
 
     /** @var string */
-    protected $statusDescription = '';
+    private $statusDescription = '';
 
     /** @var int */
-    protected $threadId = 1;
+    private $threadId = 1;
 
     /** @var int */
-    protected $uid = 0;
+    private $uid = 0;
 
     /** @var bool */
-    protected $isLastTask = false;
+    private  $isLastTask = false;
 
     public function __construct(string $serviceName, int $status = self::WAITING)
     {
@@ -234,8 +234,6 @@ class WorkerState
 
         $this->tasksInThisSecond += $amount;
         $this->tasksFinished += $amount;
-
-        return $this;
     }
 
     public function getNumberOfFinishedTasks() : int
