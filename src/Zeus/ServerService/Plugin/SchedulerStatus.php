@@ -77,15 +77,14 @@ class SchedulerStatus implements ListenerAggregateInterface
         $this->selector = new Selector();
         $server->getSocket()->register($this->selector, SelectionKey::OP_ACCEPT);
 
+        $this->schedulerStatus = new WorkerState($event->getScheduler()->getConfig()->getServiceName());
+        $this->startTime = microtime(true);
+        $this->scheduler = $scheduler;
 
         $scheduler->observeSelector($this->selector, function() {
             $stream = $this->getClientStream();
             $this->sendStatus($stream);
         }, function() {}, 10000);
-
-        $this->schedulerStatus = new WorkerState($event->getScheduler()->getConfig()->getServiceName());
-        $this->startTime = microtime(true);
-        $this->scheduler = $scheduler;
     }
 
     /**
