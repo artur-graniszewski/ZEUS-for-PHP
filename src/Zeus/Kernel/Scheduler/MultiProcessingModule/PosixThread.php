@@ -3,45 +3,89 @@
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadBootstrap;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\PosixThreadBridge;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\PosixThreadBridgeInterface;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadWrapper;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
 use function basename;
 use function sprintf;
+use function str_replace;
 use function file_put_contents;
 use function json_encode;
 use function version_compare;
+use function phpversion;
+use function sleep;
 
 final class PosixThread extends AbstractModule implements SeparateAddressSpaceInterface
 {
     use GarbageCollector;
 
+    const PTHREADS_INHERIT_NONE = 0;
+
     const MIN_STABLE_PHP_VERSION = 7.2;
 
-    /** @var \Thread[] */
-    protected $workers = [];
+    /** @var PcntlBridgeInterface */
+    protected static $pcntlBridge;
+
+    /** @var PosixThreadBridgeInterface */
+    private static $posixThreadBridge;
+
+    /** @var ThreadWrapper[] */
+    private $workers = [];
 
     /** @var int */
-    protected static $id = 1;
+    private static $id = 1;
 
-    public static function isSupported(& $errorMessage = '') : bool
+    protected static function getPosixThreadBridge() : PosixThreadBridgeInterface
     {
-        $isSupported = class_exists(\Thread::class);
-
-        if (!$isSupported) {
-            $className = basename(str_replace('\\', '/', static::class));
-
-            $errorMessage = sprintf("pThreads extension is required by %s but disabled in PHP",
-                $className);
+        if (!isset(static::$posixThreadBridge)) {
+            static::$posixThreadBridge = new PosixThreadBridge();
         }
 
-        return $isSupported;
+        return static::$posixThreadBridge;
+    }
+
+    protected static function getPcntlBridge() : PcntlBridgeInterface
+    {
+        if (!isset(static::$pcntlBridge)) {
+            static::$pcntlBridge = new PcntlBridge();
+        }
+
+        return static::$pcntlBridge;
+    }
+
+    public static function setPcntlBridge(PcntlBridgeInterface $bridge)
+    {
+        static::$pcntlBridge = $bridge;
+    }
+
+    public static function setPosixThreadBridge(PosixThreadBridgeInterface $bridge)
+    {
+        static::$posixThreadBridge = $bridge;
+    }
+
+    public static function isSupported(& $errorMessage  = '') : bool
+    {
+        $bridge = static::getPosixThreadBridge();
+
+        if (!$bridge->isSupported()) {
+            $className = basename(str_replace('\\', '/', static::class));
+
+            $errorMessage = sprintf("pThread extension is required by %s but disabled in PHP", $className);
+
+            return false;
+        }
+
+        return true;
     }
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->getWrapper()->setIpcAddress('tcp://' . \ZEUS_THREAD_CONN_PORT);
+        $this->getWrapper()->setIpcAddress('tcp://' . \ZEUS_THREAD_IPC_ADDRESS);
     }
 
     public function onSchedulerStop(SchedulerEvent $event)
@@ -53,6 +97,13 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
                 $amount = count($this->workers);
                 $this->getWrapper()->getLogger()->info("Waiting for $amount workers to exit");
             }
+        }
+    }
+
+    public function onKernelLoop(SchedulerEvent $event)
+    {
+        if ($this->getPcntlBridge()->isSupported()) {
+            $this->getPcntlBridge()->pcntlSignalDispatch();
         }
     }
 
@@ -77,7 +128,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     private function createThread(WorkerEvent $event) : int
     {
-        $applicationPath = $_SERVER['PHP_SELF'];
+        $applicationPath = $_SERVER['SCRIPT_NAME'] ? $_SERVER['SCRIPT_NAME'] : $_SERVER['PHP_SELF'];
 
         $type = $event->getParam('server') ? 'scheduler' : 'worker';
 
@@ -85,21 +136,20 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
             $applicationPath,
             'zeus',
             $type,
-            $event->getTarget()->getConfig()->getServiceName(),
+            $event->getScheduler()->getConfig()->getServiceName(),
             json_encode($event->getParams())
         ];
 
-        $thread = new ThreadBootstrap();
+        $thread = $this->getPosixThreadBridge()->getNewThread();
 
         static::$id++;
 
         $this->collectCycles();
-        $thread->server = $_SERVER;
-        $thread->argv = $argv;
-        $thread->id = static::$id;
-        $thread->ipcPort = $event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM);
-        $thread->start(PTHREADS_INHERIT_NONE);
-
+        $thread->setServerVariables($_SERVER);
+        $thread->setApplicationArguments($argv);
+        $thread->setWorkerId(static::$id);
+        $thread->setIpcAddress($event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM));
+        $thread->start(static::PTHREADS_INHERIT_NONE);
         $this->workers[static::$id] = $thread;
 
         return static::$id;
@@ -134,10 +184,6 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
         // TODO: Implement onKernelStart() method.
     }
 
-    public function onKernelLoop(SchedulerEvent $event)
-    {
-        // TODO: Implement onKernelLoop() method.
-    }
 
     public function onWorkerTerminate(WorkerEvent $event)
     {

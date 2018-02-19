@@ -56,9 +56,6 @@ abstract class AbstractProcessModule extends AbstractModule
         return static::$pcntlBridge;
     }
 
-    /**
-     * @param PcntlBridgeInterface $bridge
-     */
     public static function setPcntlBridge(PcntlBridgeInterface $bridge)
     {
         static::$pcntlBridge = $bridge;

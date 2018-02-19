@@ -2,7 +2,8 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use \PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
@@ -14,10 +15,10 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use ZeusTest\Helpers\PcntlMockBridge;
+use ZeusTest\Helpers\PcntlBridgeMock;
 use ZeusTest\Helpers\ZeusFactories;
 
-class PosixProcessTest extends \PHPUnit\Framework\TestCase
+class PosixProcessTest extends TestCase
 {
     use ZeusFactories;
 
@@ -27,7 +28,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
      */
     protected function getEvent(Scheduler $scheduler)
     {
-        $rc = new \ReflectionClass(Scheduler::class);
+        $rc = new ReflectionClass(Scheduler::class);
         $property = $rc->getProperty('event');
         $property->setAccessible(true);
 
@@ -76,7 +77,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
         $sm = $this->getServiceManager();
         $scheduler = $this->getScheduler(1);
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setPpid(123456789);
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
@@ -150,7 +151,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
             $triggeredEvent = $event;
         }, -10000);
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setForkResult($forcedForkValue);
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new WorkerEvent();
@@ -183,7 +184,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
         $posixProcess = $this->getMpm($scheduler);
         $posixProcess->setEventManager($em);
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
         $event->setScheduler($scheduler);
@@ -217,7 +218,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
             $triggeredEvent = $event;
         });
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setPcntlWaitPids([98765]);
         $pcntlMock->setForkResult(98765);
 
@@ -256,7 +257,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
             $triggeredEvent = $event;
         });
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setPcntlWaitPids([98765]);
         $pcntlMock->setForkResult(-1);
 
@@ -297,7 +298,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
             $triggeredEvent = $event;
         });
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setSignal($signal);
         $pcntlMock->setPpid(1234);
 
@@ -332,7 +333,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
             $triggeredEvent = $event;
         });
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setPpid(1234567890);
 
         PosixProcess::setPcntlBridge($pcntlMock);
@@ -361,7 +362,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
             $triggeredEvent = $event;
         });
 
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setPpid(1234567890);
 
         PosixProcess::setPcntlBridge($pcntlMock);
@@ -390,7 +391,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
 
     public function testDetectionIfPcntlIsSupportedOrNot()
     {
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
         PosixProcess::setPcntlBridge($pcntlMock);
 
         $status = [];
@@ -410,7 +411,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
     public function testIfSetSsidIsPerformedOnStartup()
     {
         $em = new EventManager(new SharedEventManager());
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
@@ -440,7 +441,7 @@ class PosixProcessTest extends \PHPUnit\Framework\TestCase
     {
         $this->markTestSkipped('This test may no longer be needed?');
         $em = new EventManager(new SharedEventManager());
-        $pcntlMock = new PcntlMockBridge();
+        $pcntlMock = new PcntlBridgeMock();
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();

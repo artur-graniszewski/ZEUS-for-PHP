@@ -16,9 +16,6 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     /** @var int Parent PID */
     private $ppid;
 
-    /**
-     * PosixProcess constructor.
-     */
     public function __construct()
     {
         $this->ppid = getmypid();

@@ -162,8 +162,8 @@ class WorkerController extends AbstractActionController
         $event->setParam('uid', $worker->getUid());
         $event->setParam('threadId', $worker->getThreadId());
         $event->setParam('processId', $worker->getProcessId());
-        if (defined("ZEUS_THREAD_CONN_PORT")) {
-            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
+        if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
+            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
         }
         $event->setName(WorkerEvent::EVENT_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
@@ -190,8 +190,8 @@ class WorkerController extends AbstractActionController
         $event->setParam('uid', getmypid());
         $event->setParam('server', true);
         $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        if (defined("ZEUS_THREAD_CONN_PORT")) {
-            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_CONN_PORT);
+        if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
+            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
         }
         $event->setParam('processId', getmypid());
         $event->setName(WorkerEvent::EVENT_INIT);

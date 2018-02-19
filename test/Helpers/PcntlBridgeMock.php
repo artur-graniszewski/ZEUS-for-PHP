@@ -3,9 +3,7 @@
 namespace ZeusTest\Helpers;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 
-/**
- */
-class PcntlMockBridge implements PcntlBridgeInterface
+class PcntlBridgeMock implements PcntlBridgeInterface
 {
     protected $executionLog = [];
     protected $pcntlWaitPids = [];
