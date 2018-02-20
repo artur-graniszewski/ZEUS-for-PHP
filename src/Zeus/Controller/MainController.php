@@ -2,7 +2,6 @@
 
 namespace Zeus\Controller;
 
-use InvalidArgumentException;
 use Throwable;
 use Zend\Console\Console;
 use Zend\Log\LoggerInterface;
@@ -11,49 +10,19 @@ use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use Zeus\Kernel\System\Runtime;
-use Zeus\ServerService\Manager;
-use Zend\Console\Request as ConsoleRequest;
 use Zeus\ServerService\ServerServiceInterface;
 
-class MainController extends AbstractActionController
+class MainController extends AbstractController
 {
-    /** @var mixed[] */
-    private $config;
-
-    /** @var Manager */
-    private $manager;
-
     /** @var ServerServiceInterface[] */
     private $services = [];
-
-    /** @var LoggerInterface */
-    private $logger;
-
-    /**
-     * ZeusController constructor.
-     * @param mixed[] $config
-     */
-    public function __construct(array $config)
-    {
-        $this->config = $config;
-    }
-
-    public function setManager(Manager $manager)
-    {
-        $this->manager = $manager;
-    }
 
     /**
      * {@inheritdoc}
      */
     public function dispatch(RequestInterface $request, ResponseInterface $response = null)
     {
-        if (!$request instanceof ConsoleRequest) {
-            throw new InvalidArgumentException(sprintf(
-                '%s can only dispatch requests in a console environment',
-                get_called_class()
-            ));
-        }
+        $this->checkIfConsole($request);
 
         // @todo: remove pcnt_signal dependency
         if (function_exists('pcntl_signal')) {
@@ -87,14 +56,7 @@ class MainController extends AbstractActionController
                     break;
             }
         } catch (Throwable $exception) {
-            $this->getLogger()->err(sprintf("Exception (%d): %s in %s on line %d",
-                $exception->getCode(),
-                addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
-                $exception->getFile(),
-                $exception->getLine()
-            ));
-            $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
-            Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
+            $this->handleException($exception);
         }
     }
 
@@ -103,7 +65,7 @@ class MainController extends AbstractActionController
      * @param bool $autoStartOnly
      * @return string[]
      */
-    private function getServices(string $serviceName = null, bool $autoStartOnly = false) : array
+    private function getServices(string $serviceName = null, bool $autoStartOnly) : array
     {
         if ($this->reportBrokenServices($serviceName)) {
             return [];
@@ -113,7 +75,7 @@ class MainController extends AbstractActionController
             ?
             [$serviceName]
             :
-            $this->manager->getServiceList($autoStartOnly);
+            $this->getServiceManager()->getServiceList($autoStartOnly);
     }
 
     /**
@@ -123,7 +85,7 @@ class MainController extends AbstractActionController
     private function reportBrokenServices($serviceName) : bool
     {
         $result = false;
-        $brokenServices = $this->manager->getBrokenServices();
+        $brokenServices = $this->getServiceManager()->getBrokenServices();
 
         $services = $serviceName !== null ? [$serviceName] : array_keys($brokenServices);
 
@@ -148,7 +110,7 @@ class MainController extends AbstractActionController
         $services = $this->getServices($serviceName, false);
 
         foreach ($services as $serviceName) {
-            $status = $this->manager->getServiceStatus($serviceName, new SchedulerStatusView(Console::getInstance()));
+            $status = $this->getServiceManager()->getServiceStatus($serviceName, new SchedulerStatusView(Console::getInstance()));
 
             if ($status) {
                 $this->getLogger()->info($status);
@@ -170,7 +132,7 @@ class MainController extends AbstractActionController
 
         $output = null;
         foreach ($services as $serviceName) {
-            $serviceConfig = $this->manager->getServiceConfig($serviceName);
+            $serviceConfig = $this->getServiceManager()->getServiceConfig($serviceName);
             $config = array_slice(
                 explode("\n", print_r($serviceConfig, true)), 1, -1);
 
@@ -191,7 +153,7 @@ class MainController extends AbstractActionController
         $services = $this->getServices($serviceName, true);
 
         $this->services = $services;
-        $this->manager->startServices($services);
+        $this->getServiceManager()->startServices($services);
     }
 
     /**
@@ -201,7 +163,7 @@ class MainController extends AbstractActionController
      */
     private function stopServices($services, bool $mustBeRunning)
     {
-        $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
+        $servicesLeft = $this->getServiceManager()->stopServices($services, $mustBeRunning);
 
         Runtime::exit($servicesLeft === 0 ? 0 : 417);
     }
@@ -215,15 +177,5 @@ class MainController extends AbstractActionController
     {
         $services = $this->getServices($serviceName, false);
         $this->stopServices($services, false);
-    }
-
-    public function getLogger() : LoggerInterface
-    {
-        return $this->logger;
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
     }
 }

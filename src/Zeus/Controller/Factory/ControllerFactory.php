@@ -41,7 +41,7 @@ class ControllerFactory implements FactoryInterface
         $logger = $container->build(LoggerInterface::class, ['service_name' => 'main']);
         $controller->setLogger($logger);
 
-        $controller->setManager($container->get(Manager::class));
+        $controller->setServiceManager($container->get(Manager::class));
 
         return $controller;
     }
