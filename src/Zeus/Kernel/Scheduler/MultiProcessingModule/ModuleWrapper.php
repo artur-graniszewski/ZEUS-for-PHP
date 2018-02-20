@@ -26,6 +26,7 @@ use function count;
 use function array_search;
 use function stream_socket_client;
 use function in_array;
+use Zeus\Kernel\System\Runtime;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
@@ -165,7 +166,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                     $exception = $event->getParam('exception');
 
                     $status = $exception ? $exception->getCode() : 0;
-                    exit($status);
+                    Runtime::exit($status);
                 }
             }, WorkerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);

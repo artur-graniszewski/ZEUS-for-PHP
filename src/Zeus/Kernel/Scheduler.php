@@ -62,7 +62,7 @@ final class Scheduler extends AbstractService
 
     /** @var Reactor */
     private $reactor;
-    
+
     const WORKER_SERVER = 'server';
     const WORKER_INIT = 'initWorker';
 
@@ -124,7 +124,11 @@ final class Scheduler extends AbstractService
 
         $sharedEventManager = $eventManager->getSharedManager();
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) { $this->onShutdown($e);}, SchedulerEvent::PRIORITY_REGULAR);
+        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {
+            $this->log(Logger::NOTICE, "Scheduler shutdown");
+            $this->onShutdown($e);
+
+        }, SchedulerEvent::PRIORITY_REGULAR);
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START, function() use ($eventManager) {
             $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
@@ -234,17 +238,17 @@ final class Scheduler extends AbstractService
 
         $message = $message->getParams();
 
-        /** @var WorkerState $processStatus */
-        $processStatus = $message['extra']['status'];
-        $uid = $processStatus['uid'];
+        /** @var WorkerState $workerState */
+        $workerState = $message['extra']['status'];
+        $uid = $workerState['uid'];
 
         // worker status changed, update this information server-side
         if (isset($this->workers[$uid])) {
-            if ($this->workers[$uid]['code'] !== $processStatus['code']) {
-                $processStatus['time'] = microtime(true);
+            if ($this->workers[$uid]['code'] !== $workerState['code']) {
+                $workerState['time'] = microtime(true);
             }
 
-            $this->workers[$uid] = $processStatus;
+            $this->workers[$uid] = $workerState;
         }
     }
 
@@ -271,9 +275,9 @@ final class Scheduler extends AbstractService
         $this->log(Logger::DEBUG, "Worker $uid exited");
 
         if (isset($this->workers[$uid])) {
-            $processStatus = $this->workers[$uid];
+            $workerState = $this->workers[$uid];
 
-            if (!WorkerState::isExiting($processStatus) && $processStatus['time'] < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
+            if (!WorkerState::isExiting($workerState) && $workerState['time'] < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
                 $this->log(Logger::ERR, "Worker $uid exited prematurely");
             }
 
@@ -370,10 +374,12 @@ final class Scheduler extends AbstractService
 
     private function stopWorker(int $uid, bool $isSoftStop)
     {
+        $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
         $this->workerFlowManager->stopWorker($uid, $isSoftStop);
 
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
+            $workerState['time'] = microtime(true);
             $workerState['code'] = WorkerState::TERMINATED;
             $this->workers[$uid] = $workerState;
         }
@@ -396,7 +402,6 @@ final class Scheduler extends AbstractService
 
         if ($this->workers) {
             foreach (array_keys($this->workers->toArray()) as $uid) {
-                $this->log(Logger::DEBUG, "Terminating worker $uid");
                 $this->stopWorker($uid, false);
             }
         }
@@ -453,14 +458,7 @@ final class Scheduler extends AbstractService
      */
     private function stopWorkers(array $workerUids, bool $isSoftTermination)
     {
-        $now = microtime(true);
-
         foreach ($workerUids as $uid) {
-            $workerState = $this->workers[$uid];
-            $workerState['code'] = WorkerState::TERMINATED;
-            $workerState['time'] = $now;
-            $this->workers[$uid] = $workerState;
-            $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
             $this->stopWorker($uid, $isSoftTermination);
         }
     }

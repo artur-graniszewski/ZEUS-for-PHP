@@ -2,6 +2,8 @@
 
 namespace Zeus\Controller;
 
+use InvalidArgumentException;
+use Throwable;
 use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
 use Zend\Mvc\Controller\AbstractActionController;
@@ -11,27 +13,21 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
-use Zeus\ServerService\ServerServiceInterface;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 
 class WorkerController extends AbstractActionController
 {
     /** @var mixed[] */
-    protected $config;
+    private $config;
 
     /** @var Manager */
-    protected $manager;
-
-    /** @var ServerServiceInterface[] */
-    protected $services = [];
+    private $manager;
 
     /** @var LoggerInterface */
-    protected $logger;
-
-    /** @var int */
-    protected $servicesRunning = 0;
+    private $logger;
 
     /**
      * ZeusController constructor.
@@ -65,7 +61,7 @@ class WorkerController extends AbstractActionController
     public function dispatch(RequestInterface $request, ResponseInterface $response = null)
     {
         if (!$request instanceof ConsoleRequest) {
-            throw new \InvalidArgumentException(sprintf(
+            throw new InvalidArgumentException(sprintf(
                 '%s can only dispatch requests in a console environment',
                 get_called_class()
             ));
@@ -88,7 +84,7 @@ class WorkerController extends AbstractActionController
                     $this->starSchedulerForService($serviceName, json_decode($startParams, true));
                     break;
             }
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->getLogger()->err(sprintf("%s (%d): %s in %s on line %d",
                 get_class($exception),
                 $exception->getCode(),
@@ -97,40 +93,8 @@ class WorkerController extends AbstractActionController
                 $exception->getLine()
             ));
             $this->getLogger()->err(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
-            $this->doExit($exception->getCode() > 0 ? $exception->getCode() : 500);
+            Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
-    }
-
-    /**
-     * @param int $code
-     */
-    protected function doExit(int $code)
-    {
-        exit($code);
-    }
-
-    /**
-     * @param string $serviceName
-     * @return bool
-     */
-    protected function reportBrokenServices(string $serviceName)
-    {
-        $result = false;
-        $brokenServices = $this->manager->getBrokenServices();
-
-        $services = $serviceName !== null ? [$serviceName] : array_keys($brokenServices);
-
-        foreach ($services as $serviceName) {
-            if ($serviceName && isset($brokenServices[$serviceName])) {
-                /** @var \Exception $exception */
-                $exception = $brokenServices[$serviceName];
-                $exceptionMessage = $exception->getPrevious() ? $exception->getPrevious()->getMessage() : $exception->getMessage();
-                $this->logger->err("Service \"$serviceName\" is broken: " . $exceptionMessage);
-                $result = true;
-            }
-        }
-
-        return $result;
     }
 
     private function initializeWorker(Worker $worker)
@@ -142,9 +106,9 @@ class WorkerController extends AbstractActionController
 
     /**
      * @param string $serviceName
-     * @param array $startParams
+     * @param mixed[] $startParams
      */
-    protected function startWorkerForService(string $serviceName, array $startParams = [])
+    private function startWorkerForService(string $serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
@@ -153,7 +117,30 @@ class WorkerController extends AbstractActionController
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
+        $this->triggerWorkerEvent($serviceName, $startParams);
+    }
+
+    /**
+     * @param string $serviceName
+     * @param mixed[] $startParams
+     */
+    private function starSchedulerForService(string $serviceName, array $startParams = [])
+    {
+        $startParams[Scheduler::WORKER_SERVER] = false;
+        DynamicPriorityFilter::resetPriority();
+
+        $startParams[Scheduler::WORKER_SERVER] = true;
+        $this->triggerWorkerEvent($serviceName, $startParams);
+    }
+
+    private function triggerWorkerEvent(string $serviceName, $startParams)
+    {
+        /** @var Scheduler $scheduler */
+        $scheduler = $this->manager->getService($serviceName)->getScheduler();
+
         $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
+        $event->setParam(Scheduler::WORKER_SERVER, true);
+
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
         $event->setTarget($worker);
@@ -167,56 +154,6 @@ class WorkerController extends AbstractActionController
         }
         $event->setName(WorkerEvent::EVENT_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
-    }
-
-    /**
-     * @param string $serviceName
-     * @param array $startParams
-     */
-    protected function starSchedulerForService(string $serviceName, array $startParams = [])
-    {
-        $startParams[Scheduler::WORKER_SERVER] = false;
-
-        /** @var Scheduler $scheduler */
-        $scheduler = $this->manager->getService($serviceName)->getScheduler();
-        DynamicPriorityFilter::resetPriority();
-
-        $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
-        $worker = $event->getWorker();
-        $worker->setEventManager($scheduler->getEventManager());
-        $event->setTarget($worker);
-        $this->initializeWorker($worker);
-        $event->setParams(array_merge($event->getParams(), $startParams));
-        $event->setParam('uid', getmypid());
-        $event->setParam(Scheduler::WORKER_SERVER, true);
-        $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
-            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
-        }
-        $event->setParam('processId', getmypid());
-        $event->setName(WorkerEvent::EVENT_INIT);
-        $scheduler->getEventManager()->triggerEvent($event);
-    }
-
-    /**
-     * @param ServerServiceInterface[] $services
-     * @param bool $mustBeRunning
-     * @throws \Throwable
-     */
-    protected function stopServices(array $services, bool $mustBeRunning)
-    {
-        $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
-
-        if ($servicesLeft === 0) {
-            $this->doExit(0);
-        }
-
-        $this->doExit(417);
-    }
-
-    public function stopApplication()
-    {
-        $this->stopServices($this->services, false);
     }
 
     public function getLogger() : LoggerInterface

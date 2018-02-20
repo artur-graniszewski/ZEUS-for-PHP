@@ -4,7 +4,6 @@ namespace Zeus\Kernel\Scheduler;
 
 use Error;
 use Throwable;
-use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
@@ -19,8 +18,6 @@ use function get_class;
  */
 class Worker extends AbstractService
 {
-    use GarbageCollector;
-
     /** @var WorkerState */
     private $status;
 

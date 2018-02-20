@@ -11,6 +11,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\System\Runtime;
 use ZeusTest\Helpers\PosixThreadBridgeMock;
 use ZeusTest\Helpers\PosixThreadWrapperMock;
 use ZeusTest\Helpers\ZeusFactories;
@@ -24,6 +25,13 @@ use ZeusTest\Helpers\ZeusFactories;
 class PosixThreadTest extends TestCase
 {
     use ZeusFactories;
+
+    public function setUp()
+    {
+        Runtime::addShutdownHook(function() {
+            return true;
+        });
+    }
 
     /**
      * @param Scheduler $scheduler

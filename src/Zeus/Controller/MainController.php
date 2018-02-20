@@ -10,6 +10,7 @@ use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
 use Zeus\ServerService\ServerServiceInterface;
@@ -93,13 +94,8 @@ class MainController extends AbstractActionController
                 $exception->getLine()
             ));
             $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
-            $this->doExit($exception->getCode() > 0 ? $exception->getCode() : 500);
+            Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
-    }
-
-    private function doExit(int $code)
-    {
-        exit($code);
     }
 
     /**
@@ -124,7 +120,7 @@ class MainController extends AbstractActionController
      * @param string $serviceName
      * @return bool
      */
-    private function reportBrokenServices($serviceName)
+    private function reportBrokenServices($serviceName) : bool
     {
         $result = false;
         $brokenServices = $this->manager->getBrokenServices();
@@ -207,11 +203,7 @@ class MainController extends AbstractActionController
     {
         $servicesLeft = $this->manager->stopServices($services, $mustBeRunning);
 
-        if ($servicesLeft === 0) {
-            $this->doExit(0);
-        }
-
-        $this->doExit(417);
+        Runtime::exit($servicesLeft === 0 ? 0 : 417);
     }
 
     public function stopApplication()

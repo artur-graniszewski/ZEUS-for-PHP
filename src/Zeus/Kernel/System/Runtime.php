@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\System;
 
+use Closure;
 use function is_file;
 use function is_readable;
 use function file_get_contents;
@@ -14,6 +15,7 @@ use function stream_get_contents;
 use function fgets;
 use function pclose;
 use function preg_match;
+use TypeError;
 
 /**
  * Class Runtime
@@ -23,8 +25,10 @@ use function preg_match;
  */
 class Runtime
 {
+    private static $exitCallback;
+
     /** @var int */
-    protected static $processorAmount = 0;
+    private static $processorAmount = 0;
 
     /**
      * @return int
@@ -38,10 +42,7 @@ class Runtime
         return static::$processorAmount;
     }
 
-    /**
-     * @return int
-     */
-    protected static function detectNumberOfCores() : int
+    private static function detectNumberOfCores() : int
     {
         if (is_file('/proc/cpuinfo') && is_readable('/proc/cpuinfo')) {
             $cpuInfo = file_get_contents('/proc/cpuinfo');
@@ -73,5 +74,24 @@ class Runtime
         }
 
         return $cpuCores;
+    }
+
+    public static function exit(int $code)
+    {
+        if (!is_null(static::$exitCallback) && call_user_func(static::$exitCallback, $code)) {
+            return;
+        }
+
+        exit($code);
+    }
+
+    public static function addShutdownHook($callback)
+    {
+        if (is_callable($callback) || is_null($callback) || $callback instanceof Closure) {
+            static::$exitCallback = $callback;
+            return;
+        }
+
+        throw new TypeError("Invalid callback");
     }
 }

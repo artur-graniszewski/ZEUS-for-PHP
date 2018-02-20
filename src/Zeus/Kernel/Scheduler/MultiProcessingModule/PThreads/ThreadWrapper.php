@@ -12,9 +12,4 @@ use Thread;
 class ThreadWrapper extends Thread implements ThreadWrapperInterface
 {
     use ThreadTrait;
-
-    private function exit()
-    {
-        exit();
-    }
 }

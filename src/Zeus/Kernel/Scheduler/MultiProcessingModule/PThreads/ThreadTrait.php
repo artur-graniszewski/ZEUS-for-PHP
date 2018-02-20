@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
+use Zeus\Kernel\System\Runtime;
 
 trait ThreadTrait
 {
@@ -92,6 +93,6 @@ trait ThreadTrait
                 ?>';
 
         eval ($php);
-        $this->exit();
+        Runtime::exit(0);
     }
 }
