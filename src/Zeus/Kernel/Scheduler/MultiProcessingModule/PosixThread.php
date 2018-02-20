@@ -29,7 +29,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
     const MIN_STABLE_PHP_VERSION = 7.2;
 
     /** @var PcntlBridgeInterface */
-    protected static $pcntlBridge;
+    private static $pcntlBridge;
 
     /** @var PosixThreadBridgeInterface */
     private static $posixThreadBridge;

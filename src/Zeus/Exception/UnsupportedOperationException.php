@@ -2,7 +2,9 @@
 
 namespace Zeus\Exception;
 
-class UnsupportedOperationException extends \RuntimeException
+use RuntimeException;
+
+class UnsupportedOperationException extends RuntimeException
 {
 
 }

@@ -8,7 +8,6 @@ use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\AbstractStream;
 use Zeus\IO\Stream\NetworkStreamInterface;
-use Zeus\IO\Stream\FlushableStreamInterface;
 use Zeus\IO\Stream\SelectableStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
@@ -54,9 +53,8 @@ class AsyncPlugin extends AbstractPlugin
         } catch (UnsupportedOperationException $exception) {
             // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
         }
-        if ($stream instanceof FlushableStreamInterface) {
-            $stream->setWriteBufferSize(0);
-        }
+
+        $stream->setWriteBufferSize(0);
 
         return $stream;
     }

@@ -175,7 +175,7 @@ class WorkerController extends AbstractActionController
      */
     protected function starSchedulerForService(string $serviceName, array $startParams = [])
     {
-        $startParams['server'] = false;
+        $startParams[Scheduler::WORKER_SERVER] = false;
 
         /** @var Scheduler $scheduler */
         $scheduler = $this->manager->getService($serviceName)->getScheduler();
@@ -188,7 +188,7 @@ class WorkerController extends AbstractActionController
         $this->initializeWorker($worker);
         $event->setParams(array_merge($event->getParams(), $startParams));
         $event->setParam('uid', getmypid());
-        $event->setParam('server', true);
+        $event->setParam(Scheduler::WORKER_SERVER, true);
         $event->setParam('threadId', defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
             $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);

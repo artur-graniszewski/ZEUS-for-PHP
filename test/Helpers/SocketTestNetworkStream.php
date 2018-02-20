@@ -3,10 +3,8 @@
 namespace ZeusTest\Helpers;
 
 use Zeus\IO\Stream\NetworkStreamInterface;
-use Zeus\IO\Stream\FlushableStreamInterface;
-use Zeus\IO\Stream\SelectableStreamInterface;
 
-class SocketTestNetworkStream implements NetworkStreamInterface, FlushableStreamInterface
+class SocketTestNetworkStream implements NetworkStreamInterface
 {
     protected $dataSent = '';
 

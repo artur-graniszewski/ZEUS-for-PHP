@@ -22,4 +22,10 @@ interface StreamInterface extends ResourceInterface
     public function isReadable() : bool;
 
     public function write(string $data): int;
+
+    public function flush() : bool;
+
+    public function setReadBufferSize(int $size);
+
+    public function setWriteBufferSize(int $size);
 }

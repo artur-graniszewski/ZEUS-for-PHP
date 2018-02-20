@@ -2,6 +2,9 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
+/**
+ * @internal
+ */
 interface ThreadWrapperInterface
 {
     public function setServerVariables(array $variables);

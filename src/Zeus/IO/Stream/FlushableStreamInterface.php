@@ -10,8 +10,4 @@ namespace Zeus\IO\Stream;
 interface FlushableStreamInterface
 {
     public function flush() : bool;
-
-    public function setReadBufferSize(int $size);
-
-    public function setWriteBufferSize(int $size);
 }

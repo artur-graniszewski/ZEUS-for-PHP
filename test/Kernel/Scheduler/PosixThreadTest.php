@@ -12,6 +12,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use ZeusTest\Helpers\PosixThreadBridgeMock;
+use ZeusTest\Helpers\PosixThreadWrapperMock;
 use ZeusTest\Helpers\ZeusFactories;
 
 /**
@@ -94,7 +95,7 @@ class PosixThreadTest extends TestCase
 
         $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
             $eventLaunched = true;
-            $event->stopPropagation(true);
+            PosixThreadWrapperMock::setIsTerminated(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $self = $_SERVER['SCRIPT_NAME'];
@@ -108,9 +109,11 @@ class PosixThreadTest extends TestCase
         $this->assertNotEmpty($serverVars, "Worker should return unserializable data");
         $this->assertEquals($_SERVER['SCRIPT_NAME'], $serverVars['SCRIPT_NAME']);
         $this->assertEquals($argv, $serverVars['argv']);
+
+        $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixThread');
     }
 
-    public function testDetectionIfProcessOpenIsSupportedOrNot()
+    public function testDetectionIfPosixThreadIsSupportedOrNot()
     {
         $bridge = new PosixThreadBridgeMock();
         PosixThread::setPosixThreadBridge($bridge);
@@ -124,7 +127,6 @@ class PosixThreadTest extends TestCase
 
             $this->assertEquals($isSupported, PosixThread::isSupported($status[$isSupported]), ('pThreads should be ' . $isSupported ? 'enabled' : 'disabled'));
         }
-
 
         $this->assertEquals("pThread extension is required by PosixThread but disabled in PHP", $status[false], 'Error message should be returned if MPM driver is not supported');
         $this->assertEquals("", $status[true], 'No error message should be returned if MPM driver is supported');

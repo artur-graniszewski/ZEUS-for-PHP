@@ -54,7 +54,7 @@ class WorkerFlowManager
         $event->setParams($eventParameters);
         $events->triggerEvent($event);
 
-        if (!$event->getParam('initWorker')) {
+        if (!$event->getParam(Scheduler::WORKER_INIT)) {
             return $this;
         }
 

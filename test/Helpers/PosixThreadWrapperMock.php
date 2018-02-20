@@ -13,8 +13,8 @@ class PosixThreadWrapperMock implements ThreadWrapperInterface
         run as protected runOriginal;
     }
 
-    private $state;
-    private $isTerminated = false;
+    private $state = 0;
+    private static $isTerminated = false;
 
     const NOTHING = (0);
     const STARTED = (1<<0);
@@ -91,11 +91,11 @@ class PosixThreadWrapperMock implements ThreadWrapperInterface
 
     public function isTerminated()
     {
-        return $this->isTerminated;
+        return static::$isTerminated;
     }
 
-    public function setIsTerminated(bool $isTerminated)
+    public static function setIsTerminated(bool $isTerminated)
     {
-        $this->isTerminated = $isTerminated;
+        static::$isTerminated = $isTerminated;
     }
 }

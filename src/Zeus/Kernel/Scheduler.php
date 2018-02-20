@@ -63,6 +63,10 @@ final class Scheduler extends AbstractService
     /** @var Reactor */
     private $reactor;
 
+    const WORKER_TEMPLATE = 'workerTemplate';
+    const WORKER_SERVER = 'server';
+    const WORKER_INIT = 'initWorker';
+
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
@@ -135,7 +139,7 @@ final class Scheduler extends AbstractService
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT,
             function(WorkerEvent $e) use ($eventManager) {
-                if (!$e->getParam('server')) {
+                if (!$e->getParam(static::WORKER_SERVER)) {
                     return;
                 }
 
@@ -146,8 +150,9 @@ final class Scheduler extends AbstractService
             }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
+            // scheduler init
             function (WorkerEvent $event) use ($eventManager) {
-                if (!$event->getParam('server') || $event->getParam('initWorker')) {
+                if (!$event->getParam(static::WORKER_SERVER) || $event->getParam(static::WORKER_INIT)) {
                     return;
                 }
 
@@ -161,6 +166,22 @@ final class Scheduler extends AbstractService
                 if (!@file_put_contents($fileName, $pid)) {
                     throw new SchedulerException(sprintf("Could not write to PID file: %s, aborting", $fileName), SchedulerException::LOCK_FILE_ERROR);
                 }
+
+                $this->kernelLoop();
+            }, WorkerEvent::PRIORITY_FINALIZE
+        );
+
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
+            // worker template init
+            function (WorkerEvent $event) use ($eventManager) {
+                if (!$event->getParam(static::WORKER_TEMPLATE)) {
+                    return;
+                }
+
+                $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $e) {
+                    trigger_error("TEMPLATE SPAWNED");
+                    $e->stopPropagation(true);
+                }, WorkerEvent::PRIORITY_INITIALIZE + 100000);
 
                 $this->kernelLoop();
             }, WorkerEvent::PRIORITY_FINALIZE
@@ -341,7 +362,7 @@ final class Scheduler extends AbstractService
                 return;
             }
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
-            $this->workerFlowManager->startWorker(['server' => true]);
+            $this->workerFlowManager->startWorker([Scheduler::WORKER_SERVER => true]);
 
         } catch (Throwable $exception) {
             $this->handleException($exception);

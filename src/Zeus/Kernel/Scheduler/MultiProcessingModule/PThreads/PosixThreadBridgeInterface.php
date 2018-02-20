@@ -2,6 +2,9 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
+/**
+ * @internal
+ */
 interface PosixThreadBridgeInterface
 {
     public function isSupported() : bool;

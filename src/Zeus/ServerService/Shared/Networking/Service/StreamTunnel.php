@@ -3,8 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use LogicException;
-use Zeus\IO\Exception\IOException;
-use Zeus\IO\Stream\FlushableStreamInterface;
+use Zeus\IO\Exception\EOFException;
 use Zeus\IO\Stream\SelectionKey;
 
 use function substr;
@@ -68,7 +67,7 @@ class StreamTunnel
         if ('' === $data) {
             $this->srcSelectionKey->getStream()->shutdown(STREAM_SHUT_RD);
             // EOF
-            throw new IOException("EOF");
+            throw new EOFException("Stream reached EOF mark");
         }
 
         $this->write($data);
@@ -82,9 +81,9 @@ class StreamTunnel
 
         if (!$this->isSaturated || $this->dstSelectionKey->isWritable()) {
             $stream = $dstStream;
-            $wrote = $stream->write($data);
+            $stream->write($data);
 
-            if (($stream instanceof FlushableStreamInterface && $stream->flush()) || !isset($data[$wrote + 1])) {
+            if ($stream->flush()) {
                 if (!$this->isSaturated) {
                     return;
                 }
@@ -96,14 +95,6 @@ class StreamTunnel
                 $this->srcSelectionKey->cancel(SelectionKey::OP_WRITE);
 
                 return;
-            }
-
-            if (!$stream instanceof FlushableStreamInterface) {
-                if ($wrote === 0) {
-                    $this->dataBuffer = $data;
-                } else {
-                    $this->dataBuffer = substr($data, $wrote);
-                }
             }
 
             if ($this->isSaturated) {

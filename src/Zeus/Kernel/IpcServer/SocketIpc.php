@@ -6,7 +6,6 @@ use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\Kernel\IpcServer;
 use Zeus\IO\Exception\IOException;
-use Zeus\IO\Stream\FlushableStreamInterface;
 use Zeus\IO\Stream\SelectableStreamInterface;
 use Zeus\ServerService\Shared\Networking\Service\ReadBuffer;
 
@@ -54,10 +53,9 @@ class SocketIpc extends ReadBuffer implements IpcDriver
         $data = $this->packMessage($payload);
         $this->stream->write($data . "\0");
 
-        if ($this->stream instanceof FlushableStreamInterface) {
-            while (!$this->stream->flush()) {
 
-            }
+        while (!$this->stream->flush()) {
+
         }
     }
 
