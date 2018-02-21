@@ -3,7 +3,7 @@
 namespace Zeus\Kernel;
 
 use RuntimeException;
-use Zend\EventManager\EventManager;
+use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
@@ -26,10 +26,11 @@ use function array_merge;
 use function array_rand;
 use function array_search;
 use function stream_socket_client;
-use function get_called_class;
 
 class IpcServer implements ListenerAggregateInterface
 {
+    use EventManagerAwareTrait;
+
     private $ipcHost = '127.0.0.2';
 
     private $isSchedulerRegistered = false;
@@ -42,9 +43,6 @@ class IpcServer implements ListenerAggregateInterface
     const AUDIENCE_SELF = 'aud_self';
 
     private $eventHandles;
-
-    /** @var EventManagerInterface */
-    private $events;
 
     /** @var SocketServer */
     private $ipcServer;
@@ -459,23 +457,5 @@ class IpcServer implements ListenerAggregateInterface
         foreach ($this->eventHandles as $handle) {
             $events->detach($handle);
         }
-    }
-
-    public function setEventManager(EventManagerInterface $events)
-    {
-        $events->setIdentifiers(array(
-            __CLASS__,
-            get_called_class(),
-        ));
-        $this->events = $events;
-    }
-
-    public function getEventManager() : EventManagerInterface
-    {
-        if (null === $this->events) {
-            $this->setEventManager(new EventManager());
-        }
-
-        return $this->events;
     }
 }

@@ -11,7 +11,7 @@ class MultiProcessingModuleCapabilities
     const ISOLATION_NONE = 4;
 
     /** @var int */
-    protected $isolationLevel =  self::ISOLATION_NONE;
+    private $isolationLevel =  self::ISOLATION_NONE;
 
     public function getIsolationLevel() : int
     {

@@ -2,11 +2,14 @@
 
 namespace Zeus\Kernel\Scheduler\Status;
 
+/**
+ * @internal
+ */
 class StatusMessage
 {
-    protected $params = [];
+    private $params = [];
 
-    public function __construct($params = [])
+    public function __construct(array $params)
     {
         $this->params = $params;
     }

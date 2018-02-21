@@ -6,8 +6,6 @@ use LogicException;
 use Zeus\IO\Exception\EOFException;
 use Zeus\IO\Stream\SelectionKey;
 
-use function substr;
-
 class StreamTunnel
 {
     /** @var SelectionKey  */

@@ -4,6 +4,10 @@ namespace Zeus\ServerService\Shared\Logger;
 
 use Zend\Log\Processor\ProcessorInterface;
 
+use function microtime;
+use function debug_backtrace;
+use function preg_match;
+
 class ExtraLogProcessor implements ProcessorInterface
 {
     /** @var float */

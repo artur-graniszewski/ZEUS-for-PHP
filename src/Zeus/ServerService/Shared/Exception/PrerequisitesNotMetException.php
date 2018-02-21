@@ -2,7 +2,9 @@
 
 namespace Zeus\ServerService\Shared\Exception;
 
-class PrerequisitesNotMetException extends \RuntimeException
+use RuntimeException;
+
+class PrerequisitesNotMetException extends RuntimeException
 {
 
 }

@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Closure;
 use LogicException;
 use OutOfRangeException;
 use TypeError;
@@ -28,13 +29,14 @@ use function max;
 /**
  * Class Reactor
  * @package Zeus\Kernel\Scheduler
+ * @internal
  */
 class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInterface
 {
     use EventManagerAwareTrait;
 
     /** @var int */
-    protected $timerResolutionTolerance = 10;
+    private $timerResolutionTolerance = 10;
 
     /** @var AbstractStreamSelector */
     private $reactor;
@@ -92,7 +94,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
 
     public function mainLoop($mainLoopCallback)
     {
-        if (!is_callable($mainLoopCallback)) {
+        if (!(is_callable($mainLoopCallback) || $mainLoopCallback instanceof Closure)) {
             throw new TypeError("Invalid callback parameter");
         }
 
@@ -222,7 +224,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
      */
     public function registerTimer($callback, int $timeout, bool $isPeriodic)
     {
-        if (!is_callable($callback)) {
+        if (!(is_callable($callback) || $callback instanceof Closure)) {
             throw new TypeError("Invalid callback parameter");
         }
 

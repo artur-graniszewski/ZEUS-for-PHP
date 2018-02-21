@@ -4,6 +4,8 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
 use Thread;
 
+use function class_exists;
+
 /**
  * Class PosixThreadBridge
  * @package Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads

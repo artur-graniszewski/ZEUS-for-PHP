@@ -3,24 +3,23 @@
 namespace Zeus\Controller;
 
 use InvalidArgumentException;
-use Throwable;
-use Zend\Log\LoggerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
-use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Manager;
 use Zend\Console\Request as ConsoleRequest;
 
+use function get_called_class;
+
 abstract class AbstractController extends AbstractActionController
 {
+    use LoggerAwareTrait;
+
     /** @var mixed[] */
     private $config;
 
     /** @var Manager */
     private $manager;
-
-    /** @var LoggerInterface */
-    private $logger;
 
     /**
      * @param mixed[] $config
@@ -48,28 +47,5 @@ abstract class AbstractController extends AbstractActionController
     public function getServiceManager() : Manager
     {
         return $this->manager;
-    }
-
-    public function getLogger() : LoggerInterface
-    {
-        return $this->logger;
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-    }
-
-    protected function handleException(Throwable $exception)
-    {
-        $this->getLogger()->err(sprintf("%s (%d): %s in %s on line %d",
-            get_class($exception),
-            $exception->getCode(),
-            addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
-            $exception->getFile(),
-            $exception->getLine()
-        ));
-        $this->getLogger()->err(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
-        Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
     }
 }

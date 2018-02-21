@@ -2,12 +2,14 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Zend\Config\Config as ZendConfig;
+
 use function getcwd;
 
 /**
  * Server configuration class.
  */
-class Config extends \Zend\Config\Config implements ConfigInterface
+class Config extends ZendConfig implements ConfigInterface
 {
     /**
      * Config constructor.

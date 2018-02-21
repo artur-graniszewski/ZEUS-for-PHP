@@ -12,7 +12,6 @@ use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\Scheduler\AbstractEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
@@ -21,7 +20,8 @@ use function stream_socket_client;
 use function substr;
 use function current;
 use function explode;
-use function in_array;
+use function getmypid;
+use function array_search;
 
 class RegistratorService
 {
@@ -284,7 +284,7 @@ class RegistratorService
         $this->setRegistratorAddress($this->registratorServer->getLocalAddress());
     }
 
-    private function registerObservers(AbstractEvent $event)
+    private function registerObservers(SchedulerEvent $event)
     {
         /** @var Selector $selector */
         $selector = new Selector();

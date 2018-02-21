@@ -1,4 +1,5 @@
 <?php
+
 namespace Zeus\Kernel\Scheduler\Shared;
 
 use ArrayAccess;

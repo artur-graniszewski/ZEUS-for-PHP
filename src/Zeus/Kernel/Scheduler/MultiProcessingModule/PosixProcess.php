@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
+use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -39,12 +40,12 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     public function onKernelStart(SchedulerEvent $event)
     {
         // make the current process a session leader
-        $this->getPcntlBridge()->posixSetSid();
+        static::getPcntlBridge()->posixSetSid();
     }
 
     public function onWorkerLoop(WorkerEvent $event)
     {
-        $this->getPcntlBridge()->pcntlSignalDispatch();
+        static::getPcntlBridge()->pcntlSignalDispatch();
 
         if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
             $this->getWrapper()->setIsTerminating(true);
@@ -54,8 +55,8 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     public function onSchedulerStop(SchedulerEvent $event)
     {
         $status = 0;
-        $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
-        $this->getPcntlBridge()->pcntlSignalDispatch();
+        static::getPcntlBridge()->pcntlWait($status, WUNTRACED);
+        static::getPcntlBridge()->pcntlSignalDispatch();
     }
 
     public function onKernelStop(SchedulerEvent $event)
@@ -67,7 +68,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
 
     protected function createProcess(WorkerEvent $event) : int
     {
-        $pcntl = $this->getPcntlBridge();
+        $pcntl = static::getPcntlBridge();
         $pid = $pcntl->pcntlFork();
 
         switch ($pid) {
@@ -84,11 +85,11 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
                 $pcntl->pcntlSignal(SIGINT, $onTerminate);
                 $pcntl->pcntlSignal(SIGHUP, $onTerminate);
                 $pid = getmypid();
-                $event->setParam('initWorker', true);
+                $event->setParam(Scheduler::WORKER_INIT, true);
                 break;
             default:
                 // we are the parent
-                $event->setParam('initWorker', false);
+                $event->setParam(Scheduler::WORKER_INIT, false);
                 break;
         }
 
@@ -98,7 +99,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     public function onWorkersCheck(SchedulerEvent $event)
     {
         $pcntlStatus = 0;
-        while (($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
+        while (($pid = static::getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
             $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
         }
     }

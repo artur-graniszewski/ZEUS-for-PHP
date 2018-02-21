@@ -4,6 +4,13 @@ namespace Zeus\ServerService\Shared\Logger;
 
 use Zend\Log\Formatter\FormatterInterface;
 
+use function sprintf;
+use function count;
+use function substr;
+use function str_pad;
+use function explode;
+use function array_pop;
+
 class StreamLogFormatter implements FormatterInterface
 {
     /** @var string[] */

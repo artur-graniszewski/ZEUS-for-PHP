@@ -28,7 +28,7 @@ class PosixThreadTest extends TestCase
 
     public function setUp()
     {
-        Runtime::addShutdownHook(function() {
+        Runtime::setShutdownHook(function() {
             return true;
         });
     }

@@ -4,16 +4,17 @@ namespace Zeus\Controller;
 
 use Throwable;
 use Zend\Console\Console;
-use Zend\Log\LoggerInterface;
-use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\ServerServiceInterface;
+use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 class MainController extends AbstractController
 {
+    use ExceptionLoggerTrait;
+
     /** @var ServerServiceInterface[] */
     private $services = [];
 
@@ -56,7 +57,8 @@ class MainController extends AbstractController
                     break;
             }
         } catch (Throwable $exception) {
-            $this->handleException($exception);
+            $this->logException($exception, $this->getLogger());
+            Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
     }
 

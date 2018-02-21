@@ -4,6 +4,9 @@ namespace Zeus\Kernel\Scheduler;
 
 use Zeus\Kernel\Scheduler;
 
+/**
+ * @internal
+ */
 class WorkerFlowManager
 {
     /** @var Scheduler */
@@ -17,74 +20,72 @@ class WorkerFlowManager
         $this->scheduler = $scheduler;
     }
 
-    private function getWorkerEvent(string $eventName) : WorkerEvent
+    public function getScheduler() : Scheduler
+    {
+        return $this->scheduler;
+    }
+
+    private function triggerWorkerEvent(string $eventName, $params, Worker $worker = null) : WorkerEvent
     {
         $event = new WorkerEvent();
         $event->setName($eventName);
-        $event->setScheduler($this->scheduler);
+        $event->setParams($params);
+
+        if ($worker) {
+            $event->setTarget($worker);
+            $event->setWorker($worker);
+        }
+
+        $this->getScheduler()->getEventManager()->triggerEvent($event);
 
         return $event;
     }
 
     private function getWorker() : Worker
     {
+        $scheduler = $this->getScheduler();
         $worker = new Worker();
-        $worker->setLogger($this->scheduler->getLogger());
-        $worker->setConfig($this->scheduler->getConfig());
+        $worker->setLogger($scheduler->getLogger());
+        $worker->setConfig($scheduler->getConfig());
 
         if ($this->firstWorkerInit) {
-            $worker->setEventManager($this->scheduler->getEventManager());
+            $worker->setEventManager($scheduler->getEventManager());
             //$this->firstWorkerInit = false;
         }
 
         return $worker;
     }
 
-    public function startWorker($eventParameters = [])
+    public function startWorker(array $eventParameters)
     {
-        $events = $this->scheduler->getEventManager();
-
         $worker = $this->getWorker();
         $worker->setTerminating(false);
 
         // worker create...
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_CREATE);
-        $event->setWorker($worker);
-        $event->setTarget($worker);
-        $event->setParams($eventParameters);
-        $events->triggerEvent($event);
+        $event = $this->triggerWorkerEvent(WorkerEvent::EVENT_CREATE, $eventParameters, $worker);
 
         if (!$event->getParam(Scheduler::WORKER_INIT)) {
-            return $this;
+            return;
         }
 
         $params = $event->getParams();
 
-        // @fixme: why worker UID must be set after getWorkerEvent and not before? it shouldn't be cloned
-
         // worker init...
         $worker = $event->getWorker();
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_INIT);
-        $event->setParams($params);
-        $event->setTarget($worker);
-        $event->setWorker($worker);
-        $events->triggerEvent($event);
+        $this->triggerWorkerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
 
         // worker exit...
         $worker = $event->getWorker();
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_EXIT);
-        $event->setParams($params);
-        $event->setTarget($worker);
-        $event->setWorker($worker);
-        $events->triggerEvent($event);
+        $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
     }
 
     public function stopWorker(int $uid, bool $isSoftStop)
     {
-        $event = $this->getWorkerEvent(WorkerEvent::EVENT_TERMINATE);
-        $event->setParam('uid', $uid);
-        $event->setParam('soft', $isSoftStop);
+        $params = [
+            'uid' => $uid,
+            'soft' => $isSoftStop
+        ];
 
-        $this->scheduler->getEventManager()->triggerEvent($event);
+        $this->triggerWorkerEvent(WorkerEvent::EVENT_TERMINATE, $params);
     }
 }

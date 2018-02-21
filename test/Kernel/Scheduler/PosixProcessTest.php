@@ -194,7 +194,6 @@ class PosixProcessTest extends TestCase
         $em->triggerEvent($event);
 
         $event = new WorkerEvent();
-        $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
         $event->setName(WorkerEvent::EVENT_TERMINATE);
         $event->setParam('uid', 123456);

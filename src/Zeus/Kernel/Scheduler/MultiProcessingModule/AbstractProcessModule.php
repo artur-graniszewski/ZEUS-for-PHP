@@ -27,7 +27,7 @@ abstract class AbstractProcessModule extends AbstractModule
 
             return;
         } else {
-            $this->getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
+            static::getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
         }
 
         if (!isset($this->workers[$uid])) {
@@ -65,8 +65,8 @@ abstract class AbstractProcessModule extends AbstractModule
     {
         $pcntlStatus = 0;
 
-        if ($this->getPcntlBridge()->isSupported()) {
-            while ($this->workers && ($pid = $this->getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
+        if (static::getPcntlBridge()->isSupported()) {
+            while ($this->workers && ($pid = static::getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
                 $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }

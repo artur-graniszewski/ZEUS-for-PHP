@@ -10,7 +10,6 @@ use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\AbstractService;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
-use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
@@ -21,6 +20,8 @@ use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerFlowManager;
+use Zeus\Kernel\System\Runtime;
+use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 use function microtime;
 use function sprintf;
@@ -28,7 +29,6 @@ use function array_keys;
 use function file_get_contents;
 use function file_put_contents;
 use function unlink;
-use function set_exception_handler;
 
 /**
  * Class Scheduler
@@ -38,7 +38,7 @@ use function set_exception_handler;
 final class Scheduler extends AbstractService
 {
     use PluginRegistry;
-    use GarbageCollector;
+    use ExceptionLoggerTrait;
 
     /** @var WorkerState */
     private $status;
@@ -46,6 +46,7 @@ final class Scheduler extends AbstractService
     /** @var WorkerState[]|WorkerCollection */
     private $workers = [];
 
+    /** @var DisciplineInterface */
     private $discipline;
 
     /** @var mixed[] */
@@ -91,10 +92,6 @@ final class Scheduler extends AbstractService
         $this->setReactor(new Reactor());
         $this->workerFlowManager = new WorkerFlowManager();
         $this->workerFlowManager->setScheduler($this);
-        $event = new SchedulerEvent();
-        $event->setTarget($this);
-        $event->setScheduler($this);
-        $this->setSchedulerEvent($event);
 
         $this->setConfig($config);
         $this->status = new WorkerState($config->getServiceName());
@@ -121,15 +118,16 @@ final class Scheduler extends AbstractService
     public function attachDefaultListeners()
     {
         $eventManager = $this->getEventManager();
-
         $sharedEventManager = $eventManager->getSharedManager();
+
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {
             $this->log(Logger::NOTICE, "Scheduler shutdown");
             $this->onShutdown($e);
-
         }, SchedulerEvent::PRIORITY_REGULAR);
+
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
+
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START, function() use ($eventManager) {
             $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
             $this->log(Logger::NOTICE, "Scheduler started");
@@ -139,18 +137,6 @@ final class Scheduler extends AbstractService
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, function() {
             $this->manageWorkers();
         });
-
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT,
-            function(WorkerEvent $e) use ($eventManager) {
-                if (!$e->getParam(static::WORKER_SERVER)) {
-                    return;
-                }
-
-                $e->stopPropagation(true);
-                $this->startLifeCycle();
-                $e->getWorker()->setTerminating(true);
-
-            }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
             // scheduler init
@@ -165,7 +151,7 @@ final class Scheduler extends AbstractService
 
                 $pid = $event->getWorker()->getProcessId();
 
-                $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
+                $fileName = $this->getUidFile();
                 if (!@file_put_contents($fileName, $pid)) {
                     throw new SchedulerException(sprintf("Could not write to PID file: %s, aborting", $fileName), SchedulerException::LOCK_FILE_ERROR);
                 }
@@ -175,7 +161,15 @@ final class Scheduler extends AbstractService
         );
 
         $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
-            set_exception_handler([$event->getWorker(), 'terminate']);
+            Runtime::setUncaughtExceptionHandler([$event->getWorker(), 'terminate']);
+
+            if ($event->getParam(static::WORKER_SERVER)) {
+                $event->stopPropagation(true);
+                $this->startLifeCycle();
+                $event->getWorker()->setTerminating(true);
+
+                return;
+            }
 
             $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
                 $this->sendStatus($event);
@@ -221,10 +215,10 @@ final class Scheduler extends AbstractService
 
         try {
             $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
-        } catch (Throwable $ex) {
-            $this->getLogger()->err("Exception occurred: " . $ex->getMessage());
+        } catch (Throwable $exception) {
+            $this->logException($exception, $this->getLogger());
             $event->getWorker()->setTerminating(true);
-            $event->setParam('exception', $ex);
+            $event->setParam('exception', $exception);
         }
     }
 
@@ -291,7 +285,7 @@ final class Scheduler extends AbstractService
     public function stop()
     {
         $this->getLogger()->debug("Stopping scheduler");
-        $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
+        $fileName = $this->getUidFile();
 
         $uid = @file_get_contents($fileName);
         if (!$uid) {
@@ -308,7 +302,7 @@ final class Scheduler extends AbstractService
         unlink($fileName);
     }
 
-    public function getUidFile() : string
+    private function getUidFile() : string
     {
         // @todo: make it more sophisticated
         $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
@@ -414,7 +408,7 @@ final class Scheduler extends AbstractService
         }
 
         for ($i = 0; $i < $amount; ++$i) {
-            $this->workerFlowManager->startWorker();
+            $this->workerFlowManager->startWorker([]);
         }
     }
 

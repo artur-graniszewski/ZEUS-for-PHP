@@ -2,6 +2,7 @@
 
 namespace ZeusTest\Services\Async;
 
+use Exception;
 use \PHPUnit\Framework\TestCase;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\IO\SocketServer;
@@ -83,7 +84,8 @@ class AsyncPluginTest extends \PHPUnit\Framework\TestCase
 
     public function testPluginInstantiation()
     {
-        $this->getPlugin(false);
+        $plugin = $this->getPlugin(false);
+        $this->assertTrue($plugin instanceof AsyncPlugin);
     }
 
     /**
@@ -128,7 +130,7 @@ class AsyncPluginTest extends \PHPUnit\Framework\TestCase
             $plugin->run(function () {
                 return "ok";
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->assertFalse($stream->isReadable(), "Socket should be closed after error");
             return;
         }
@@ -145,7 +147,8 @@ class AsyncPluginTest extends \PHPUnit\Framework\TestCase
             ->method('getSocket')
             ->willReturn($this->server->accept());
 
-        $plugin->run(function() { return "ok"; });
+        $id = $plugin->run(function() { return "ok"; });
+        $this->assertInternalType('int', $id);
     }
 
     /**

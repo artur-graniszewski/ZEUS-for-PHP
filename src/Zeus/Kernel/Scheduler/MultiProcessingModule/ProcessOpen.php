@@ -5,7 +5,6 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
-use Zeus\Kernel\Scheduler\AbstractEvent;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridgeInterface;
@@ -34,17 +33,17 @@ use function defined;
  */
 final class ProcessOpen extends AbstractProcessModule implements SeparateAddressSpaceInterface
 {
-    protected $stdout;
+    private $stdout;
 
-    protected $stderr;
-
-    /** @var PipeStream[] */
-    protected $stdOutStreams = [];
+    private $stderr;
 
     /** @var PipeStream[] */
-    protected $stdErrStreams = [];
+    private $stdOutStreams = [];
 
-    protected $pipeBuffer = [];
+    /** @var PipeStream[] */
+    private $stdErrStreams = [];
+
+    private $pipeBuffer = [];
 
     /** @var ProcessOpenBridgeInterface */
     private static $procOpenBridge;
@@ -52,7 +51,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
     /** @var Selector */
     private $workerSelector;
 
-    protected static function getProcessBridge() : ProcessOpenBridgeInterface
+    private static function getProcessBridge() : ProcessOpenBridgeInterface
     {
         if (!isset(static::$procOpenBridge)) {
             static::$procOpenBridge = new ProcessOpenBridge();
@@ -110,11 +109,11 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public function attach(EventManagerInterface $eventManager)
     {
-        $eventManager->attach(SchedulerEvent::EVENT_START, function(AbstractEvent $event) {
+        $eventManager->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
             $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
         }, -9000);
 
-        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(AbstractEvent $event) {
+        $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(SchedulerEvent $event) {
             $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
         }, -9000);
     }
@@ -247,12 +246,15 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         ];
 
         try {
-            $this->stdOutStreams[$pid] = new PipeStream($pipes[1]);
-            $this->stdOutStreams[$pid]->setBlocking(false);
-            $this->stdOutStreams[$pid]->register($this->workerSelector, SelectionKey::OP_READ);
-            $this->stdErrStreams[$pid] = new PipeStream($pipes[2]);
-            $this->stdErrStreams[$pid]->setBlocking(false);
-            $this->stdErrStreams[$pid]->register($this->workerSelector, SelectionKey::OP_READ);
+            $stdOutStream = new PipeStream($pipes[1]);
+            $stdOutStream->setBlocking(false);
+            $stdOutStream->register($this->workerSelector, SelectionKey::OP_READ);
+            $stdErrStream = new PipeStream($pipes[2]);
+            $stdErrStream->setBlocking(false);
+            $stdErrStream->register($this->workerSelector, SelectionKey::OP_READ);
+
+            $this->stdOutStreams[$pid] = $stdOutStream;
+            $this->stdErrStreams[$pid] = $stdErrStream;
         } catch (IOException $ex) {
 
         }

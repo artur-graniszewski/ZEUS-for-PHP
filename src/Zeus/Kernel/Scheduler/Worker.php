@@ -4,20 +4,18 @@ namespace Zeus\Kernel\Scheduler;
 
 use Error;
 use Throwable;
-use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 use function time;
-use function addcslashes;
-use function get_class;
 
 /**
- * Class Worker
- * @package Zeus\Kernel\Scheduler
  * @internal
  */
-class Worker extends AbstractService
+final class Worker extends AbstractService
 {
+    use ExceptionLoggerTrait;
+
     /** @var WorkerState */
     private $status;
 
@@ -70,111 +68,77 @@ class Worker extends AbstractService
         return $this->status;
     }
 
-    public function setRunning(string $statusDescription = null)
+    private function triggerStatusChange(string $statusDescription = '', int $statusCode)
     {
         $status = $this->getStatus();
         $now = time();
-        if ($status->getCode() === WorkerState::RUNNING) {
+        if ($status->getCode() === $statusCode) {
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
                 return;
             }
         }
 
-        $event = new WorkerEvent();
-        $event->setTarget($this);
-        $event->setWorker($this);
         $status->setTime($now);
-        if (null !== $statusDescription) {
-            $status->setStatusDescription($statusDescription);
-        }
-        $status->setCode(WorkerState::RUNNING);
-        $event->setName(WorkerEvent::EVENT_RUNNING);
-        $event->setParam('status', $status);
-        $this->getEventManager()->triggerEvent($event);
+        $status->setCode($statusCode);
+        $status->setStatusDescription($statusDescription);
+
+        $params = [
+            'status' => $status
+        ];
+
+        $this->triggerWorkerEvent($statusCode === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params);
     }
 
-    public function setWaiting(string $statusDescription = null)
+    public function setRunning(string $statusDescription = '')
     {
-        $status = $this->getStatus();
-        $now = time();
-        if ($status->getCode() === WorkerState::WAITING) {
-            if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
-                return;
-            }
-        }
-
-        $event = new WorkerEvent();
-        $event->setTarget($this);
-        $event->setWorker($this);
-        $status->setTime($now);
-        if (null !== $statusDescription) {
-            $status->setStatusDescription($statusDescription);
-        }
-        $status->setCode(WorkerState::WAITING);
-        $event->setName(WorkerEvent::EVENT_WAITING);
-        $event->setParam('status', $status);
-        $this->getEventManager()->triggerEvent($event);
+        $this->triggerStatusChange($statusDescription, WorkerState::RUNNING);
     }
 
-    protected function reportException(Throwable $exception)
+    public function setWaiting(string $statusDescription = '')
     {
-        $this->getLogger()->err(sprintf("%s (%d): %s in %s on line %d",
-            get_class($exception),
-            $exception->getCode(),
-            addcslashes($exception->getMessage(), "\t\n\r\0\x0B"),
-            $exception->getFile(),
-            $exception->getLine()
-        ));
-        $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+        $this->triggerStatusChange($statusDescription, WorkerState::WAITING);
     }
 
     public function terminate(Throwable $exception = null)
     {
         $status = $this->getStatus();
 
-        // process is terminating, time to live equals zero
         $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
 
         $status->setCode(WorkerState::EXITING);
+        $status->setTime(time());
 
-        $payload = $status->toArray();
+        $params = [
+            'status' => $status
+        ];
 
         if ($exception) {
-            $payload['exception'] = $exception;
-            $this->reportException($exception);
+            $this->logException($exception, $this->getLogger());
+            $params['exception'] = $exception;
         }
 
-        $event = new WorkerEvent();
-        $event->setTarget($this);
-        $event->setWorker($this);
-        $event->setName(WorkerEvent::EVENT_EXIT);
-        $event->setParam('status', $status);
-
-        $this->getEventManager()->triggerEvent($event);
+        $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params);
     }
 
     public function mainLoop()
     {
-        $exception = null;
         $this->setWaiting();
         $status = $this->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while (($runsLeft = $this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks()) > 0) {
             $status->setIsLastTask($runsLeft === 1);
-            $exception = null;
             try {
-                $event = new WorkerEvent();
-                $event->setTarget($this);
-                $event->setWorker($this);
-                $event->setName(WorkerEvent::EVENT_LOOP);
-                $event->setParam('status', $status);
-                $this->getEventManager()->triggerEvent($event);
+                $params = [
+                    'status' => $status
+                ];
+
+                $this->triggerWorkerEvent(WorkerEvent::EVENT_LOOP, $params);
 
             } catch (Error $exception) {
                 $this->terminate($exception);
             } catch (Throwable $exception) {
-                $this->reportException($exception);
+                $this->logException($exception, $this->getLogger());
             }
 
             if ($this->isTerminating()) {
@@ -183,5 +147,15 @@ class Worker extends AbstractService
         }
 
         $this->terminate();
+    }
+
+    private function triggerWorkerEvent(string $eventName, array $params)
+    {
+        $event = new WorkerEvent();
+        $event->setTarget($this);
+        $event->setWorker($this);
+        $event->setName($eventName);
+        $event->setParams($params);
+        $this->getEventManager()->triggerEvent($event);
     }
 }

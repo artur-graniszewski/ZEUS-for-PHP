@@ -18,6 +18,7 @@ use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
+use Zeus\Kernel\System\Runtime;
 
 use function is_callable;
 use function sleep;
@@ -26,7 +27,6 @@ use function count;
 use function array_search;
 use function stream_socket_client;
 use function in_array;
-use Zeus\Kernel\System\Runtime;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
@@ -265,7 +265,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $event->getWorker()->setUid($uid);
         $event->getWorker()->setProcessId($processId);
         $event->getWorker()->setThreadId($threadId);
-        $this->events->triggerEvent($event);
+        $this->getEventManager()->triggerEvent($event);
         $this->unregisterWorker($uid);
     }
 

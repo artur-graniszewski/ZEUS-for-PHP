@@ -16,24 +16,29 @@ use function microtime;
 class WorkerState
 {
     /**
-     * Process is waiting.
+     * Worker is waiting.
      */
     const WAITING = 1;
 
     /**
-     * Process is busy right now.
+     * Worker is busy right now.
      */
     const RUNNING = 2;
 
     /**
-     * Process is terminated.
+     * Worker is terminated.
      */
     const TERMINATED = 4;
 
     /**
-     * Process is exiting on its own.
+     * Worker is exiting on its own.
      */
     const EXITING = 8;
+
+    /**
+     * Worker is not initialized yet
+     */
+    const NEW = 0;
 
     /**
      * PID of the process.
@@ -90,9 +95,9 @@ class WorkerState
     private $uid = 0;
 
     /** @var bool */
-    private  $isLastTask = false;
+    private $isLastTask = false;
 
-    public function __construct(string $serviceName, int $status = self::WAITING)
+    public function __construct(string $serviceName, int $status = self::NEW)
     {
         $this->startTime = microtime(true);
         $this->code = $status;
@@ -197,6 +202,7 @@ class WorkerState
     {
         $this->processId = $processId;
     }
+
     public function setCode(int $status)
     {
         $this->code = $status;

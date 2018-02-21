@@ -9,6 +9,8 @@ use Zend\ServiceManager\Factory\AbstractFactoryInterface;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\ServerService\ServerServiceInterface;
 
+use function class_exists;
+
 class AbstractServerServiceFactory implements AbstractFactoryInterface
 {
     use PluginFactory;

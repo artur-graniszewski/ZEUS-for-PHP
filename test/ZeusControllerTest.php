@@ -4,6 +4,7 @@ namespace ZeusTest;
 
 use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
+use Zend\Console\Request as ConsoleRequest;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
@@ -74,7 +75,7 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
 
     public function testControllerServicesList()
     {
-        $request = new \Zend\Console\Request([
+        $request = new ConsoleRequest([
             __FILE__,
             'zeus',
             'list',
@@ -106,7 +107,7 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
 
     public function testControllerServicesListForIncorrectService()
     {
-        $request = new \Zend\Console\Request([
+        $request = new ConsoleRequest([
             __FILE__,
             'zeus',
             'list',
@@ -124,7 +125,7 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
     public function testControllerServicesStatus()
     {
         $this->markTestIncomplete("Scheduler status view is broken and must be refactored");
-        $request = new \Zend\Console\Request([
+        $request = new ConsoleRequest([
             __FILE__,
             'zeus',
             'status',
@@ -140,7 +141,7 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
 
     public function testControllerApplicationAutoStartWithoutServices()
     {
-        $request = new \Zend\Console\Request([
+        $request = new ConsoleRequest([
             __FILE__,
             'zeus',
             'start',
@@ -156,7 +157,7 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
 
     public function testControllerApplicationStopWithoutServices()
     {
-        $request = new \Zend\Console\Request([
+        $request = new ConsoleRequest([
             __FILE__,
             'zeus',
             'stop',

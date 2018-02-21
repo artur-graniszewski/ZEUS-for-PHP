@@ -4,6 +4,9 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads;
 
 use Zeus\Kernel\System\Runtime;
 
+/**
+ * @internal
+ */
 trait ThreadTrait
 {
     /** @var mixed[] */
@@ -56,11 +59,6 @@ trait ThreadTrait
     public function getApplicationArguments() : array
     {
         return $this->argv ? (array) $this->argv : [];
-    }
-
-    protected function initThreadEnvironment()
-    {
-
     }
 
     public function run()

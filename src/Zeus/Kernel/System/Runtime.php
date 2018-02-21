@@ -2,7 +2,12 @@
 
 namespace Zeus\Kernel\System;
 
+use TypeError;
 use Closure;
+
+use function set_exception_handler;
+use function is_null;
+use function is_callable;
 use function is_file;
 use function is_readable;
 use function file_get_contents;
@@ -15,7 +20,7 @@ use function stream_get_contents;
 use function fgets;
 use function pclose;
 use function preg_match;
-use TypeError;
+
 
 /**
  * Class Runtime
@@ -85,7 +90,7 @@ class Runtime
         exit($code);
     }
 
-    public static function addShutdownHook($callback)
+    public static function setShutdownHook($callback)
     {
         if (is_callable($callback) || is_null($callback) || $callback instanceof Closure) {
             static::$exitCallback = $callback;
@@ -93,5 +98,13 @@ class Runtime
         }
 
         throw new TypeError("Invalid callback");
+    }
+
+    public static function setUncaughtExceptionHandler($callback)
+    {
+        if (is_callable($callback) || is_null($callback) || $callback instanceof Closure) {
+            set_exception_handler($callback);
+            return;
+        }
     }
 }

@@ -20,4 +20,6 @@ interface ServerServiceInterface
     public function stop();
 
     public function getConfig() : array;
+
+    public function getScheduler() : Scheduler;
 }

@@ -5,8 +5,10 @@ namespace Zeus\Kernel\Scheduler\Discipline;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+
 use function min;
 use function microtime;
+use function ksort;
 
 class LruDiscipline implements DisciplineInterface
 {
@@ -39,7 +41,7 @@ class LruDiscipline implements DisciplineInterface
         $idleWorkers = $statusSummary[WorkerState::WAITING];
         $allWorkers = $workers->count();
 
-        // start additional processes, if number of them is too small.
+        // start additional workers, if number of them is too small.
         if ($idleWorkers < $config->getMinSpareProcesses()) {
             $idleWorkerSlots = $workers->getSize() - $workers->count();
 
@@ -68,7 +70,7 @@ class LruDiscipline implements DisciplineInterface
         $workersToTerminate = [];
         $idleWorkers = $statusSummary[WorkerState::WAITING];
 
-        // terminate idle processes, if number of them is too high.
+        // terminate idle workers, if number of them is too high.
         $toTerminate = $idleWorkers - $config->getMaxSpareProcesses();
 
         if ($toTerminate <= 0) {

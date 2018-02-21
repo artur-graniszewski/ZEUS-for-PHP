@@ -102,8 +102,8 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     public function onKernelLoop(SchedulerEvent $event)
     {
-        if ($this->getPcntlBridge()->isSupported()) {
-            $this->getPcntlBridge()->pcntlSignalDispatch();
+        if (static::getPcntlBridge()->isSupported()) {
+            static::getPcntlBridge()->pcntlSignalDispatch();
         }
     }
 
@@ -136,11 +136,11 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
             $applicationPath,
             'zeus',
             $type,
-            $event->getScheduler()->getConfig()->getServiceName(),
+            $event->getWorker()->getConfig()->getServiceName(),
             json_encode($event->getParams())
         ];
 
-        $thread = $this->getPosixThreadBridge()->getNewThread();
+        $thread = static::getPosixThreadBridge()->getNewThread();
 
         static::$id++;
 

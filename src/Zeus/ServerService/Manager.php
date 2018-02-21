@@ -5,7 +5,9 @@ namespace Zeus\ServerService;
 use RuntimeException;
 use Throwable;
 use Zend\EventManager\EventManager;
+use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -13,29 +15,25 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 final class Manager
 {
     use PluginRegistry;
+    use EventManagerAwareTrait;
+    use LoggerAwareTrait;
 
     /** @var ServerServiceInterface[] */
-    protected $services;
+    private $services;
 
     /** @var \Exception[] */
-    protected $brokenServices = [];
+    private $brokenServices = [];
 
-    protected $eventHandles;
+    private $eventHandles;
 
     /** @var ManagerEvent */
-    protected $event;
-
-    /** @var LoggerInterface */
-    protected $logger;
+    private $event;
 
     /** @var int */
-    protected $servicesRunning = 0;
+    private $servicesRunning = 0;
 
     /** @var ServerServiceInterface[] */
-    protected $pidToServiceMap = [];
-
-    /** @var EventManagerInterface */
-    protected $events;
+    private $pidToServiceMap = [];
 
     public function __construct(array $services)
     {
@@ -118,7 +116,7 @@ final class Manager
     public function registerBrokenService(string $serviceName, Throwable $exception)
     {
         $this->brokenServices[$serviceName] = $exception;
-        $this->logger->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $exception->getMessage()));
+        $this->getLogger()->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $exception->getMessage()));
 
         return $this;
     }
@@ -151,7 +149,7 @@ final class Manager
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START,
             function (SchedulerEvent $event) use ($service) {
-                $this->logger->debug(sprintf('Scheduler running as process #%d', getmypid()));
+                $this->getLogger()->debug(sprintf('Scheduler running as process #%d', getmypid()));
                 $this->pidToServiceMap[getmypid()] = $service;
                 $this->servicesRunning++;
             }, -10000);
@@ -174,7 +172,7 @@ final class Manager
 
         $this->eventHandles[] = $eventManager->attach(ManagerEvent::EVENT_MANAGER_STOP,
             function (ManagerEvent $event) use ($scheduler) {
-                $this->logger->info("Service manager stopped");
+                $this->getLogger()->info("Service manager stopped");
             }, 10000);
 
         $exception = null;
@@ -193,10 +191,8 @@ final class Manager
     public function startServices($serviceNames)
     {
         $plugins = $this->getPluginRegistry()->count();
-        $this->logger->info(sprintf("Service Manager started with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
-
-        $this->logger->notice(sprintf("Starting %d service%s: %s", count($serviceNames), count($serviceNames) !== 1 ? 's' : '', implode(", ", $serviceNames)));
-
+        $this->getLogger()->info(sprintf("Service Manager started with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+        $this->getLogger()->notice(sprintf("Starting %d service%s: %s", count($serviceNames), count($serviceNames) !== 1 ? 's' : '', implode(", ", $serviceNames)));
 
         $event = $this->getEvent();
 
@@ -216,7 +212,7 @@ final class Manager
             $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_START,
                 function () use ($serviceName, $managerTime, $phpTime, $engine) {
                     $this->servicesRunning++;
-                    $this->logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
+                    $this->getLogger()->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
 
                 }, -10000);
 
@@ -224,7 +220,7 @@ final class Manager
         }
 
         if (count($serviceNames) === count($this->brokenServices)) {
-            $this->logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
+            $this->getLogger()->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
         }
     }
 
@@ -236,7 +232,7 @@ final class Manager
      */
     public function stopServices(array $services, bool $mustBeRunning)
     {
-        $this->logger->info(sprintf("Stopping services"));
+        $this->getLogger()->info(sprintf("Stopping services"));
         $servicesAmount = 0;
         $servicesStopped = 0;
         foreach ($services as $service) {
@@ -252,7 +248,7 @@ final class Manager
         }
 
         if ($servicesAmount !== $servicesStopped) {
-            $this->logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
+            $this->getLogger()->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
         }
 
 
@@ -261,7 +257,7 @@ final class Manager
         $event->setError(null);
         $this->getEventManager()->triggerEvent($event);
 
-        $this->logger->notice(sprintf("Stopped %d service(s)", $servicesStopped));
+        $this->getLogger()->notice(sprintf("Stopped %d service(s)", $servicesStopped));
 
         return $servicesAmount - $servicesStopped;
     }
@@ -288,7 +284,7 @@ final class Manager
         $this->getEventManager()->triggerEvent($event);
 
         if ($this->servicesRunning === 0) {
-            $this->logger->info("All services exited");
+            $this->getLogger()->info("All services exited");
         }
     }
 
@@ -330,33 +326,5 @@ final class Manager
         $service = $this->pidToServiceMap[$uid];
 
         return $service;
-    }
-
-    public function getLogger() : LoggerInterface
-    {
-        return $this->logger;
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-    }
-
-    public function setEventManager(EventManagerInterface $events)
-    {
-        $events->setIdentifiers(array(
-            __CLASS__,
-            get_called_class(),
-        ));
-        $this->events = $events;
-    }
-
-    public function getEventManager() : EventManagerInterface
-    {
-        if (null === $this->events) {
-            $this->setEventManager(new EventManager());
-        }
-
-        return $this->events;
     }
 }

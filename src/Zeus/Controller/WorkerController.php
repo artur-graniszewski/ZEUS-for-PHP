@@ -9,11 +9,15 @@ use Zend\Stdlib\ResponseInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
+use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 class WorkerController extends AbstractController
 {
+    use ExceptionLoggerTrait;
+
     /** @var Manager */
     private $manager;
 
@@ -33,7 +37,7 @@ class WorkerController extends AbstractController
      */
     public function dispatch(RequestInterface $request, ResponseInterface $response = null)
     {
-        $this->checkIfCosole($request);
+        $this->checkIfConsole($request);
 
         /** @var \Zend\Stdlib\Parameters $params */
         $params = $request->getParams();
@@ -53,7 +57,8 @@ class WorkerController extends AbstractController
                     break;
             }
         } catch (Throwable $exception) {
-            $this->handleException($exception);
+            $this->logException($exception, $this->getLogger());
+            Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
         }
     }
 

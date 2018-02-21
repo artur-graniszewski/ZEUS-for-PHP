@@ -55,7 +55,9 @@ class AsyncServiceTest extends \PHPUnit\Framework\TestCase
     public function testServiceCreation()
     {
         $service = $this->getService();
+        $this->assertFalse($service->getScheduler()->isTerminating());
         $service->start();
         $service->stop();
+        $this->assertTrue($service->getScheduler()->isTerminating());
     }
 }
