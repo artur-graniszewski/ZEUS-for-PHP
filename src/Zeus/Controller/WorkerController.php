@@ -10,16 +10,16 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\System\Runtime;
-use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
+
+use function array_merge;
+use function defined;
+use function getmypid;
 
 class WorkerController extends AbstractController
 {
     use ExceptionLoggerTrait;
-
-    /** @var Manager */
-    private $manager;
 
     /**
      * ZeusController constructor.
@@ -69,7 +69,7 @@ class WorkerController extends AbstractController
     private function startWorkerForService(string $serviceName, array $startParams = [])
     {
         /** @var Scheduler $scheduler */
-        $scheduler = $this->manager->getService($serviceName)->getScheduler();
+        $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
         $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function() {
             DynamicPriorityFilter::resetPriority();
@@ -91,10 +91,10 @@ class WorkerController extends AbstractController
         $this->triggerWorkerEvent($serviceName, $startParams);
     }
 
-    private function triggerWorkerEvent(string $serviceName, $startParams)
+    private function triggerWorkerEvent(string $serviceName, array $startParams)
     {
         /** @var Scheduler $scheduler */
-        $scheduler = $this->manager->getService($serviceName)->getScheduler();
+        $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
         $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
         $event->setParam(Scheduler::WORKER_SERVER, true);
@@ -103,13 +103,10 @@ class WorkerController extends AbstractController
         $worker->setEventManager($scheduler->getEventManager());
         $worker->setProcessId(getmypid());
         $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : getmypid());
-
+        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
+        $event->setWorker($worker);
         $event->setTarget($worker);
         $event->setParams(array_merge($event->getParams(), $startParams));
-        $event->setParam('uid', $worker->getUid());
-        $event->setParam('threadId', $worker->getThreadId());
-        $event->setParam('processId', $worker->getProcessId());
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
             $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
         }

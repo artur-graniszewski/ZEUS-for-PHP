@@ -93,10 +93,11 @@ class MainController extends AbstractController
 
         foreach ($services as $serviceName) {
             if ($serviceName && isset($brokenServices[$serviceName])) {
-                /** @var \Exception $exception */
+                /** @var Throwable $exception */
                 $exception = $brokenServices[$serviceName];
-                $exceptionMessage = $exception->getPrevious() ? $exception->getPrevious()->getMessage() : $exception->getMessage();
-                $this->getLogger()->err("Service \"$serviceName\" is broken: " . $exceptionMessage);
+                $exception = $exception->getPrevious() ? $exception->getPrevious() : $exception;
+                $this->getLogger()->err("Service \"$serviceName\" is broken");
+                $this->logException($exception, $this->getLogger());
                 $result = true;
             }
         }
@@ -118,7 +119,6 @@ class MainController extends AbstractController
                 $this->getLogger()->info($status);
 
                 return;
-
             }
 
             $this->getLogger()->err("Service \"$serviceName\" is offline or too busy to respond");

@@ -14,6 +14,7 @@ use Zend\ModuleManager\Feature\ConsoleUsageProviderInterface;
 use Zend\ModuleManager\ModuleEvent;
 use Zend\ModuleManager\ModuleManager;
 use Zend\Stdlib\ArrayUtils;
+use Zeus\Kernel\System\Runtime;
 
 class Module implements
     AutoloaderProviderInterface,
@@ -52,6 +53,7 @@ class Module implements
      */
     public function onBootstrap(EventInterface $event)
     {
+        Runtime::init();
         if (!ini_get('date.timezone')) {
             date_default_timezone_set("UTC");
         }

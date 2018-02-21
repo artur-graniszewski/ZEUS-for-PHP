@@ -122,7 +122,7 @@ final class Scheduler extends AbstractService
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {
-            $this->log(Logger::NOTICE, "Scheduler shutdown");
+            $this->log(Logger::NOTICE, "Scheduler shutting down");
             $this->onShutdown($e);
         }, SchedulerEvent::PRIORITY_REGULAR);
 
@@ -355,10 +355,8 @@ final class Scheduler extends AbstractService
         $this->triggerEvent(SchedulerEvent::EVENT_START);
         $this->mainLoop();
         // @fixme: kernelLoop() should be merged with mainLoop()
-        $this->getLogger()->debug("Scheduler stop event triggering...");
         $this->triggerEvent(SchedulerEvent::EVENT_STOP);
         $this->log(Logger::NOTICE, "Scheduler terminated");
-        $this->getLogger()->debug("Scheduler stop event finished");
     }
 
     private function handleException(Throwable $exception)
@@ -383,16 +381,13 @@ final class Scheduler extends AbstractService
     {
         $exception = $event->getParam('exception', null);
 
-        $this->log(Logger::DEBUG, "Shutting down" . ($exception ? ' with exception: ' . $exception->getMessage() : ''));
         if ($exception) {
-            $status = $exception->getCode();
-            $this->log(Logger::ERR, sprintf("Exception (%d): %s in %s:%d", $status, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
-            $this->getLogger()->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+            $this->logException($exception, $this->getLogger());
         }
 
         $this->setTerminating(true);
 
-        $this->log(Logger::INFO, "Terminating scheduled workers");
+        $this->log(Logger::DEBUG, "Terminating workers");
 
         if ($this->workers) {
             foreach (array_keys($this->workers->toArray()) as $uid) {
@@ -472,8 +467,6 @@ final class Scheduler extends AbstractService
                 }
             );
         } while (!$this->isTerminating());
-
-        $this->getLogger()->debug("Scheduler loop finished");
     }
 
     private function kernelLoop()

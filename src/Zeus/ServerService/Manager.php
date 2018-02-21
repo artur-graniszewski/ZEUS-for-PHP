@@ -19,12 +19,12 @@ final class Manager
     use LoggerAwareTrait;
 
     /** @var ServerServiceInterface[] */
-    private $services;
+    private $services = [];
 
     /** @var \Exception[] */
     private $brokenServices = [];
 
-    private $eventHandles;
+    private $eventHandles = [];
 
     /** @var ManagerEvent */
     private $event;
@@ -50,7 +50,7 @@ final class Manager
         }
     }
 
-    protected function attach()
+    private function attach()
     {
         $events = $this->getEventManager();
 
@@ -66,7 +66,7 @@ final class Manager
         }, -10000);
     }
 
-    protected function getEvent() : ManagerEvent
+    private function getEvent() : ManagerEvent
     {
         if (!$this->event) {
             $this->event = new ManagerEvent();
@@ -124,7 +124,7 @@ final class Manager
     /**
      * @return Throwable[]
      */
-    public function getBrokenServices()
+    public function getBrokenServices() : array
     {
         return $this->brokenServices;
     }
@@ -134,7 +134,7 @@ final class Manager
         $this->startServices([$serviceName]);
     }
 
-    protected function doStartService(string $serviceName)
+    private function doStartService(string $serviceName)
     {
         $service = $this->getService($serviceName);
         $scheduler = $service->getScheduler();
@@ -149,7 +149,7 @@ final class Manager
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START,
             function (SchedulerEvent $event) use ($service) {
-                $this->getLogger()->debug(sprintf('Scheduler running as process #%d', getmypid()));
+                $this->getLogger()->debug(sprintf('Scheduler running as worker #%d', getmypid()));
                 $this->pidToServiceMap[getmypid()] = $service;
                 $this->servicesRunning++;
             }, -10000);
@@ -262,9 +262,6 @@ final class Manager
         return $servicesAmount - $servicesStopped;
     }
 
-    /**
-     * @param string $serviceName
-     */
     public function stopService(string $serviceName)
     {
         $service = $this->getService($serviceName);
@@ -273,7 +270,7 @@ final class Manager
         $this->onServiceStop($service);
     }
 
-    protected function onServiceStop(ServerServiceInterface $service)
+    private function onServiceStop(ServerServiceInterface $service)
     {
         $this->servicesRunning--;
 
@@ -317,7 +314,7 @@ final class Manager
      * @param int $uid
      * @return null|ServerServiceInterface
      */
-    protected function findServiceByUid(int $uid)
+    private function findServiceByUid(int $uid)
     {
         if (!isset($this->pidToServiceMap[$uid])) {
             return null;

@@ -35,9 +35,18 @@ class Runtime
     /** @var int */
     private static $processorAmount = 0;
 
-    /**
-     * @return int
-     */
+    public static function init()
+    {
+        if (is_callable('pcntl_signal')) {
+            $callback = function() {
+                static::exit(0);
+            };
+            pcntl_signal(SIGTERM, $callback);
+            pcntl_signal(SIGINT, $callback);
+            pcntl_signal(SIGTSTP, $callback);
+        }
+    }
+
     public static function getNumberOfProcessors() : int
     {
         if (!static::$processorAmount) {
@@ -98,6 +107,11 @@ class Runtime
         }
 
         throw new TypeError("Invalid callback");
+    }
+
+    public static function getShutdownHook()
+    {
+        return static::$exitCallback;
     }
 
     public static function setUncaughtExceptionHandler($callback)
