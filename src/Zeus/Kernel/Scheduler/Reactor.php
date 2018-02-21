@@ -9,6 +9,7 @@ use TypeError;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zeus\Exception\UnsupportedOperationException;
+use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\AbstractSelectorAggregate;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
@@ -166,7 +167,11 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             $keys = $selector->getKeys();
 
             foreach ($keys as $key) {
-                $key2 = $key->getStream()->register($reactor, $key->getInterestOps());
+                try {
+                    $key2 = $key->getStream()->register($reactor, $key->getInterestOps());
+                } catch (IOException $exception) {
+                    continue;
+                }
                 $key2->attach([
                     'id' => $index,
                     'key' => $key,

@@ -84,7 +84,6 @@ class WorkerController extends AbstractController
      */
     private function starSchedulerForService(string $serviceName, array $startParams = [])
     {
-        $startParams[Scheduler::WORKER_SERVER] = false;
         DynamicPriorityFilter::resetPriority();
 
         $startParams[Scheduler::WORKER_SERVER] = true;
@@ -106,7 +105,7 @@ class WorkerController extends AbstractController
         $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
         $event->setWorker($worker);
         $event->setTarget($worker);
-        $event->setParams(array_merge($event->getParams(), $startParams));
+        $event->setParams($startParams);
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
             $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
         }

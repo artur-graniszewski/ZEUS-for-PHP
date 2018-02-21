@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
+use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridgeInterface;
@@ -228,11 +229,12 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
         $applicationPath = $_SERVER['PHP_SELF'];
 
-        $type = $event->getParam('server') ? 'scheduler' : 'worker';
+        $type = $event->getParam(Scheduler::WORKER_SERVER) ? 'scheduler' : 'worker';
         $serviceName = escapeshellarg($event->getTarget()->getConfig()->getServiceName());
         $startParams = escapeshellarg(json_encode($event->getParams()));
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
+
         $process = static::getProcessBridge()->procOpen($command, $descriptors, $pipes, getcwd(), $_ENV, []);
         if ($process === false) {
             throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
@@ -297,7 +299,9 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public function onKernelLoop(SchedulerEvent $event)
     {
-        // TODO: Implement onKernelLoop() method.
+        if (static::getPcntlBridge()->isSupported()) {
+            static::getPcntlBridge()->pcntlSignalDispatch();
+        }
     }
 
     public function onSchedulerStop(SchedulerEvent $event)
