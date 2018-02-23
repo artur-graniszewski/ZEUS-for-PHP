@@ -19,31 +19,70 @@ abstract class AbstractModule implements MultiProcessingModuleInterface
         return $this->wrapper;
     }
 
-    public abstract function onKernelStart(SchedulerEvent $event);
+    public function onKernelStart(SchedulerEvent $event)
+    {
 
-    public abstract function onKernelLoop(SchedulerEvent $event);
+    }
 
-    public abstract function onKernelStop(SchedulerEvent $event);
+    public function onKernelLoop(SchedulerEvent $event)
+    {
 
-    public abstract function onWorkerCreate(WorkerEvent $event);
+    }
 
-    public abstract function onSchedulerStop(SchedulerEvent $event);
+    public function onKernelStop(SchedulerEvent $event)
+    {
 
-    public abstract function onWorkerTerminate(WorkerEvent $event);
+    }
 
-    public abstract function onWorkerExit(WorkerEvent $event);
+    public function onWorkerCreate(WorkerEvent $event)
+    {
 
-    public abstract function onSchedulerInit(SchedulerEvent $event);
+    }
 
-    public abstract function onWorkerInit(WorkerEvent $event);
+    public function onSchedulerStop(SchedulerEvent $event)
+    {
 
-    public abstract function onWorkerTerminated(WorkerEvent $event);
+    }
 
-    public abstract function onSchedulerLoop(SchedulerEvent $event);
+    public function onWorkerTerminate(WorkerEvent $event)
+    {
 
-    public abstract function onWorkerLoop(WorkerEvent $event);
+    }
 
-    public abstract function onWorkersCheck(SchedulerEvent $event);
+    public function onWorkerExit(WorkerEvent $event)
+    {
+
+    }
+
+    public function onSchedulerInit(SchedulerEvent $event)
+    {
+
+    }
+
+    public function onWorkerInit(WorkerEvent $event)
+    {
+
+    }
+
+    public function onWorkerTerminated(WorkerEvent $event)
+    {
+
+    }
+
+    public function onSchedulerLoop(SchedulerEvent $event)
+    {
+
+    }
+
+    public function onWorkerLoop(WorkerEvent $event)
+    {
+
+    }
+
+    public function onWorkersCheck(SchedulerEvent $event)
+    {
+
+    }
 
     public abstract static function getCapabilities() : MultiProcessingModuleCapabilities;
 }

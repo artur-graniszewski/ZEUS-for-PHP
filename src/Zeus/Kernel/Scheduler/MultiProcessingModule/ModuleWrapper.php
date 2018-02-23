@@ -8,7 +8,7 @@ use Throwable;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventsCapableInterface;
-use Zend\Log\LoggerInterface;
+use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -37,6 +37,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     const ZEUS_IPC_ADDRESS_PARAM = 'zeusIpcAddress';
 
     use EventManagerAwareTrait;
+    use LoggerAwareTrait;
 
     /** @var int */
     private $ipcAddress;
@@ -64,9 +65,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
     /** @var Selector */
     private $ipcSelector;
-
-    /** @var LoggerInterface */
-    private $logger;
 
     /** @var Selector */
     private $parentIpcSelector;
@@ -131,23 +129,9 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         return $this->isTerminating;
     }
 
-    public function setIsTerminating(bool $isTerminating)
+    public function setTerminating(bool $isTerminating)
     {
         $this->isTerminating = $isTerminating;
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-    }
-
-    public function getLogger(): LoggerInterface
-    {
-        if (!isset($this->logger)) {
-            throw new LogicException("Logger is not set");
-        }
-
-        return $this->logger;
     }
 
     public function attachDefaultListeners()
@@ -191,12 +175,17 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $this->driver->onKernelStop($e);
             $this->driver->onWorkersCheck($e);
         });
+
+        $eventManager->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $e) {
+            $this->logCapabilities();
+        }, SchedulerEvent::PRIORITY_INITIALIZE);
+
         $eventManager->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $e) {
             $this->driver->onSchedulerInit($e);
         }, -9000);
         $eventManager->attach(SchedulerEvent::EVENT_STOP, function (SchedulerEvent $e) {
             $this->driver->onSchedulerStop($e);
-            $this->setIsTerminating(true);
+            $this->setTerminating(true);
 
             while ($this->ipcConnections) {
                 $this->registerWorkers();
@@ -258,6 +247,20 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         }
     }
 
+    private function logCapabilities()
+    {
+        $driver = $this->driver;
+        $capabilities = $driver::getCapabilities();
+        $driverName = get_class($driver);
+
+        $logger = $this->getLogger();
+        $logger->notice(sprintf("Using %s MPM module", substr($driverName, strrpos($driverName, '\\')+1)));
+        $logger->info("Enumerating module capabilities:");
+        $logger->info(sprintf("* Using %s isolation level", $capabilities->getIsolationLevelName()));
+        $logger->info(sprintf("* Using %s signal handler", $capabilities->isAsyncSignalHandler() ? 'asynchronous': 'synchronous'));
+        $logger->info(sprintf("* Parent memory pages are %s", $capabilities->isCopyingParentMemoryPages() ? 'copied': 'not copied'));
+    }
+
     public function raiseWorkerExitedEvent(int $uid, int $processId, int $threadId)
     {
         $event = $this->getWorkerEvent();
@@ -288,7 +291,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         }
 
         if ($this->isTerminating()) {
-            return $this;
+            return;
         }
 
         foreach ($this->ipcServers as $uid => $server) {
@@ -311,7 +314,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
         if (!$stream) {
             $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
-            $this->setIsTerminating(true);
+            $this->setTerminating(true);
         } else {
             $this->ipc = new SocketStream($stream);
             $this->ipc->setBlocking(false);
@@ -347,11 +350,11 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
             $lastCheck = $now;
             if ($this->ipc->isClosed() || ($this->parentIpcSelector->select(0) === 1 && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
-                $this->setIsTerminating(true);
+                $this->setTerminating(true);
                 return;
             }
         } catch (Throwable $exception) {
-            $this->setIsTerminating(true);
+            $this->setTerminating(true);
         }
 
     }
@@ -380,6 +383,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
     /**
      * @todo Make it private!!!! Now its needed only by DummyMPM test module
+     * @internal
      */
     public function createPipe() : SocketServer
     {

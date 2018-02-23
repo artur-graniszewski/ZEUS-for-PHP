@@ -4,10 +4,14 @@ namespace Zeus\ServerService\Factory;
 
 use Interop\Container\ContainerInterface;
 use Interop\Container\Exception\ContainerException;
+use LogicException;
+use RuntimeException;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
+use Zeus\Module;
+use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use Zeus\Kernel\Scheduler;
 use Zeus\ServerService\ServerServiceInterface;
@@ -37,14 +41,17 @@ final class ManagerFactory implements FactoryInterface
     {
         $eventManager = $container->get('zeus-event-manager');
         $config = $container->get('configuration');
+        /** @var \Zend\Log\LoggerInterface $mainLogger */
         $mainLogger = $container->build(LoggerInterface::class, ['service_name' => 'main']);
 
         $configs = $config['zeus_process_manager']['services'];
         $services = [];
 
         $vmName = defined('HHVM_VERSION') ? 'HHVM' : 'PHP';
-        $mainLogger->notice(sprintf("Running on %s-%s using %s %s", php_uname('s'), php_uname('r'), $vmName, phpversion()));
+        $mainLogger->notice(sprintf("Starting ZEUS for PHP ecosystem (version %s)", Module::MODULE_VERSION));
+        $mainLogger->info(sprintf("Running on %s-%s using %s %s", php_uname('s'), php_uname('r'), $vmName, phpversion()));
         $mainLogger->info("Scanning configuration for services...");
+        /** @var Manager $manager */
         $manager = new $requestedName($options ? $options : []);
         $manager->setLogger($mainLogger);
         $manager->setEventManager($eventManager);
@@ -58,10 +65,11 @@ final class ManagerFactory implements FactoryInterface
                 $serviceName = $serviceConfig['service_name'];
 
                 if (!is_subclass_of($serviceAdapter, ServerServiceInterface::class)) {
-                    throw new \RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
+                    throw new RuntimeException("Service $serviceAdapter must implement " . ServerServiceInterface::class);
                 }
 
                 $loggerAdapter = isset($serviceConfig['logger_adapter']) ? $serviceConfig['logger_adapter'] : LoggerInterface::class;
+                /** @var LoggerInterface $serviceLogger */
                 $serviceLogger = $container->build($loggerAdapter, ['service_name' => $serviceName]);
 
                 /** @var Scheduler $scheduler */
@@ -73,7 +81,7 @@ final class ManagerFactory implements FactoryInterface
                 );
 
                 if (!$container->has($serviceAdapter)) {
-                    throw new \LogicException("No such service $serviceName");
+                    throw new LogicException("No such service $serviceName");
                 }
 
                 $service = $container->build($serviceAdapter, [

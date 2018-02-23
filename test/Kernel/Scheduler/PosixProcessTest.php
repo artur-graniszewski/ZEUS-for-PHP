@@ -202,8 +202,8 @@ class PosixProcessTest extends TestCase
 
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
-        $this->assertEquals(123456, $logArray[1][1][0], 'Kill signal should be sent to a certain process');
-        $this->assertEquals(SIGKILL, $logArray[1][1][1], 'Correct type of kill signal should be sent to a certain process');
+        $this->assertEquals(123456, $logArray[2][1][0], 'Kill signal should be sent to a certain process');
+        $this->assertEquals(SIGKILL, $logArray[2][1][1], 'Correct type of kill signal should be sent to a certain process');
         $this->assertEquals(WorkerEvent::EVENT_TERMINATE, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
@@ -415,6 +415,7 @@ class PosixProcessTest extends TestCase
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
         $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess->setLogger($this->getDummyLogger());
         $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);

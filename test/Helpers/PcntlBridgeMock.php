@@ -172,11 +172,15 @@ class PcntlBridgeMock implements PcntlBridgeInterface
         return $this->isSupported;
     }
 
-    /**
-     * @param bool $isSupported
-     */
     public function setIsSupported(bool $isSupported)
     {
         $this->isSupported = $isSupported;
+    }
+
+    public function pcntlAsyncSignals(bool $enable = null)
+    {
+        $this->executionLog[] = [__METHOD__, func_get_args()];
+
+        return true;
     }
 }

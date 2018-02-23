@@ -2,6 +2,6 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-interface SharedInitialAddressSpaceInterface
+interface ParentMemoryPagesCopiedInterface
 {
 }

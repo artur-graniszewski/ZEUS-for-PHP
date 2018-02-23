@@ -5,6 +5,7 @@ namespace ZeusTest\Helpers;
 use ReflectionProperty;
 use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
+use Zend\Log\LoggerInterface;
 use Zend\Log\Writer\Noop;
 use Zend\Mvc\Service\EventManagerFactory;
 use Zend\Mvc\Service\ModuleManagerFactory;
@@ -140,6 +141,14 @@ trait ZeusFactories
         $em->triggerEvent($event);
     }
 
+    public function getDummyLogger() : LoggerInterface
+    {
+        $logger = new Logger();
+        $writer = new Noop();
+        $logger->addWriter($writer);
+
+        return $logger;
+    }
     /**
      * @param int $mainLoopIterations
      * @param callback $loopCallback
@@ -151,9 +160,7 @@ trait ZeusFactories
         $sm = $serviceManager ?  $serviceManager : $this->getServiceManager();
 
         $this->clearSharedEventManager($sm);
-        $logger = new Logger();
-        $writer = new Noop();
-        $logger->addWriter($writer);
+        $logger = $this->getDummyLogger();
 
         /** @var Scheduler $scheduler */
         $scheduler = $sm->build(Scheduler::class, [

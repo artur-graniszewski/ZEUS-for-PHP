@@ -20,6 +20,12 @@ use function stream_get_contents;
 use function fgets;
 use function pclose;
 use function preg_match;
+use function function_exists;
+use function gc_enabled;
+use function gc_enable;
+use function gc_mem_caches;
+use function gc_collect_cycles;
+use function gc_disable;
 
 
 /**
@@ -37,6 +43,10 @@ class Runtime
 
     public static function init()
     {
+        if (is_callable('pcntl_async_signals')) {
+            pcntl_async_signals(true);
+        }
+
         if (is_callable('pcntl_signal')) {
             $callback = function() {
                 static::exit(0);
@@ -120,5 +130,25 @@ class Runtime
             set_exception_handler($callback);
             return;
         }
+    }
+
+    public static function runGarbageCollector()
+    {
+        $enabled = gc_enabled();
+        if ($enabled) {
+            return;
+        }
+
+        gc_enable();
+        if (function_exists('gc_mem_caches')) {
+            // @codeCoverageIgnoreStart
+            gc_mem_caches();
+            // @codeCoverageIgnoreEnd
+        }
+        gc_collect_cycles();
+
+        // @codeCoverageIgnoreStart
+        gc_disable();
+        // @codeCoverageIgnoreEnd
     }
 }

@@ -10,6 +10,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\PosixThreadBridgeInterf
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\ThreadWrapper;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\System\Runtime;
 
 use function basename;
 use function sprintf;
@@ -22,8 +23,6 @@ use function sleep;
 
 final class PosixThread extends AbstractModule implements SeparateAddressSpaceInterface
 {
-    use GarbageCollector;
-
     const PTHREADS_INHERIT_NONE = 0;
 
     const MIN_STABLE_PHP_VERSION = 7.2;
@@ -144,7 +143,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
         static::$id++;
 
-        $this->collectCycles();
+        Runtime::runGarbageCollector();
         $thread->setServerVariables($_SERVER);
         $thread->setApplicationArguments($argv);
         $thread->setWorkerId(static::$id);
@@ -175,38 +174,8 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
     {
         $capabilities = new MultiProcessingModuleCapabilities();
         $capabilities->setIsolationLevel($capabilities::ISOLATION_THREAD);
+        $capabilities->setSharedInitialAddressSpace(true);
 
         return $capabilities;
-    }
-
-    public function onKernelStart(SchedulerEvent $event)
-    {
-        // TODO: Implement onKernelStart() method.
-    }
-
-
-    public function onWorkerTerminate(WorkerEvent $event)
-    {
-        // TODO: Implement onWorkerTerminate() method.
-    }
-
-    public function onWorkerTerminated(WorkerEvent $event)
-    {
-        // TODO: Implement onWorkerTerminated() method.
-    }
-
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
-        // TODO: Implement onSchedulerLoop() method.
-    }
-
-    public function onWorkerLoop(WorkerEvent $event)
-    {
-        // TODO: Implement onWorkerLoop() method.
-    }
-
-    public function onKernelStop(SchedulerEvent $event)
-    {
-        // TODO: Implement onKernelStop() method.
     }
 }

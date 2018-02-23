@@ -11,6 +11,7 @@ use function posix_getppid;
 use function posix_kill;
 use function is_callable;
 use function extension_loaded;
+use Zeus\Exception\UnsupportedOperationException;
 
 /**
  * Class PcntlBridge
@@ -108,5 +109,18 @@ class PcntlBridge implements PcntlBridgeInterface
     protected function isPcntlExtensionLoaded() : bool
     {
         return extension_loaded('pcntl');
+    }
+
+    /**
+     * @param bool|null $enable
+     * @return bool
+     */
+    public function pcntlAsyncSignals(bool $enable = null) : bool
+    {
+        if (is_callable('pcntl_async_signals')) {
+            return pcntl_async_signals($enable);
+        }
+
+        throw new UnsupportedOperationException();
     }
 }

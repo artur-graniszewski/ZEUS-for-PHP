@@ -12,7 +12,7 @@ use function str_replace;
 use function sprintf;
 use function getmypid;
 
-final class PosixProcess extends AbstractProcessModule implements SeparateAddressSpaceInterface, SharedInitialAddressSpaceInterface
+final class PosixProcess extends AbstractProcessModule implements SeparateAddressSpaceInterface, ParentMemoryPagesCopiedInterface
 {
     /** @var int Parent PID */
     private $ppid;
@@ -47,8 +47,8 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     {
         static::getPcntlBridge()->pcntlSignalDispatch();
 
-        if ($this->ppid !== $this->getPcntlBridge()->posixGetPpid()) {
-            $this->getWrapper()->setIsTerminating(true);
+        if ($this->ppid !== static::getPcntlBridge()->posixGetPpid()) {
+            $this->getWrapper()->setTerminating(true);
         }
     }
 
@@ -62,8 +62,8 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     public function onKernelStop(SchedulerEvent $event)
     {
         $status = 0;
-        $this->getPcntlBridge()->pcntlSignalDispatch();
-        $this->getPcntlBridge()->pcntlWait($status, WUNTRACED);
+        static::getPcntlBridge()->pcntlSignalDispatch();
+        static::getPcntlBridge()->pcntlWait($status, WUNTRACED);
     }
 
     protected function createProcess(WorkerEvent $event) : int
@@ -76,9 +76,9 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
                 throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
             case 0:
                 // we are the new process
-                $this->ppid = $this->getPcntlBridge()->posixGetPpid();
+                $this->ppid = static::getPcntlBridge()->posixGetPpid();
 
-                $onTerminate = function() { $this->getWrapper()->setIsTerminating(true); };
+                $onTerminate = function() { $this->getWrapper()->setTerminating(true); };
                 $pcntl->pcntlSignal(SIGTERM, $onTerminate);
                 $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
                 $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
@@ -109,23 +109,11 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
         $this->getPcntlBridge()->pcntlSignalDispatch();
     }
 
-    public function onWorkerExit(WorkerEvent $event)
+    public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
-        // TODO: Implement onWorkerExit() method.
-    }
+        $capabilities = parent::getCapabilities();
+        $capabilities->setSharedInitialAddressSpace(true);
 
-    public function onSchedulerInit(SchedulerEvent $event)
-    {
-        // TODO: Implement onSchedulerInit() method.
-    }
-
-    public function onWorkerTerminated(WorkerEvent $event)
-    {
-        // TODO: Implement onWorkerTerminated() method.
-    }
-
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
-        // TODO: Implement onSchedulerLoop() method.
+        return $capabilities;
     }
 }

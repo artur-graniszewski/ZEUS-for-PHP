@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -74,8 +75,15 @@ abstract class AbstractProcessModule extends AbstractModule
 
     public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
+        try {
+            $asyncEnabled = static::getPcntlBridge()->pcntlAsyncSignals();
+        } catch (UnsupportedOperationException $ex) {
+            $asyncEnabled = false;
+        }
+
         $capabilities = new MultiProcessingModuleCapabilities();
         $capabilities->setIsolationLevel($capabilities::ISOLATION_PROCESS);
+        $capabilities->setAsyncSignalHandler($asyncEnabled);
 
         return $capabilities;
     }

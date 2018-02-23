@@ -132,44 +132,4 @@ final class DirectProcessOpen extends AbstractProcessModule implements SeparateA
 
         return $pid;
     }
-
-    public function onKernelStart(SchedulerEvent $event)
-    {
-        // TODO: Implement onKernelStart() method.
-    }
-
-    public function onKernelLoop(SchedulerEvent $event)
-    {
-        // TODO: Implement onKernelLoop() method.
-    }
-
-    public function onSchedulerStop(SchedulerEvent $event)
-    {
-        // TODO: Implement onSchedulerStop() method.
-    }
-
-    public function onWorkerExit(WorkerEvent $event)
-    {
-        // TODO: Implement onWorkerExit() method.
-    }
-
-    public function onSchedulerInit(SchedulerEvent $event)
-    {
-        // TODO: Implement onSchedulerInit() method.
-    }
-
-    public function onSchedulerLoop(SchedulerEvent $event)
-    {
-        // TODO: Implement onSchedulerLoop() method.
-    }
-
-    public function onWorkerLoop(WorkerEvent $event)
-    {
-        // TODO: Implement onWorkerLoop() method.
-    }
-
-    public function onKernelStop(SchedulerEvent $event)
-    {
-        // TODO: Implement onKernelStop() method.
-    }
 }

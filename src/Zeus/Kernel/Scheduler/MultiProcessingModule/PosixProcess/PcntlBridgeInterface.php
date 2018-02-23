@@ -36,4 +36,6 @@ interface PcntlBridgeInterface
     public function posixKill(int $pid, int $signal) : bool;
 
     public function isSupported() : bool;
+
+    public function pcntlAsyncSignals(bool $enable = null);
 }
