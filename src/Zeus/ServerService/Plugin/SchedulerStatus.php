@@ -7,6 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\AbstractSelectableStream;
 use Zeus\IO\Stream\AbstractStream;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
@@ -110,7 +111,6 @@ class SchedulerStatus implements ListenerAggregateInterface
             /** @var SchedulerStatus $statusPlugin */
             $statusPlugin = $scheduler->getPluginByClass(static::class);
             $stream = $statusPlugin->getSchedulerStream();
-
             $response = $stream->read();
             $status = json_decode($response, true);
 
@@ -122,14 +122,14 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
     }
 
-    public function getClientStream() : AbstractStream
+    public function getClientStream() : AbstractSelectableStream
     {
         $stream = $this->statusServer->accept();
 
         return $stream;
     }
 
-    public function getSchedulerStream() : AbstractStream
+    public function getSchedulerStream() : AbstractSelectableStream
     {
         $options = $this->getOptions();
         $socketName = sprintf("tcp://%s:%d", $options['listen_address'], $options['listen_port']);
@@ -139,6 +139,12 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
 
         $stream = new SocketStream($socket);
+        $selector = new Selector();
+        $stream->register($selector, SelectionKey::OP_READ);
+
+        if (!$selector->select(5)) {
+            throw new RuntimeException("Connection stalled");
+        }
 
         return $stream;
     }

@@ -120,7 +120,6 @@ class SchedulerStatusTest extends TestCase
         //$this->markTestSkipped("Scheduler Status feature is being refactored");
         $logger = new Logger();
         $logger->addWriter(new Noop());
-        $statusOutputs = [];
 
         $scheduler = $this->getSchedulerWithPlugin([$mockedPlugin]);
 
