@@ -21,6 +21,7 @@ use function fgets;
 use function pclose;
 use function preg_match;
 use function function_exists;
+use function call_user_func;
 use function gc_enabled;
 use function gc_enable;
 use function gc_mem_caches;
@@ -43,13 +44,13 @@ class Runtime
 
     public static function init()
     {
-        if (is_callable('pcntl_async_signals')) {
+        if (function_exists('pcntl_async_signals') && is_callable('pcntl_async_signals')) {
             pcntl_async_signals(true);
         }
 
         if (is_callable('pcntl_signal')) {
-            $callback = function() {
-                static::exit(0);
+            $callback = function(int $signal, $siginfo) {
+                static::exit($signal, true);
             };
             pcntl_signal(SIGTERM, $callback);
             pcntl_signal(SIGINT, $callback);
@@ -100,9 +101,9 @@ class Runtime
         return $cpuCores;
     }
 
-    public static function exit(int $code)
+    public static function exit(int $code, bool $isSignal = false)
     {
-        if (!is_null(static::$exitCallback) && call_user_func(static::$exitCallback, $code)) {
+        if (!is_null(static::$exitCallback) && call_user_func(static::$exitCallback, $code, $isSignal)) {
             return;
         }
 

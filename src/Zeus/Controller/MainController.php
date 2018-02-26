@@ -18,6 +18,24 @@ class MainController extends AbstractController
     /** @var ServerServiceInterface[] */
     private $services = [];
 
+    private function catchSignals()
+    {
+        $oldShutdownHook = Runtime::getShutdownHook();
+        $newShutdownHook = function(int $signalNumber, bool $isSignal) use ($oldShutdownHook) {
+            if ($oldShutdownHook) {
+                return $oldShutdownHook($signalNumber, $isSignal);
+            }
+
+            if (!$isSignal) {
+                return false;
+            }
+
+            $this->stopApplication();
+            return false;
+        };
+        Runtime::setShutdownHook($newShutdownHook);
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -26,11 +44,7 @@ class MainController extends AbstractController
         $this->checkIfConsole($request);
 
         // @todo: remove pcnt_signal dependency
-        if (function_exists('pcntl_signal')) {
-            pcntl_signal(SIGTERM, [$this, 'stopApplication']);
-            pcntl_signal(SIGINT, [$this, 'stopApplication']);
-            pcntl_signal(SIGTSTP, [$this, 'stopApplication']);
-        }
+        $this->catchSignals();
 
         /** @var \Zend\Stdlib\Parameters $params */
         $params = $request->getParams();
