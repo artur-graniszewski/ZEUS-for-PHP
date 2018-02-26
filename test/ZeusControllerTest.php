@@ -10,6 +10,7 @@ use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 use Zeus\Controller\MainController;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use Zeus\ServerService\Shared\Logger\ExtraLogProcessor;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
@@ -34,6 +35,9 @@ class ZeusControllerTest extends TestCase
             mkdir($tmpDir);
         }
         file_put_contents(__DIR__ . '/tmp/test.log', '');
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
     }
 
     public function tearDown()
