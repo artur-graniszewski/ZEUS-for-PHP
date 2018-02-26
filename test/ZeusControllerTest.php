@@ -2,7 +2,7 @@
 
 namespace ZeusTest;
 
-use \PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Console\Request as ConsoleRequest;
 use Zend\Http\Request;
@@ -21,7 +21,7 @@ use ZeusTest\Helpers\ZeusFactories;
  * @runTestsInSeparateProcesses
  * @preserveGlobalState disabled
  */
-class ZeusControllerTest extends \PHPUnit\Framework\TestCase
+class ZeusControllerTest extends TestCase
 {
     use ZeusFactories;
 
@@ -105,6 +105,37 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
         }
     }
 
+    public function testControllerServicesStopOnNonExistingService()
+    {
+        $request = new ConsoleRequest([
+            __FILE__,
+            'zeus',
+            'stop',
+            'dummyservice123456',
+        ]);
+
+        $logger = new Logger();
+        $writer = new Stream(__DIR__ . '/tmp/test.log');
+        $formatter = new ConsoleLogFormatter(Console::getInstance());
+        $writer->setFormatter($formatter);
+        $logger->addProcessor(new ExtraLogProcessor());
+        $logger->addWriter($writer);
+        $response = new \Zend\Console\Response();
+        $controller = $this->getController();
+        $controller->setLogger($logger);
+        $controller->dispatch($request, $response);
+
+        $logEntries = file_get_contents(__DIR__ . '/tmp/test.log');
+        $sentences = [
+            'Only 0 out of 1 services were stopped gracefully',
+            'Stopped 0 service(s)',
+        ];
+
+        foreach ($sentences as $sentence) {
+            $this->assertGreaterThan(0, strpos($logEntries, $sentence), "Missing sentence " . $sentence . "\nGot:\n" . $logEntries);
+        }
+    }
+
     public function testControllerServicesListForIncorrectService()
     {
         $request = new ConsoleRequest([
@@ -122,9 +153,8 @@ class ZeusControllerTest extends \PHPUnit\Framework\TestCase
         $this->assertGreaterThan(0, strpos($logEntries, 'Exception (0): Service "dummy_service" not found'));
     }
 
-    public function testControllerServicesStatus()
+    public function testControllerServicesStatusWhenOffline()
     {
-        $this->markTestIncomplete("Scheduler status view is broken and must be refactored");
         $request = new ConsoleRequest([
             __FILE__,
             'zeus',
