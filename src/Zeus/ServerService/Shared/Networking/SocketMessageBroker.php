@@ -5,6 +5,8 @@ namespace Zeus\ServerService\Shared\Networking;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
+use Zeus\Exception\UnsupportedOperationException;
+use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
@@ -35,12 +37,35 @@ final class SocketMessageBroker
     {
         $this->config = $config;
         $this->message = $message;
-        $this->backendService = new BackendService($this);
-        $this->backendService->setLogger($logger);
-        $this->registratorService = new RegistratorService();
-        $this->registratorService->setLogger($logger);
-        $this->frontendService = new FrontendService($this->registratorService, $config);
-        $this->frontendService->setLogger($logger);
+
+        $backend = new BackendService($this);
+        $backend->setLogger($logger);
+        $backend->setBackendServer($this->getSocketServer());
+        $this->backendService = $backend;
+
+        $registrator = new RegistratorService();
+        $registrator->setLogger($logger);
+        $registrator->setRegistratorServer($this->getSocketServer());
+        $this->registratorService = $registrator;
+
+        $frontend = new FrontendService($registrator, $config);
+        $frontend->setLogger($logger);
+        $frontend->setFrontendServer($this->getSocketServer());
+        $this->frontendService = $frontend;
+    }
+
+    private function getSocketServer() : SocketServer
+    {
+        $server = new SocketServer();
+        try {
+            $server->setReuseAddress(true);
+        } catch (UnsupportedOperationException $exception) {
+            $this->getLogger()->warn("Reuse address feature for Socket Streams is unsupported");
+        }
+        $server->setSoTimeout(0);
+        $server->setTcpNoDelay(true);
+
+        return $server;
     }
 
     public function getFrontend() : FrontendService

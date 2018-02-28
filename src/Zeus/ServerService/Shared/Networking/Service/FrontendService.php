@@ -115,11 +115,11 @@ class FrontendService
         }, WorkerEvent::PRIORITY_FINALIZE);
 
         $events->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $event) use ($events) {
-            $this->startFrontendElection($event);
+            $this->electFrontendWorkers($event->getScheduler()->getIpc());
         }, 1000);
     }
 
-    private function startFrontendElection(SchedulerEvent $event)
+    public function electFrontendWorkers(IpcServer $ipc)
     {
         $config = $this->config;
         $this->getLogger()->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
@@ -132,7 +132,7 @@ class FrontendService
             $frontendsAmount = (int) max(1, $cpus / 2);
         }
         $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
-        $event->getScheduler()->getIpc()->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
+        $ipc->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
     }
 
     public function getFrontendServer() : SocketServer
@@ -144,17 +144,15 @@ class FrontendService
         return $this->frontendServer;
     }
 
+    public function setFrontendServer(SocketServer $server)
+    {
+        $this->frontendServer = $server;
+    }
+
     private function startFrontendServer(int $backlog)
     {
         $config = $this->config;
-        $server = new SocketServer();
-        try {
-            $server->setReuseAddress(true);
-        } catch (UnsupportedOperationException $exception) {
-            $this->getLogger()->warn("Reuse address feature for Socket Streams is unsupported");
-        }
-        $server->setSoTimeout(0);
-        $server->setTcpNoDelay(true);
+        $server = $this->getFrontendServer();
         $server->bind($config->getListenAddress(), $backlog, $config->getListenPort());
         $server->register($this->frontendSelector, SelectionKey::OP_ACCEPT);
         $this->frontendServer = $server;

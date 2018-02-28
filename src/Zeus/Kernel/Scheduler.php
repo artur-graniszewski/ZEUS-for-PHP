@@ -145,9 +145,9 @@ final class Scheduler extends AbstractService
                     return;
                 }
 
-                $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $e) {
-                    $e->stopPropagation(true);
-                }, WorkerEvent::PRIORITY_INITIALIZE + 100000);
+//                $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $e) {
+//                    $e->stopPropagation(true);
+//                }, WorkerEvent::PRIORITY_INITIALIZE + 100000);
 
                 $pid = $event->getWorker()->getProcessId();
 
@@ -160,16 +160,25 @@ final class Scheduler extends AbstractService
             }, WorkerEvent::PRIORITY_FINALIZE
         );
 
-        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
-            Runtime::setUncaughtExceptionHandler([$event->getWorker(), 'terminate']);
-
-            if ($event->getParam(static::WORKER_SERVER)) {
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT,
+            // scheduler init
+            function (WorkerEvent $event) use ($eventManager) {
+                if (!$event->getParam(static::WORKER_SERVER)) {
+                    return;
+                }
                 $event->stopPropagation(true);
                 $this->startLifeCycle();
                 $event->getWorker()->setTerminating(true);
 
-                return;
-            }
+                $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
+                    $event->stopPropagation(true);
+                }, SchedulerEvent::PRIORITY_INITIALIZE + 2);
+
+            }, WorkerEvent::PRIORITY_INITIALIZE
+        );
+
+        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
+            Runtime::setUncaughtExceptionHandler([$event->getWorker(), 'terminate']);
 
             $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
                 $this->sendStatus($event);

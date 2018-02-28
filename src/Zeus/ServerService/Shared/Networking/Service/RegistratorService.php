@@ -80,18 +80,13 @@ class RegistratorService
 
         $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
             $this->onWorkerInit($event);
+            $socket = @stream_socket_client('tcp://' . $this->backendRegistrator, $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->streamContext);
+            if (!$socket) {
+                $this->getLogger()->err("Could not connect to leader: $errstr [$errno]");
+                return;
+            }
+            $this->setRegistratorStream(new SocketStream($socket));
         }, WorkerEvent::PRIORITY_REGULAR + 1);
-
-//        $events->attach(SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $event) use ($events) {
-//            static $lasttime;
-//            $now = time();
-//            if ($lasttime !== $now) {
-//                $lasttime = $now;
-//                $uids = array_keys($this->availableWorkers);
-//                sort($uids);
-//                $this->getLogger()->debug("Available backend workers: " . json_encode($uids));
-//            }
-//        }, 1000);
 
         $events->attach(SchedulerEvent::EVENT_START, function($e) {
             $this->startRegistratorServer();
@@ -137,36 +132,21 @@ class RegistratorService
         }
     }
 
-    private function getRegistratorStream()
+    public function setRegistratorStream(SocketStream $registratorStream)
+    {
+        $this->setStreamOptions($registratorStream);
+        $this->registratorStream = $registratorStream;
+    }
+
+    public function getRegistratorStream() : SocketStream
     {
         if ($this->registratorStream) {
             return $this->registratorStream;
         }
-
-        $socket = @stream_socket_client('tcp://' . $this->backendRegistrator, $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->streamContext);
-        if (!$socket) {
-            $this->getLogger()->err("Could not connect to leader: $errstr [$errno]");
-            return false;
-        }
-        $registratorStream = new SocketStream($socket);
-        $this->setStreamOptions($registratorStream);
-        $this->registratorStream = $registratorStream;
-
-        return $this->registratorStream;
     }
 
     public function notifyRegistrator(int $workerUid, int $port, string $status) : bool
     {
-        if (!$this->backendRegistrator) {
-            return false;
-        }
-
-        if ($this->lastStatus !== $status) {
-            //$this->lastStatus = $status;
-        } else {
-            return true;
-        }
-
         $registratorStream = $this->getRegistratorStream();
 
         try {
@@ -273,11 +253,19 @@ class RegistratorService
         }
     }
 
+    public function setRegistratorServer(SocketServer $server)
+    {
+        $this->registratorServer = $server;
+    }
+
+    public function getRegistratorServer() : SocketServer
+    {
+        return $this->registratorServer;
+    }
+
     private function startRegistratorServer()
     {
-        $server = new SocketServer();
-        $server->setSoTimeout(0);
-        $server->setTcpNoDelay(true);
+        $server = $this->getRegistratorServer();
         $server->bind($this->backendHost, 1000, 0);
         $this->registratorServer = $server;
         $this->getLogger()->debug("Registrator listening on: " . $this->registratorServer->getLocalAddress());

@@ -234,19 +234,22 @@ class BackendService
         if (!$this->backendServer) {
             throw new LogicException("Backend server not initiated");
         }
+
         return $this->backendServer;
+    }
+
+    public function setBackendServer(SocketServer $server)
+    {
+        $this->backendServer = $server;
     }
 
     private function startBackendServer(WorkerEvent $event)
     {
-        $server = new SocketServer();
-        $server->setSoTimeout(0);
-        $server->setTcpNoDelay(true);
+        $server = $this->getBackendServer();
         $server->bind($this->workerHost, 1, 0);
         $worker = $event->getWorker();
         $this->uid = $worker->getUid();
-        $this->backendServer = $server;
         $this->backendServerSelector = new Selector();
-        $this->backendServerSelector->register($this->backendServer->getSocket(), SelectionKey::OP_ACCEPT);
+        $server->getSocket()->register($this->backendServerSelector, SelectionKey::OP_ACCEPT);
     }
 }
