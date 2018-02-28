@@ -194,7 +194,7 @@ final class SocketServer
 
     public function close()
     {
-        if (!$this->resource) {
+        if ($this->getSocket()->isClosed()) {
             throw new SocketException("Server already stopped");
         }
 
@@ -220,7 +220,7 @@ final class SocketServer
 
     public function isClosed() : bool
     {
-        return $this->isClosed;
+        return !$this->socketObject || $this->getSocket()->isClosed();
     }
 
     public function isIsBound() : bool

@@ -109,7 +109,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
      */
     public function close()
     {
-        if ($this->isClosed) {
+        if ($this->isClosed || !is_resource($this->resource)) {
             throw new IOException("Stream already closed");
         }
 
@@ -134,7 +134,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
 
     public function isClosed() : bool
     {
-        return $this->isClosed;
+        return $this->isClosed || !is_resource($this->resource);
     }
 
     protected function doClose()
