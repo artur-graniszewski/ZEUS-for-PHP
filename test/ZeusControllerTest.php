@@ -5,6 +5,7 @@ namespace ZeusTest;
 use PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Console\Request as ConsoleRequest;
+use Zend\Console\Response as ConsoleResponse;
 use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
@@ -92,7 +93,7 @@ class ZeusControllerTest extends TestCase
         $writer->setFormatter($formatter);
         $logger->addProcessor(new ExtraLogProcessor());
         $logger->addWriter($writer);
-        $response = new \Zend\Console\Response();
+        $response = new ConsoleResponse();
         $controller = $this->getController();
         $controller->setLogger($logger);
         $controller->dispatch($request, $response);
@@ -124,7 +125,7 @@ class ZeusControllerTest extends TestCase
         $writer->setFormatter($formatter);
         $logger->addProcessor(new ExtraLogProcessor());
         $logger->addWriter($writer);
-        $response = new \Zend\Console\Response();
+        $response = new ConsoleResponse();
         $controller = $this->getController();
         $controller->setLogger($logger);
         $controller->dispatch($request, $response);
@@ -149,7 +150,7 @@ class ZeusControllerTest extends TestCase
             'dummy_service'
         ]);
 
-        $response = new \Zend\Console\Response();
+        $response = new ConsoleResponse();
         $controller = $this->getController();
         $controller->dispatch($request, $response);
 
@@ -165,7 +166,7 @@ class ZeusControllerTest extends TestCase
             'status',
         ]);
 
-        $response = new \Zend\Console\Response();
+        $response = new ConsoleResponse();
         $controller = $this->getController();
         $controller->dispatch($request, $response);
 
@@ -181,7 +182,7 @@ class ZeusControllerTest extends TestCase
             'start',
         ]);
 
-        $response = new \Zend\Console\Response();
+        $response = new ConsoleResponse();
         $controller = $this->getController();
         $controller->dispatch($request, $response);
 
@@ -197,7 +198,7 @@ class ZeusControllerTest extends TestCase
             'stop',
         ]);
 
-        $response = new \Zend\Console\Response();
+        $response = new ConsoleResponse();
         $controller = $this->getController();
         $controller->dispatch($request, $response);
 

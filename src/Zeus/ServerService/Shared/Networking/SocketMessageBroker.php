@@ -35,6 +35,8 @@ final class SocketMessageBroker
 
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger)
     {
+        $this->setLogger($logger);
+        
         $this->config = $config;
         $this->message = $message;
 

@@ -154,7 +154,6 @@ class SocketMessageTest extends \PHPUnit\Framework\TestCase
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->getRegistrator()->setRegistratorAddress('127.0.0.1:3333');
-        $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
