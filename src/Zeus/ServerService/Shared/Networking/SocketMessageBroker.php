@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
+use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
@@ -13,6 +14,7 @@ use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
@@ -26,6 +28,9 @@ use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 final class SocketMessageBroker
 {
     use LoggerAwareTrait;
+
+    /** @var string */
+    private $backendHost = '127.0.0.3';
 
     /** @var bool */
     private $isBusy = false;
@@ -59,7 +64,6 @@ final class SocketMessageBroker
         $this->message = new MessageWrapper($this, $message);
 
         $backend = new BackendService($message);
-        $backend->setLogger($logger);
         $backend->setServer($this->getSocketServer());
         $this->backend = $backend;
 
@@ -69,7 +73,6 @@ final class SocketMessageBroker
         $this->registrator = $registrator;
 
         $frontend = new FrontendService($registrator, $config);
-        $frontend->setLogger($logger);
         $frontend->setServer($this->getSocketServer());
         $this->frontend = $frontend;
     }
@@ -108,6 +111,22 @@ final class SocketMessageBroker
         return $this->backend;
     }
 
+    public function electFrontendWorkers(IpcServer $ipc)
+    {
+        $config = $this->config;
+        $this->getLogger()->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
+        $cpus = Runtime::getNumberOfProcessors();
+        if (defined("HHVM_VERSION")) {
+            // HHVM does not support SO_REUSEADDR ?
+            $frontendsAmount = 1;
+            $this->getLogger()->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
+        } else {
+            $frontendsAmount = (int) max(1, $cpus / 2);
+        }
+        $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
+        $ipc->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
+    }
+
     public function attach(EventManagerInterface $events)
     {
         $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
@@ -121,13 +140,13 @@ final class SocketMessageBroker
 
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $this->uid = $event->getWorker()->getUid();
-            $this->getBackend()->startBackendServer($this->uid);
+            $this->getBackend()->startServer($this->backendHost);
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
             $backend = $this->getBackend();
             $registrator = $this->getRegistrator();
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->uid,0);
+            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->uid, "");
 
             if ($this->isBackend && !$backend->getServer()->isClosed()) {
                 $backend->getServer()->close();
@@ -154,7 +173,7 @@ final class SocketMessageBroker
             $this->getBackend()->getServer()->close();
 
             $this->getLogger()->debug("Becoming frontend worker");
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->uid, 0);
+            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->uid, "");
             $this->getFrontend()->startFrontendServer(100);
         }, WorkerEvent::PRIORITY_FINALIZE);
 
@@ -166,16 +185,18 @@ final class SocketMessageBroker
         }, 1000);
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
-            $this->getRegistrator()->startRegistratorServer();
-            $this->getRegistrator()->registerObservers($event->getScheduler()->getReactor());
-            $this->getFrontend()->electFrontendWorkers($event->getScheduler()->getIpc());
+            $registrator = $this->getRegistrator();
+            $registrator->startRegistratorServer();
+            $this->getLogger()->debug("Registrator listening on: " . $registrator->getServer()->getLocalAddress());
+            $registrator->registerObservers($event->getScheduler()->getReactor());
+            $this->electFrontendWorkers($event->getScheduler()->getIpc());
         }, -9000);
 
         $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
             try {
                 if ($this->isBackend) {
                     if (!$this->getBackend()->isClientConnected()) {
-                        $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->uid, $this->getBackend()->getServer()->getLocalPort());
+                        $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->uid, $this->getBackend()->getServer()->getLocalAddress());
                     }
                     $this->getBackend()->checkWorkerMessages($event->getWorker());
                     return;
@@ -201,7 +222,7 @@ final class SocketMessageBroker
                     $this->getFrontend()->selectStreams();
                 } while (microtime(true) - $now < 1);
 
-            } catch (IOException $ex) {
+            } catch (Throwable $ex) {
                 $this->getLogger()->err((string) $ex);
             }
         }, WorkerEvent::PRIORITY_REGULAR);

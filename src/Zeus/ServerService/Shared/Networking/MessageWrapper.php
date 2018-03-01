@@ -50,7 +50,7 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
         $broker = $this->getBroker();
         $this->getMessageComponent()->onClose($connection);
 
-        $this->getBroker()->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalPort());
+        $this->getBroker()->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalAddress());
     }
 
     public function onError(NetworkStreamInterface $connection, \Throwable $exception)

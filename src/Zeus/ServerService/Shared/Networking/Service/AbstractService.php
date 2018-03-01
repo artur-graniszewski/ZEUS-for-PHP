@@ -5,12 +5,9 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 use LogicException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\Selector;
-use Zend\Log\LoggerAwareTrait;
 
 class AbstractService
 {
-    use LoggerAwareTrait;
-
     /** @var Selector */
     private $selector;
 

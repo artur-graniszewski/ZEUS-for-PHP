@@ -8,16 +8,26 @@ use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 
 class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageInterface
 {
-    protected $readCallback;
-    /**
-     * @var
-     */
+    private $readCallback;
+
+    private $errorCallback;
+
     private $heartBeatCallback;
 
-    public function __construct($readCallback, $heartBeatCallback = null)
+
+    public function setErrorCallback($callback)
     {
-        $this->readCallback = $readCallback;
-        $this->heartBeatCallback = $heartBeatCallback;
+        $this->errorCallback = $callback;
+    }
+
+    public function setHeartBeatCallback($callback)
+    {
+        $this->heartBeatCallback = $callback;
+    }
+
+    public function setMessageCallback($callback)
+    {
+        $this->readCallback = $callback;
     }
 
     /**
@@ -45,7 +55,9 @@ class SocketTestMessage implements MessageComponentInterface, HeartBeatMessageIn
      */
     function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
-        // TODO: Implement onError() method.
+        if ($this->errorCallback) {
+            call_user_func($this->errorCallback, $connection, $exception);
+        }
     }
 
     /**

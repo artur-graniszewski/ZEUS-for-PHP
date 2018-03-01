@@ -62,10 +62,14 @@ class SocketMessageTest extends TestCase
 
         $received = [];
         $steps = 0;
-        $message = new SocketTestMessage(function($connection, $data) use (&$received, &$steps) {
+        $message = new SocketTestMessage();
+
+        $message->setMessageCallback(function($connection, $data) use (&$received, &$steps) {
             $received[] = $data;
             $steps ++;
-        }, function($connection) use (& $heartBeats) {
+        });
+
+        $message->setHeartBeatCallback(function($connection) use (& $heartBeats) {
             $heartBeats++;
 
             if ($heartBeats == 5) {
@@ -149,11 +153,16 @@ class SocketMessageTest extends TestCase
         $worker->setUid(getmypid());
 
         $received = null;
-        $message = new SocketTestMessage(function($connection, $data) use (&$received) {
+        $message = new SocketTestMessage();
+        $message->setMessageCallback(function($connection, $data) use (&$received) {
             throw new \RuntimeException("TEST");
         });
+
+        $message->setErrorCallback(function($connection, $exception) use (& $catchedException) {
+            $catchedException = $exception;
+        });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->getRegistrator()->setRegistratorAddress('127.0.0.1:3333');
+        $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1:3333');
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
@@ -183,15 +192,11 @@ class SocketMessageTest extends TestCase
 
         $event->setName(WorkerEvent::EVENT_LOOP);
         $exception = null;
-        try {
-            $events->triggerEvent($event);
-        } catch (\Throwable $exception) {
+        $events->triggerEvent($event);
 
-        }
-
-        $this->assertTrue(is_object($exception), 'Exception should be raised');
-        $this->assertInstanceOf(\RuntimeException::class, $exception, 'Correct exception should be raised');
-        $this->assertEquals("TEST", $exception->getMessage(), 'Correct exception should be raised');
+        $this->assertTrue(is_object($catchedException), 'Exception should be raised');
+        $this->assertInstanceOf(\RuntimeException::class, $catchedException, 'Correct exception should be raised');
+        $this->assertEquals("TEST", $catchedException->getMessage(), 'Correct exception should be raised');
         $read = @stream_get_contents($client);
         $eof = feof($client);
         $this->assertEquals("", $read, 'Stream should not contain any message');

@@ -2,17 +2,14 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
+use RuntimeException;
 use Throwable;
-use Zeus\IO\Exception\EOFException;
 use Zeus\IO\Exception\IOException;
 use Zeus\Kernel\IpcServer;
-use Zeus\IO\Exception\SocketTimeoutException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
-use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 
 use function stream_socket_client;
 use function max;
@@ -21,9 +18,6 @@ use function defined;
 
 class FrontendService extends AbstractService
 {
-    /** @var string */
-    private $workerHost = '127.0.0.3';
-
     /** @var SocketStream[] */
     private $backendStreams = [];
 
@@ -42,22 +36,6 @@ class FrontendService extends AbstractService
         $this->registrator = $registrator;
     }
 
-    public function electFrontendWorkers(IpcServer $ipc)
-    {
-        $config = $this->config;
-        $this->getLogger()->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
-        $cpus = Runtime::getNumberOfProcessors();
-        if (defined("HHVM_VERSION")) {
-            // HHVM does not support SO_REUSEADDR ?
-            $frontendsAmount = 1;
-            $this->getLogger()->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
-        } else {
-            $frontendsAmount = (int) max(1, $cpus / 2);
-        }
-        $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
-        $ipc->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
-    }
-
     public function startFrontendServer(int $backlog)
     {
         $config = $this->config;
@@ -67,29 +45,23 @@ class FrontendService extends AbstractService
         $server->register($this->getSelector(), SelectionKey::OP_ACCEPT);
     }
 
-    private function addClient()
-    {
-        try {
-            do {
-                $success = $this->connectToBackend();
-            } while (!$success);
-        } catch (SocketTimeoutException $exception) {
-        }
-    }
-
     private function disconnectClient(int $key)
     {
         $frontendStream = null;
         $backendStream = null;
+        $frontendException = null;
+        $backendException = null;
+        $selector = $this->getSelector();
+
         if (isset($this->frontendStreams[$key])) {
             $frontendStream = $this->frontendStreams[$key];
-            $this->getSelector()->unregister($frontendStream);
+            $selector->unregister($frontendStream);
             unset($this->frontendStreams[$key]);
         }
 
         if (isset($this->backendStreams[$key])) {
             $backendStream = $this->backendStreams[$key];
-            $this->getSelector()->unregister($backendStream);
+            $selector->unregister($backendStream);
             unset($this->backendStreams[$key]);
         }
 
@@ -103,8 +75,7 @@ class FrontendService extends AbstractService
                     $frontendStream->shutdown(STREAM_SHUT_RD);
                 }
 
-            } catch (Throwable $exception) {
-                $this->getLogger()->err($exception);
+            } catch (IOException $frontendException) {
             }
             if (!$frontendStream->isClosed()) {
                 $frontendStream->close();
@@ -120,39 +91,39 @@ class FrontendService extends AbstractService
 
                     $backendStream->shutdown(STREAM_SHUT_RD);
                 }
-            } catch (Throwable $exception) {
-                $this->getLogger()->err($exception);
+            } catch (IOException $backendException) {
             }
 
             if (!$backendStream->isClosed()) {
                 $backendStream->close();
             }
         }
-    }
 
-    private function connectToBackend() : bool
-    {
-        $registrator = $this->registrator;
-        list($uid, $port) = $registrator->getBackendWorker();
-        if ($uid == 0) {
-            $this->getLogger()->warn("Waiting for availability of a backend worker");
-            return true;
+        if ($frontendException) {
+            throw $frontendException;
         }
 
-        $host = $this->workerHost;
+        if ($backendException) {
+            throw $backendException;
+        }
+    }
 
-        $socket = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
+    private function connectToBackend()
+    {
+        $registrator = $this->registrator;
+        list($uid, $address) = $registrator->getBackendWorker();
+
+        $socket = @stream_socket_client("tcp://$address", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
         if (!$socket) {
-            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $uid, $port);
-            $this->getLogger()->err("Connection refused: backend worker $uid failed");
-            return false;
+            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $uid, $address);
+
+            throw new RuntimeException("Couldn't connect to backend #$uid: $errstr", $errno);
         }
 
         $backend = new SocketStream($socket);
 
         $client = $this->getServer()->accept();
         $this->setStreamOptions($client);
-
         $this->setStreamOptions($backend);
         $backend->setBlocking(true);
         $this->backendStreams[$uid] = $backend;
@@ -166,17 +137,16 @@ class FrontendService extends AbstractService
         $fromFrontendBuffer->setId($uid);
         $backendKey->attach($fromBackendBuffer);
         $frontendKey->attach($fromFrontendBuffer);
-
-        return true;
     }
 
     public function selectStreams()
     {
-        if (!$this->getSelector()->select(1234)) {
+        $selector = $this->getSelector();
+        if (!$selector->select(1234)) {
             return;
         }
 
-        $keys = $this->getSelector()->getSelectionKeys();
+        $keys = $selector->getSelectionKeys();
 
         $uidsToIgnore = [];
         $serverResourceId = $this->getServer()->getSocket()->getResourceId();
@@ -186,12 +156,13 @@ class FrontendService extends AbstractService
                 $stream = $selectionKey->getStream();
                 $resourceId = $stream->getResourceId();
 
-                if ($resourceId === $serverResourceId) {
-                    $this->addClient();
-                    continue;
+                if ($resourceId !== $serverResourceId) {
+                    throw new RuntimeException("Unknown stream selected");
+
                 }
 
-                $this->getLogger()->err("Unknown resource id selected");
+                $this->connectToBackend();
+                continue;
             }
 
             /** @var StreamTunnel $buffer */

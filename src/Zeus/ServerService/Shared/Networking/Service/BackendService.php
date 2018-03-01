@@ -12,17 +12,12 @@ use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 
 use function time;
+use function is_null;
 
 class BackendService extends AbstractService
 {
-    /** @var string */
-    private $workerHost = '127.0.0.3';
-
     /** @var int */
     private $lastTickTime = 0;
-
-    /** @var int */
-    private $uid;
 
     /** @var MessageComponentInterface */
     private $messageListener;
@@ -93,7 +88,6 @@ class BackendService extends AbstractService
                         return;
                     }
                 } catch (Throwable $exception) {
-                    //$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY);
                     $worker->setWaiting();
 
                     return;
@@ -166,11 +160,10 @@ class BackendService extends AbstractService
         }
     }
 
-    public function startBackendServer(int $workerUid)
+    public function startServer(string $workerHost)
     {
         $server = $this->getServer();
-        $server->bind($this->workerHost, 1, 0);
-        $this->uid = $workerUid;
+        $server->bind($workerHost, 1, 0);
         $this->setSelector($this->newSelector());
         $server->getSocket()->register($this->getSelector(), SelectionKey::OP_ACCEPT);
     }

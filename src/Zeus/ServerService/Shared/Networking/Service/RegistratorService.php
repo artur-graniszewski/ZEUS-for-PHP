@@ -3,6 +3,8 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use LogicException;
+use RuntimeException;
+use Zend\Log\LoggerAwareTrait;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
@@ -20,6 +22,8 @@ use function key;
 
 class RegistratorService extends AbstractService
 {
+    use LoggerAwareTrait;
+
     const STATUS_WORKER_READY = 'ready';
     const STATUS_WORKER_LOCK = 'lock';
     const STATUS_WORKER_BUSY = 'busy';
@@ -31,7 +35,7 @@ class RegistratorService extends AbstractService
     private $availableWorkers = [];
 
     /** @var string */
-    private $backendHost = '127.0.0.1';
+    private $registratorHost = '127.0.0.1';
 
     /** @var SocketStream[] */
     private $registeredWorkerStreams = [];
@@ -94,8 +98,7 @@ class RegistratorService extends AbstractService
     {
         $socket = @stream_socket_client($this->getRegistratorAddress(), $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->getStreamContext());
         if (!$socket) {
-            $this->getLogger()->err("Could not connect to registrator: $errstr [$errno]");
-            return;
+            throw new RuntimeException("Couldn't connect to registrator: $errstr", $errno);
         }
         $this->setRegistratorStream(new SocketStream($socket));
     }
@@ -119,12 +122,12 @@ class RegistratorService extends AbstractService
         $registrator->close();
     }
 
-    public function notifyRegistrator(string $status, int $workerUid, int $port) : bool
+    public function notifyRegistrator(string $status, int $workerUid, string $address) : bool
     {
         $registratorStream = $this->getRegistratorStream();
 
         try {
-            $registratorStream->write("$status:$workerUid:$port!");
+            $registratorStream->write("$status:$workerUid:$address!");
             while (!$registratorStream->flush()) {
 
             }
@@ -132,7 +135,7 @@ class RegistratorService extends AbstractService
             $registratorStream->close();
             $this->register();
 
-            return $this->notifyRegistrator($status, $workerUid, $port);
+            return $this->notifyRegistrator($status, $workerUid, $address);
         }
 
         return true;
@@ -161,20 +164,18 @@ class RegistratorService extends AbstractService
         };
 
         if (!$flushed) {
-            $this->getLogger()->err("Unable to lock the backend worker: failed to send the data");
-            return [0, 0];
+            throw new RuntimeException("Unable to lock the backend worker: failed to send the data");
         }
 
         $status = '';
         $timeout = 10;
         while (substr($status, -1) !== '@') {
-            if ($readSelector->select(100)) {
+            if ($readSelector->select(1000)) {
                 $buffer = $registratorStream->read();
 
                 if ('' === $buffer) {
                     // EOF
-                    $this->getLogger()->err("Unable to lock the backend worker: connection broken, read [$status]");
-                    return [0, 0];
+                    throw new RuntimeException("Unable to lock the backend worker: connection broken, read [$status]");
                 }
 
                 $status .= $buffer;
@@ -182,13 +183,16 @@ class RegistratorService extends AbstractService
 
             $timeout--;
             if ($timeout < 0) {
-                $this->getLogger()->err("Unable to lock the backend worker: timeout detected, read: [$status]");
-                return [0, 0];
+                throw new RuntimeException("Unable to lock the backend worker: timeout detected, read: [$status]");
             }
         }
-        list($uid, $port) = explode(":", $status);
+        list($uid, $address) = explode(":", $status, 2);
 
-        return [(int) $uid, (int) $port];
+        if ($uid == 0) {
+            throw new RuntimeException("Unable to lock the backend worker");
+        }
+
+        return [(int) $uid, $address];
     }
 
     private function setStreamOptions(SocketStream $stream)
@@ -232,8 +236,7 @@ class RegistratorService extends AbstractService
     public function startRegistratorServer()
     {
         $server = $this->getServer();
-        $server->bind($this->backendHost, 1000, 0);
-        $this->getLogger()->debug("Registrator listening on: " . $server->getLocalAddress());
+        $server->bind($this->registratorHost, 1000, 0);
         $this->setRegistratorAddress('tcp://' . $server->getLocalAddress());
     }
 
@@ -278,11 +281,11 @@ class RegistratorService extends AbstractService
             return;
         }
 
-        list($status, $uid, $port) = explode(":", $buffer->read());
+        list($status, $uid, $address) = explode(":", $buffer->read(), 3);
 
         switch ($status) {
             case self::STATUS_WORKER_READY:
-                $this->availableWorkers[$uid] = $port;
+                $this->availableWorkers[$uid] = $address;
                 //$this->getLogger()->debug("Worker $uid marked as ready");
                 break;
 //            case self::STATUS_WORKER_BUSY:
@@ -293,14 +296,14 @@ class RegistratorService extends AbstractService
             case self::STATUS_WORKER_LOCK:
                 //$frontendUid = $uid;
                 $uid = key($this->availableWorkers);
-                $port = current($this->availableWorkers);
+                $address = current($this->availableWorkers);
                 if (!$uid) {
-                    //$this->getLogger()->alert("No available backend workers: " . count($this->availableWorkers));
+                    $this->getLogger()->alert("No backend workers available");
                     $stream->write("0:0@");
                 } else {
                     unset ($this->availableWorkers[$uid]);
                     //$this->getLogger()->debug("Worker $uid at $port locked for frontend $frontendUid");
-                    $stream->write("$uid:$port@");
+                    $stream->write("$uid:$address@");
                 }
 
                 do {
