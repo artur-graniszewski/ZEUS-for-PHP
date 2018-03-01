@@ -4,7 +4,6 @@ namespace Zeus\IO\Stream;
 
 use Zeus\IO\Exception\IOException;
 
-use function stream_select;
 use function stream_socket_get_name;
 use function strlen;
 

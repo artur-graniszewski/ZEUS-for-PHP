@@ -2,156 +2,90 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
-use LogicException;
 use Throwable;
-use Zend\EventManager\EventManagerInterface;
-use Zend\Log\LoggerAwareTrait;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
-use Zeus\IO\Stream\Selector;
-use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\IO\Exception\IOException;
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\IO\SocketServer;
-use Zeus\IO\Stream\SocketStream;
-use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
-use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
+use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
+use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 
 use function time;
-use function usleep;
 
-class BackendService
+class BackendService extends AbstractService
 {
-    use LoggerAwareTrait;
-
-    /** @var Selector */
-    protected $backendServerSelector;
-
-    /** @var bool */
-    private $isBackend = true;
+    /** @var string */
+    private $workerHost = '127.0.0.3';
 
     /** @var int */
     private $lastTickTime = 0;
 
-    /** @var SocketServer */
-    private $backendServer;
-
     /** @var int */
     private $uid;
 
-    /** @var SocketMessageBroker */
-    private $messageBroker;
+    /** @var MessageComponentInterface */
+    private $messageListener;
 
-    /** @var string */
-    private $workerHost = '127.0.0.3';
+    /** @var NetworkStreamInterface */
+    private $clientStream;
 
-    /** @var SocketStream */
-    private $connection;
-
-    public function __construct(SocketMessageBroker $messageBroker)
+    public function __construct(MessageComponentInterface $messageListener)
     {
-        $this->messageBroker = $messageBroker;
+        $this->messageListener = $messageListener;
     }
 
-    public function attach(EventManagerInterface $events)
+    public function getClientStream() : NetworkStreamInterface
     {
-        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->startBackendServer($event);
-        }, WorkerEvent::PRIORITY_REGULAR);
-
-        $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
-            $this->onWorkerExit($event);
-        }, 1000);
-
-        $events->attach(WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
-            if (!$this->isBackend) {
-                return;
-            }
-
-            $this->onWorkerLoop($event);
-        }, WorkerEvent::PRIORITY_REGULAR);
-
-        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
-            $this->onFrontendElected($event);
-        }, WorkerEvent::PRIORITY_FINALIZE);
+        return $this->clientStream;
     }
 
-    private function onFrontendElected(IpcEvent $event)
+    public function isClientConnected() : bool
     {
-        $message = $event->getParams();
-
-        // @todo: BackendService should not contain such logic! 
-        if ($message instanceof FrontendElectionMessage) {
-            $this->isBackend = false;
-            $this->getBackendServer()->close();
-        }
+        return !is_null($this->clientStream) && !$this->getClientStream()->isClosed();
     }
 
-    private function onWorkerExit(WorkerEvent $event)
+    public function setClientStream(NetworkStreamInterface $stream)
     {
-        $this->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE);
-
-        if ($this->backendServer && !$this->backendServer->isClosed()) {
-            $this->backendServer->close();
-            $this->backendServer = null;
-        }
-
-        if ($this->connection) {
-            $this->connection->close();
-            $this->connection = null;
-        }
+        $this->clientStream = $stream;
     }
 
     private function onHeartBeat()
     {
-        if (!$this->connection) {
+        if (!$this->isClientConnected()) {
             return;
         }
 
         $now = time();
-        if ($this->lastTickTime !== $now) {
+        if ($this->messageListener instanceof HeartBeatMessageInterface && $this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
-            $this->messageBroker->onHeartBeat($this->connection);
+            $this->messageListener->onHeartBeat($this->getClientStream());
         }
     }
 
-    private function notifyRegistrator(string $status) : bool
+    private function closeConnection()
     {
-        return $this->messageBroker->getRegistrator()->notifyRegistrator($this->uid, $this->getBackendServer()->getLocalPort(), $status);
-    }
-
-    private function closeConnection(WorkerEvent $event)
-    {
-        if (!$this->connection->isClosed()) {
-            $this->connection->shutdown(STREAM_SHUT_RD);
-            $this->connection->close();
+        if ($this->isClientConnected()) {
+            $this->getClientStream()->shutdown(STREAM_SHUT_RD);
+            $this->getClientStream()->close();
         }
-
-        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
-        $event->getTarget()->setWaiting();
-        $this->connection = null;
     }
 
-    private function onWorkerLoop(WorkerEvent $event)
+    public function checkWorkerMessages(Worker $worker)
     {
+        $listener = $this->messageListener;
         $exception = null;
 
         try {
-            if (!$this->connection) {
-                if (!$this->notifyRegistrator(RegistratorService::STATUS_WORKER_READY)) {
-                    usleep(1000);
-                    return;
-                }
-
+            if (!$this->isClientConnected()) {
                 try {
-                    if ($this->backendServerSelector->select(1000)) {
-                        $event->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
-                        $event->getWorker()->setRunning();
-                        $connection = $this->backendServer->accept();
+                    if ($this->getSelector()->select(1000)) {
+                        $worker->getStatus()->incrementNumberOfFinishedTasks(1);
+                        $worker->setRunning();
+                        $clientStream = $this->getServer()->accept();
                         try {
-                            $connection->setOption(SO_KEEPALIVE, 1);
-                            $connection->setOption(TCP_NODELAY, 1);
+                            $clientStream->setOption(SO_KEEPALIVE, 1);
+                            $clientStream->setOption(TCP_NODELAY, 1);
                         } catch (UnsupportedOperationException $exception) {
                             // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
                         }
@@ -160,38 +94,41 @@ class BackendService
                     }
                 } catch (Throwable $exception) {
                     //$this->sendStatusToFrontend(FrontendService::STATUS_WORKER_READY);
-                    $event->getWorker()->setWaiting();
+                    $worker->setWaiting();
 
                     return;
                 }
 
-                $this->connection = $connection;
-                $this->messageBroker->onOpen($connection);
+                $this->setClientStream($clientStream);
+                $listener->onOpen($clientStream);
             }
 
-            if (!$this->connection->isReadable()) {
-                $this->connection = null;
-                $event->getWorker()->setWaiting();
+            $clientStream = $this->getClientStream();
+
+            if (!$clientStream->isReadable()) {
+                $clientStream->close();
+                $worker->setWaiting();
                 return;
             }
 
-            $selector = new Selector();
-            $this->connection->register($selector, SelectionKey::OP_READ);
+            $selector = $this->newSelector();
+            $clientStream->register($selector, SelectionKey::OP_READ);
             while ($selector->select(1000) > 0) {
-                $data = $this->connection->read();
+                $data = $clientStream->read();
                 if ($data !== '') {
-                    $this->messageBroker->onMessage($this->connection, $data);
+                    $listener->onMessage($this->getClientStream(), $data);
 
-                    if ($this->connection->isClosed()) {
+                    if ($clientStream->isClosed()) {
                         break;
                     }
                     do {
-                        $flushed = $this->connection->flush();
+                        $flushed = $clientStream->flush();
                     } while (!$flushed);
                 } else {
                     // its an EOF
-                    $this->messageBroker->onClose($this->connection);
-                    $this->closeConnection($event);
+                    $listener->onClose($clientStream);
+                    $this->closeConnection();
+                    $worker->setWaiting();
 
                     return;
                 }
@@ -199,7 +136,7 @@ class BackendService
             }
 
             // nothing wrong happened, data was handled, resume main event
-            if (!$this->connection->isClosed()) {
+            if (!$clientStream->isClosed()) {
                 $this->onHeartBeat();
 
                 return;
@@ -209,47 +146,32 @@ class BackendService
         } catch (Throwable $exception) {
         }
 
-        if ($this->connection) {
+        if ($this->isClientConnected()) {
             try {
                 if ($exception) {
-                    $this->messageBroker->onError($this->connection, $exception);
+                    $listener->onError($this->getClientStream(), $exception);
                 } else {
-                    $this->messageBroker->onClose($this->connection);
+                    $listener->onClose($this->getClientStream());
                 }
             } catch (Throwable $exception) {
             }
 
-            $this->closeConnection($event);
+            $this->closeConnection();
         }
 
-        $event->getWorker()->setWaiting();
+        $worker->setWaiting();
 
         if ($exception) {
             throw $exception;
         }
     }
 
-    public function getBackendServer() : SocketServer
+    public function startBackendServer(int $workerUid)
     {
-        if (!$this->backendServer) {
-            throw new LogicException("Backend server not initiated");
-        }
-
-        return $this->backendServer;
-    }
-
-    public function setBackendServer(SocketServer $server)
-    {
-        $this->backendServer = $server;
-    }
-
-    private function startBackendServer(WorkerEvent $event)
-    {
-        $server = $this->getBackendServer();
+        $server = $this->getServer();
         $server->bind($this->workerHost, 1, 0);
-        $worker = $event->getWorker();
-        $this->uid = $worker->getUid();
-        $this->backendServerSelector = new Selector();
-        $server->getSocket()->register($this->backendServerSelector, SelectionKey::OP_ACCEPT);
+        $this->uid = $workerUid;
+        $this->setSelector($this->newSelector());
+        $server->getSocket()->register($this->getSelector(), SelectionKey::OP_ACCEPT);
     }
 }

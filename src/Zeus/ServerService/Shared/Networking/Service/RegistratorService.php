@@ -2,31 +2,24 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
-use Zend\EventManager\EventManagerInterface;
-use Zend\Log\LoggerAwareTrait;
+use LogicException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
-use Zeus\IO\SocketServer;
-use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler\Reactor;
 
-use function stream_context_create;
 use function stream_socket_client;
 use function substr;
 use function current;
 use function explode;
-use function getmypid;
 use function array_search;
+use function key;
 
-class RegistratorService
+class RegistratorService extends AbstractService
 {
-    use LoggerAwareTrait;
-
     const STATUS_WORKER_READY = 'ready';
     const STATUS_WORKER_LOCK = 'lock';
     const STATUS_WORKER_BUSY = 'busy';
@@ -40,14 +33,8 @@ class RegistratorService
     /** @var string */
     private $backendHost = '127.0.0.1';
 
-    /** @var SocketServer */
-    private $registratorServer;
-
     /** @var SocketStream[] */
     private $registeredWorkerStreams = [];
-
-    /** @var string */
-    private $lastStatus;
 
     /** @var SocketStream */
     private $registratorStream;
@@ -55,57 +42,22 @@ class RegistratorService
     /** @var string */
     private $backendRegistrator = '';
 
-    /** @var resource */
-    private $streamContext;
-
-    /** @var Selector */
-    private $workerSelector;
+    /** @var int */
+    private $workerUid;
 
     public function __construct()
     {
-        $this->streamContext = stream_context_create([
-            'socket' => [
-                'tcp_nodelay' => true,
-            ],
-        ]);
-
-        $this->workerSelector = new Selector();
+        $this->setSelector($this->newSelector());
     }
 
-    public function attach(EventManagerInterface $events)
+    public function setWorkerUid(int $uid)
     {
-        $events->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
-            $this->onWorkerCreate($event);
-        }, 1000);
+        $this->workerUid = $uid;
+    }
 
-        $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
-            $this->onWorkerInit($event);
-            $socket = @stream_socket_client('tcp://' . $this->backendRegistrator, $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->streamContext);
-            if (!$socket) {
-                $this->getLogger()->err("Could not connect to leader: $errstr [$errno]");
-                return;
-            }
-            $this->setRegistratorStream(new SocketStream($socket));
-        }, WorkerEvent::PRIORITY_REGULAR + 1);
-
-        $events->attach(SchedulerEvent::EVENT_START, function($e) {
-            $this->startRegistratorServer();
-            $this->registerObservers($e); }, -9000);
-
-        $events->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $event) {
-            if ($this->registratorStream) {
-                try {
-                    $this->registratorStream->flush();
-                } catch (IOException $ex) {
-
-                }
-
-                if ($this->registratorStream->isReadable()) {
-                    $this->registratorStream->shutdown(STREAM_SHUT_RD);
-                }
-                $this->registratorStream->close();
-            }
-        }, 1000);
+    public function getWorkerUid(): int
+    {
+        return $this->workerUid;
     }
 
     public function setRegistratorAddress(string $address)
@@ -118,18 +70,9 @@ class RegistratorService
         return $this->backendRegistrator;
     }
 
-    private function onWorkerCreate(WorkerEvent $event)
+    public function isRegistered() : bool
     {
-        if ($this->backendRegistrator) {
-            $event->setParam(static::IPC_ADDRESS_EVENT_PARAM, $this->backendRegistrator);
-        }
-    }
-
-    public function onWorkerInit(WorkerEvent $event)
-    {
-        if ($event->getParam(static::IPC_ADDRESS_EVENT_PARAM)) {
-            $this->setRegistratorAddress($event->getParam(static::IPC_ADDRESS_EVENT_PARAM));
-        }
+        return null !== $this->registratorStream && !$this->getRegistratorStream()->isClosed();
     }
 
     public function setRegistratorStream(SocketStream $registratorStream)
@@ -140,12 +83,43 @@ class RegistratorService
 
     public function getRegistratorStream() : SocketStream
     {
-        if ($this->registratorStream) {
-            return $this->registratorStream;
+        if (!$this->registratorStream) {
+            throw new LogicException("No registrator stream available");
         }
+
+        return $this->registratorStream;
     }
 
-    public function notifyRegistrator(int $workerUid, int $port, string $status) : bool
+    public function register()
+    {
+        $socket = @stream_socket_client($this->getRegistratorAddress(), $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->getStreamContext());
+        if (!$socket) {
+            $this->getLogger()->err("Could not connect to registrator: $errstr [$errno]");
+            return;
+        }
+        $this->setRegistratorStream(new SocketStream($socket));
+    }
+
+    public function unregister()
+    {
+        if (!$this->isRegistered()) {
+            throw new LogicException("Worker already unregistered");
+        }
+
+        $registrator = $this->getRegistratorStream();
+        try {
+            $registrator->flush();
+        } catch (IOException $ex) {
+
+        }
+
+        if ($registrator->isReadable()) {
+            $registrator->shutdown(STREAM_SHUT_RD);
+        }
+        $registrator->close();
+    }
+
+    public function notifyRegistrator(string $status, int $workerUid, int $port) : bool
     {
         $registratorStream = $this->getRegistratorStream();
 
@@ -155,8 +129,10 @@ class RegistratorService
 
             }
         } catch (IOException $ex) {
-            $this->registratorStream = null;
-            return $this->notifyRegistrator($workerUid, $port, $status);
+            $registratorStream->close();
+            $this->register();
+
+            return $this->notifyRegistrator($status, $workerUid, $port);
         }
 
         return true;
@@ -171,7 +147,7 @@ class RegistratorService
         $readKey = $registratorStream->register($readSelector, SelectionKey::OP_READ);
         $writeKey = $registratorStream->register($writeSelector, SelectionKey::OP_WRITE);
 
-        $uid = getmypid();
+        $uid = $this->getWorkerUid();
         $registratorStream->write(self::STATUS_WORKER_LOCK . ":$uid:1!");
         $flushed = false;
         $count = 5;
@@ -225,9 +201,9 @@ class RegistratorService
         }
     }
 
-    private function checkWorkerOutput(AbstractStreamSelector $selector)
+    private function handleBackendWorkers()
     {
-        foreach ($selector->getSelectionKeys() as $selectionKey) {
+        foreach ($this->getSelector()->getSelectionKeys() as $selectionKey) {
             try {
                 $this->checkBackendStatus($selectionKey);
             } catch (IOException $ex) {
@@ -239,13 +215,13 @@ class RegistratorService
         }
     }
 
-    private function addBackend(AbstractStreamSelector $selector)
+    private function addBackend()
     {
         try {
-            $connection = $this->registratorServer->accept();
+            $connection = $this->getServer()->accept();
             $this->setStreamOptions($connection);
             $this->registeredWorkerStreams[] = $connection;
-            $selectionKey = $connection->register($this->workerSelector, SelectionKey::OP_READ);
+            $selectionKey = $connection->register($this->getSelector(), SelectionKey::OP_READ);
             $selectionKey->attach(new ReadBuffer());
             $this->setStreamOptions($connection);
         } catch (SocketTimeoutException $exception) {
@@ -253,35 +229,24 @@ class RegistratorService
         }
     }
 
-    public function setRegistratorServer(SocketServer $server)
+    public function startRegistratorServer()
     {
-        $this->registratorServer = $server;
-    }
-
-    public function getRegistratorServer() : SocketServer
-    {
-        return $this->registratorServer;
-    }
-
-    private function startRegistratorServer()
-    {
-        $server = $this->getRegistratorServer();
+        $server = $this->getServer();
         $server->bind($this->backendHost, 1000, 0);
-        $this->registratorServer = $server;
-        $this->getLogger()->debug("Registrator listening on: " . $this->registratorServer->getLocalAddress());
-        $this->setRegistratorAddress($this->registratorServer->getLocalAddress());
+        $this->getLogger()->debug("Registrator listening on: " . $server->getLocalAddress());
+        $this->setRegistratorAddress('tcp://' . $server->getLocalAddress());
     }
 
-    private function registerObservers(SchedulerEvent $event)
+    public function registerObservers(Reactor $reactor)
     {
         /** @var Selector $selector */
-        $selector = new Selector();
-        $this->registratorServer->getSocket()->register($selector, SelectionKey::OP_ACCEPT);
-        $event->getScheduler()->observeSelector($selector, function() use ($selector) {$this->addBackend($selector);}, function() {}, 1000);
-        $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
+        $selector = $this->newSelector();
+        $this->getServer()->getSocket()->register($selector, SelectionKey::OP_ACCEPT);
+        $reactor->observe($selector, function() use ($selector) {$this->addBackend();}, function() {}, 1000);
+        $reactor->observe($this->getSelector(), function() {$this->handleBackendWorkers();}, function() {}, 1000);
     }
 
-    private function checkBackendStatus(SelectionKey $selectionKey)
+    public function checkBackendStatus(SelectionKey $selectionKey)
     {
         /** @var SocketStream $stream */
         $stream = $selectionKey->getStream();
@@ -326,7 +291,7 @@ class RegistratorService
 //                break;
 
             case self::STATUS_WORKER_LOCK:
-                $frontendUid = $uid;
+                //$frontendUid = $uid;
                 $uid = key($this->availableWorkers);
                 $port = current($this->availableWorkers);
                 if (!$uid) {

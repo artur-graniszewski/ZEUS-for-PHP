@@ -7,7 +7,7 @@ namespace Zeus\IO\Stream;
  * @package Zeus\IO
  * @internal
  */
-interface NetworkStreamInterface extends StreamInterface
+interface NetworkStreamInterface extends SelectableStreamInterface
 {
     public function getLocalAddress() : string;
 
@@ -17,4 +17,6 @@ interface NetworkStreamInterface extends StreamInterface
      * @return string|null remote address (client IP) or null if unknown
      */
     public function getRemoteAddress() : string;
+
+    public function shutdown(int $shutdownType);
 }

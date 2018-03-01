@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Services\Shared;
 
-use \PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -12,7 +12,7 @@ use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 
-class SocketMessageTest extends \PHPUnit\Framework\TestCase
+class SocketMessageTest extends TestCase
 {
     use ZeusFactories;
 
@@ -34,7 +34,7 @@ class SocketMessageTest extends \PHPUnit\Framework\TestCase
     public function tearDown()
     {
         try {
-            $server = $this->service->getFrontend()->getFrontendServer();
+            $server = $this->service->getFrontend()->getServer();
         } catch (\LogicException $ex) {
             return;
         }
@@ -99,7 +99,7 @@ class SocketMessageTest extends \PHPUnit\Framework\TestCase
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
-        $host = $eventSubscriber->getBackend()->getBackendServer()->getLocalAddress();
+        $host = $eventSubscriber->getBackend()->getServer()->getLocalAddress();
         $client = stream_socket_client("tcp://$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
@@ -174,7 +174,7 @@ class SocketMessageTest extends \PHPUnit\Framework\TestCase
 
         $events->triggerEvent($event);
 
-        $host = $eventSubscriber->getBackend()->getBackendServer()->getLocalAddress();
+        $host = $eventSubscriber->getBackend()->getServer()->getLocalAddress();
         $client = stream_socket_client("tcp://$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 

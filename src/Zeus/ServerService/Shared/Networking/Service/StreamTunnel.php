@@ -4,6 +4,7 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 
 use LogicException;
 use Zeus\IO\Exception\EOFException;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 
 class StreamTunnel
@@ -19,9 +20,6 @@ class StreamTunnel
 
     /** @var int */
     private $id;
-
-    /** @var string */
-    private $dataBuffer = '';
 
     public function __construct(SelectionKey $srcSelectionKey, SelectionKey $dstSelectionKey)
     {
@@ -44,26 +42,31 @@ class StreamTunnel
 
     public function tunnel()
     {
-        if ($this->isSaturated) {
+        if ($this->isSaturated()) {
             // try to flush existing data
-            $this->write($this->dataBuffer);
+            $this->write("");
 
             return;
         }
 
-        if (!$this->srcSelectionKey->isReadable()) {
+        $srcSelectionKey = $this->srcSelectionKey;
+
+        if (!$srcSelectionKey->isReadable()) {
             return;
         }
 
-        if (!$this->srcSelectionKey->getStream()->isReadable()) {
-            $this->srcSelectionKey->cancel(SelectionKey::OP_READ);
+        if (!$srcSelectionKey->getStream()->isReadable()) {
+            $srcSelectionKey->cancel(SelectionKey::OP_READ);
             return;
         }
 
-        $data = $this->srcSelectionKey->getStream()->read();
+        $data = $srcSelectionKey->getStream()->read();
 
         if ('' === $data) {
-            $this->srcSelectionKey->getStream()->shutdown(STREAM_SHUT_RD);
+            $stream = $srcSelectionKey->getStream();
+            if ($stream instanceof NetworkStreamInterface) {
+                $stream->shutdown(STREAM_SHUT_RD);
+            }
             // EOF
             throw new EOFException("Stream reached EOF mark");
         }
@@ -73,37 +76,52 @@ class StreamTunnel
 
     private function write(string $data)
     {
-        $this->dataBuffer = '';
-        $dstStream = $this->dstSelectionKey->getStream();
-        $srcStream = $this->srcSelectionKey->getStream();
+        $srcSelectionKey = $this->srcSelectionKey;
+        $dstSelectionKey = $this->dstSelectionKey;
 
-        if (!$this->isSaturated || $this->dstSelectionKey->isWritable()) {
+        $dstStream = $dstSelectionKey->getStream();
+        $srcStream = $srcSelectionKey->getStream();
+
+        if (!$this->isSaturated() || $dstSelectionKey->isWritable()) {
             $stream = $dstStream;
-            $stream->write($data);
+            if ($data !== '') {
+                $stream->write($data);
+            }
 
             if ($stream->flush()) {
-                if (!$this->isSaturated) {
+                if (!$this->isSaturated()) {
                     return;
                 }
 
-                $this->isSaturated = false;
+                $this->setSaturated(false);
                 if ($srcStream->isReadable()) {
-                    $this->srcSelectionKey->getStream()->register($this->srcSelectionKey->getSelector(), SelectionKey::OP_READ);
+                    $srcStream->register($srcSelectionKey->getSelector(), SelectionKey::OP_READ);
                 }
-                $this->srcSelectionKey->cancel(SelectionKey::OP_WRITE);
+                $srcSelectionKey->cancel(SelectionKey::OP_WRITE);
 
                 return;
             }
 
-            if ($this->isSaturated) {
+            if ($this->isSaturated()) {
                 return;
             }
 
-            $this->isSaturated = true;
+            $this->setSaturated(true);
             if ($dstStream->isWritable()) {
-                $this->dstSelectionKey->getStream()->register($this->dstSelectionKey->getSelector(), SelectionKey::OP_WRITE);
+                $dstStream->register($dstSelectionKey->getSelector(), SelectionKey::OP_WRITE);
             }
-            $this->srcSelectionKey->cancel(SelectionKey::OP_READ);
+
+            $srcSelectionKey->cancel(SelectionKey::OP_READ);
         }
+    }
+
+    public function isSaturated() : bool
+    {
+        return $this->isSaturated;
+    }
+
+    public function setSaturated(bool $isSaturated)
+    {
+        $this->isSaturated = $isSaturated;
     }
 }

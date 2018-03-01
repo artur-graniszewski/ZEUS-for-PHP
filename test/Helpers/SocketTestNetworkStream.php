@@ -3,6 +3,8 @@
 namespace ZeusTest\Helpers;
 
 use Zeus\IO\Stream\NetworkStreamInterface;
+use Zeus\IO\Stream\SelectionKey;
+use Zeus\IO\Stream\Selector;
 
 class SocketTestNetworkStream implements NetworkStreamInterface
 {
@@ -131,5 +133,15 @@ class SocketTestNetworkStream implements NetworkStreamInterface
     public function isClosed(): bool
     {
         return $this->isConnectionClosed;
+    }
+
+    public function shutdown(int $shutdownType)
+    {
+        // TODO: Implement shutdown() method.
+    }
+
+    public function register(Selector $selector, int $operation): SelectionKey
+    {
+        // TODO: Implement register() method.
     }
 }
