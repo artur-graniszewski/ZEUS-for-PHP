@@ -63,7 +63,7 @@ final class SocketMessageBroker
         $this->config = $config;
         $this->message = new MessageWrapper($this, $message);
 
-        $backend = new BackendService($message);
+        $backend = new BackendService($this->message);
         $backend->setServer($this->getSocketServer());
         $this->backend = $backend;
 

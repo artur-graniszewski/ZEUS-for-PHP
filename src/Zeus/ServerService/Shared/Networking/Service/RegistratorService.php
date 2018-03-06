@@ -124,9 +124,10 @@ class RegistratorService extends AbstractService
     {
         static $lastStatus = null;
 
-        if ($lastStatus === $status) {
-            return true;
-        }
+//        if ($lastStatus === $status) {
+//            return true;
+//        }
+
         $registratorStream = $this->getRegistratorStream();
 
         try {
@@ -281,8 +282,13 @@ class RegistratorService extends AbstractService
 
         switch ($status) {
             case self::STATUS_WORKER_READY:
-                $pool->addWorker($worker);
-                $this->getLogger()->debug("Worker $uid marked as ready at " . $worker->getAddress());
+                try {
+                    $pool->addWorker($worker);
+                } catch (\Throwable $ex) {
+                    // @todo: fix it ASAP - no duplicate statuses should be sent to registrator!!!
+
+                }
+                //$this->getLogger()->debug("Worker $uid marked as ready at " . $worker->getAddress());
                 break;
 
             case self::STATUS_WORKER_LOCK:

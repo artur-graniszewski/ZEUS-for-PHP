@@ -29,10 +29,18 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
 
     public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
+        /** @var HeartBeatMessageInterface $messageComponent */
         $messageComponent = $this->getMessageComponent();
-        if ($messageComponent instanceof HeartBeatMessageInterface) {
-            $messageComponent->onHeartBeat($connection, $data);
+
+        if (!$messageComponent instanceof HeartBeatMessageInterface) {
+            return;
         }
+
+        $function = function() use ($connection, $messageComponent, $data) {
+            $messageComponent->onHeartBeat($connection, $data);
+        };
+
+        $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
     }
 
     public function onOpen(NetworkStreamInterface $connection)
@@ -42,19 +50,41 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
 
     public function onMessage(NetworkStreamInterface $connection, string $message)
     {
-        $this->getMessageComponent()->onMessage($connection, $message);
+        $function = function() use ($connection, $message) {
+            $this->getMessageComponent()->onMessage($connection, $message);
+        };
+
+        $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
     }
 
     public function onClose(NetworkStreamInterface $connection)
     {
-        $broker = $this->getBroker();
-        $this->getMessageComponent()->onClose($connection);
+        $function = function() use ($connection) {
+            $this->getMessageComponent()->onClose($connection);
+        };
 
-        $this->getBroker()->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalAddress());
+        $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
     }
 
     public function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
-        $this->getMessageComponent()->onError($connection, $exception);
+        $function = function() use ($connection, $exception) {
+            $this->getMessageComponent()->onError($connection, $exception);
+        };
+
+        $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
+    }
+
+    private function safeExecute(callable $function, NetworkStreamInterface $connection, $status)
+    {
+        $messageComponent = $this->getMessageComponent();
+        $isClosed = $connection->isClosed();
+        if ($messageComponent instanceof HeartBeatMessageInterface) {
+            $function();
+            if ($connection->isClosed() && !$isClosed) {
+                $broker = $this->getBroker();
+                $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalAddress());
+            }
+        }
     }
 }
