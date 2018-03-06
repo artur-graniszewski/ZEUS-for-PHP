@@ -5,7 +5,7 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 use LogicException;
 use RuntimeException;
 use Zend\Log\LoggerAwareTrait;
-use Zeus\Exception\UnsupportedOperationException;
+use Zeus\Exception\NoSuchElementException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
 use Zeus\IO\Stream\SelectionKey;
@@ -31,11 +31,11 @@ class RegistratorService extends AbstractService
     const STATUS_WORKER_FAILED = 'failed';
     const IPC_ADDRESS_EVENT_PARAM = 'zeusRegistratorIpcAddress';
 
-    /** @var int[] */
-    private $availableWorkers = [];
+    /** @var BackendPool */
+    private $backendPool;
 
     /** @var string */
-    private $registratorHost = '127.0.0.1';
+    private $registratorHost = 'tcp://127.0.0.1';
 
     /** @var SocketStream[] */
     private $registeredWorkerStreams = [];
@@ -43,15 +43,13 @@ class RegistratorService extends AbstractService
     /** @var SocketStream */
     private $registratorStream;
 
-    /** @var string */
-    private $backendRegistrator = '';
-
     /** @var int */
     private $workerUid;
 
     public function __construct()
     {
         $this->setSelector($this->newSelector());
+        $this->backendPool = new BackendPool();
     }
 
     public function setWorkerUid(int $uid)
@@ -66,12 +64,12 @@ class RegistratorService extends AbstractService
 
     public function setRegistratorAddress(string $address)
     {
-        $this->backendRegistrator = $address;
+        $this->registratorHost = $address;
     }
 
     public function getRegistratorAddress() : string
     {
-        return $this->backendRegistrator;
+        return $this->registratorHost;
     }
 
     public function isRegistered() : bool
@@ -124,6 +122,11 @@ class RegistratorService extends AbstractService
 
     public function notifyRegistrator(string $status, int $workerUid, string $address) : bool
     {
+        static $lastStatus = null;
+
+        if ($lastStatus === $status) {
+            return true;
+        }
         $registratorStream = $this->getRegistratorStream();
 
         try {
@@ -138,6 +141,7 @@ class RegistratorService extends AbstractService
             return $this->notifyRegistrator($status, $workerUid, $address);
         }
 
+        $lastStatus = $status;
         return true;
     }
 
@@ -189,20 +193,10 @@ class RegistratorService extends AbstractService
         list($uid, $address) = explode(":", $status, 2);
 
         if ($uid == 0) {
-            throw new RuntimeException("Unable to lock the backend worker");
+            throw new NoSuchElementException("No backend worker available");
         }
 
         return [(int) $uid, $address];
-    }
-
-    private function setStreamOptions(SocketStream $stream)
-    {
-        try {
-            $stream->setOption(SO_KEEPALIVE, 1);
-            $stream->setOption(TCP_NODELAY, 1);
-        } catch (UnsupportedOperationException $e) {
-            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
-        }
     }
 
     private function handleBackendWorkers()
@@ -236,8 +230,8 @@ class RegistratorService extends AbstractService
     public function startRegistratorServer()
     {
         $server = $this->getServer();
-        $server->bind($this->registratorHost, 1000, 0);
-        $this->setRegistratorAddress('tcp://' . $server->getLocalAddress());
+        $server->bind($this->getRegistratorAddress(), 1000, 0);
+        $this->setRegistratorAddress($server->getLocalAddress());
     }
 
     public function registerObservers(Reactor $reactor)
@@ -281,29 +275,27 @@ class RegistratorService extends AbstractService
             return;
         }
 
-        list($status, $uid, $address) = explode(":", $buffer->read(), 3);
+        list($status, $uid, $address) = explode(":", substr($buffer->read(), 0, -1), 3);
+        $worker = new WorkerIPC((int) $uid, $address);
+        $pool = $this->backendPool;
 
         switch ($status) {
             case self::STATUS_WORKER_READY:
-                $this->availableWorkers[$uid] = $address;
-                //$this->getLogger()->debug("Worker $uid marked as ready");
+                $pool->addWorker($worker);
+                $this->getLogger()->debug("Worker $uid marked as ready at " . $worker->getAddress());
                 break;
-//            case self::STATUS_WORKER_BUSY:
-//                unset ($this->availableWorkers[$uid]);
-//                //$this->getLogger()->debug("Worker $uid marked as busy");
-//                break;
 
             case self::STATUS_WORKER_LOCK:
                 //$frontendUid = $uid;
-                $uid = key($this->availableWorkers);
-                $address = current($this->availableWorkers);
-                if (!$uid) {
+                try {
+                    $worker = $pool->getAnyWorker();
+                    $pool->removeWorker($worker);
+                    $uid = $worker->getUid();
+                    $address = $worker->getAddress();
+                    $stream->write("$uid:$address@");
+                } catch (NoSuchElementException $exception) {
                     $this->getLogger()->alert("No backend workers available");
                     $stream->write("0:0@");
-                } else {
-                    unset ($this->availableWorkers[$uid]);
-                    //$this->getLogger()->debug("Worker $uid at $port locked for frontend $frontendUid");
-                    $stream->write("$uid:$address@");
                 }
 
                 do {
@@ -313,11 +305,11 @@ class RegistratorService extends AbstractService
                 break;
 
             case self::STATUS_WORKER_GONE:
-                unset ($this->availableWorkers[$uid]);
+                $pool->removeWorker($worker);
                 break;
 
             case self::STATUS_WORKER_FAILED:
-                unset ($this->availableWorkers[$uid]);
+                $pool->removeWorker($worker);
                 $this->getLogger()->err("Worker $uid marked as failed");
                 break;
 

@@ -142,7 +142,7 @@ final class SocketServer
             $this->host = '0.0.0.0';
         }
 
-        $uri = 'tcp://' . $this->host . ':' . $this->port;
+        $uri = $this->host . ':' . $this->port;
 
         $this->resource = @stream_socket_server($uri, $errno, $errstr, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN, $context);
         if (false === $this->resource) {

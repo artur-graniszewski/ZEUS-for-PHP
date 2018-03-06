@@ -31,7 +31,7 @@ class IpcServer implements ListenerAggregateInterface
 {
     use EventManagerAwareTrait;
 
-    private $ipcHost = '127.0.0.2';
+    private $ipcHost = 'tcp://127.0.0.2';
 
     private $isSchedulerRegistered = false;
 
@@ -171,7 +171,7 @@ class IpcServer implements ListenerAggregateInterface
         ];
 
         $host = $this->ipcHost;
-        $socket = @stream_socket_client("tcp://$host:$ipcPort", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $socket = @stream_socket_client("$host:$ipcPort", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, stream_context_create($opts));
 
         if (!$socket) {
             throw new RuntimeException("IPC connection failed: $errstr [$errno]");

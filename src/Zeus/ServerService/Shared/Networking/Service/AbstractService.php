@@ -3,8 +3,10 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use LogicException;
+use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\Selector;
+use Zeus\IO\Stream\SocketStream;
 
 class AbstractService
 {
@@ -57,5 +59,15 @@ class AbstractService
     public function newSelector() : Selector
     {
         return new Selector();
+    }
+
+    protected function setStreamOptions(SocketStream $stream)
+    {
+        try {
+            $stream->setOption(SO_KEEPALIVE, 1);
+            $stream->setOption(TCP_NODELAY, 1);
+        } catch (UnsupportedOperationException $e) {
+            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
+        }
     }
 }

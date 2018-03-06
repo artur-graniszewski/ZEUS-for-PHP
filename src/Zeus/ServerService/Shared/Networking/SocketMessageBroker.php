@@ -30,7 +30,7 @@ final class SocketMessageBroker
     use LoggerAwareTrait;
 
     /** @var string */
-    private $backendHost = '127.0.0.3';
+    private $backendHost = 'tcp://127.0.0.3';
 
     /** @var bool */
     private $isBusy = false;

@@ -3,6 +3,7 @@
 namespace ZeusTest\Services\Shared;
 
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -77,7 +78,7 @@ class SocketMessageTest extends TestCase
             }
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->getRegistrator()->setRegistratorAddress('127.0.0.1:3333');
+        $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
@@ -104,7 +105,7 @@ class SocketMessageTest extends TestCase
         $events->triggerEvent($event);
 
         $host = $eventSubscriber->getBackend()->getServer()->getLocalAddress();
-        $client = stream_socket_client("tcp://$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
+        $client = stream_socket_client("$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
@@ -155,14 +156,14 @@ class SocketMessageTest extends TestCase
         $received = null;
         $message = new SocketTestMessage();
         $message->setMessageCallback(function($connection, $data) use (&$received) {
-            throw new \RuntimeException("TEST");
+            throw new RuntimeException("TEST");
         });
 
         $message->setErrorCallback(function($connection, $exception) use (& $catchedException) {
             $catchedException = $exception;
         });
         $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1:3333');
+        $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1');
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
@@ -184,7 +185,7 @@ class SocketMessageTest extends TestCase
         $events->triggerEvent($event);
 
         $host = $eventSubscriber->getBackend()->getServer()->getLocalAddress();
-        $client = stream_socket_client("tcp://$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
+        $client = stream_socket_client("$host", $errno, $errstr, 2, STREAM_CLIENT_ASYNC_CONNECT);
         stream_set_blocking($client, false);
 
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
@@ -195,7 +196,7 @@ class SocketMessageTest extends TestCase
         $events->triggerEvent($event);
 
         $this->assertTrue(is_object($catchedException), 'Exception should be raised');
-        $this->assertInstanceOf(\RuntimeException::class, $catchedException, 'Correct exception should be raised');
+        $this->assertInstanceOf(RuntimeException::class, $catchedException, 'Correct exception should be raised');
         $this->assertEquals("TEST", $catchedException->getMessage(), 'Correct exception should be raised');
         $read = @stream_get_contents($client);
         $eof = feof($client);

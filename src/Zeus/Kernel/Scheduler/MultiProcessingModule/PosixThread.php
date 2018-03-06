@@ -84,7 +84,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->getWrapper()->setIpcAddress('tcp://' . \ZEUS_THREAD_IPC_ADDRESS);
+        $this->getWrapper()->setIpcAddress(\ZEUS_THREAD_IPC_ADDRESS);
     }
 
     public function onSchedulerStop(SchedulerEvent $event)

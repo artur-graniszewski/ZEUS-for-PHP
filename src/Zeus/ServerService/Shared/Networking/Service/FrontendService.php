@@ -4,9 +4,9 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 
 use RuntimeException;
 use Throwable;
+use Zeus\Exception\NoSuchElementException;
 use Zeus\IO\Exception\IOException;
 use Zeus\Kernel\IpcServer;
-use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\SocketStream;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
@@ -40,7 +40,7 @@ class FrontendService extends AbstractService
     {
         $config = $this->config;
         $server = $this->getServer();
-        $server->bind($config->getListenAddress(), $backlog, $config->getListenPort());
+        $server->bind('tcp://' . $config->getListenAddress(), $backlog, $config->getListenPort());
         $this->setSelector($this->newSelector());
         $server->register($this->getSelector(), SelectionKey::OP_ACCEPT);
     }
@@ -113,7 +113,7 @@ class FrontendService extends AbstractService
         $registrator = $this->registrator;
         list($uid, $address) = $registrator->getBackendWorker();
 
-        $socket = @stream_socket_client("tcp://$address", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
+        $socket = @stream_socket_client("$address", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
         if (!$socket) {
             $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $uid, $address);
 
@@ -161,7 +161,11 @@ class FrontendService extends AbstractService
 
                 }
 
-                $this->connectToBackend();
+                try {
+                    $this->connectToBackend();
+                } catch (NoSuchElementException $exception) {
+
+                }
                 continue;
             }
 
@@ -186,16 +190,6 @@ class FrontendService extends AbstractService
                     throw $exception;// disconnect may have altered other streams in selector, reset it
                 }
             }
-        }
-    }
-
-    private function setStreamOptions(SocketStream $stream)
-    {
-        try {
-            $stream->setOption(SO_KEEPALIVE, 1);
-            $stream->setOption(TCP_NODELAY, 1);
-        } catch (UnsupportedOperationException $e) {
-            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
         }
     }
 }

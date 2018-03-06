@@ -72,7 +72,7 @@ class SchedulerStatus implements ListenerAggregateInterface
     {
         $scheduler = $event->getScheduler();
         $server = new SocketServer();
-        $server->bind($this->options['listen_address'], null, $this->options['listen_port']);
+        $server->bind('tcp://' . $this->options['listen_address'], null, $this->options['listen_port']);
         $this->statusServer = $server;
 
         $this->selector = new Selector();

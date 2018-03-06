@@ -30,7 +30,7 @@ use function in_array;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
-    const LOOPBACK_INTERFACE = '127.0.0.1';
+    const LOOPBACK_INTERFACE = 'tcp://127.0.0.1';
 
     const UPSTREAM_CONNECTION_TIMEOUT = 5;
 

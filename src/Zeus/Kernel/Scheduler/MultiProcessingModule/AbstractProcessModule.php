@@ -17,7 +17,7 @@ abstract class AbstractProcessModule extends AbstractModule
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->getWrapper()->setIpcAddress('tcp://' . $event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM));
+        $this->getWrapper()->setIpcAddress($event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM));
     }
 
     public function onWorkerTerminate(WorkerEvent $event)

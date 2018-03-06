@@ -79,8 +79,7 @@ class BackendService extends AbstractService
                         $worker->setRunning();
                         $clientStream = $this->getServer()->accept();
                         try {
-                            $clientStream->setOption(SO_KEEPALIVE, 1);
-                            $clientStream->setOption(TCP_NODELAY, 1);
+                            $this->setStreamOptions($clientStream);
                         } catch (UnsupportedOperationException $exception) {
                             // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
                         }
