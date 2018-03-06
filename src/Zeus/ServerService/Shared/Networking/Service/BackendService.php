@@ -73,6 +73,7 @@ class BackendService extends AbstractService
 
         try {
             if (!$this->isClientConnected()) {
+                $worker->setWaiting();
                 try {
                     if ($this->getSelector()->select(1000)) {
                         $worker->getStatus()->incrementNumberOfFinishedTasks(1);

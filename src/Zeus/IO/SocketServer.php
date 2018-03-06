@@ -139,7 +139,7 @@ final class SocketServer
         $context = stream_context_create($opts);
 
         if (!$this->host) {
-            $this->host = '0.0.0.0';
+            $this->host = 'tcp://0.0.0.0';
         }
 
         $uri = $this->host . ':' . $this->port;
