@@ -27,6 +27,16 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
         return $this->broker;
     }
 
+    public function onOpen(NetworkStreamInterface $connection)
+    {
+        $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
+        $function = function() use ($connection) {
+            $this->getMessageComponent()->onOpen($connection);
+        };
+
+        $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
+    }
+
     public function onHeartBeat(NetworkStreamInterface $connection, $data = null)
     {
         /** @var HeartBeatMessageInterface $messageComponent */
@@ -41,11 +51,6 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
         };
 
         $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
-    }
-
-    public function onOpen(NetworkStreamInterface $connection)
-    {
-        $this->getMessageComponent()->onOpen($connection);
     }
 
     public function onMessage(NetworkStreamInterface $connection, string $message)
@@ -75,16 +80,21 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
         $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
     }
 
-    private function safeExecute(callable $function, NetworkStreamInterface $connection, $status)
+    private function safeExecute(callable $function, NetworkStreamInterface $connection, string $status)
     {
         $messageComponent = $this->getMessageComponent();
-        $isClosed = $connection->isClosed();
+        $wasClosed = $connection->isClosed();
         if ($messageComponent instanceof HeartBeatMessageInterface) {
             $function();
-            if ($connection->isClosed() && !$isClosed) {
-                $broker = $this->getBroker();
-                $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalAddress());
+            if (!$wasClosed && $connection->isClosed()) {
+                $this->setConnectionStatus($status);
             }
         }
+    }
+
+    private function setConnectionStatus(string $status)
+    {
+        $broker = $this->getBroker();
+        $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalAddress());
     }
 }

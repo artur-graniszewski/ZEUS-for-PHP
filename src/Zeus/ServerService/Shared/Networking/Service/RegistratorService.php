@@ -282,12 +282,7 @@ class RegistratorService extends AbstractService
 
         switch ($status) {
             case self::STATUS_WORKER_READY:
-                try {
-                    $pool->addWorker($worker);
-                } catch (\Throwable $ex) {
-                    // @todo: fix it ASAP - no duplicate statuses should be sent to registrator!!!
-
-                }
+                $pool->addWorker($worker);
                 //$this->getLogger()->debug("Worker $uid marked as ready at " . $worker->getAddress());
                 break;
 

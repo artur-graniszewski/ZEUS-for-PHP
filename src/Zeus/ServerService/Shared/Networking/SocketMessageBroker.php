@@ -141,6 +141,7 @@ final class SocketMessageBroker
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $this->uid = $event->getWorker()->getUid();
             $this->getBackend()->startServer($this->backendHost);
+            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->uid, $this->getBackend()->getServer()->getLocalAddress());
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
@@ -195,9 +196,6 @@ final class SocketMessageBroker
         $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
             try {
                 if ($this->isBackend) {
-                    if (!$this->getBackend()->isClientConnected()) {
-                        $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->uid, $this->getBackend()->getServer()->getLocalAddress());
-                    }
                     $this->getBackend()->checkWorkerMessages($event->getWorker());
                     return;
                 }

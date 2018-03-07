@@ -5,6 +5,8 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 use InvalidArgumentException;
 use Zeus\Exception\NoSuchElementException;
 
+use function current;
+
 class BackendPool
 {
     /** @var WorkerIPC[] */
@@ -16,12 +18,14 @@ class BackendPool
         if (isset($this->workers[$uid])) {
             throw new InvalidArgumentException("Worker $uid already added");
         }
+
         $this->workers[$worker->getUid()] = $worker;
     }
 
     public function removeWorker(WorkerIPC $worker) {
-        if (!isset($this->workers[$worker->getUid()])) {
-            throw new NoSuchElementException("Worker not found");
+        $uid = $worker->getUid();
+        if (!isset($this->workers[$uid])) {
+            throw new NoSuchElementException("Worker $uid not found");
         }
 
         unset ($this->workers[$worker->getUid()]);
