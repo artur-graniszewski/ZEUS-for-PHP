@@ -95,6 +95,6 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
     private function setConnectionStatus(string $status)
     {
         $broker = $this->getBroker();
-        $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerUid(), $broker->getBackend()->getServer()->getLocalAddress());
+        $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerIPC());
     }
 }

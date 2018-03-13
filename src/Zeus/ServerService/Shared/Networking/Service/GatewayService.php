@@ -2,21 +2,16 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
-use RuntimeException;
 use Throwable;
 use Zeus\Exception\NoSuchElementException;
 use Zeus\IO\Exception\IOException;
-use Zeus\Kernel\IpcServer;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
 use function stream_socket_client;
-use function max;
 use function in_array;
-use function defined;
 
-class FrontendService extends AbstractService
+class GatewayService extends AbstractService
 {
     /** @var SocketStream[] */
     private $backendStreams = [];
@@ -27,20 +22,15 @@ class FrontendService extends AbstractService
     /** @var RegistratorService */
     private $registrator;
 
-    /** @var AbstractNetworkServiceConfig */
-    private $config;
-
-    public function __construct(RegistratorService $registrator, AbstractNetworkServiceConfig $config)
+    public function __construct(RegistratorService $registrator)
     {
-        $this->config = $config;
         $this->registrator = $registrator;
     }
 
-    public function startFrontendServer(int $backlog)
+    public function startGatewayServer(string $address, int $backlog, int $port = -1)
     {
-        $config = $this->config;
         $server = $this->getServer();
-        $server->bind('tcp://' . $config->getListenAddress(), $backlog, $config->getListenPort());
+        $server->bind($address, $backlog, $port);
         $this->setSelector($this->newSelector());
         $server->register($this->getSelector(), SelectionKey::OP_ACCEPT);
     }
@@ -111,13 +101,16 @@ class FrontendService extends AbstractService
     private function connectToBackend()
     {
         $registrator = $this->registrator;
-        list($uid, $address) = $registrator->getBackendWorker();
+        $workerIPC = $registrator->getBackendWorker();
 
-        $socket = @stream_socket_client("$address", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
+        $uid = $workerIPC->getUid();
+        $address = $workerIPC->getAddress();
+
+        $socket = @stream_socket_client($address, $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
         if (!$socket) {
-            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $uid, $address);
+            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $workerIPC);
 
-            throw new RuntimeException("Couldn't connect to backend #$uid: $errstr", $errno);
+            throw new IOException("Couldn't connect to backend #$uid: $errstr", $errno);
         }
 
         $backend = new SocketStream($socket);
@@ -157,7 +150,7 @@ class FrontendService extends AbstractService
                 $resourceId = $stream->getResourceId();
 
                 if ($resourceId !== $serverResourceId) {
-                    throw new RuntimeException("Unknown stream selected");
+                    throw new IOException("Unknown stream selected");
 
                 }
 

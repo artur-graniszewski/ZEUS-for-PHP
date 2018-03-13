@@ -7,9 +7,7 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
 use Zeus\Exception\UnsupportedOperationException;
-use Zeus\IO\Exception\IOException;
 use Zeus\IO\SocketServer;
-use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -18,8 +16,9 @@ use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
-use Zeus\ServerService\Shared\Networking\Service\FrontendService;
+use Zeus\ServerService\Shared\Networking\Service\GatewayService;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
+use Zeus\ServerService\Shared\Networking\Service\WorkerIPC;
 
 /**
  * Class SocketMessageBroker
@@ -44,7 +43,7 @@ final class SocketMessageBroker
     /** @var MessageComponentInterface */
     private $message;
 
-    /** @var FrontendService */
+    /** @var GatewayService */
     private $frontend;
 
     /** @var BackendService */
@@ -53,8 +52,8 @@ final class SocketMessageBroker
     /** @var RegistratorService */
     private $registrator;
 
-    /** @var int */
-    private $uid = 0;
+    /** @var WorkerIPC */
+    private $workerIPC;
 
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger)
     {
@@ -72,7 +71,7 @@ final class SocketMessageBroker
         $registrator->setServer($this->getSocketServer());
         $this->registrator = $registrator;
 
-        $frontend = new FrontendService($registrator, $config);
+        $frontend = new GatewayService($registrator);
         $frontend->setServer($this->getSocketServer());
         $this->frontend = $frontend;
     }
@@ -91,12 +90,7 @@ final class SocketMessageBroker
         return $server;
     }
 
-    public function getWorkerUid() : int
-    {
-        return $this->uid;
-    }
-
-    public function getFrontend() : FrontendService
+    public function getFrontend() : GatewayService
     {
         return $this->frontend;
     }
@@ -123,7 +117,7 @@ final class SocketMessageBroker
         } else {
             $frontendsAmount = (int) max(1, $cpus / 2);
         }
-        $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent frontend worker(s)");
+        $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent gateway workers");
         $ipc->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
     }
 
@@ -139,15 +133,15 @@ final class SocketMessageBroker
         }, WorkerEvent::PRIORITY_REGULAR + 1);
 
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->uid = $event->getWorker()->getUid();
             $this->getBackend()->startServer($this->backendHost);
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->uid, $this->getBackend()->getServer()->getLocalAddress());
+            $this->workerIPC = new WorkerIPC($event->getWorker()->getUid(), $this->getBackend()->getServer()->getLocalAddress());
+            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->workerIPC);
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
             $backend = $this->getBackend();
             $registrator = $this->getRegistrator();
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->uid, "");
+            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
 
             if ($this->isBackend && !$backend->getServer()->isClosed()) {
                 $backend->getServer()->close();
@@ -169,13 +163,14 @@ final class SocketMessageBroker
                 return;
             }
 
+            $config = $this->getConfig();
             $this->isBackend = false;
             $this->isFrontend = true;
             $this->getBackend()->getServer()->close();
 
             $this->getLogger()->debug("Becoming frontend worker");
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->uid, "");
-            $this->getFrontend()->startFrontendServer(100);
+            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
+            $this->getFrontend()->startGatewayServer('tcp://' . $config->getListenAddress(), 1000, $config->getListenPort());
         }, WorkerEvent::PRIORITY_FINALIZE);
 
         $events->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
@@ -229,5 +224,10 @@ final class SocketMessageBroker
     public function getConfig() : AbstractNetworkServiceConfig
     {
         return $this->config;
+    }
+
+    public function getWorkerIPC() : WorkerIPC
+    {
+        return $this->workerIPC;
     }
 }
