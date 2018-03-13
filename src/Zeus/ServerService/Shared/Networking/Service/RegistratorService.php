@@ -17,7 +17,7 @@ use function substr;
 use function explode;
 use function array_search;
 
-class RegistratorService extends AbstractService
+class RegistratorService extends AbstractService implements ServiceInterface
 {
     use LoggerAwareTrait;
 
@@ -98,7 +98,7 @@ class RegistratorService extends AbstractService
         $this->setRegistratorStream(new SocketStream($socket));
     }
 
-    public function unregister()
+    public function stopService()
     {
         if (!$this->isRegistered()) {
             throw new LogicException("Worker already unregistered");
@@ -229,7 +229,7 @@ class RegistratorService extends AbstractService
         }
     }
 
-    public function startRegistratorServer()
+    public function startService()
     {
         $server = $this->getServer();
         $server->bind($this->getRegistratorAddress(), 1000, 0);

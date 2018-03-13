@@ -14,7 +14,7 @@ use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use function time;
 use function is_null;
 
-class BackendService extends AbstractService
+class BackendService extends AbstractService implements ServiceInterface
 {
     /** @var int */
     private $lastTickTime = 0;
@@ -66,7 +66,7 @@ class BackendService extends AbstractService
         }
     }
 
-    public function checkWorkerMessages(Worker $worker)
+    public function checkMessages(Worker $worker)
     {
         $listener = $this->messageListener;
         $exception = null;
@@ -110,7 +110,7 @@ class BackendService extends AbstractService
             while ($selector->select(1000) > 0) {
                 $data = $clientStream->read();
                 if ($data !== '') {
-                    $listener->onMessage($this->getClientStream(), $data);
+                    $listener->onMessage($clientStream, $data);
 
                     if ($clientStream->isClosed()) {
                         break;
@@ -160,11 +160,22 @@ class BackendService extends AbstractService
         }
     }
 
-    public function startServer(string $workerHost)
+    public function startService(string $workerHost, int $backlog, int $port = -1)
     {
         $server = $this->getServer();
-        $server->bind($workerHost, 1, 0);
+        $server->bind($workerHost, $backlog, $port);
         $this->setSelector($this->newSelector());
         $server->getSocket()->register($this->getSelector(), SelectionKey::OP_ACCEPT);
+    }
+
+    public function stopService()
+    {
+        if (!$this->getServer()->isClosed()) {
+            $this->getServer()->close();
+        }
+
+        if ($this->isClientConnected()) {
+            $this->getClientStream()->close();
+        }
     }
 }

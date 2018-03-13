@@ -11,7 +11,7 @@ use Zeus\IO\Stream\SocketStream;
 use function stream_socket_client;
 use function in_array;
 
-class GatewayService extends AbstractService
+class GatewayService extends AbstractService implements ServiceInterface
 {
     /** @var SocketStream[] */
     private $backendStreams = [];
@@ -27,7 +27,7 @@ class GatewayService extends AbstractService
         $this->registrator = $registrator;
     }
 
-    public function startGatewayServer(string $address, int $backlog, int $port = -1)
+    public function startService(string $address, int $backlog, int $port = -1)
     {
         $server = $this->getServer();
         $server->bind($address, $backlog, $port);
@@ -184,5 +184,10 @@ class GatewayService extends AbstractService
                 }
             }
         }
+    }
+
+    public function stopService()
+    {
+
     }
 }

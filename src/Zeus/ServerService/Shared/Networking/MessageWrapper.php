@@ -17,16 +17,6 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
         $this->message = $message;
     }
 
-    public function getMessageComponent()
-    {
-        return $this->message;
-    }
-
-    private function getBroker() : SocketMessageBroker
-    {
-        return $this->broker;
-    }
-
     public function onOpen(NetworkStreamInterface $connection)
     {
         $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
@@ -96,5 +86,15 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
     {
         $broker = $this->getBroker();
         $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerIPC());
+    }
+
+    private function getMessageComponent()
+    {
+        return $this->message;
+    }
+
+    private function getBroker() : SocketMessageBroker
+    {
+        return $this->broker;
     }
 }

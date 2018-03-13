@@ -14,11 +14,15 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
-use Zeus\ServerService\Shared\Networking\Message\FrontendElectionMessage;
+use Zeus\ServerService\Shared\Networking\Message\GatewayElectionMessage;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
 use Zeus\ServerService\Shared\Networking\Service\GatewayService;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 use Zeus\ServerService\Shared\Networking\Service\WorkerIPC;
+
+use function max;
+use function microtime;
+use function defined;
 
 /**
  * Class SocketMessageBroker
@@ -105,20 +109,21 @@ final class SocketMessageBroker
         return $this->backend;
     }
 
-    public function electFrontendWorkers(IpcServer $ipc)
+    public function electGatewayWorkers(IpcServer $ipc)
     {
-        $config = $this->config;
-        $this->getLogger()->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
+        $config = $this->getConfig();
+        $logger = $this->getLogger();
+        $logger->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
         $cpus = Runtime::getNumberOfProcessors();
         if (defined("HHVM_VERSION")) {
             // HHVM does not support SO_REUSEADDR ?
-            $frontendsAmount = 1;
-            $this->getLogger()->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
+            $gatewaysAmount = 1;
+            $logger->warn("Running single frontend service due to the lack of SO_REUSEADDR option in HHVM");
         } else {
-            $frontendsAmount = (int) max(1, $cpus / 2);
+            $gatewaysAmount = (int) max(1, $cpus / 2);
         }
-        $this->getLogger()->debug("Detected $cpus CPUs: electing $frontendsAmount concurrent gateway workers");
-        $ipc->send(new FrontendElectionMessage($frontendsAmount), IpcServer::AUDIENCE_AMOUNT, $frontendsAmount);
+        $logger->debug("Detected $cpus CPUs: electing $gatewaysAmount concurrent gateway workers");
+        $ipc->send(new GatewayElectionMessage($gatewaysAmount), IpcServer::AUDIENCE_AMOUNT, $gatewaysAmount);
     }
 
     public function attach(EventManagerInterface $events)
@@ -133,44 +138,42 @@ final class SocketMessageBroker
         }, WorkerEvent::PRIORITY_REGULAR + 1);
 
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->getBackend()->startServer($this->backendHost);
-            $this->workerIPC = new WorkerIPC($event->getWorker()->getUid(), $this->getBackend()->getServer()->getLocalAddress());
+            $backend = $this->getBackend();
+            $backend->startService($this->backendHost, 1, 0);
+            $this->workerIPC = new WorkerIPC($event->getWorker()->getUid(), $backend->getServer()->getLocalAddress());
             $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->workerIPC);
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
             $backend = $this->getBackend();
             $registrator = $this->getRegistrator();
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
-
-            if ($this->isBackend && !$backend->getServer()->isClosed()) {
-                $backend->getServer()->close();
-            }
-
-            if ($backend->isClientConnected()) {
-                $backend->getClientStream()->close();
-            }
+            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
 
             if ($registrator->isRegistered()) {
-                $registrator->unregister();
+                $registrator->stopService();
             }
+
+            if ($this->isBackend) {
+                $backend->stopService();
+            }
+
         }, 1000);
 
         $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
             $message = $event->getParams();
 
-            if (!$message instanceof FrontendElectionMessage) {
+            if (!$message instanceof GatewayElectionMessage) {
                 return;
             }
 
             $config = $this->getConfig();
             $this->isBackend = false;
             $this->isFrontend = true;
-            $this->getBackend()->getServer()->close();
+            $this->getBackend()->stopService();
 
             $this->getLogger()->debug("Becoming frontend worker");
             $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
-            $this->getFrontend()->startGatewayServer('tcp://' . $config->getListenAddress(), 1000, $config->getListenPort());
+            $this->getFrontend()->startService('tcp://' . $config->getListenAddress(), 1000, $config->getListenPort());
         }, WorkerEvent::PRIORITY_FINALIZE);
 
         $events->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
@@ -182,16 +185,16 @@ final class SocketMessageBroker
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
             $registrator = $this->getRegistrator();
-            $registrator->startRegistratorServer();
+            $registrator->startService();
             $this->getLogger()->debug("Registrator listening on: " . $registrator->getServer()->getLocalAddress());
             $registrator->registerObservers($event->getScheduler()->getReactor());
-            $this->electFrontendWorkers($event->getScheduler()->getIpc());
+            $this->electGatewayWorkers($event->getScheduler()->getIpc());
         }, -9000);
 
         $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
             try {
                 if ($this->isBackend) {
-                    $this->getBackend()->checkWorkerMessages($event->getWorker());
+                    $this->getBackend()->checkMessages($event->getWorker());
                     return;
                 }
 
@@ -207,12 +210,13 @@ final class SocketMessageBroker
 
                 static $last = 0;
                 $now = microtime(true);
+                $frontend = $this->getFrontend();
                 do {
                     if ($now - $last >1) {
                         $last = $now;
                     }
 
-                    $this->getFrontend()->selectStreams();
+                    $frontend->selectStreams();
                 } while (microtime(true) - $now < 1);
 
             } catch (Throwable $ex) {

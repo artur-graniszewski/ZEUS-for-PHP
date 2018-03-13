@@ -2,7 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking\Message;
 
-class FrontendElectionMessage
+class GatewayElectionMessage
 {
     private $frontendsAmount = 0;
 
