@@ -35,7 +35,7 @@ class SocketMessageTest extends TestCase
     public function tearDown()
     {
         try {
-            $server = $this->service->getFrontend()->getServer();
+            $server = $this->service->getGateway()->getServer();
         } catch (\LogicException $ex) {
             return;
         }
@@ -119,6 +119,7 @@ class SocketMessageTest extends TestCase
         $requestString2 = "GET / HTTP/1.0\r\nConnection: close\r\n\r\n";
         $wrote = stream_socket_sendto($client, $requestString2);
         $this->assertEquals($wrote, strlen($requestString2));
+        $events->triggerEvent($event);
         $events->triggerEvent($event);
 
         fclose($client);

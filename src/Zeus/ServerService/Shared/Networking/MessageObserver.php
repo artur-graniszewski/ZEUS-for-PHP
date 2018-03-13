@@ -3,13 +3,17 @@
 namespace Zeus\ServerService\Shared\Networking;
 
 use Zeus\IO\Stream\NetworkStreamInterface;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 
-class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInterface
+class MessageObserver implements HeartBeatMessageInterface, MessageComponentInterface
 {
     private $broker;
 
     private $message;
+
+    /** @var Worker */
+    private $worker;
 
     public function __construct(SocketMessageBroker $broker, MessageComponentInterface $message)
     {
@@ -17,10 +21,17 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
         $this->message = $message;
     }
 
+    public function setWorker(Worker $worker)
+    {
+        $this->worker = $worker;
+    }
+
     public function onOpen(NetworkStreamInterface $connection)
     {
         $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
         $function = function() use ($connection) {
+            $this->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
+            $this->getWorker()->setRunning();
             $this->getMessageComponent()->onOpen($connection);
         };
 
@@ -55,6 +66,7 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
     public function onClose(NetworkStreamInterface $connection)
     {
         $function = function() use ($connection) {
+            $this->getWorker()->setWaiting();
             $this->getMessageComponent()->onClose($connection);
         };
 
@@ -64,6 +76,7 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
     public function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
         $function = function() use ($connection, $exception) {
+            $this->getWorker()->setWaiting();
             $this->getMessageComponent()->onError($connection, $exception);
         };
 
@@ -96,5 +109,10 @@ class MessageWrapper implements HeartBeatMessageInterface, MessageComponentInter
     private function getBroker() : SocketMessageBroker
     {
         return $this->broker;
+    }
+
+    public function getWorker() : Worker
+    {
+        return $this->worker;
     }
 }

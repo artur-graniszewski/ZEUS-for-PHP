@@ -201,11 +201,11 @@ class RegistratorService extends AbstractService implements ServiceInterface
         return $workerIPC;
     }
 
-    private function handleBackendWorkers()
+    private function checkWorkersIPC()
     {
         foreach ($this->getSelector()->getSelectionKeys() as $selectionKey) {
             try {
-                $this->checkBackendStatus($selectionKey);
+                $this->handleWorkerIPC($selectionKey);
             } catch (IOException $ex) {
                 $stream = $selectionKey->getStream();
                 $selectionKey->cancel();
@@ -242,10 +242,10 @@ class RegistratorService extends AbstractService implements ServiceInterface
         $selector = $this->newSelector();
         $this->getServer()->getSocket()->register($selector, SelectionKey::OP_ACCEPT);
         $reactor->observe($selector, function() use ($selector) {$this->addBackend();}, function() {}, 1000);
-        $reactor->observe($this->getSelector(), function() {$this->handleBackendWorkers();}, function() {}, 1000);
+        $reactor->observe($this->getSelector(), function() {$this->checkWorkersIPC();}, function() {}, 1000);
     }
 
-    public function checkBackendStatus(SelectionKey $selectionKey)
+    public function handleWorkerIPC(SelectionKey $selectionKey)
     {
         /** @var SocketStream $stream */
         $stream = $selectionKey->getStream();
@@ -290,7 +290,6 @@ class RegistratorService extends AbstractService implements ServiceInterface
                 break;
 
             case self::STATUS_WORKER_LOCK:
-                //$frontendUid = $uid;
                 try {
                     $worker = $pool->getAnyWorker();
                     $pool->removeWorker($worker);
@@ -302,14 +301,23 @@ class RegistratorService extends AbstractService implements ServiceInterface
                     $stream->write("0:0@");
                 }
 
+                $count = 0;
                 do {
                     $done = $stream->flush();
+                    $count++;
+
+                    if ($count > 5) {
+                        $logger->warn("Gateway unresponsive");
+                    }
                 } while (!$done);
 
                 break;
 
             case self::STATUS_WORKER_GONE:
                 $pool->removeWorker($worker);
+                break;
+
+            case self::STATUS_WORKER_BUSY:
                 break;
 
             case self::STATUS_WORKER_FAILED:

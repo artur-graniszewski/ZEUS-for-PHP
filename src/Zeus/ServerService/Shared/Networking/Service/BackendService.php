@@ -5,14 +5,11 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 use Throwable;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
-use Zeus\Kernel\Scheduler\Worker;
-use Zeus\IO\Exception\IOException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 
 use function time;
-use function is_null;
 
 class BackendService extends AbstractService implements ServiceInterface
 {
@@ -37,7 +34,7 @@ class BackendService extends AbstractService implements ServiceInterface
 
     public function isClientConnected() : bool
     {
-        return !is_null($this->clientStream) && !$this->getClientStream()->isClosed();
+        return null !== $this->clientStream && !$this->getClientStream()->isClosed();
     }
 
     public function setClientStream(NetworkStreamInterface $stream)
@@ -66,98 +63,27 @@ class BackendService extends AbstractService implements ServiceInterface
         }
     }
 
-    public function checkMessages(Worker $worker)
+    private function acceptClient()
     {
-        $listener = $this->messageListener;
-        $exception = null;
-
         try {
-            if (!$this->isClientConnected()) {
-                $worker->setWaiting();
-                try {
-                    if ($this->getSelector()->select(1000)) {
-                        $worker->getStatus()->incrementNumberOfFinishedTasks(1);
-                        $worker->setRunning();
-                        $clientStream = $this->getServer()->accept();
-                        try {
-                            $this->setStreamOptions($clientStream);
-                        } catch (UnsupportedOperationException $exception) {
-                            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
-                        }
-                    } else {
-                        return;
-                    }
-                } catch (Throwable $exception) {
-                    $worker->setWaiting();
-
-                    return;
-                }
-
+            if ($this->getSelector()->select(1000)) {
+                $clientStream = $this->getServer()->accept();
                 $this->setClientStream($clientStream);
-                $listener->onOpen($clientStream);
-            }
-
-            $clientStream = $this->getClientStream();
-
-            if (!$clientStream->isReadable()) {
-                $clientStream->close();
-                $worker->setWaiting();
-                return;
-            }
-
-            $selector = $this->newSelector();
-            $clientStream->register($selector, SelectionKey::OP_READ);
-            while ($selector->select(1000) > 0) {
-                $data = $clientStream->read();
-                if ($data !== '') {
-                    $listener->onMessage($clientStream, $data);
-
-                    if ($clientStream->isClosed()) {
-                        break;
-                    }
-                    do {
-                        $flushed = $clientStream->flush();
-                    } while (!$flushed);
-                } else {
-                    // its an EOF
-                    $listener->onClose($clientStream);
-                    $this->closeConnection();
-                    $worker->setWaiting();
-
-                    return;
+                try {
+                    $this->setStreamOptions($clientStream);
+                } catch (UnsupportedOperationException $exception) {
+                    // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
                 }
-                $this->onHeartBeat();
-            }
 
-            // nothing wrong happened, data was handled, resume main event
-            if (!$clientStream->isClosed()) {
-                $this->onHeartBeat();
+                $this->messageListener->onOpen($clientStream);
 
-                return;
+                return true;
             }
-        } catch (IOException $streamException) {
-            $this->onHeartBeat();
         } catch (Throwable $exception) {
+
         }
 
-        if ($this->isClientConnected()) {
-            try {
-                if ($exception) {
-                    $listener->onError($this->getClientStream(), $exception);
-                } else {
-                    $listener->onClose($this->getClientStream());
-                }
-            } catch (Throwable $exception) {
-            }
-
-            $this->closeConnection();
-        }
-
-        $worker->setWaiting();
-
-        if ($exception) {
-            throw $exception;
-        }
+        return false;
     }
 
     public function startService(string $workerHost, int $backlog, int $port = -1)
@@ -177,5 +103,77 @@ class BackendService extends AbstractService implements ServiceInterface
         if ($this->isClientConnected()) {
             $this->getClientStream()->close();
         }
+    }
+
+    private function checkClientStream()
+    {
+        $listener = $this->messageListener;
+        $clientStream = $this->getClientStream();
+        
+        if (!$clientStream->isReadable()) {
+            $listener->onClose($clientStream);
+            $this->closeConnection();
+            return;
+        }
+
+        $selector = $this->newSelector();
+        $clientStream->register($selector, SelectionKey::OP_READ);
+        while ($selector->select(1000) > 0) {
+            $data = $clientStream->read();
+            if ($data !== '') {
+                $listener->onMessage($clientStream, $data);
+
+                if ($clientStream->isClosed()) {
+                    break;
+                }
+                do {
+                    $flushed = $clientStream->flush();
+                } while (!$flushed);
+            } else {
+                // its an EOF
+                $listener->onClose($clientStream);
+                $this->closeConnection();
+
+                return;
+            }
+        }
+
+        // nothing wrong happened, data was handled, resume main event
+        if ($this->isClientConnected()) {
+            $this->onHeartBeat();
+
+            return;
+        }
+    }
+
+    public function checkMessages()
+    {
+        $listener = $this->messageListener;
+        $exception = null;
+
+        if (!$this->isClientConnected() && !$this->acceptClient()) {
+            return;
+        }
+
+        try {
+            $this->checkClientStream();
+            return;
+        } catch (Throwable $exception) {
+        }
+
+        try {
+            if ($this->isClientConnected()) {
+                if ($exception) {
+                    $listener->onError($this->getClientStream(), $exception);
+                } else {
+                    $listener->onClose($this->getClientStream());
+                }
+            }
+        } catch (Throwable $exception) {
+        }
+
+        $this->closeConnection();
+
+        throw $exception;
     }
 }
