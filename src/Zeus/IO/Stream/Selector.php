@@ -93,7 +93,7 @@ class Selector extends AbstractStreamSelector
         $resourceId = array_search($stream, $this->streams);
 
         if ($resourceId === false && !$stream->isClosed()) {
-            throw new IOException("No such stream registered: $resourceId");
+            throw new IOException("No such stream registered: " . $stream->getResourceId());
         }
 
         if ($operation & SelectionKey::OP_READ) {

@@ -80,11 +80,15 @@ class GatewayServiceTest extends AbstractServiceTest
         $backend->selectStreams();
         $this->assertEquals($testMessage, $backendStream->getSentData());
 
-//        $acceptStream->getLastSelectionKey()->setReadable(true);
-//        $selector->expects($this->at(1))
-//            ->method('getSelectionKeys')
-//            ->willReturn([$acceptStream->getLastSelectionKey()]);
-//
-//        $backend->selectStreams();
+        $acceptStream->getLastSelectionKey()->setReadable(true);
+        $selector->expects($this->at(1))
+            ->method('getSelectionKeys')
+            ->willReturn([$acceptStream->getLastSelectionKey()]);
+
+        $selector->expects($this->any())
+            ->method('unregister')
+            ->willReturn(null);
+
+        $backend->selectStreams();
     }
 }

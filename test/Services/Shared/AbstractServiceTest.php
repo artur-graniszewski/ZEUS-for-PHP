@@ -35,6 +35,7 @@ abstract class AbstractServiceTest extends TestCase
         $mockBuilder->setMethods([
             'select',
             'getSelectionKeys',
+            'unregister',
         ]);
 
         /** @var Selector|\PHPUnit_Framework_MockObject_MockObject $selector */
