@@ -35,7 +35,7 @@ class BackendService extends AbstractService implements ServiceInterface
 
     public function isClientConnected() : bool
     {
-        return null !== $this->clientStream && !$this->getClientStream()->isClosed();
+        return null !== $this->clientStream && !$this->clientStream->isClosed();
     }
 
     public function setClientStream(NetworkStreamInterface $stream)

@@ -19,4 +19,8 @@ interface NetworkStreamInterface extends SelectableStreamInterface
     public function getRemoteAddress() : string;
 
     public function shutdown(int $shutdownType);
+
+    public function setOption(int $option, $value);
+
+    public function setBlocking(bool $isBlocking);
 }

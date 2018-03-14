@@ -10,6 +10,8 @@ class SocketTestNetworkStream implements NetworkStreamInterface
 {
     protected $dataSent = '';
 
+    protected $dataReceived = '';
+
     protected $isConnectionClosed = false;
 
     protected $isConnectionWritable = true;
@@ -17,6 +19,8 @@ class SocketTestNetworkStream implements NetworkStreamInterface
     protected $remoteAddress = '127.0.0.2:7071';
 
     protected $serverAddress = '127.0.0.1:7070';
+
+    private $lastSelectionKey;
 
     public function write(string $data) : int
     {
@@ -96,7 +100,22 @@ class SocketTestNetworkStream implements NetworkStreamInterface
 
     public function read(int $size = 0) : string
     {
-        // TODO: Implement read() method.
+        if ($size === 0 || $size >= strlen($this->dataReceived)) {
+            $result = $this->dataReceived;
+            $this->dataReceived = '';
+
+            return $result;
+        }
+
+        $result = substr($this->dataReceived, 0, $size);
+        $this->dataReceived = substr($this->dataReceived, $size);
+
+        return $result;
+    }
+
+    public function setDataReceived(string $data)
+    {
+        $this->dataReceived = $data;
     }
 
     public function select(int $timeout) : bool
@@ -127,7 +146,7 @@ class SocketTestNetworkStream implements NetworkStreamInterface
 
     public function getResourceId(): int
     {
-        // TODO: Implement getResourceId() method.
+        return crc32(spl_object_hash($this));
     }
 
     public function isClosed(): bool
@@ -142,6 +161,23 @@ class SocketTestNetworkStream implements NetworkStreamInterface
 
     public function register(Selector $selector, int $operation): SelectionKey
     {
-        // TODO: Implement register() method.
+        $this->lastSelectionKey = new SelectionKey($this, $selector);
+
+        return $this->lastSelectionKey;
+    }
+
+    public function getLastSelectionKey() : SelectionKey
+    {
+        return $this->lastSelectionKey;
+    }
+
+    public function setOption(int $option, $value)
+    {
+        // TODO: Implement setOption() method.
+    }
+
+    public function setBlocking(bool $isBlocking)
+    {
+        // TODO: Implement setBlocking() method.
     }
 }

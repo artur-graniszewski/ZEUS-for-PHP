@@ -101,19 +101,10 @@ class GatewayService extends AbstractService implements ServiceInterface
     private function connectToBackend()
     {
         $registrator = $this->registrator;
-        $workerIPC = $registrator->getBackendWorker();
-
+        $workerIPC = $registrator->getBackendIPC();
+        /** @var SocketStream $backend */
+        $backend = $workerIPC->getStream();
         $uid = $workerIPC->getUid();
-        $address = $workerIPC->getAddress();
-
-        $socket = @stream_socket_client($address, $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
-        if (!$socket) {
-            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $workerIPC);
-
-            throw new IOException("Couldn't connect to backend #$uid: $errstr", $errno);
-        }
-
-        $backend = new SocketStream($socket);
 
         $client = $this->getServer()->accept();
         $this->setStreamOptions($client);
@@ -142,16 +133,15 @@ class GatewayService extends AbstractService implements ServiceInterface
         $keys = $selector->getSelectionKeys();
 
         $uidsToIgnore = [];
-        $serverResourceId = $this->getServer()->getSocket()->getResourceId();
 
         foreach ($keys as $index => $selectionKey) {
             if ($selectionKey->isAcceptable()) {
+                $serverResourceId = $this->getServer()->getSocket()->getResourceId();
                 $stream = $selectionKey->getStream();
                 $resourceId = $stream->getResourceId();
 
                 if ($resourceId !== $serverResourceId) {
                     throw new IOException("Unknown stream selected");
-
                 }
 
                 try {
@@ -188,6 +178,8 @@ class GatewayService extends AbstractService implements ServiceInterface
 
     public function stopService()
     {
-
+        if (!$this->getServer()->isClosed()) {
+            $this->getServer()->close();
+        }
     }
 }

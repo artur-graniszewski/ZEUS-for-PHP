@@ -2,6 +2,8 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
+use Zeus\IO\Stream\NetworkStreamInterface;
+
 class WorkerIPC
 {
     /** @var int */
@@ -9,6 +11,9 @@ class WorkerIPC
 
     /** @var string */
     private $address;
+
+    /** @var NetworkStreamInterface */
+    private $stream;
 
     public function getAddress() : string
     {
@@ -24,5 +29,15 @@ class WorkerIPC
     {
         $this->uid = $uid;
         $this->address = $address;
+    }
+
+    public function setStream(NetworkStreamInterface $stream)
+    {
+        $this->stream = $stream;
+    }
+
+    public function getStream() : NetworkStreamInterface
+    {
+        return $this->stream;
     }
 }

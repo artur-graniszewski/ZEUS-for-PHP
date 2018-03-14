@@ -219,13 +219,13 @@ final class SocketMessageBroker
 
                 static $last = 0;
                 $now = microtime(true);
-                $frontend = $this->getGateway();
+                $gateway = $this->getGateway();
                 do {
                     if ($now - $last >1) {
                         $last = $now;
                     }
 
-                    $frontend->selectStreams();
+                    $gateway->selectStreams();
                 } while (microtime(true) - $now < 1);
 
             } catch (Throwable $ex) {

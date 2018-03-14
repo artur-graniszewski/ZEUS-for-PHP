@@ -5,6 +5,7 @@ namespace Zeus\IO;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\Exception\SocketException;
 use Zeus\IO\Exception\SocketTimeoutException;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectableStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
@@ -22,7 +23,7 @@ use function current;
  * Class SocketServer
  * @internal
  */
-final class SocketServer
+class SocketServer
 {
     /** @var resource */
     private $resource;
@@ -161,7 +162,7 @@ final class SocketServer
         $this->isBound = true;
     }
 
-    public function accept() : SocketStream
+    public function accept() : NetworkStreamInterface
     {
         $timeout = UnitConverter::convertMillisecondsToSeconds($this->getSoTimeout());
 
@@ -238,7 +239,7 @@ final class SocketServer
         $this->soTimeout = $soTimeout;
     }
 
-    public function getSocket() : SocketStream
+    public function getSocket() : NetworkStreamInterface
     {
         if (!$this->socketObject) {
             $this->socketObject = new SocketStream($this->resource);

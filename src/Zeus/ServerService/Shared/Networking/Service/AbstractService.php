@@ -4,6 +4,7 @@ namespace Zeus\ServerService\Shared\Networking\Service;
 
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
 
@@ -65,7 +66,7 @@ class AbstractService
         return new Selector();
     }
 
-    protected function setStreamOptions(SocketStream $stream)
+    protected function setStreamOptions(NetworkStreamInterface $stream)
     {
         try {
             $stream->setOption(SO_KEEPALIVE, 1);

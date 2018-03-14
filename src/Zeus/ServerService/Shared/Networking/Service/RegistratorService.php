@@ -7,6 +7,7 @@ use Zend\Log\LoggerAwareTrait;
 use Zeus\Exception\NoSuchElementException;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
@@ -141,7 +142,7 @@ class RegistratorService extends AbstractService implements ServiceInterface
         return true;
     }
 
-    public function getBackendWorker() : WorkerIPC
+    public function getBackendIPC() : WorkerIPC
     {
         $readSelector = new Selector();
         $writeSelector = new Selector();
@@ -192,7 +193,19 @@ class RegistratorService extends AbstractService implements ServiceInterface
             throw new NoSuchElementException("No backend worker available");
         }
 
-        $workerIPC = new WorkerIPC((int) $uid, $address);
+        $uid = (int) $uid;
+        $workerIPC = new WorkerIPC($uid, $address);
+
+        $socket = @stream_socket_client($address, $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
+        if (!$socket) {
+            $this->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $workerIPC);
+
+            throw new IOException("Couldn't connect to backend #$uid: $errstr", $errno);
+        }
+
+        $backend = new SocketStream($socket);
+        $workerIPC->setStream($backend);
+
         return $workerIPC;
     }
 
