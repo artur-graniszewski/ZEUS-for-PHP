@@ -39,6 +39,9 @@ final class SocketMessageBroker
     /** @var string */
     private $backendHost = 'tcp://127.0.0.3';
 
+    /** @var string */
+    private $registratorHost = 'tcp://127.0.0.2';
+
     /** @var bool */
     private $isBusy = false;
 
@@ -176,7 +179,7 @@ final class SocketMessageBroker
             $this->isFrontend = true;
             $this->getBackend()->stopService();
 
-            $this->getLogger()->debug("Becoming frontend worker");
+            $this->getLogger()->debug("Switching to gateway mode");
             $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
             $this->getGateway()->startService('tcp://' . $config->getListenAddress(), 1000, $config->getListenPort());
         }, WorkerEvent::PRIORITY_FINALIZE);
@@ -190,7 +193,7 @@ final class SocketMessageBroker
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
             $registrator = $this->getRegistrator();
-            $registrator->startService();
+            $registrator->startService($this->registratorHost, 1000, 0);
             $this->getLogger()->debug("Registrator listening on: " . $registrator->getServer()->getLocalAddress());
             $registrator->registerObservers($event->getScheduler()->getReactor());
             $this->electGatewayWorkers($event->getScheduler()->getIpc());

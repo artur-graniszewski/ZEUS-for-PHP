@@ -18,8 +18,6 @@ use function function_exists;
 use function fflush;
 use function fclose;
 use function strlen;
-use function strpos;
-use function substr;
 use function in_array;
 
 /**

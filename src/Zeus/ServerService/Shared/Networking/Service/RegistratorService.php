@@ -32,7 +32,7 @@ class RegistratorService extends AbstractService implements ServiceInterface
     private $backendPool;
 
     /** @var string */
-    private $registratorHost = 'tcp://127.0.0.1';
+    private $registratorHost = '';
 
     /** @var SocketStream[] */
     private $registeredWorkerStreams = [];
@@ -124,10 +124,6 @@ class RegistratorService extends AbstractService implements ServiceInterface
         $address = $workerIPC->getAddress();
         $workerUid = $workerIPC->getUid();
 
-//        if ($lastStatus === $status) {
-//            return true;
-//        }
-
         $registratorStream = $this->getRegistratorStream();
 
         try {
@@ -142,7 +138,6 @@ class RegistratorService extends AbstractService implements ServiceInterface
             return $this->notifyRegistrator($status, $workerIPC);
         }
 
-        $lastStatus = $status;
         return true;
     }
 
@@ -229,10 +224,10 @@ class RegistratorService extends AbstractService implements ServiceInterface
         }
     }
 
-    public function startService()
+    public function startService(string $address, int $backlog, int $port = -1)
     {
         $server = $this->getServer();
-        $server->bind($this->getRegistratorAddress(), 1000, 0);
+        $server->bind($address, $backlog, $port);
         $this->setRegistratorAddress($server->getLocalAddress());
     }
 

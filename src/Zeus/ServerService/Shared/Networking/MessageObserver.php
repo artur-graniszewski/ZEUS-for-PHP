@@ -8,8 +8,14 @@ use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 
 class MessageObserver implements HeartBeatMessageInterface, MessageComponentInterface
 {
+    /**
+     * @var SocketMessageBroker
+     */
     private $broker;
 
+    /**
+     * @var MessageComponentInterface
+     */
     private $message;
 
     /** @var Worker */

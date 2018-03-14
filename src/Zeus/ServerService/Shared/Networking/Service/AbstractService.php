@@ -2,12 +2,16 @@
 
 namespace Zeus\ServerService\Shared\Networking\Service;
 
-use LogicException;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
 
+/**
+ * Class AbstractService
+ * @package Zeus\ServerService\Shared\Networking\Service
+ * @internal
+ */
 class AbstractService
 {
     /** @var Selector */
@@ -35,7 +39,7 @@ class AbstractService
     public function getServer() : SocketServer
     {
         if (!$this->server) {
-            throw new LogicException("Server not initiated");
+            $this->server = new SocketServer();
         }
 
         return $this->server;

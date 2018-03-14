@@ -3,6 +3,7 @@
 namespace Zeus\ServerService\Shared\Networking\Service;
 
 use Throwable;
+use Zeus\IO\Exception\SocketTimeoutException;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\Exception\UnsupportedOperationException;
@@ -44,10 +45,6 @@ class BackendService extends AbstractService implements ServiceInterface
 
     private function onHeartBeat()
     {
-        if (!$this->isClientConnected()) {
-            return;
-        }
-
         $now = time();
         if ($this->messageListener instanceof HeartBeatMessageInterface && $this->lastTickTime !== $now) {
             $this->lastTickTime = $now;
@@ -65,25 +62,32 @@ class BackendService extends AbstractService implements ServiceInterface
 
     private function acceptClient()
     {
-        try {
-            if ($this->getSelector()->select(1000)) {
-                $clientStream = $this->getServer()->accept();
-                $this->setClientStream($clientStream);
-                try {
-                    $this->setStreamOptions($clientStream);
-                } catch (UnsupportedOperationException $exception) {
-                    // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
-                }
-
-                $this->messageListener->onOpen($clientStream);
-
-                return true;
-            }
-        } catch (Throwable $exception) {
-
+        if (!$this->getSelector()->select(1000)) {
+            return false;
         }
 
-        return false;
+        try {
+            $clientStream = $this->getServer()->accept();
+        } catch (SocketTimeoutException $exception) {
+            return false;
+        }
+
+        $this->setClientStream($clientStream);
+        try {
+            $this->setStreamOptions($clientStream);
+        } catch (UnsupportedOperationException $exception) {
+            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
+        }
+
+        try {
+            $this->messageListener->onOpen($clientStream);
+
+            return true;
+        } catch (Throwable $exception) {
+            $this->handleException($exception);
+
+            return false;
+        }
     }
 
     public function startService(string $workerHost, int $backlog, int $port = -1)
@@ -109,7 +113,7 @@ class BackendService extends AbstractService implements ServiceInterface
     {
         $listener = $this->messageListener;
         $clientStream = $this->getClientStream();
-        
+
         if (!$clientStream->isReadable()) {
             $listener->onClose($clientStream);
             $this->closeConnection();
@@ -141,39 +145,38 @@ class BackendService extends AbstractService implements ServiceInterface
         // nothing wrong happened, data was handled, resume main event
         if ($this->isClientConnected()) {
             $this->onHeartBeat();
-
-            return;
+        } else {
+            $listener->onClose($clientStream);
         }
     }
 
     public function checkMessages()
     {
-        $listener = $this->messageListener;
-        $exception = null;
-
         if (!$this->isClientConnected() && !$this->acceptClient()) {
             return;
         }
 
         try {
             $this->checkClientStream();
-            return;
         } catch (Throwable $exception) {
+            $this->handleException($exception);
         }
+    }
 
+    private function handleException(Throwable $exception)
+    {
         try {
             if ($this->isClientConnected()) {
-                if ($exception) {
-                    $listener->onError($this->getClientStream(), $exception);
-                } else {
-                    $listener->onClose($this->getClientStream());
-                }
+                $this->messageListener->onError($this->getClientStream(), $exception);
+                $exception = null;
             }
         } catch (Throwable $exception) {
         }
 
         $this->closeConnection();
 
-        throw $exception;
+        if ($exception) {
+            throw $exception;
+        }
     }
 }
