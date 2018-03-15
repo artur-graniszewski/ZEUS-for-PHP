@@ -97,6 +97,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
             $function();
             if (!$wasClosed && $connection->isClosed()) {
                 $this->setConnectionStatus($status);
+                $this->getWorker()->setWaiting();
             }
         }
     }

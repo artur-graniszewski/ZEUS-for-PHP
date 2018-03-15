@@ -6,7 +6,6 @@ use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\Selector;
-use Zeus\IO\Stream\SocketStream;
 
 /**
  * Class AbstractService
