@@ -180,4 +180,19 @@ class SocketTestNetworkStream implements NetworkStreamInterface
     {
         // TODO: Implement setBlocking() method.
     }
+
+    public function isBlocking(): bool
+    {
+        // TODO: Implement isBlocking() method.
+    }
+
+    public function getReadBufferSize(): int
+    {
+        // TODO: Implement getReadBufferSize() method.
+    }
+
+    public function getWriteBufferSize(): int
+    {
+        // TODO: Implement getWriteBufferSize() method.
+    }
 }

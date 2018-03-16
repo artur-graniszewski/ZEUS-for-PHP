@@ -9,7 +9,7 @@ use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 class MessageObserver implements HeartBeatMessageInterface, MessageComponentInterface
 {
     /**
-     * @var SocketMessageBroker
+     * @var BrokerStrategy
      */
     private $broker;
 
@@ -21,7 +21,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     /** @var Worker */
     private $worker;
 
-    public function __construct(SocketMessageBroker $broker, MessageComponentInterface $message)
+    public function __construct(BrokerStrategy $broker, MessageComponentInterface $message)
     {
         $this->broker = $broker;
         $this->message = $message;
@@ -96,7 +96,10 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         if ($messageComponent instanceof HeartBeatMessageInterface) {
             $function();
             if (!$wasClosed && $connection->isClosed()) {
-                $this->setConnectionStatus($status);
+                // don't send READY status just before stopping the worker, otherwise we risk race-conditions in registrator
+                if (!($this->getWorker()->getStatus()->isLastTask() && $status === RegistratorService::STATUS_WORKER_READY)) {
+                    $this->setConnectionStatus($status);
+                }
                 $this->getWorker()->setWaiting();
             }
         }
@@ -105,7 +108,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     private function setConnectionStatus(string $status)
     {
         $broker = $this->getBroker();
-        $broker->getRegistrator()->notifyRegistrator($status, $broker->getWorkerIPC());
+        $broker->setWorkerStatus($status);
     }
 
     private function getMessageComponent()
@@ -113,7 +116,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         return $this->message;
     }
 
-    private function getBroker() : SocketMessageBroker
+    private function getBroker() : BrokerStrategy
     {
         return $this->broker;
     }

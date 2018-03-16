@@ -26,15 +26,17 @@ use function microtime;
 use function defined;
 
 /**
- * Class SocketMessageBroker
+ * Class GatewayStrategy
  * @internal
  */
-final class SocketMessageBroker
+final class GatewayMessageBroker implements BrokerStrategy
 {
     use LoggerAwareTrait;
 
     /** @var Worker */
     protected $worker;
+
+    private $config;
 
     /** @var string */
     private $backendHost = 'tcp://127.0.0.3';
@@ -46,7 +48,7 @@ final class SocketMessageBroker
     private $isBusy = false;
 
     /** @var bool */
-    private $isFrontend = false;
+    private $isGateway = false;
 
     /** @var bool */
     private $isBackend = true;
@@ -120,7 +122,6 @@ final class SocketMessageBroker
     {
         $config = $this->getConfig();
         $logger = $this->getLogger();
-        $logger->info(sprintf('Launching server on %s%s', $config->getListenAddress(), $config->getListenPort() ? ':' . $config->getListenPort(): ''));
         $cpus = Runtime::getNumberOfProcessors();
         if (defined("HHVM_VERSION")) {
             // HHVM does not support SO_REUSEADDR ?
@@ -131,6 +132,11 @@ final class SocketMessageBroker
         }
         $logger->debug("Detected $cpus CPUs: electing $gatewaysAmount concurrent gateway workers");
         $ipc->send(new GatewayElectionMessage($gatewaysAmount), IpcServer::AUDIENCE_AMOUNT, $gatewaysAmount);
+    }
+
+    public function setWorkerStatus(string $command) : bool
+    {
+        return $this->getRegistrator()->notify($command, $this->workerIPC);
     }
 
     public function attach(EventManagerInterface $events)
@@ -149,13 +155,13 @@ final class SocketMessageBroker
             $backend->startService($this->backendHost, 1, 0);
             $this->workerIPC = new WorkerIPC($event->getWorker()->getUid(), $backend->getServer()->getLocalAddress());
             $this->worker = $event->getWorker();
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_READY, $this->workerIPC);
+            $this->setWorkerStatus(RegistratorService::STATUS_WORKER_READY);
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
             $backend = $this->getBackend();
             $registrator = $this->getRegistrator();
-            $registrator->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
+            $this->setWorkerStatus(RegistratorService::STATUS_WORKER_GONE);
 
             if ($registrator->isRegistered()) {
                 $registrator->stopService();
@@ -176,11 +182,11 @@ final class SocketMessageBroker
 
             $config = $this->getConfig();
             $this->isBackend = false;
-            $this->isFrontend = true;
+            $this->isGateway = true;
             $this->getBackend()->stopService();
 
             $this->getLogger()->debug("Switching to gateway mode");
-            $this->getRegistrator()->notifyRegistrator(RegistratorService::STATUS_WORKER_GONE, $this->workerIPC);
+            $this->setWorkerStatus(RegistratorService::STATUS_WORKER_GONE);
             $this->getGateway()->startService('tcp://' . $config->getListenAddress(), 1000, $config->getListenPort());
         }, WorkerEvent::PRIORITY_FINALIZE);
 
@@ -207,7 +213,7 @@ final class SocketMessageBroker
                     return;
                 }
 
-                if (!$this->isFrontend) {
+                if (!$this->isGateway) {
 
                     return;
                 }

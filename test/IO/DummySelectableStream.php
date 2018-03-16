@@ -12,6 +12,8 @@ class DummySelectableStream extends AbstractSelectableStream
 
     private $resourceId = 0;
 
+    private $isClosed = false;
+
     private static $resourceIndex = 0;
 
     public function __construct($resource, $peerName = null)

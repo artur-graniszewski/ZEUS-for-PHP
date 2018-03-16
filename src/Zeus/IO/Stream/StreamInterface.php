@@ -28,4 +28,12 @@ interface StreamInterface extends ResourceInterface
     public function setReadBufferSize(int $size);
 
     public function setWriteBufferSize(int $size);
+
+    public function setBlocking(bool $isBlocking);
+
+    public function isBlocking() : bool;
+
+    public function getReadBufferSize() : int;
+
+    public function getWriteBufferSize() : int;
 }

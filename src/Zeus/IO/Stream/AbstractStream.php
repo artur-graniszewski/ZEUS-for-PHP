@@ -5,6 +5,7 @@ namespace Zeus\IO\Stream;
 use OutOfRangeException;
 use Zeus\IO\Exception\IOException;
 
+use function is_resource;
 use function preg_match;
 use function strlen;
 use function substr;
@@ -12,12 +13,11 @@ use function stream_set_blocking;
 use function error_clear_last;
 use function error_get_last;
 use function stream_get_meta_data;
-use function stream_get_line;
 use function function_exists;
 use function fclose;
 use function fflush;
-use function ftell;
 use function feof;
+use function str_replace;
 
 /**
  * Class AbstractStream
@@ -33,17 +33,17 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
 
     protected $isReadable = false;
 
-    protected $isClosed = false;
+    private $isClosed = false;
 
     protected $writeBuffer = '';
 
-    protected $writeBufferSize = self::DEFAULT_WRITE_BUFFER_SIZE;
+    private $writeBufferSize = self::DEFAULT_WRITE_BUFFER_SIZE;
 
-    protected $readBufferSize = self::DEFAULT_READ_BUFFER_SIZE;
+    private $readBufferSize = self::DEFAULT_READ_BUFFER_SIZE;
 
-    protected $dataSent = 0;
+    private $dataSent = 0;
 
-    protected $dataReceived = 0;
+    private $dataReceived = 0;
 
     protected $writeCallback = 'fwrite';
 
@@ -51,7 +51,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
 
     protected $peerName = '';
 
-    protected $isBlocking = true;
+    private $isBlocking = true;
 
     /**
      * SocketConnection constructor.
@@ -121,7 +121,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
 
         try {
             $this->doClose();
-        } catch (\Exception $exception) {
+        } catch (IOException $exception) {
 
         }
 
@@ -161,7 +161,10 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
 
     public function read(int $size = 0) : string
     {
-        return $this->doRead($this->readCallback, $size);
+        $data = $this->doRead($this->readCallback, $size);
+        $this->dataReceived += strlen($data);
+
+        return $data;
     }
 
     /**
@@ -176,7 +179,6 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
         }
 
         $data = @$readMethod($this->resource, $size ? $size : $this->readBufferSize);
-        $this->dataReceived += strlen($data);
 
         return $data === false ? '' : $data;
     }
@@ -190,10 +192,12 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
         $this->writeBuffer .= $data;
 
         if (!$this->writeBufferSize || isset($this->writeBuffer[$this->writeBufferSize])) {
-            return $this->doWrite($this->writeCallback);
-        } else {
-            return 0;
+            $sent = $this->doWrite($this->writeCallback);
+            $this->dataSent += $sent;
+            return $sent;
         }
+
+        return 0;
     }
 
     public function flush() : bool
@@ -209,24 +213,24 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
      */
     protected function doWrite($writeMethod) : int
     {
+        if ($this->isEof()) {
+            $this->isWritable = false;
+            throw new IOException(sprintf("Stream is not writable"));
+        }
         $size = strlen($this->writeBuffer);
         $sent = 0;
 
-        while ($sent !== $size) {
-            $wrote = $writeMethod($this->resource, $this->writeBuffer);
-            if ($wrote < 0 || false === $wrote) {
-                $this->isWritable = false;
-                break;
-            }
+        $wrote = @$writeMethod($this->resource, $this->writeBuffer);
+        if ($wrote < 0 || false === $wrote) {
+            $this->isWritable = false;
 
-            if ($wrote) {
-                $sent += $wrote;
-                $this->writeBuffer = substr($this->writeBuffer, $wrote);
-            }
-        };
+            throw new IOException(sprintf("Stream is not writable, wrote %d bytes out of %d", max(0, $sent), $size));
+        }
 
-        $this->dataSent += $sent;
-        $this->writeBuffer = '';
+        if ($wrote) {
+            $sent += $wrote;
+            $this->writeBuffer = substr($this->writeBuffer, $wrote);
+        }
 
         return $sent;
     }
@@ -245,5 +249,15 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
             throw new OutOfRangeException("Read buffer size must be greater than 0");
         }
         $this->readBufferSize = $size;
+    }
+
+    public function getReadBufferSize() : int
+    {
+        return $this->readBufferSize;
+    }
+
+    public function getWriteBufferSize() : int
+    {
+        return $this->writeBufferSize;
     }
 }

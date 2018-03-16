@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Http\Message;
 
+use InvalidArgumentException;
 use Throwable;
 use Zend\Http\Header\KeepAlive;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
@@ -55,7 +56,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const REQUEST_PHASE_SENDING = 16;
     const MAX_KEEP_ALIVE_REQUESTS = 100;
 
-    /** @var \Zeus\IO\Stream\NetworkStreamInterface */
+    /** @var NetworkStreamInterface */
     protected $connection;
 
     /** @var int */
@@ -332,7 +333,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         if (!$this->isBodyAllowedInRequest($this->request)) {
             if (isset($message[0])) {
                 // method is not allowing to send a body
-                throw new \InvalidArgumentException("Body not allowed in this request: $message", Response::STATUS_CODE_400);
+                throw new InvalidArgumentException("Body not allowed in this request: $message", Response::STATUS_CODE_400);
             }
 
             $this->requestComplete = true;

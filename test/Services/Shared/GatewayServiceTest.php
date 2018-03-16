@@ -44,7 +44,7 @@ class GatewayServiceTest extends AbstractServiceTest
         $this->assertFalse($wasClosed);
     }
 
-    public function testConnectionForward()
+    public function testStreamForwdarding()
     {
         $testMessage = "test message";
         $backendStream = new SocketTestNetworkStream(null);

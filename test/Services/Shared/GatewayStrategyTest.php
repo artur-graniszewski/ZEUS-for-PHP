@@ -2,14 +2,15 @@
 
 namespace ZeusTest\Services\Shared;
 
+use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler;
 use Zeus\ServerService\Http\Config;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
-use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
+use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use ZeusTest\Helpers\ZeusFactories;
 
-class SocketMessageBrokerTest extends \PHPUnit\Framework\TestCase
+class GatewayStrategyTest extends TestCase
 {
     use ZeusFactories;
 
@@ -29,7 +30,7 @@ class SocketMessageBrokerTest extends \PHPUnit\Framework\TestCase
         $initPassed = false;
         $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
-        $broker = new SocketMessageBroker($this->config, new Message(function() {}), $scheduler->getLogger());
+        $broker = new GatewayMessageBroker($this->config, new Message(function() {}), $scheduler->getLogger());
         $broker->attach($scheduler->getEventManager());
 
         $events = $scheduler->getEventManager();

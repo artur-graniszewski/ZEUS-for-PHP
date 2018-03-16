@@ -131,13 +131,11 @@ class SocketStream extends AbstractSelectableStream implements NetworkStreamInte
             throw new IOException("Stream is not readable");
         }
 
-        $data = @$readMethod($this->resource, $size ? $size : $this->readBufferSize);
+        $data = @$readMethod($this->resource, $size ? $size : $this->getReadBufferSize());
 
         if (false === $data) {
             $this->isReadable = false;
             throw new IOException("Stream is not readable");
-        } else {
-            $this->dataReceived += strlen($data);
         }
 
         return $data;

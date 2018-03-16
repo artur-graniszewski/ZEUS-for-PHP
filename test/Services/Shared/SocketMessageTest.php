@@ -9,7 +9,7 @@ use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Async\Config;
-use Zeus\ServerService\Shared\Networking\SocketMessageBroker;
+use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -17,7 +17,7 @@ class SocketMessageTest extends TestCase
 {
     use ZeusFactories;
 
-    /** @var SocketMessageBroker */
+    /** @var GatewayMessageBroker */
     protected $service;
     /** @var int */
     protected $port;
@@ -77,7 +77,7 @@ class SocketMessageTest extends TestCase
                 $connection->close();
             }
         });
-        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
+        $this->service = $eventSubscriber = new GatewayMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1');
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
@@ -163,7 +163,7 @@ class SocketMessageTest extends TestCase
         $message->setErrorCallback(function($connection, $exception) use (& $catchedException) {
             $catchedException = $exception;
         });
-        $this->service = $eventSubscriber = new SocketMessageBroker($this->config, $message, $scheduler->getLogger());
+        $this->service = $eventSubscriber = new GatewayMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1');
         $eventSubscriber->attach($events);
 

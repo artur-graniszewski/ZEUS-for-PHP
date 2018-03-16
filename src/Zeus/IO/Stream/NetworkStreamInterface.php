@@ -21,6 +21,4 @@ interface NetworkStreamInterface extends SelectableStreamInterface
     public function shutdown(int $shutdownType);
 
     public function setOption(int $option, $value);
-
-    public function setBlocking(bool $isBlocking);
 }

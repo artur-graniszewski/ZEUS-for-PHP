@@ -149,7 +149,7 @@ final class Manager
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START,
             function (SchedulerEvent $event) use ($service) {
-                $this->getLogger()->debug(sprintf('Scheduler running as worker #%d', getmypid()));
+                $this->getLogger()->debug(sprintf('Scheduler starting in worker #%d', getmypid()));
                 $this->pidToServiceMap[getmypid()] = $service;
                 $this->servicesRunning++;
             }, -10000);

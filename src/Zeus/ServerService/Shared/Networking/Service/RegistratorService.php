@@ -118,7 +118,7 @@ class RegistratorService extends AbstractService implements ServiceInterface
         $registrator->close();
     }
 
-    public function notifyRegistrator(string $status, WorkerIPC $workerIPC) : bool
+    public function notify(string $status, WorkerIPC $workerIPC) : bool
     {
         static $lastStatus = null;
 
@@ -136,7 +136,7 @@ class RegistratorService extends AbstractService implements ServiceInterface
             $registratorStream->close();
             $this->register();
 
-            return $this->notifyRegistrator($status, $workerIPC);
+            return $this->notify($status, $workerIPC);
         }
 
         return true;
@@ -198,7 +198,7 @@ class RegistratorService extends AbstractService implements ServiceInterface
 
         $socket = @stream_socket_client($address, $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $this->getStreamContext());
         if (!$socket) {
-            $this->notifyRegistrator(RegistratorService::STATUS_WORKER_FAILED, $workerIPC);
+            $this->notify(RegistratorService::STATUS_WORKER_FAILED, $workerIPC);
 
             throw new IOException("Couldn't connect to backend #$uid: $errstr", $errno);
         }
@@ -322,14 +322,22 @@ class RegistratorService extends AbstractService implements ServiceInterface
                 break;
 
             case self::STATUS_WORKER_GONE:
-                $pool->removeWorker($worker);
+                try {
+                    $pool->removeWorker($worker);
+                } catch (NoSuchElementException $exception) {
+                    // nothing to do, this might have been an effect of a race condition
+                }
                 break;
 
             case self::STATUS_WORKER_BUSY:
                 break;
 
             case self::STATUS_WORKER_FAILED:
-                $pool->removeWorker($worker);
+                try {
+                    $pool->removeWorker($worker);
+                } catch (NoSuchElementException $exception) {
+                    // nothing to do, this might have been an effect of a race condition
+                }
                 $logger->err("Worker $uid marked as failed");
                 break;
 
