@@ -120,7 +120,6 @@ final class GatewayMessageBroker implements BrokerStrategy
 
     public function electGatewayWorkers(IpcServer $ipc)
     {
-        $config = $this->getConfig();
         $logger = $this->getLogger();
         $cpus = Runtime::getNumberOfProcessors();
         if (defined("HHVM_VERSION")) {

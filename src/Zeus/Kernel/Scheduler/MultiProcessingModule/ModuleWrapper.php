@@ -265,9 +265,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
     {
         $event = $this->getWorkerEvent();
         $event->setName(WorkerEvent::EVENT_TERMINATED);
-        $event->getWorker()->setUid($uid);
-        $event->getWorker()->setProcessId($processId);
-        $event->getWorker()->setThreadId($threadId);
+        $worker = $event->getWorker();
+        $worker->setUid($uid);
+        $worker->setProcessId($processId);
+        $worker->setThreadId($threadId);
         $this->getEventManager()->triggerEvent($event);
         $this->unregisterWorker($uid);
     }

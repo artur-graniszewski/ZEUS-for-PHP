@@ -12,9 +12,10 @@ class Service extends AbstractSocketServerService
 
     public function start()
     {
-        $this->config['logger'] = get_class();
+        $config = $this->getConfig();
+        $config['logger'] = get_class();
 
-        $config = new Config($this->getConfig());
+        $config = new Config($config);
         $this->getServer($this->message, $config);
 
         parent::start();

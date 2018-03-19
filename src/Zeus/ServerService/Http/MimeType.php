@@ -8,6 +8,8 @@ use function fwrite;
 use function fclose;
 use function unlink;
 use function pathinfo;
+use function str_replace;
+use function mime_content_type;
 
 class MimeType
 {

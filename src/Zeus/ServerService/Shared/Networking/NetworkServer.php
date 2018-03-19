@@ -9,10 +9,15 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilitie
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
+use function explode;
+use function get_class;
+use function array_pop;
+
 class NetworkServer
 {
     use LoggerAwareTrait;
 
+    /** @var BrokerStrategy */
     private $strategy;
 
     /** @var AbstractNetworkServiceConfig */

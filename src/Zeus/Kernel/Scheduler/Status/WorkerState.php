@@ -9,7 +9,6 @@ use function min;
 use function max;
 use function getmypid;
 use function microtime;
-use Zeus\Kernel\Scheduler\WorkerEvent;
 
 /**
  * Current status of the worker.

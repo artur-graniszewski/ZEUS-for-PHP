@@ -40,6 +40,7 @@ class ProcessTitle implements ListenerAggregateInterface
             return;
         }
 
+
         $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_CREATE, [$this, 'onWorkerStarting'], $priority);
         $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_WAITING, [$this, 'onWorkerWaiting'], $priority);
         $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_TERMINATE, [$this, 'onWorkerTerminate'], $priority);

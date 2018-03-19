@@ -2,6 +2,9 @@
 
 namespace Zeus\Util;
 
+use function array_shift;
+use function func_get_args;
+
 class Math
 {
     /**

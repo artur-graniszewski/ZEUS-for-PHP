@@ -36,8 +36,9 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     {
         $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
         $function = function() use ($connection) {
-            $this->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1);
-            $this->getWorker()->setRunning();
+            $worker = $this->getWorker();
+            $worker->getStatus()->incrementNumberOfFinishedTasks(1);
+            $worker->setRunning();
             $this->getMessageComponent()->onOpen($connection);
         };
 
@@ -96,11 +97,12 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         if ($messageComponent instanceof HeartBeatMessageInterface) {
             $function();
             if (!$wasClosed && $connection->isClosed()) {
+                $worker = $this->getWorker();
                 // don't send READY status just before stopping the worker, otherwise we risk race-conditions in registrator
-                if (!($this->getWorker()->getStatus()->isLastTask() && $status === RegistratorService::STATUS_WORKER_READY)) {
+                if (!($worker->getStatus()->isLastTask() && $status === RegistratorService::STATUS_WORKER_READY)) {
                     $this->setConnectionStatus($status);
                 }
-                $this->getWorker()->setWaiting();
+                $worker->setWaiting();
             }
         }
     }

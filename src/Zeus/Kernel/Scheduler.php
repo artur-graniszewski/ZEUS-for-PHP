@@ -144,11 +144,7 @@ final class Scheduler extends AbstractService
                 if (!$event->getParam(static::WORKER_SERVER) || $event->getParam(static::WORKER_INIT)) {
                     return;
                 }
-
-//                $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $e) {
-//                    $e->stopPropagation(true);
-//                }, WorkerEvent::PRIORITY_INITIALIZE + 100000);
-
+                
                 $pid = $event->getWorker()->getProcessId();
 
                 $fileName = $this->getUidFile();

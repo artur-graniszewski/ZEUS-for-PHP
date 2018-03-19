@@ -2,6 +2,8 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 
+use Zeus\Exception\UnsupportedOperationException;
+
 use function posix_setsid;
 use function pcntl_sigprocmask;
 use function pcntl_wait;
@@ -11,7 +13,7 @@ use function posix_getppid;
 use function posix_kill;
 use function is_callable;
 use function extension_loaded;
-use Zeus\Exception\UnsupportedOperationException;
+
 
 /**
  * Class PcntlBridge

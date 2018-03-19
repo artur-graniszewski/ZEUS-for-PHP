@@ -7,6 +7,7 @@ use function substr;
 
 class ReadBuffer
 {
+    /** @var string */
     private $data = '';
 
     public function append(string $data)
