@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
+use Throwable;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
@@ -80,7 +81,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $this->safeExecute($function, $connection, RegistratorService::STATUS_WORKER_READY);
     }
 
-    public function onError(NetworkStreamInterface $connection, \Throwable $exception)
+    public function onError(NetworkStreamInterface $connection, Throwable $exception)
     {
         $function = function() use ($connection, $exception) {
             $this->getWorker()->setWaiting();

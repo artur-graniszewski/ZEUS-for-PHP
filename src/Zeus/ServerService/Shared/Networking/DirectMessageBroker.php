@@ -2,14 +2,12 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
@@ -23,9 +21,6 @@ class DirectMessageBroker implements BrokerStrategy
 
     /** @var BackendService */
     private $backend;
-
-    /** @var Worker */
-    private $worker;
 
     /** @var string */
     private $backendHost = '';
@@ -61,25 +56,19 @@ class DirectMessageBroker implements BrokerStrategy
 
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+        $events->attach(SchedulerEvent::EVENT_START, function() {
             $backend = $this->getBackend();
             $backend->startService($this->backendHost, 1, 0);
         }, -9000);
 
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->worker = $event->getWorker();
-            $this->message->setWorker($this->worker);
+            $this->message->setWorker($event->getWorker());
         }, WorkerEvent::PRIORITY_REGULAR);
 
         $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
-            try {
-                $this->message->setWorker($event->getWorker());
-                $this->getBackend()->checkMessages();
-                return;
+            $this->message->setWorker($event->getWorker());
+            $this->getBackend()->checkMessages();
 
-            } catch (Throwable $ex) {
-                $this->getLogger()->err((string) $ex);
-            }
         }, WorkerEvent::PRIORITY_REGULAR);
     }
 

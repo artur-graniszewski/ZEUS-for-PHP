@@ -205,9 +205,6 @@ final class Scheduler extends AbstractService
         $worker = $event->getWorker();
         $status = $worker->getStatus();
         $status->updateStatus();
-//        $status->setThreadId($worker->getThreadId());
-//        $status->setProcessId($worker->getProcessId());
-//        $status->setUid($worker->getUid());
 
         $payload = [
             'type' => Message::IS_STATUS,
@@ -220,10 +217,10 @@ final class Scheduler extends AbstractService
         $message = new StatusMessage($payload);
 
         try {
-            $worker->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
+            $this->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (Throwable $exception) {
             $this->logException($exception, $this->getLogger());
-            $event->getWorker()->setTerminating(true);
+            $worker->setTerminating(true);
             $event->setParam('exception', $exception);
         }
     }

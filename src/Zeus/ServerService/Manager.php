@@ -190,9 +190,10 @@ final class Manager
      */
     public function startServices($serviceNames)
     {
+        $logger = $this->getLogger();
         $plugins = $this->getPluginRegistry()->count();
-        $this->getLogger()->info(sprintf("Service Manager started with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
-        $this->getLogger()->notice(sprintf("Starting %d service%s: %s", count($serviceNames), count($serviceNames) !== 1 ? 's' : '', implode(", ", $serviceNames)));
+        $logger->info(sprintf("Service Manager started with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+        $logger->notice(sprintf("Starting %d service%s: %s", count($serviceNames), count($serviceNames) !== 1 ? 's' : '', implode(", ", $serviceNames)));
 
         $event = $this->getEvent();
 
@@ -210,9 +211,9 @@ final class Manager
 
         foreach ($serviceNames as $serviceName) {
             $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_START,
-                function () use ($serviceName, $managerTime, $phpTime, $engine) {
+                function () use ($serviceName, $managerTime, $phpTime, $engine, $logger) {
                     $this->servicesRunning++;
-                    $this->getLogger()->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
+                    $logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
 
                 }, -10000);
 
@@ -220,7 +221,7 @@ final class Manager
         }
 
         if (count($serviceNames) === count($this->brokenServices)) {
-            $this->getLogger()->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
+            $logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
         }
     }
 
@@ -232,7 +233,8 @@ final class Manager
      */
     public function stopServices(array $services, bool $mustBeRunning)
     {
-        $this->getLogger()->info(sprintf("Stopping services"));
+        $logger = $this->getLogger();
+        $logger->info(sprintf("Stopping services"));
         $servicesAmount = 0;
         $servicesStopped = 0;
         foreach ($services as $service) {
@@ -248,7 +250,7 @@ final class Manager
         }
 
         if ($servicesAmount !== $servicesStopped) {
-            $this->getLogger()->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
+            $logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
         }
 
 
@@ -257,7 +259,7 @@ final class Manager
         $event->setError(null);
         $this->getEventManager()->triggerEvent($event);
 
-        $this->getLogger()->notice(sprintf("Stopped %d service(s)", $servicesStopped));
+        $logger->notice(sprintf("Stopped %d service(s)", $servicesStopped));
 
         return $servicesAmount - $servicesStopped;
     }

@@ -4,7 +4,6 @@ namespace Zeus;
 
 use Zend\Console\Adapter\AdapterInterface as ConsoleAdapter;
 use Zend\Console\ColorInterface;
-
 use Zend\EventManager\EventInterface;
 use Zend\ModuleManager\Feature\AutoloaderProviderInterface;
 use Zend\ModuleManager\Feature\BootstrapListenerInterface;
@@ -15,6 +14,10 @@ use Zend\ModuleManager\ModuleEvent;
 use Zend\ModuleManager\ModuleManager;
 use Zend\Stdlib\ArrayUtils;
 use Zeus\Kernel\System\Runtime;
+
+use function date_default_timezone_set;
+use function realpath;
+use function ini_get;
 
 class Module implements
     AutoloaderProviderInterface,
@@ -35,14 +38,6 @@ class Module implements
     public static function getOverrideConfig() : array
     {
         return static::$overrideConfig;
-    }
-
-    /**
-     * @return string
-     */
-    public static function getModuleDirectory() : string
-    {
-        return realpath('../../');
     }
 
     /**

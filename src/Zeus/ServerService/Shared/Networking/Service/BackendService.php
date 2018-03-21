@@ -17,7 +17,7 @@ class BackendService extends AbstractService implements ServiceInterface
     /** @var int */
     private $lastTickTime = 0;
 
-    /** @var MessageComponentInterface */
+    /** @var MessageComponentInterface|HeartBeatMessageInterface */
     private $messageListener;
 
     /** @var NetworkStreamInterface */
@@ -46,7 +46,7 @@ class BackendService extends AbstractService implements ServiceInterface
     private function onHeartBeat()
     {
         $now = time();
-        if ($this->messageListener instanceof HeartBeatMessageInterface && $this->lastTickTime !== $now) {
+        if ($this->lastTickTime !== $now && $this->messageListener instanceof HeartBeatMessageInterface) {
             $this->lastTickTime = $now;
             $this->messageListener->onHeartBeat($this->getClientStream());
         }
@@ -63,7 +63,7 @@ class BackendService extends AbstractService implements ServiceInterface
         }
     }
 
-    private function acceptClient()
+    private function acceptClient() : bool
     {
         if (!$this->getSelector()->select(1000)) {
             return false;
@@ -127,22 +127,22 @@ class BackendService extends AbstractService implements ServiceInterface
         $clientStream->register($selector, SelectionKey::OP_READ);
         while ($selector->select(1000) > 0) {
             $data = $clientStream->read();
-            if ($data !== '') {
-                $listener->onMessage($clientStream, $data);
-
-                if ($clientStream->isClosed()) {
-                    break;
-                }
-                do {
-                    $flushed = $clientStream->flush();
-                } while (!$flushed);
-            } else {
+            if ($data === '') {
                 // its an EOF
                 $listener->onClose($clientStream);
                 $this->closeConnection();
 
                 return;
             }
+
+            $listener->onMessage($clientStream, $data);
+
+            if ($clientStream->isClosed()) {
+                break;
+            }
+            do {
+                $isFlushed = $clientStream->flush();
+            } while (!$isFlushed);
         }
 
         // nothing wrong happened, data was handled, resume main event

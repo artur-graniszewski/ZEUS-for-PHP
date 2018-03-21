@@ -2,7 +2,6 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
-use Throwable;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
@@ -11,7 +10,6 @@ use Zeus\IO\SocketServer;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
@@ -26,15 +24,12 @@ use function microtime;
 use function defined;
 
 /**
- * Class GatewayStrategy
+ * Class GatewayMessageBroker
  * @internal
  */
 final class GatewayMessageBroker implements BrokerStrategy
 {
     use LoggerAwareTrait;
-
-    /** @var Worker */
-    protected $worker;
 
     private $config;
 
@@ -153,11 +148,10 @@ final class GatewayMessageBroker implements BrokerStrategy
             $backend = $this->getBackend();
             $backend->startService($this->backendHost, 1, 0);
             $this->workerIPC = new WorkerIPC($event->getWorker()->getStatus()->getUid(), $backend->getServer()->getLocalAddress());
-            $this->worker = $event->getWorker();
             $this->setWorkerStatus(RegistratorService::STATUS_WORKER_READY);
         }, WorkerEvent::PRIORITY_REGULAR);
 
-        $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
+        $events->attach(WorkerEvent::EVENT_EXIT, function() {
             $backend = $this->getBackend();
             $registrator = $this->getRegistrator();
             $this->setWorkerStatus(RegistratorService::STATUS_WORKER_GONE);
@@ -205,47 +199,38 @@ final class GatewayMessageBroker implements BrokerStrategy
         }, -9000);
 
         $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
-            try {
-                if ($this->isBackend) {
-                    $this->message->setWorker($event->getWorker());
-                    $this->getBackend()->checkMessages();
-                    return;
-                }
-
-                if (!$this->isGateway) {
-
-                    return;
-                }
-
-                if (!$this->isBusy) {
-                    $event->getWorker()->setRunning();
-                    $this->isBusy = true;
-                }
-
-                static $last = 0;
-                $now = microtime(true);
-                $gateway = $this->getGateway();
-                do {
-                    if ($now - $last >1) {
-                        $last = $now;
-                    }
-
-                    $gateway->selectStreams();
-                } while (microtime(true) - $now < 1);
-
-            } catch (Throwable $ex) {
-                $this->getLogger()->err((string) $ex);
+            if ($this->isBackend) {
+                $this->message->setWorker($event->getWorker());
+                $this->getBackend()->checkMessages();
+                return;
             }
+
+            if (!$this->isGateway) {
+
+                return;
+            }
+
+            if (!$this->isBusy) {
+                $event->getWorker()->setRunning();
+                $this->isBusy = true;
+            }
+
+            static $last = 0;
+            $now = microtime(true);
+            $gateway = $this->getGateway();
+            do {
+                if ($now - $last > 1) {
+                    $last = $now;
+                }
+
+                $gateway->selectStreams();
+            } while (microtime(true) - $now < 1);
+
         }, WorkerEvent::PRIORITY_REGULAR);
     }
 
     public function getConfig() : AbstractNetworkServiceConfig
     {
         return $this->config;
-    }
-
-    public function getWorkerIPC() : WorkerIPC
-    {
-        return $this->workerIPC;
     }
 }

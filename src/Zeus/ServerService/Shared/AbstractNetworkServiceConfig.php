@@ -15,9 +15,6 @@ class AbstractNetworkServiceConfig extends Config
         parent::__construct($settings, true);
     }
 
-    /**
-     * @return int
-     */
     public function getListenPort() : int
     {
         return $this->get('listen_port');
@@ -28,17 +25,11 @@ class AbstractNetworkServiceConfig extends Config
         $this->offsetSet('listen_port', $port);
     }
 
-    /**
-     * @return string
-     */
     public function getListenAddress() : string
     {
         return $this->get('listen_address');
     }
 
-    /**
-     * @param string $address
-     */
     public function setListenAddress(string $address)
     {
         $this->offsetSet('listen_address', $address);

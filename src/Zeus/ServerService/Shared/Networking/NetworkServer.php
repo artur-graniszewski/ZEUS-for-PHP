@@ -41,7 +41,7 @@ class NetworkServer
 
     public function attach(EventManagerInterface $eventManager)
     {
-        $eventManager->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $e) {
+        $eventManager->attach(SchedulerEvent::EVENT_START, function () {
             $config = $this->getConfig();
             $port = $config->getListenPort();
             $backendHost = 'tcp://' . $config->getListenAddress() . ($port ? ":$port" : '');
