@@ -164,9 +164,10 @@ class SchedulerTest extends TestCase
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $processesCreated[] = $uid;
                 $e->setParams(['uid' => $uid, 'initWorker' => true]);
-                $e->getWorker()->setProcessId($uid);
-                $e->getWorker()->setUid($uid);
-                $e->getWorker()->setThreadId(1);
+                $status = $e->getWorker()->getStatus();
+                $status->setProcessId($uid);
+                $status->setUid($uid);
+                $status->setThreadId(1);
             }, 1000
         );
 
@@ -180,7 +181,7 @@ class SchedulerTest extends TestCase
         $sm->attach('*', WorkerEvent::EVENT_INIT,
             function(WorkerEvent $e) use (&$processCount, $startWorkers, &$workers) {
                 $worker = $e->getWorker();
-                $uid = $worker->getUid();
+                $uid = $worker->getStatus()->getUid();
                 $workers[] = $worker;
 
                 $worker->getStatus()->incrementNumberOfFinishedTasks(1000);
@@ -251,7 +252,7 @@ class SchedulerTest extends TestCase
 
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $worker = $e->getWorker();
-                $worker->setUid($uid);
+                $worker->getStatus()->setUid($uid);
             }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 
@@ -386,7 +387,7 @@ class SchedulerTest extends TestCase
                 $processesCreated[$uid] = $uid;
 
                 $worker = $e->getWorker();
-                $worker->setUid($uid);
+                $worker->getStatus()->setUid($uid);
             }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 

@@ -12,11 +12,13 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFac
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use ZeusTest\Helpers\PcntlBridgeMock;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Config as TestConfig;
 
 class PosixProcessTest extends TestCase
 {
@@ -155,7 +157,11 @@ class PosixProcessTest extends TestCase
         $pcntlMock->setForkResult($forcedForkValue);
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new WorkerEvent();
-        $event->setWorker(new Scheduler\Worker());
+        $config = new TestConfig([]);
+        $config->setServiceName('test');
+        $worker = new Worker();
+        $worker->setConfig($config);
+        $event->setWorker($worker);
         $posixProcess = new ModuleWrapper(new PosixProcess());
         $posixProcess->setEventManager($em);
 
@@ -167,7 +173,7 @@ class PosixProcessTest extends TestCase
         }
 
         if (!is_null($expectedForkValue)) {
-            $this->assertEquals($expectedForkValue, $triggeredEvent->getWorker()->getUid());
+            $this->assertEquals($expectedForkValue, $triggeredEvent->getWorker()->getStatus()->getUid());
         }
 
         $this->assertEquals($isInitExpected, $triggeredEvent->getParam('initWorker'));
@@ -210,7 +216,11 @@ class PosixProcessTest extends TestCase
 
     public function testDetectionOfProcessTermination()
     {
-        $worker = new Scheduler\Worker();
+        $config = new TestConfig([]);
+        $config->setServiceName('test');
+        $worker = new Worker();
+        $worker->setConfig($config);
+
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
         $em->attach(WorkerEvent::EVENT_TERMINATED, function($event) use (&$triggeredEvent) {
@@ -240,7 +250,7 @@ class PosixProcessTest extends TestCase
         $this->assertNotNull($triggeredEvent);
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(2, $this->countMethodInExecutionLog($logArray, 'pcntlWait'), 'Wait for signal should be performed');
-        $this->assertEquals(98765, $triggeredEvent->getWorker()->getUid(), 'Correct process UID should be returned on its termination');
+        $this->assertEquals(98765, $triggeredEvent->getWorker()->getStatus()->getUid(), 'Correct process UID should be returned on its termination');
     }
 
     /**
@@ -249,7 +259,11 @@ class PosixProcessTest extends TestCase
      */
     public function testExceptionOnForkFailure()
     {
-        $worker = new Scheduler\Worker();
+        $config = new TestConfig([]);
+        $config->setServiceName('test');
+        $worker = new Worker();
+        $worker->setConfig($config);
+
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
         $em->attach(WorkerEvent::EVENT_TERMINATED, function($event) use (&$triggeredEvent) {

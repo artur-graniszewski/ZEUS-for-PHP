@@ -225,7 +225,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
             $this->driver->onWorkerCreate($event);
             if (!$event->getParam('initWorker', false)) {
-                $this->registerWorker($event->getWorker()->getUid(), $pipe);
+                $this->registerWorker($event->getWorker()->getStatus()->getUid(), $pipe);
             }
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_TERMINATE, function (WorkerEvent $e) {
@@ -266,9 +266,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $event = $this->getWorkerEvent();
         $event->setName(WorkerEvent::EVENT_TERMINATED);
         $worker = $event->getWorker();
-        $worker->setUid($uid);
-        $worker->setProcessId($processId);
-        $worker->setThreadId($threadId);
+        $status = $worker->getStatus();
+        $status->setUid($uid);
+        $status->setProcessId($processId);
+        $status->setThreadId($threadId);
         $this->getEventManager()->triggerEvent($event);
         $this->unregisterWorker($uid);
     }

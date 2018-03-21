@@ -19,50 +19,10 @@ final class Worker extends AbstractService
     /** @var WorkerState */
     private $status;
 
-    /** @var int */
-    private $processId;
-
-    /** @var int */
-    private $threadId = 1;
-
-    /** @var int */
-    private $uid;
-
-    public function setUid(int $id)
-    {
-        $this->uid = $id;
-    }
-
-    public function getUid() : int
-    {
-        return $this->uid;
-    }
-
-    public function setProcessId(int $processId)
-    {
-        $this->processId = $processId;
-    }
-
-    public function setThreadId(int $threadId)
-    {
-        $this->threadId = $threadId;
-    }
-
-    public function getThreadId(): int
-    {
-        return $this->threadId;
-    }
-
-    public function getProcessId() : int
-    {
-        return $this->processId;
-    }
-
     public function getStatus() : WorkerState
     {
         if (!$this->status) {
             $this->status = new WorkerState($this->getConfig()->getServiceName());
-            $this->status->setProcessId($this->getProcessId());
         }
 
         return $this->status;

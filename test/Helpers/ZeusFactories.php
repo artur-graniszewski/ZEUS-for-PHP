@@ -204,7 +204,7 @@ trait ZeusFactories
         $worker->setIpc($scheduler->getIpc());
         $worker->setLogger($logger);
         $worker->setConfig($scheduler->getConfig());
-        $worker->setProcessId(getmypid());
+        $worker->getStatus()->setProcessId(getmypid());
         $workerEvent = new Scheduler\WorkerEvent();
         $workerEvent->setWorker($worker);
         $workerEvent->setTarget($worker);

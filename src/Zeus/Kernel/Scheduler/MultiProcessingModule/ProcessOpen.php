@@ -121,7 +121,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public function onWorkerTerminated(WorkerEvent $event)
     {
-        $this->cleanProcessPipes($event->getWorker()->getUid());
+        $this->cleanProcessPipes($event->getWorker()->getStatus()->getUid());
     }
 
     private function flushBuffers(int $uid, bool $forceFlush)

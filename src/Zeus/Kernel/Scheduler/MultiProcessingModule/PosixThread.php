@@ -158,9 +158,10 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
     {
         $uid = $this->createThread($event);
         $worker = $event->getWorker();
-        $worker->setThreadId($uid);
-        $worker->setProcessId(getmypid());
-        $worker->setUid($uid);
+        $status = $worker->getStatus();
+        $status->setThreadId($uid);
+        $status->setProcessId(getmypid());
+        $status->setUid($uid);
     }
 
     public function onSchedulerInit(SchedulerEvent $event)

@@ -100,9 +100,10 @@ class WorkerController extends AbstractController
 
         $worker = $event->getWorker();
         $worker->setEventManager($scheduler->getEventManager());
-        $worker->setProcessId(getmypid());
-        $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
+        $status = $worker->getStatus();
+        $status->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getStatus()->getProcessId());
+        $status->setProcessId(getmypid());
+        $status->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         $event->setWorker($worker);
         $event->setTarget($worker);
         $event->setParams($startParams);

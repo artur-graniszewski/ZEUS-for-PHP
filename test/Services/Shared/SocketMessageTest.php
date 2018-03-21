@@ -54,8 +54,10 @@ class SocketMessageTest extends TestCase
         $config = new TestConfig([]);
         $config->setServiceName('test');
         $worker = new Worker();
-        $worker->setProcessId(getmypid());
-        $worker->setUid(getmypid());
+        $worker->setConfig($config);
+        $status = $worker->getStatus();
+        $status->setProcessId(getmypid());
+        $status->setUid(getmypid());
         $worker->setConfig($config);
         $worker->setIpc($event->getScheduler()->getIpc());
         $worker->setLogger($event->getScheduler()->getLogger());
@@ -151,8 +153,9 @@ class SocketMessageTest extends TestCase
         $worker->setIpc($event->getTarget()->getIpc());
         $worker->setLogger($event->getScheduler()->getLogger());
         $worker->setEventManager($events);
-        $worker->setProcessId(getmypid());
-        $worker->setUid(getmypid());
+        $status = $worker->getStatus();
+        $status->setProcessId(getmypid());
+        $status->setUid(getmypid());
 
         $received = null;
         $message = new SocketTestMessage();

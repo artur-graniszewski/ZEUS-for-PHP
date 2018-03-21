@@ -399,7 +399,7 @@ class IpcServer implements ListenerAggregateInterface
                 return;
             }
 
-            $uid = $event->getWorker()->getUid();
+            $uid = $event->getWorker()->getStatus()->getUid();
             $this->registerIpc($ipcPort, $uid);
             $event->getWorker()->setIpc($this);
         }, WorkerEvent::PRIORITY_INITIALIZE);

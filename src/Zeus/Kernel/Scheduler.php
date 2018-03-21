@@ -26,6 +26,7 @@ use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 use function microtime;
 use function sprintf;
 use function array_keys;
+use function array_merge;
 use function file_get_contents;
 use function file_put_contents;
 use function unlink;
@@ -144,8 +145,8 @@ final class Scheduler extends AbstractService
                 if (!$event->getParam(static::WORKER_SERVER) || $event->getParam(static::WORKER_INIT)) {
                     return;
                 }
-                
-                $pid = $event->getWorker()->getProcessId();
+
+                $pid = $event->getWorker()->getStatus()->getProcessId();
 
                 $fileName = $this->getUidFile();
                 if (!@file_put_contents($fileName, $pid)) {
@@ -173,7 +174,7 @@ final class Scheduler extends AbstractService
             }, WorkerEvent::PRIORITY_INITIALIZE
         );
 
-        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
             Runtime::setUncaughtExceptionHandler([$event->getWorker(), 'terminate']);
 
             $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
@@ -190,7 +191,7 @@ final class Scheduler extends AbstractService
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $event->getWorker()->mainLoop();
         }, WorkerEvent::PRIORITY_FINALIZE);
     }
@@ -204,9 +205,9 @@ final class Scheduler extends AbstractService
         $worker = $event->getWorker();
         $status = $worker->getStatus();
         $status->updateStatus();
-        $status->setThreadId($worker->getThreadId());
-        $status->setProcessId($worker->getProcessId());
-        $status->setUid($worker->getUid());
+//        $status->setThreadId($worker->getThreadId());
+//        $status->setProcessId($worker->getProcessId());
+//        $status->setUid($worker->getUid());
 
         $payload = [
             'type' => Message::IS_STATUS,
@@ -269,7 +270,7 @@ final class Scheduler extends AbstractService
      */
     private function onWorkerTerminated(WorkerEvent $event)
     {
-        $uid = $event->getWorker()->getUid();
+        $uid = $event->getWorker()->getStatus()->getUid();
 
         $this->log(Logger::DEBUG, "Worker $uid exited");
 
@@ -289,7 +290,7 @@ final class Scheduler extends AbstractService
      */
     public function stop()
     {
-        $this->getLogger()->debug("Stopping scheduler");
+        $this->log(Logger::DEBUG, "Stopping scheduler");
         $fileName = $this->getUidFile();
 
         $uid = @file_get_contents($fileName);
@@ -414,7 +415,7 @@ final class Scheduler extends AbstractService
 
     private function addNewWorker(WorkerEvent $event)
     {
-        $uid = $event->getWorker()->getUid();
+        $uid = $event->getWorker()->getStatus()->getUid();
 
         $this->workers[$uid] = [
             'code' => WorkerState::WAITING,
@@ -462,28 +463,30 @@ final class Scheduler extends AbstractService
      */
     private function mainLoop()
     {
+        $terminator = function() {
+            $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
+            if ($this->isTerminating()) {
+                $this->getReactor()->setTerminating(true);
+            }
+        };
         do {
             $this->getReactor()->mainLoop(
-                function() {
-                    $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
-                    if ($this->isTerminating()) {
-                        $this->getReactor()->setTerminating(true);
-                    }
-                }
+                $terminator
             );
         } while (!$this->isTerminating());
     }
 
     private function kernelLoop()
     {
+        $terminator = function() {
+            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
+            if ($this->isTerminating()) {
+                $this->getReactor()->setTerminating(true);
+            }
+        };
         do {
             $this->getReactor()->mainLoop(
-                function() {
-                    $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
-                    if ($this->isTerminating()) {
-                        $this->getReactor()->setTerminating(true);
-                    }
-                }
+                $terminator
             );
         } while (!$this->isTerminating());
     }
