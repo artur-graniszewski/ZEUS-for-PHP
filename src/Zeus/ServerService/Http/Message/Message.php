@@ -5,6 +5,7 @@ namespace Zeus\ServerService\Http\Message;
 use InvalidArgumentException;
 use Throwable;
 use Zend\Http\Header\KeepAlive;
+use Zeus\IO\Exception\IOException;
 use Zeus\ServerService\Http\Message\Helper\ChunkedEncoding;
 use Zeus\ServerService\Http\Message\Helper\Header;
 use Zeus\ServerService\Http\Message\Helper\PostData;
@@ -198,7 +199,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
             $this->onClose($connection);
         }
 
-        throw $exception;
+        if (!$exception instanceof IOException) {
+            throw $exception;
+        }
     }
 
     public function onClose(NetworkStreamInterface $connection)
@@ -516,7 +519,11 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
 
         $this->requestsFinished++;
-        $this->connection->flush();
+        try {
+            $this->connection->flush();
+        } catch (IOException $ex) {
+            $this->request->setMetadata('isKeepAliveConnection', false);
+        }
 
         if (!$this->request->getMetadata('isKeepAliveConnection')) {
             $this->onClose($connection);

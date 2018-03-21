@@ -8,19 +8,16 @@ use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
 use Zeus\Kernel\Scheduler;
-use Zeus\Kernel\Scheduler\Worker;
-use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
 use Zeus\ServerService\Http\Message\Request as HttpRequest;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
 
+use function sprintf;
+
 class Service extends AbstractSocketServerService
 {
-    /** @var Worker */
-    private $worker;
-
     public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
     {
         parent::__construct($config, $scheduler, $logger);
@@ -48,20 +45,11 @@ class Service extends AbstractSocketServerService
 
     public function start()
     {
-        $this->getScheduler()->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->worker = $event->getWorker();
-        });
-
         $config = $this->getConfig();
         $config['logger'] = get_class();
         $this->setConfig($config);
 
         parent::start();
-    }
-
-    public function getWorker() : Worker
-    {
-        return $this->worker;
     }
 
     public function logRequest(RequestInterface $httpRequest, ResponseInterface $httpResponse)
@@ -83,8 +71,8 @@ class Service extends AbstractSocketServerService
             $httpRequest->getVersion(),
             $httpResponse->getStatusCode(),
             $responseSize,
-            $this->getHeader($httpRequest, 'Referer', '-'),
-            $this->getHeader($httpRequest, 'User-Agent', '-')
+            $this->getHeader($httpRequest, 'Referer'),
+            $this->getHeader($httpRequest, 'User-Agent')
             )
         );
     }
@@ -95,13 +83,14 @@ class Service extends AbstractSocketServerService
      * @param null|string $defaultValue
      * @return string
      */
-    protected function getHeader(RequestInterface $request, string $headerName, $defaultValue = null) : string
+    private function getHeader(RequestInterface $request, string $headerName, string $defaultValue = '-') : string
     {
         if ($request instanceof HttpRequest) {
             $value = $request->getHeaderOverview($headerName, false);
             return $value ? $value : $defaultValue;
         }
 
-        return $request->getHeaders()->has($headerName) ? $request->getHeaders()->get($headerName)->getFieldValue() : $defaultValue;
+        $headers = $request->getHeaders();
+        return $headers->has($headerName) ? $headers->get($headerName)->getFieldValue() : $defaultValue;
     }
 }

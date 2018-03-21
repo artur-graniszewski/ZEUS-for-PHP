@@ -15,7 +15,8 @@ class AbstractSocketServerService extends AbstractServerService
     protected function getServer(MessageComponentInterface $messageComponent, AbstractNetworkServiceConfig $config)
     {
         $scheduler = $this->getScheduler();
-        $broker = new NetworkServer($config, $messageComponent, $this->getLogger(), $scheduler->getMultiProcessingModule()::getCapabilities());
+        $module = $scheduler->getMultiProcessingModule();
+        $broker = new NetworkServer($config, $messageComponent, $this->getLogger(), $module::getCapabilities());
         $broker->attach($scheduler->getEventManager());
     }
 }

@@ -8,6 +8,7 @@ use Zeus\IO\Exception\IOException;
 use function is_resource;
 use function preg_match;
 use function strlen;
+use function sprintf;
 use function substr;
 use function stream_set_blocking;
 use function error_clear_last;
@@ -191,13 +192,13 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
 
         $this->writeBuffer .= $data;
 
-        if (!$this->writeBufferSize || isset($this->writeBuffer[$this->writeBufferSize])) {
-            $sent = $this->doWrite($this->writeCallback);
-            $this->dataSent += $sent;
-            return $sent;
+        if ($this->writeBufferSize > 0 && !isset($this->writeBuffer[$this->writeBufferSize])) {
+            return 0;
         }
 
-        return 0;
+        $sent = $this->doWrite($this->writeCallback);
+        $this->dataSent += $sent;
+        return $sent;
     }
 
     public function flush() : bool
@@ -215,7 +216,7 @@ class AbstractStream extends AbstractPhpResource implements StreamInterface
     {
         if ($this->isEof()) {
             $this->isWritable = false;
-            throw new IOException(sprintf("Stream is not writable"));
+            throw new IOException("Stream is not writable");
         }
         $size = strlen($this->writeBuffer);
         $sent = 0;

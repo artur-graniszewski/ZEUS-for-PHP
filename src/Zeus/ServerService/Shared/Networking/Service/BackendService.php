@@ -55,8 +55,11 @@ class BackendService extends AbstractService implements ServiceInterface
     private function closeConnection()
     {
         if ($this->isClientConnected()) {
-            $this->getClientStream()->shutdown(STREAM_SHUT_RD);
-            $this->getClientStream()->close();
+            $clientStream = $this->getClientStream();
+            if ($clientStream->isReadable()) {
+                $clientStream->shutdown(STREAM_SHUT_RD);
+            }
+            $clientStream->close();
         }
     }
 
@@ -166,10 +169,8 @@ class BackendService extends AbstractService implements ServiceInterface
     private function handleException(Throwable $exception)
     {
         try {
-            if ($this->isClientConnected()) {
-                $this->messageListener->onError($this->getClientStream(), $exception);
-                $exception = null;
-            }
+            $this->messageListener->onError($this->getClientStream(), $exception);
+            $exception = null;
         } catch (Throwable $exception) {
         }
 
