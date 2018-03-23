@@ -145,8 +145,8 @@ class WorkerState
         return [
             'code' => $this->code,
             'uid' => $this->getUid(),
-            'processId' => $this->getProcessId(),
-            'threadId' => $this->getThreadId(),
+            'process_id' => $this->getProcessId(),
+            'thread_id' => $this->getThreadId(),
             'requests_finished' => $this->tasksFinished,
             'requests_per_second' => $this->tasksPerSecond,
             'time' => $this->time,
@@ -167,7 +167,9 @@ class WorkerState
         $status->tasksFinished = $array['requests_finished'];
         $status->tasksPerSecond = $array['requests_per_second'];
         $status->cpuUsage = $array['cpu_usage'];
-        $status->processId = $array['uid'];
+        $status->processId = $array['process_id'];
+        $status->uid = $array['uid'];
+        $status->threadId = $array['thread_id'];
         $status->statusDescription = $array['status_description'];
 
         return $status;
@@ -302,5 +304,19 @@ class WorkerState
     public function getServiceName() : string
     {
         return $this->serviceName;
+    }
+
+    public function setRunning(string $statusDescription = '')
+    {
+        $this->setTime(time());
+        $this->setCode(WorkerState::RUNNING);
+        $this->setStatusDescription($statusDescription);
+    }
+
+    public function setWaiting(string $statusDescription = '')
+    {
+        $this->setTime(time());
+        $this->setCode(WorkerState::WAITING);
+        $this->setStatusDescription($statusDescription);
     }
 }

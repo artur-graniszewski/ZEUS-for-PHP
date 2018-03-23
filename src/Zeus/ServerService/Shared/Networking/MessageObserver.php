@@ -4,23 +4,23 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Throwable;
 use Zeus\IO\Stream\NetworkStreamInterface;
+use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 
 class MessageObserver implements HeartBeatMessageInterface, MessageComponentInterface
 {
-    /**
-     * @var BrokerStrategy
-     */
+    /** @var BrokerStrategy */
     private $broker;
 
-    /**
-     * @var MessageComponentInterface
-     */
+    /** @var MessageComponentInterface */
     private $message;
 
     /** @var Worker */
     private $worker;
+
+    /** @var Scheduler */
+    private $scheduler;
 
     public function __construct(BrokerStrategy $broker, MessageComponentInterface $message)
     {
@@ -33,6 +33,16 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $this->worker = $worker;
     }
 
+    public function setScheduler(Scheduler $scheduler)
+    {
+        $this->scheduler = $scheduler;
+    }
+
+    public function getScheduler() : Scheduler
+    {
+        return $this->scheduler;
+    }
+
     public function onOpen(NetworkStreamInterface $connection)
     {
         $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
@@ -40,6 +50,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
             $worker = $this->getWorker();
             $worker->getStatus()->incrementNumberOfFinishedTasks(1);
             $worker->setRunning();
+            $this->getScheduler()->syncWorker($worker);
             $this->getMessageComponent()->onOpen($connection);
         };
 
@@ -74,7 +85,9 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     public function onClose(NetworkStreamInterface $connection)
     {
         $function = function() use ($connection) {
-            $this->getWorker()->setWaiting();
+            $worker = $this->getWorker();
+            $worker->setWaiting();
+            $this->getScheduler()->syncWorker($worker);
             $this->getMessageComponent()->onClose($connection);
         };
 
@@ -84,7 +97,9 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     public function onError(NetworkStreamInterface $connection, Throwable $exception)
     {
         $function = function() use ($connection, $exception) {
-            $this->getWorker()->setWaiting();
+            $worker = $this->getWorker();
+            $worker->setWaiting();
+            $this->getScheduler()->syncWorker($worker);
             $this->getMessageComponent()->onError($connection, $exception);
         };
 
@@ -104,6 +119,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
                     $this->setConnectionStatus($status);
                 }
                 $worker->setWaiting();
+                $this->getScheduler()->syncWorker($worker);
             }
         }
     }

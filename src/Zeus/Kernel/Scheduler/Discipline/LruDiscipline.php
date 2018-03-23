@@ -40,20 +40,20 @@ class LruDiscipline implements DisciplineInterface
 
         $idleWorkers = $statusSummary[WorkerState::WAITING];
         $allWorkers = $workers->count();
+        $toCreate = 0;
 
         // start additional workers, if number of them is too small.
         if ($idleWorkers < $config->getMinSpareProcesses()) {
             $idleWorkerSlots = $workers->getSize() - $workers->count();
 
             $toCreate = min($idleWorkerSlots, $config->getMinSpareProcesses() - $idleWorkers);
-            return $toCreate;
         }
 
         if ($allWorkers === 0 && $config->getMinSpareProcesses() === 0 && $config->getMaxSpareProcesses() > 0) {
-            return $config->getMaxSpareProcesses();
+            $toCreate = $config->getMaxSpareProcesses();
         }
 
-        return 0;
+        return $toCreate;
     }
 
     /**

@@ -112,7 +112,7 @@ class SchedulerTest extends TestCase
     public function schedulerProcessAmountProvider()
     {
         return [
-            //[1, 1, 1, 1],
+            [1, 1, 1, 2],
             [3, 1, 1, 2],
 
             [4, 8, 3, 11],
@@ -192,12 +192,12 @@ class SchedulerTest extends TestCase
                 } else {
                     $worker->setWaiting();
                 }
+                $e->getScheduler()->syncWorker($worker);
                 $e->stopPropagation(true);
             }, WorkerEvent::PRIORITY_FINALIZE + 1
         );
 
         $scheduler->start(false);
-
         $this->assertEquals($expectedWorkers, $amountOfScheduledProcesses, "Scheduler should try to create $expectedWorkers processes in total ($startWorkers processes on startup and "  . ($expectedWorkers - $startWorkers) . " additionally if all the other were busy)");
     }
 

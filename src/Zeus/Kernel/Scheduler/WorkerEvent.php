@@ -5,7 +5,7 @@ namespace Zeus\Kernel\Scheduler;
 /**
  * @package Zeus\Kernel\Scheduler
  */
-class WorkerEvent extends AbstractEvent
+class WorkerEvent extends SchedulerEvent
 {
     const PRIORITY_FINALIZE = -100000;
     const PRIORITY_INITIALIZE = 50000;

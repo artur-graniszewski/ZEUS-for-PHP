@@ -2,14 +2,19 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Error;
+use Throwable;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 /**
  * @internal
  */
 class WorkerFlowManager
 {
+    use ExceptionLoggerTrait;
+
     /** @var Scheduler */
     private $scheduler;
 
@@ -35,6 +40,7 @@ class WorkerFlowManager
         if ($worker) {
             $event->setTarget($worker);
             $event->setWorker($worker);
+            $event->setScheduler($this->getScheduler());
         }
 
         $this->getScheduler()->getEventManager()->triggerEvent($event);
@@ -90,5 +96,56 @@ class WorkerFlowManager
         ];
 
         $this->triggerWorkerEvent(WorkerEvent::EVENT_TERMINATE, $params);
+    }
+
+    public function workerLoop(Worker $worker)
+    {
+        $worker->setWaiting();
+        $this->getScheduler()->syncWorker($worker);
+        $status = $worker->getStatus();
+
+        // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
+        while (($runsLeft = $worker->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks()) > 0) {
+            $status->setIsLastTask($runsLeft === 1);
+            try {
+                $params = [
+                    'status' => $status
+                ];
+
+                $this->triggerWorkerEvent(WorkerEvent::EVENT_LOOP, $params, $worker);
+
+            } catch (Error $exception) {
+                $this->terminate($worker, $exception);
+            } catch (Throwable $exception) {
+                $this->logException($exception, $worker->getLogger());
+            }
+
+            if ($worker->isTerminating()) {
+                break;
+            }
+        }
+
+        $this->terminate($worker);
+    }
+
+    private function terminate(Worker $worker, Throwable $exception = null)
+    {
+        $status = $worker->getStatus();
+
+        $worker->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
+
+        $status->setCode(WorkerState::EXITING);
+        $status->setTime(time());
+
+        $params = [
+            'status' => $status
+        ];
+
+        if ($exception) {
+            $this->logException($exception, $worker->getLogger());
+            $params['exception'] = $exception;
+        }
+
+        $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
     }
 }

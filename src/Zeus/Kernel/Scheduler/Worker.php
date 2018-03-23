@@ -2,8 +2,6 @@
 
 namespace Zeus\Kernel\Scheduler;
 
-use Error;
-use Throwable;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
@@ -28,13 +26,13 @@ final class Worker extends AbstractService
         return $this->status;
     }
 
-    private function triggerStatusChange(string $statusDescription = '', int $statusCode)
+    private function updateStatus(string $statusDescription = '', int $statusCode) : bool
     {
         $status = $this->getStatus();
         $now = time();
         if ($status->getCode() === $statusCode) {
             if ($statusDescription === $status->getStatusDescription() && $status->getTime() === $now) {
-                return;
+                return false;
             }
         }
 
@@ -42,71 +40,31 @@ final class Worker extends AbstractService
         $status->setCode($statusCode);
         $status->setStatusDescription($statusDescription);
 
+        return true;
+    }
+
+    private function triggerStatusChange()
+    {
+        $status = $this->getStatus();
         $params = [
             'status' => $status
         ];
 
-        $this->triggerWorkerEvent($statusCode === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params);
+        $this->triggerWorkerEvent($status->getCode() === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params);
     }
 
     public function setRunning(string $statusDescription = '')
     {
-        $this->triggerStatusChange($statusDescription, WorkerState::RUNNING);
+        if ($this->updateStatus($statusDescription, WorkerState::RUNNING)) {
+            $this->triggerStatusChange();
+        }
     }
 
     public function setWaiting(string $statusDescription = '')
     {
-        $this->triggerStatusChange($statusDescription, WorkerState::WAITING);
-    }
-
-    public function terminate(Throwable $exception = null)
-    {
-        $status = $this->getStatus();
-
-        $this->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
-
-        $status->setCode(WorkerState::EXITING);
-        $status->setTime(time());
-
-        $params = [
-            'status' => $status
-        ];
-
-        if ($exception) {
-            $this->logException($exception, $this->getLogger());
-            $params['exception'] = $exception;
+        if ($this->updateStatus($statusDescription, WorkerState::WAITING)) {
+            $this->triggerStatusChange();
         }
-
-        $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params);
-    }
-
-    public function mainLoop()
-    {
-        $this->setWaiting();
-        $status = $this->getStatus();
-
-        // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
-        while (($runsLeft = $this->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks()) > 0) {
-            $status->setIsLastTask($runsLeft === 1);
-            try {
-                $params = [
-                    'status' => $status
-                ];
-
-                $this->triggerWorkerEvent(WorkerEvent::EVENT_LOOP, $params);
-
-            } catch (Error $exception) {
-                $this->terminate($exception);
-            } catch (Throwable $exception) {
-                $this->logException($exception, $this->getLogger());
-            }
-
-            if ($this->isTerminating()) {
-                break;
-            }
-        }
-
-        $this->terminate();
     }
 
     private function triggerWorkerEvent(string $eventName, array $params)

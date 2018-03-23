@@ -31,6 +31,7 @@ final class GatewayMessageBroker implements BrokerStrategy
 {
     use LoggerAwareTrait;
 
+    /** @var AbstractNetworkServiceConfig */
     private $config;
 
     /** @var string */
@@ -191,6 +192,7 @@ final class GatewayMessageBroker implements BrokerStrategy
         }, 1000);
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+            $this->message->setScheduler($event->getScheduler());
             $registrator = $this->getRegistrator();
             $registrator->startService($this->registratorHost, 1000, 0);
             $this->getLogger()->debug("Registrator listening on: " . $registrator->getServer()->getLocalAddress());
@@ -212,6 +214,7 @@ final class GatewayMessageBroker implements BrokerStrategy
 
             if (!$this->isBusy) {
                 $event->getWorker()->setRunning();
+                $event->getScheduler()->syncWorker($event->getWorker());
                 $this->isBusy = true;
             }
 

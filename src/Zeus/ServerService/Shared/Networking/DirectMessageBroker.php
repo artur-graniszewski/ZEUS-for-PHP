@@ -56,7 +56,8 @@ class DirectMessageBroker implements BrokerStrategy
 
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(SchedulerEvent::EVENT_START, function() {
+        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+            $this->message->setScheduler($event->getScheduler());
             $backend = $this->getBackend();
             $backend->startService($this->backendHost, 1, 0);
         }, -9000);

@@ -18,6 +18,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerFlowManager;
 use Zeus\Kernel\System\Runtime;
@@ -192,8 +193,13 @@ final class Scheduler extends AbstractService
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $event->getWorker()->mainLoop();
+            $this->workerFlowManager->workerLoop($event->getWorker());
         }, WorkerEvent::PRIORITY_FINALIZE);
+    }
+
+    public function syncWorker(Worker $worker)
+    {
+
     }
 
     /**
