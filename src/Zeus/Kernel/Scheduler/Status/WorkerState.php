@@ -213,14 +213,14 @@ class WorkerState
         return $this->code;
     }
 
-    public static function isIdle(array $array) : bool
+    public function isIdle() : bool
     {
-        return $array['code'] === WorkerState::WAITING;
+        return $this->code === WorkerState::WAITING;
     }
 
-    public static function isExiting(array $array) : bool
+    public function isExiting() : bool
     {
-        return $array['code'] === WorkerState::EXITING || $array['code'] === WorkerState::TERMINATED;
+        return $this->code === WorkerState::EXITING || $this->code === WorkerState::TERMINATED;
     }
 
     public function updateStatus()

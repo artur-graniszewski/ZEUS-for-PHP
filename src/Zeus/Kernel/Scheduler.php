@@ -130,7 +130,7 @@ final class Scheduler extends AbstractService
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START, function() use ($eventManager) {
-            $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $e) { $this->addNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
+            $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $e) { $this->registerNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
             $this->log(Logger::NOTICE, "Scheduler started");
             $this->startWorkers($this->getConfig()->getStartProcesses());
         }, SchedulerEvent::PRIORITY_FINALIZE);
@@ -236,13 +236,13 @@ final class Scheduler extends AbstractService
         $message = $message->getParams();
 
         /** @var WorkerState $workerState */
-        $workerState = $message['extra']['status'];
-        $uid = $workerState['uid'];
+        $workerState = WorkerState::fromArray($message['extra']['status']);
+        $uid = $workerState->getUid();
 
         // worker status changed, update this information server-side
         if (isset($this->workers[$uid])) {
-            if ($this->workers[$uid]['code'] !== $workerState['code']) {
-                $workerState['time'] = microtime(true);
+            if ($this->workers[$uid]->getCode() !== $workerState->getCode()) {
+                $workerState->setTime(microtime(true));
             }
 
             $this->workers[$uid] = $workerState;
@@ -274,7 +274,7 @@ final class Scheduler extends AbstractService
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
 
-            if (!WorkerState::isExiting($workerState) && $workerState['time'] < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
+            if (!$workerState->isExiting() && $workerState->getTime() < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
                 $this->log(Logger::ERR, "Worker $uid exited prematurely");
             }
 
@@ -298,7 +298,9 @@ final class Scheduler extends AbstractService
         $this->setTerminating(true);
 
         $this->log(Logger::INFO, "Terminating scheduler $uid");
-        $this->stopWorker($uid, true);
+        $worker = new WorkerState($this->getConfig()->getServiceName(), WorkerState::RUNNING);
+        $worker->setUid($uid);
+        $this->stopWorker($worker, true);
         $this->log(Logger::INFO, "Workers checked");
         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP);
 
@@ -367,16 +369,16 @@ final class Scheduler extends AbstractService
         $this->triggerEvent(SchedulerEvent::EVENT_STOP, ['exception' => $exception]);
     }
 
-    private function stopWorker(int $uid, bool $isSoftStop)
+    private function stopWorker(WorkerState $worker, bool $isSoftStop)
     {
+        $uid = $worker->getUid();
         $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
-        $this->workerFlowManager->stopWorker($uid, $isSoftStop);
+        $this->workerFlowManager->stopWorker($worker, $isSoftStop);
 
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
-            $workerState['time'] = microtime(true);
-            $workerState['code'] = WorkerState::TERMINATED;
-            $this->workers[$uid] = $workerState;
+            $workerState->setTime(microtime(true));
+            $workerState->setCode(WorkerState::TERMINATED);
         }
     }
 
@@ -393,8 +395,8 @@ final class Scheduler extends AbstractService
         $this->log(Logger::DEBUG, "Terminating workers");
 
         if ($this->workers) {
-            foreach (array_keys($this->workers->toArray()) as $uid) {
-                $this->stopWorker($uid, false);
+            foreach ($this->workers as $worker) {
+                $this->stopWorker($worker, false);
             }
         }
     }
@@ -410,20 +412,14 @@ final class Scheduler extends AbstractService
         }
     }
 
-    private function addNewWorker(WorkerEvent $event)
+    private function registerNewWorker(WorkerEvent $event)
     {
-        $uid = $event->getWorker()->getStatus()->getUid();
+        $status = $event->getWorker()->getStatus();
+        $uid = $status->getUid();
+        $status->setCode(WorkerState::WAITING);
 
-        $this->workers[$uid] = [
-            'code' => WorkerState::WAITING,
-            'uid' => $uid,
-            'time' => microtime(true),
-            'service_name' => $this->getConfig()->getServiceName(),
-            'requests_finished' => 0,
-            'requests_per_second' => 0,
-            'cpu_usage' => 0,
-            'status_description' => '',
-        ];
+        $this->workers[$uid] =
+            $status;
     }
 
     /**
@@ -445,13 +441,13 @@ final class Scheduler extends AbstractService
     }
 
     /**
-     * @param int[] $workerUids
+     * @param WorkerState[] $workers
      * @param bool $isSoftTermination
      */
-    private function stopWorkers(array $workerUids, bool $isSoftTermination)
+    private function stopWorkers(array $workers, bool $isSoftTermination)
     {
-        foreach ($workerUids as $uid) {
-            $this->stopWorker($uid, $isSoftTermination);
+        foreach ($workers as $worker) {
+            $this->stopWorker($worker, $isSoftTermination);
         }
     }
 
@@ -460,14 +456,17 @@ final class Scheduler extends AbstractService
      */
     private function mainLoop()
     {
-        $terminator = function() {
+        $reactor = $this->getReactor();
+
+        $terminator = function() use ($reactor) {
             $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
             if ($this->isTerminating()) {
-                $this->getReactor()->setTerminating(true);
+                $reactor->setTerminating(true);
             }
         };
+
         do {
-            $this->getReactor()->mainLoop(
+            $reactor->mainLoop(
                 $terminator
             );
         } while (!$this->isTerminating());
@@ -475,14 +474,16 @@ final class Scheduler extends AbstractService
 
     private function kernelLoop()
     {
-        $terminator = function() {
+        $reactor = $this->getReactor();
+
+        $terminator = function() use ($reactor) {
             $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
             if ($this->isTerminating()) {
-                $this->getReactor()->setTerminating(true);
+                $reactor->setTerminating(true);
             }
         };
         do {
-            $this->getReactor()->mainLoop(
+            $reactor->mainLoop(
                 $terminator
             );
         } while (!$this->isTerminating());

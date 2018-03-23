@@ -23,7 +23,7 @@ class WorkerCollection extends FixedCollection
                 continue;
             }
 
-            $statuses[$workerStatus['code']]++;
+            $statuses[$workerStatus->getCode()]++;
         }
 
         return $statuses;

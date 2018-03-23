@@ -428,17 +428,6 @@ class IpcServer implements ListenerAggregateInterface
 
     private function setSelector(Reactor $scheduler)
     {
-//        $scheduler->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) use ($scheduler) {
-//            $this->handleIpcMessages($selector);
-//
-//            $scheduler->observeSelector($this->ipcSelector, function(AbstractStreamSelector $selector) {
-//                $this->handleIpcMessages($selector);
-//            }, function() use ($scheduler) {
-//                $this->setSelector($scheduler);
-//
-//            }, 1000);
-//        }, function() {}, 1000);
-
         $scheduler->observe($this->ipcSelector, function(AbstractStreamSelector $selector) {
                 $this->handleIpcMessages($selector);
             }, function() {

@@ -57,7 +57,7 @@ class LruDiscipline implements DisciplineInterface
     }
 
     /**
-     * @return int[]
+     * @return WorkerState[]
      */
     public function getWorkersToTerminate() : array
     {
@@ -80,12 +80,13 @@ class LruDiscipline implements DisciplineInterface
         $spareWorkersFound = 0;
 
         foreach ($workers as $uid => $workerStatus) {
-            if (!WorkerState::isIdle($workerStatus)) {
+            if (!$workerStatus->isIdle()) {
                 continue;
             }
 
-            if ($workerStatus['time'] < $expireTime) {
-                $workersToTerminate[$workerStatus['time']][] = $uid;
+            $workerTime = $workerStatus->getTime();
+            if ($workerTime < $expireTime) {
+                $workersToTerminate[$workerTime][] = $uid;
                 ++$spareWorkersFound;
 
                 if ($spareWorkersFound === $toTerminate) {
@@ -100,8 +101,8 @@ class LruDiscipline implements DisciplineInterface
 
         // unwind all workers...
         foreach ($workersToTerminate as $workers) {
-            foreach ($workers as $worker) {
-                $result[] = $worker;
+            foreach ($workers as $uid) {
+                $result[] = $this->workers[$uid];
             }
         }
 

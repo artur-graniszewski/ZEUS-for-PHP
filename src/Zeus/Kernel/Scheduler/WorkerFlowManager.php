@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\Scheduler;
 
 use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 /**
  * @internal
@@ -79,8 +80,10 @@ class WorkerFlowManager
         $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
     }
 
-    public function stopWorker(int $uid, bool $isSoftStop)
+    public function stopWorker(WorkerState $worker, bool $isSoftStop)
     {
+        $uid = $worker->getUid();
+
         $params = [
             'uid' => $uid,
             'soft' => $isSoftStop

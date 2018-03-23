@@ -69,7 +69,7 @@ class SchedulerStatusView
         }
 
         $output .= $console->colorize('Service: ' . $this->getScheduler()->getConfig()->getServiceName() . PHP_EOL . PHP_EOL, ColorInterface::LIGHT_BLUE);
-        $processList = $payload['process_status'];
+        $workerList = $payload['process_status'];
         $schedulerStatus = $payload['scheduler_status'];
 
         $idleChildren = 0;
@@ -81,16 +81,16 @@ class SchedulerStatusView
 
         $processStatusChars = [];
 
-        foreach ($processList as $processStatus) {
+        foreach ($workerList as $workerStatus) {
             ++$allChildren;
-            $processStatus = WorkerState::fromArray($processStatus);
-            $processStatusCode = $processStatus->getCode();
+            $workerStatus = WorkerState::fromArray($workerStatus);
+            $processStatusCode = $workerStatus->getCode();
 
-            $currentCpuUsage += $processStatus->getCpuUsage();
-            $currentUserCpuUsage += $processStatus->getCurrentUserCpuTime();
-            $currentSysCpuUsage += $processStatus->getCurrentSystemCpuTime();
+            $currentCpuUsage += $workerStatus->getCpuUsage();
+            $currentUserCpuUsage += $workerStatus->getCurrentUserCpuTime();
+            $currentSysCpuUsage += $workerStatus->getCurrentSystemCpuTime();
 
-            $processStatusChars[$processStatus->getProcessId()] =
+            $processStatusChars[$workerStatus->getProcessId()] =
                 isset($this->statusToCharMapping[$processStatusCode]) ?
                     $this->statusToCharMapping[$processStatusCode] : '?';
 
@@ -124,43 +124,43 @@ class SchedulerStatusView
         $output .= "Scoreboard Key:" . PHP_EOL . '"_" Waiting for task, "R" Currently running, "E" Exiting,' . PHP_EOL;
         $output .= '"T" Terminated, "." Open slot with no current process' . PHP_EOL . PHP_EOL;
 
-        $output .= $this->listProcessDetails($processList, $processStatusChars, $schedulerStatus);
+        $output .= $this->listProcessDetails($workerList, $processStatusChars, $schedulerStatus);
 
         return $output;
     }
 
     /**
-     * @param mixed[] $processList
+     * @param mixed[] $workersList
      * @param string[] $processStatusChars
      * @param mixed[] $schedulerStatus
      * @return string
      */
-    protected function listProcessDetails($processList, $processStatusChars, $schedulerStatus) : string
+    protected function listProcessDetails($workersList, $processStatusChars, $schedulerStatus) : string
     {
         $output = '';
         $console = $this->console;
 
-        $lastElement = end($processList);
-        $lastElementKey = key($processList);
+        $lastElement = end($workersList);
+        $lastElementKey = key($workersList);
 
         $output .= $console->colorize(sprintf('Service %s' . PHP_EOL, $lastElement['service_name']), ColorInterface::LIGHT_YELLOW);
         $output .= sprintf(' └─┬ Scheduler %s, CPU: %d%%' . PHP_EOL, $schedulerStatus['uid'], $schedulerStatus['cpu_usage']);
 
-        foreach ($processList as $key => $processStatus) {
-            $color = WorkerState::isIdle($processStatus) ? ColorInterface::WHITE : ColorInterface::LIGHT_WHITE;
-            $processStatus = WorkerState::fromArray($processStatus);
+        foreach ($workersList as $key => $workerStatus) {
+            $workerStatus = WorkerState::fromArray($workerStatus);
+            $color = $workerStatus->isIdle() ? ColorInterface::WHITE : ColorInterface::LIGHT_WHITE;
 
             $connector = ($key === $lastElementKey ? '└' : '├');
-            /** @var WorkerState $processStatus */
+            /** @var WorkerState $workerStatus */
             $output .= $console->colorize(
                 sprintf("   %s── Process %s [%s] CPU: %d%%, RPS: %s, REQ: %s%s" . PHP_EOL,
                     $connector,
-                    $processStatus->getProcessId(),
-                    $processStatusChars[$processStatus->getProcessId()],
-                    $processStatus->getCpuUsage(),
-                    $this->addUnitsToNumber($processStatus->getNumberOfTasksPerSecond()),
-                    $this->addUnitsToNumber($processStatus->getNumberOfFinishedTasks()),
-                    $processStatus->getStatusDescription() ? ': ' . $processStatus->getStatusDescription() : ''
+                    $workerStatus->getProcessId(),
+                    $processStatusChars[$workerStatus->getProcessId()],
+                    $workerStatus->getCpuUsage(),
+                    $this->addUnitsToNumber($workerStatus->getNumberOfTasksPerSecond()),
+                    $this->addUnitsToNumber($workerStatus->getNumberOfFinishedTasks()),
+                    $workerStatus->getStatusDescription() ? ': ' . $workerStatus->getStatusDescription() : ''
                 ),
                 $color
             );

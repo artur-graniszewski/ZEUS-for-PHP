@@ -112,7 +112,7 @@ class SchedulerTest extends TestCase
     public function schedulerProcessAmountProvider()
     {
         return [
-            [1, 1, 1, 1],
+            //[1, 1, 1, 1],
             [3, 1, 1, 2],
 
             [4, 8, 3, 11],
@@ -138,9 +138,9 @@ class SchedulerTest extends TestCase
      * @param $schedulerIterations
      * @param $startWorkers
      * @param $minIdleProcesses
-     * @param $expectedProcesses
+     * @param $expectedWorkers
      */
-    public function testProcessCreationWhenTooLittleOfThemIsWaiting($schedulerIterations, $startWorkers, $minIdleProcesses, $expectedProcesses)
+    public function testProcessCreationWhenTooLittleOfThemIsWaiting($schedulerIterations, $startWorkers, $minIdleProcesses, $expectedWorkers)
     {
         $scheduler = $this->getScheduler($schedulerIterations);
         $scheduler->getConfig()->setStartProcesses($startWorkers);
@@ -162,7 +162,7 @@ class SchedulerTest extends TestCase
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses) {
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
-                $processesCreated[] = $uid;
+                $workersCreated[] = $uid;
                 $e->setParams(['uid' => $uid, 'initWorker' => true]);
                 $status = $e->getWorker()->getStatus();
                 $status->setProcessId($uid);
@@ -198,7 +198,7 @@ class SchedulerTest extends TestCase
 
         $scheduler->start(false);
 
-        $this->assertEquals($expectedProcesses, $amountOfScheduledProcesses, "Scheduler should try to create $expectedProcesses processes in total ($startWorkers processes on startup and "  . ($expectedProcesses - $startWorkers) . " additionally if all the other were busy)");
+        $this->assertEquals($expectedWorkers, $amountOfScheduledProcesses, "Scheduler should try to create $expectedWorkers processes in total ($startWorkers processes on startup and "  . ($expectedWorkers - $startWorkers) . " additionally if all the other were busy)");
     }
 
     private function getMpm(Scheduler $scheduler) : DummyMpm
