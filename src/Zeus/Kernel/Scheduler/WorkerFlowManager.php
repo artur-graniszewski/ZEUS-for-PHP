@@ -18,9 +18,6 @@ class WorkerFlowManager
     /** @var Scheduler */
     private $scheduler;
 
-    /** @var bool */
-    private $firstWorkerInit = true;
-
     public function setScheduler(Scheduler $scheduler)
     {
         $this->scheduler = $scheduler;
@@ -31,9 +28,9 @@ class WorkerFlowManager
         return $this->scheduler;
     }
 
-    private function triggerWorkerEvent(string $eventName, $params, Worker $worker = null) : WorkerEvent
+    private function triggerWorkerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent
     {
-        $event = new WorkerEvent();
+        $event = $this->getWorkerEvent();
         $event->setName($eventName);
         $event->setParams($params);
 
@@ -48,25 +45,27 @@ class WorkerFlowManager
         return $event;
     }
 
-    private function getWorker() : Worker
+    public function getWorkerEvent() : WorkerEvent
+    {
+        $event = new WorkerEvent();
+        $event->setScheduler($this->getScheduler());
+        $event->setWorker(new WorkerState($this->getScheduler()->getConfig()->getServiceName()));
+
+        return $event;
+    }
+
+    private function getNewWorker() : WorkerState
     {
         $scheduler = $this->getScheduler();
-        $worker = new Worker();
-        $worker->setLogger($scheduler->getLogger());
-        $worker->setConfig($scheduler->getConfig());
-
-        if ($this->firstWorkerInit) {
-            $worker->setEventManager($scheduler->getEventManager());
-            //$this->firstWorkerInit = false;
-        }
+        $worker = new WorkerState($scheduler->getConfig()->getServiceName());
 
         return $worker;
     }
 
     public function startWorker(array $eventParameters)
     {
-        $worker = $this->getWorker();
-        $worker->setTerminating(false);
+        $worker = $this->getNewWorker();
+        $worker->setIsLastTask(false);
 
         // worker create...
         $event = $this->triggerWorkerEvent(WorkerEvent::EVENT_CREATE, $eventParameters, $worker);
@@ -98,18 +97,17 @@ class WorkerFlowManager
         $this->triggerWorkerEvent(WorkerEvent::EVENT_TERMINATE, $params);
     }
 
-    public function workerLoop(Worker $worker)
+    public function workerLoop(WorkerState $worker)
     {
         $worker->setWaiting();
         $this->getScheduler()->syncWorker($worker);
-        $status = $worker->getStatus();
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
-        while (($runsLeft = $worker->getConfig()->getMaxProcessTasks() - $status->getNumberOfFinishedTasks()) > 0) {
-            $status->setIsLastTask($runsLeft === 1);
+        while (($runsLeft = $this->getScheduler()->getConfig()->getMaxProcessTasks() - $worker->getNumberOfFinishedTasks()) > 0) {
+            $worker->setIsLastTask($runsLeft === 1);
             try {
                 $params = [
-                    'status' => $status
+                    'status' => $worker
                 ];
 
                 $this->triggerWorkerEvent(WorkerEvent::EVENT_LOOP, $params, $worker);
@@ -117,10 +115,10 @@ class WorkerFlowManager
             } catch (Error $exception) {
                 $this->terminate($worker, $exception);
             } catch (Throwable $exception) {
-                $this->logException($exception, $worker->getLogger());
+                $this->logException($exception, $this->getScheduler()->getLogger());
             }
 
-            if ($worker->isTerminating()) {
+            if ($worker->getCode() === WorkerState::EXITING) {
                 break;
             }
         }
@@ -128,24 +126,32 @@ class WorkerFlowManager
         $this->terminate($worker);
     }
 
-    private function terminate(Worker $worker, Throwable $exception = null)
+    private function terminate(WorkerState $worker, Throwable $exception = null)
     {
-        $status = $worker->getStatus();
+        $logger = $this->getScheduler()->getLogger();
+        $logger->debug(sprintf("Shutting down after finishing %d tasks", $worker->getNumberOfFinishedTasks()));
 
-        $worker->getLogger()->debug(sprintf("Shutting down after finishing %d tasks", $status->getNumberOfFinishedTasks()));
-
-        $status->setCode(WorkerState::EXITING);
-        $status->setTime(time());
+        $worker->setCode(WorkerState::EXITING);
+        $worker->setTime(time());
 
         $params = [
-            'status' => $status
+            'status' => $worker
         ];
 
         if ($exception) {
-            $this->logException($exception, $worker->getLogger());
+            $this->logException($exception, $logger);
             $params['exception'] = $exception;
         }
 
         $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
+    }
+
+    public function syncWorker(WorkerState $worker)
+    {
+        $params = [
+            'status' => $worker
+        ];
+
+        $this->triggerWorkerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params, $worker);
     }
 }

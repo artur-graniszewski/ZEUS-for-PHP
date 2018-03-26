@@ -2,7 +2,6 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zeus\Kernel\Scheduler\Helper\GarbageCollector;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PThreads\PosixThreadBridge;
@@ -135,7 +134,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
             $applicationPath,
             'zeus',
             $type,
-            $event->getWorker()->getConfig()->getServiceName(),
+            $event->getWorker()->getServiceName(),
             json_encode($event->getParams())
         ];
 
@@ -158,10 +157,9 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
     {
         $uid = $this->createThread($event);
         $worker = $event->getWorker();
-        $status = $worker->getStatus();
-        $status->setThreadId($uid);
-        $status->setProcessId(getmypid());
-        $status->setUid($uid);
+        $worker->setThreadId($uid);
+        $worker->setProcessId(getmypid());
+        $worker->setUid($uid);
     }
 
     public function onSchedulerInit(SchedulerEvent $event)

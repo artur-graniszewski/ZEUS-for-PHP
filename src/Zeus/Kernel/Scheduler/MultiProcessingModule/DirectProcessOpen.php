@@ -72,7 +72,7 @@ final class DirectProcessOpen extends AbstractProcessModule implements SeparateA
 
     public function onWorkerTerminated(WorkerEvent $event)
     {
-        $this->cleanProcessPipes($event->getWorker()->getStatus()->getUid());
+        $this->cleanProcessPipes($event->getWorker()->getUid());
     }
 
     public function onWorkersCheck(SchedulerEvent $event)

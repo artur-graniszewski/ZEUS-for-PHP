@@ -5,7 +5,7 @@ namespace Zeus\ServerService\Shared\Networking;
 use Throwable;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\Kernel\Scheduler;
-use Zeus\Kernel\Scheduler\Worker;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 
 class MessageObserver implements HeartBeatMessageInterface, MessageComponentInterface
@@ -16,7 +16,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     /** @var MessageComponentInterface */
     private $message;
 
-    /** @var Worker */
+    /** @var WorkerState */
     private $worker;
 
     /** @var Scheduler */
@@ -28,7 +28,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $this->message = $message;
     }
 
-    public function setWorker(Worker $worker)
+    public function setWorker(WorkerState $worker)
     {
         $this->worker = $worker;
     }
@@ -48,7 +48,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
         $function = function() use ($connection) {
             $worker = $this->getWorker();
-            $worker->getStatus()->incrementNumberOfFinishedTasks(1);
+            $worker->incrementNumberOfFinishedTasks(1);
             $worker->setRunning();
             $this->getScheduler()->syncWorker($worker);
             $this->getMessageComponent()->onOpen($connection);
@@ -115,7 +115,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
             if (!$wasClosed && $connection->isClosed()) {
                 $worker = $this->getWorker();
                 // don't send READY status just before stopping the worker, otherwise we risk race-conditions in registrator
-                if (!($worker->getStatus()->isLastTask() && $status === RegistratorService::STATUS_WORKER_READY)) {
+                if (!($worker->isLastTask() && $status === RegistratorService::STATUS_WORKER_READY)) {
                     $this->setConnectionStatus($status);
                 }
                 $worker->setWaiting();
@@ -140,7 +140,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         return $this->broker;
     }
 
-    public function getWorker() : Worker
+    public function getWorker() : Scheduler\Status\WorkerState
     {
         return $this->worker;
     }

@@ -4,6 +4,7 @@ namespace ZeusTest\Services\Shared;
 
 use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\ServerService\Http\Config;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
@@ -43,7 +44,7 @@ class GatewayStrategyTest extends TestCase
             $this->assertEquals($broker->getRegistrator()->getRegistratorAddress(), $e->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM), 'Registrator address should be passed as event param');
             $initPassed = true;
             $e->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, "testAddress");
-            $e->getWorker()->setTerminating(true);
+            $e->getWorker()->setCode(WorkerState::EXITING);
         }, 100000);
 
         $events->attach(Scheduler\WorkerEvent::EVENT_EXIT, function(Scheduler\WorkerEvent $e) {

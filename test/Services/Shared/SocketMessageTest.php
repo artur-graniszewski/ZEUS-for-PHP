@@ -5,6 +5,7 @@ namespace ZeusTest\Services\Shared;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -53,15 +54,9 @@ class SocketMessageTest extends TestCase
         $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
-        $worker = new Worker();
-        $worker->setConfig($config);
-        $status = $worker->getStatus();
-        $status->setProcessId(getmypid());
-        $status->setUid(getmypid());
-        $worker->setConfig($config);
-        $worker->setIpc($event->getScheduler()->getIpc());
-        $worker->setLogger($event->getScheduler()->getLogger());
-        $worker->setEventManager($events);
+        $worker = new WorkerState("test");
+        $worker->setProcessId(getmypid());
+        $worker->setUid(getmypid());
 
         $received = [];
         $steps = 0;
@@ -148,14 +143,9 @@ class SocketMessageTest extends TestCase
         $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
-        $worker = new Worker();
-        $worker->setConfig($config);
-        $worker->setIpc($event->getTarget()->getIpc());
-        $worker->setLogger($event->getScheduler()->getLogger());
-        $worker->setEventManager($events);
-        $status = $worker->getStatus();
-        $status->setProcessId(getmypid());
-        $status->setUid(getmypid());
+        $worker = new WorkerState("test");
+        $worker->setProcessId(getmypid());
+        $worker->setUid(getmypid());
 
         $received = null;
         $message = new SocketTestMessage();

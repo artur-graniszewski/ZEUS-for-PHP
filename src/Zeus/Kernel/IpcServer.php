@@ -399,9 +399,8 @@ class IpcServer implements ListenerAggregateInterface
                 return;
             }
 
-            $uid = $event->getWorker()->getStatus()->getUid();
+            $uid = $event->getWorker()->getUid();
             $this->registerIpc($ipcPort, $uid);
-            $event->getWorker()->setIpc($this);
         }, WorkerEvent::PRIORITY_INITIALIZE);
 
         $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {

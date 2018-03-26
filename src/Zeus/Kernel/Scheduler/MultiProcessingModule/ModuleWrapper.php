@@ -11,6 +11,7 @@ use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\Exception\SocketTimeoutException;
@@ -109,7 +110,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
         $workerEvent = clone $this->workerEvent;
         $workerEvent->setParams([]);
-        $workerEvent->getWorker()->setTerminating(false);
+        //$workerEvent->getWorker()->setTerminating(false);
 
         return $workerEvent;
     }
@@ -202,7 +203,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
             $this->checkPipe();
             if ($this->isTerminating()) {
-                $event->getWorker()->setTerminating(true);
+                $event->getWorker()->setCode(WorkerState::EXITING);
                 $event->stopPropagation(true);
             }
         }, WorkerEvent::PRIORITY_INITIALIZE);
@@ -225,7 +226,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
             $this->driver->onWorkerCreate($event);
             if (!$event->getParam('initWorker', false)) {
-                $this->registerWorker($event->getWorker()->getStatus()->getUid(), $pipe);
+                $this->registerWorker($event->getWorker()->getUid(), $pipe);
             }
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_TERMINATE, function (WorkerEvent $e) {
@@ -266,10 +267,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $event = $this->getWorkerEvent();
         $event->setName(WorkerEvent::EVENT_TERMINATED);
         $worker = $event->getWorker();
-        $status = $worker->getStatus();
-        $status->setUid($uid);
-        $status->setProcessId($processId);
-        $status->setThreadId($threadId);
+        $worker->setUid($uid);
+        $worker->setProcessId($processId);
+        $worker->setThreadId($threadId);
+        $worker->setCode(WorkerState::TERMINATED);
         $this->getEventManager()->triggerEvent($event);
         $this->unregisterWorker($uid);
     }

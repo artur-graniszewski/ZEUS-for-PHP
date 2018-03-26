@@ -2,6 +2,8 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Zeus\Kernel\Scheduler\Status\WorkerState;
+
 /**
  * @package Zeus\Kernel\Scheduler
  */
@@ -23,15 +25,15 @@ class WorkerEvent extends SchedulerEvent
     const EVENT_TERMINATED = 'workerTerminated';
     const EVENT_TERMINATE = 'workerTerminate';
 
-    /** @var Worker */
+    /** @var WorkerState */
     private $worker;
 
-    public function getWorker() : Worker
+    public function getWorker() : WorkerState
     {
         return $this->worker;
     }
 
-    public function setWorker(Worker $worker)
+    public function setWorker(WorkerState $worker)
     {
         $this->worker = $worker;
     }

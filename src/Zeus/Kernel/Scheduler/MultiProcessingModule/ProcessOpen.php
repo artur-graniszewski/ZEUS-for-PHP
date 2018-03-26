@@ -121,7 +121,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public function onWorkerTerminated(WorkerEvent $event)
     {
-        $this->cleanProcessPipes($event->getWorker()->getStatus()->getUid());
+        $this->cleanProcessPipes($event->getWorker()->getUid());
     }
 
     private function flushBuffers(int $uid, bool $forceFlush)
@@ -230,7 +230,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $applicationPath = $_SERVER['PHP_SELF'];
 
         $type = $event->getParam(Scheduler::WORKER_SERVER) ? 'scheduler' : 'worker';
-        $serviceName = escapeshellarg($event->getTarget()->getConfig()->getServiceName());
+        $serviceName = escapeshellarg($event->getWorker()->getServiceName());
         $startParams = escapeshellarg(json_encode($event->getParams()));
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);

@@ -164,7 +164,7 @@ class SchedulerTest extends TestCase
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $workersCreated[] = $uid;
                 $e->setParams(['uid' => $uid, 'initWorker' => true]);
-                $status = $e->getWorker()->getStatus();
+                $status = $e->getWorker();
                 $status->setProcessId($uid);
                 $status->setUid($uid);
                 $status->setThreadId(1);
@@ -181,10 +181,10 @@ class SchedulerTest extends TestCase
         $sm->attach('*', WorkerEvent::EVENT_INIT,
             function(WorkerEvent $e) use (&$processCount, $startWorkers, &$workers) {
                 $worker = $e->getWorker();
-                $uid = $worker->getStatus()->getUid();
+                $uid = $worker->getUid();
                 $workers[] = $worker;
 
-                $worker->getStatus()->incrementNumberOfFinishedTasks(1000);
+                $worker->incrementNumberOfFinishedTasks(1000);
 
                 // mark all processes as busy
                 if ($uid - 100000000 <= $startWorkers) {
@@ -208,7 +208,7 @@ class SchedulerTest extends TestCase
         $logger->addWriter(new Noop());
 
         $workerEvent = new WorkerEvent();
-        $workerEvent->setWorker(new Scheduler\Worker());
+        $workerEvent->setWorker(new Scheduler\Status\WorkerState("test"));
 
         $service = $sm->build(DummyMpm::class, [
             'scheduler_event' => new SchedulerEvent(),
@@ -252,7 +252,7 @@ class SchedulerTest extends TestCase
 
                 $uid = 100000000 + $amountOfScheduledProcesses;
                 $worker = $e->getWorker();
-                $worker->getStatus()->setUid($uid);
+                $worker->setUid($uid);
             }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 
@@ -312,16 +312,15 @@ class SchedulerTest extends TestCase
         $amountOfScheduledProcesses = 0;
         $processesCreated = [];
         $processesInitialized = [];
-        $processes = [];
+        $workers = [];
 
         $em = $scheduler->getEventManager();
         $sm = $em->getSharedManager();
 
         $sm->attach('*', WorkerEvent::EVENT_INIT,
-            function(WorkerEvent $e) use (&$processCount, &$processes, $mockWriter) {
-                $process = $e->getWorker();
-                $processes[] = $process;
-                $process->getLogger()->addWriter($mockWriter);
+            function(WorkerEvent $e) use (&$processCount, &$workers, $mockWriter) {
+                $worker = $e->getWorker();
+                $workers[] = $worker;
             });
         $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, WorkerEvent::PRIORITY_FINALIZE + 1);
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
@@ -344,7 +343,7 @@ class SchedulerTest extends TestCase
         $em->attach(WorkerEvent::EVENT_LOOP,
             function(WorkerEvent $e) use (&$processesInitialized) {
                 $id = $e->getParam('uid');
-                $e->getWorker()->getStatus()->incrementNumberOfFinishedTasks(1001);
+                $e->getWorker()->incrementNumberOfFinishedTasks(1001);
                 $processesInitialized[] = $id;
 
                 throw new \RuntimeException("Exception thrown by $id!", 10000);
@@ -387,7 +386,7 @@ class SchedulerTest extends TestCase
                 $processesCreated[$uid] = $uid;
 
                 $worker = $e->getWorker();
-                $worker->getStatus()->setUid($uid);
+                $worker->setUid($uid);
             }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 

@@ -33,7 +33,6 @@ class MultiProcessingModuleFactory implements FactoryInterface
 
         $eventManager = $options['event_manager'];
         $schedulerEvent = $options['scheduler_event'];
-        $workerEvent = $options['worker_event'];
 
         /** @var MultiProcessingModuleInterface $driver */
         $driver = new $requestedName();
@@ -41,7 +40,6 @@ class MultiProcessingModuleFactory implements FactoryInterface
         $wrapper = new ModuleWrapper($driver);
         $wrapper->setLogger($logger);
         $wrapper->setSchedulerEvent($schedulerEvent);
-        $wrapper->setWorkerEvent($workerEvent);
         $wrapper->setEventManager($eventManager);
 
         return $driver;

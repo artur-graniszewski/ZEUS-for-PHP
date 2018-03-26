@@ -18,7 +18,6 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerFlowManager;
 use Zeus\Kernel\System\Runtime;
@@ -26,7 +25,6 @@ use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 use function microtime;
 use function sprintf;
-use function array_keys;
 use function array_merge;
 use function file_get_contents;
 use function file_put_contents;
@@ -147,7 +145,7 @@ final class Scheduler extends AbstractService
                     return;
                 }
 
-                $pid = $event->getWorker()->getStatus()->getProcessId();
+                $pid = $event->getWorker()->getProcessId();
 
                 $fileName = $this->getUidFile();
                 if (!@file_put_contents($fileName, $pid)) {
@@ -166,7 +164,7 @@ final class Scheduler extends AbstractService
                 }
                 $event->stopPropagation(true);
                 $this->startLifeCycle();
-                $event->getWorker()->setTerminating(true);
+                $event->getWorker()->setIsLastTask(true);
 
                 $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
                     $event->stopPropagation(true);
@@ -197,9 +195,9 @@ final class Scheduler extends AbstractService
         }, WorkerEvent::PRIORITY_FINALIZE);
     }
 
-    public function syncWorker(Worker $worker)
+    public function syncWorker(WorkerState $worker)
     {
-
+        $this->workerFlowManager->syncWorker($worker);
     }
 
     /**
@@ -209,14 +207,13 @@ final class Scheduler extends AbstractService
     private function sendStatus(WorkerEvent $event)
     {
         $worker = $event->getWorker();
-        $status = $worker->getStatus();
-        $status->updateStatus();
+        $worker->updateStatus();
 
         $payload = [
             'type' => Message::IS_STATUS,
             'extra' => [
                 'logger' => __CLASS__,
-                'status' => $status->toArray()
+                'status' => $worker->toArray()
             ]
         ];
 
@@ -226,7 +223,7 @@ final class Scheduler extends AbstractService
             $this->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
         } catch (Throwable $exception) {
             $this->logException($exception, $this->getLogger());
-            $worker->setTerminating(true);
+            $worker->setCode(WorkerState::EXITING);
             $event->setParam('exception', $exception);
         }
     }
@@ -273,7 +270,7 @@ final class Scheduler extends AbstractService
      */
     private function onWorkerTerminated(WorkerEvent $event)
     {
-        $uid = $event->getWorker()->getStatus()->getUid();
+        $uid = $event->getWorker()->getUid();
 
         $this->log(Logger::DEBUG, "Worker $uid exited");
 
@@ -420,7 +417,7 @@ final class Scheduler extends AbstractService
 
     private function registerNewWorker(WorkerEvent $event)
     {
-        $status = $event->getWorker()->getStatus();
+        $status = $event->getWorker();
         $uid = $status->getUid();
         $status->setCode(WorkerState::WAITING);
 
@@ -506,6 +503,7 @@ final class Scheduler extends AbstractService
     public function setMultiProcessingModule(MultiProcessingModuleInterface $driver)
     {
         $this->multiProcessingModule = $driver;
+        $driver->getWrapper()->setWorkerEvent($this->workerFlowManager->getWorkerEvent());
     }
 
     public function getMultiProcessingModule() : MultiProcessingModuleInterface

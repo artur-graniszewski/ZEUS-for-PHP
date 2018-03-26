@@ -13,7 +13,6 @@ use Zeus\Kernel\Scheduler\Config;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
 
 class SchedulerFactory implements FactoryInterface
@@ -56,20 +55,8 @@ class SchedulerFactory implements FactoryInterface
         $ipcServer->setEventManager($container->build('zeus-event-manager'));
         $ipcServer->attach($eventManager);
 
-        /** @var Worker $worker */
-        $worker = $container->build(Worker::class, [
-            'logger_adapter' => $logger,
-            'scheduler_config' => $configObject,
-            'event_manager' => $eventManager,
-            'ipc_server' => $ipcServer
-        ]);
-
-        $workerEvent = new Scheduler\WorkerEvent();
-        $workerEvent->setWorker($worker);
-
         $driver = $container->build($config['multiprocessing_module'], [
             'scheduler_event' => $scheduler->getSchedulerEvent(),
-            'worker_event' => $workerEvent,
             'logger_adapter' => $logger,
             'event_manager' => $eventManager
         ]);

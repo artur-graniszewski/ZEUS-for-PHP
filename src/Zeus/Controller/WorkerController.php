@@ -13,7 +13,6 @@ use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
-use function array_merge;
 use function defined;
 use function getmypid;
 
@@ -99,11 +98,9 @@ class WorkerController extends AbstractController
         $event->setParam(Scheduler::WORKER_SERVER, true);
 
         $worker = $event->getWorker();
-        $worker->setEventManager($scheduler->getEventManager());
-        $status = $worker->getStatus();
-        $status->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getStatus()->getProcessId());
-        $status->setProcessId(getmypid());
-        $status->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
+        $worker->setProcessId(getmypid());
+        $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         $event->setWorker($worker);
         $event->setTarget($worker);
         $event->setParams($startParams);

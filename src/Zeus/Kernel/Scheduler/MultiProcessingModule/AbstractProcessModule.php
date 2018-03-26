@@ -43,10 +43,9 @@ abstract class AbstractProcessModule extends AbstractModule
         $pid = $this->createProcess($event);
 
         $worker = $event->getWorker();
-        $status = $worker->getStatus();
-        $status->setProcessId($pid);
-        $status->setThreadId(1);
-        $status->setUid($pid);
+        $worker->setProcessId($pid);
+        $worker->setThreadId(1);
+        $worker->setUid($pid);
     }
 
     protected static function getPcntlBridge() : PcntlBridgeInterface

@@ -17,6 +17,7 @@ use Zeus\Controller\Factory\ControllerFactory;
 use Zeus\Controller\MainController;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\Scheduler\Factory\WorkerFactory;
 use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
@@ -198,11 +199,8 @@ trait ZeusFactories
         $scheduler->setTerminating(false);
         $scheduler->setIpc($ipcServer);
 
-        $worker = new Worker();
-        $worker->setIpc($scheduler->getIpc());
-        $worker->setLogger($logger);
-        $worker->setConfig($scheduler->getConfig());
-        $worker->getStatus()->setProcessId(getmypid());
+        $worker = new WorkerState("test");
+        $worker->setProcessId(getmypid());
         $workerEvent = new Scheduler\WorkerEvent();
         $workerEvent->setWorker($worker);
         $workerEvent->setTarget($worker);

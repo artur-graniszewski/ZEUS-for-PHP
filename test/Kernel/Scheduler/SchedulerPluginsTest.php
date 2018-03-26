@@ -2,13 +2,13 @@
 
 namespace ZeusTest\Kernel\Scheduler;
 
-use \PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\Plugin\DropPrivileges;
-use Zeus\Kernel\Scheduler\Worker;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 
-class SchedulerPluginsTest extends \PHPUnit\Framework\TestCase
+class SchedulerPluginsTest extends TestCase
 {
     use ZeusFactories;
 
@@ -69,7 +69,7 @@ class SchedulerPluginsTest extends \PHPUnit\Framework\TestCase
 
     public function testDropPrivilegesPluginWhenSudoer()
     {
-        $worker = new Worker();
+        $worker = new WorkerState("test");
         $event = new WorkerEvent();
         $event->setWorker($worker);
         $event->setTarget($worker);
@@ -91,7 +91,7 @@ class SchedulerPluginsTest extends \PHPUnit\Framework\TestCase
 
     public function testSchedulerDestructor()
     {
-        $worker = new Worker();
+        $worker = new WorkerState("test");
         $event = new WorkerEvent();
         $event->setWorker($worker);
         $event->setTarget($worker);
