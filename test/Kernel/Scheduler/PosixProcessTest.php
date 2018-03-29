@@ -13,10 +13,10 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\SchedulerInterface;
 use ZeusTest\Helpers\PcntlBridgeMock;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
@@ -26,10 +26,10 @@ class PosixProcessTest extends TestCase
     use ZeusFactories;
 
     /**
-     * @param Scheduler $scheduler
+     * @param SchedulerInterface $scheduler
      * @return SchedulerEvent
      */
-    protected function getEvent(Scheduler $scheduler)
+    protected function getEvent(SchedulerInterface $scheduler)
     {
         $rc = new ReflectionClass(Scheduler::class);
         $property = $rc->getProperty('event');
@@ -55,7 +55,7 @@ class PosixProcessTest extends TestCase
         return $found;
     }
 
-    private function getMpm(Scheduler $scheduler) : ModuleWrapper
+    private function getMpm(SchedulerInterface $scheduler) : ModuleWrapper
     {
         $sm = $this->getServiceManager();
         $logger = new Logger();

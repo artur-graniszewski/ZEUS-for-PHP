@@ -58,7 +58,7 @@ trait PluginRegistry
      *
      * @return SplObjectStorage|ListenerAggregateInterface[]
      */
-    public function getPluginRegistry()
+    public function getPluginRegistry() : SplObjectStorage
     {
         if (!$this->pluginRegistry instanceof SplObjectStorage) {
             $this->pluginRegistry = new SplObjectStorage();

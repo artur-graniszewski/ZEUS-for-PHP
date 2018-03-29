@@ -4,8 +4,8 @@ namespace Zeus\Kernel\Scheduler\Status;
 
 use Zend\Console\ColorInterface;
 use Zeus\Kernel\Scheduler\Helper\AddUnitsToNumbers;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Plugin\SchedulerStatus;
-use Zeus\Kernel\Scheduler;
 use Zend\Console\Adapter\AdapterInterface;
 use Zeus\ServerService\ServerServiceInterface;
 
@@ -18,9 +18,7 @@ class SchedulerStatusView
 {
     use AddUnitsToNumbers;
 
-    /**
-     * @var Scheduler
-     */
+    /** @var SchedulerInterface */
     protected $scheduler;
 
     /** @var AdapterInterface */
@@ -43,14 +41,14 @@ class SchedulerStatusView
     }
 
     /**
-     * @return Scheduler
+     * @return SchedulerInterface
      */
-    public function getScheduler()
+    public function getScheduler() : SchedulerInterface
     {
         return $this->scheduler;
     }
 
-    public function setScheduler(Scheduler $scheduler)
+    public function setScheduler(SchedulerInterface $scheduler)
     {
         $this->scheduler = $scheduler;
     }

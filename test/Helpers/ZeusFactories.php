@@ -18,11 +18,10 @@ use Zeus\Controller\MainController;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Factory\ManagerFactory;
-use Zeus\Kernel\Scheduler\Factory\WorkerFactory;
 use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
 use Zeus\Kernel\Scheduler\Plugin\ProcessTitle;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Discipline\Factory\LruDisciplineFactory;
 use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
@@ -41,8 +40,7 @@ trait ZeusFactories
     {
         $sm = new ServiceManager();
         $sm->addAbstractFactory(AbstractServerServiceFactory::class);
-        $sm->setFactory(Scheduler::class, SchedulerFactory::class);
-        $sm->setFactory(Worker::class, WorkerFactory::class);
+        $sm->setFactory(SchedulerInterface::class, SchedulerFactory::class);
         $sm->setFactory(MainControllerMock::class, ControllerFactory::class);
         $sm->setFactory(MainController::class, ControllerFactory::class);
         $sm->setFactory(Manager::class, ManagerFactory::class);
@@ -131,7 +129,7 @@ trait ZeusFactories
         return $sm;
     }
 
-    public function triggerSchedulerLoop(Scheduler $scheduler)
+    public function triggerSchedulerLoop(SchedulerInterface $scheduler)
     {
         $em = $scheduler->getEventManager();
         $event = new SchedulerEvent();
@@ -154,7 +152,7 @@ trait ZeusFactories
      * @param int $mainLoopIterations
      * @param callback $loopCallback
      * @param ServiceManager $serviceManager
-     * @return Scheduler
+     * @return SchedulerInterface
      */
     public function getScheduler($mainLoopIterations = 0, $loopCallback = null, ServiceManager $serviceManager = null)
     {
@@ -164,7 +162,7 @@ trait ZeusFactories
         $logger = $this->getDummyLogger();
 
         /** @var Scheduler $scheduler */
-        $scheduler = $sm->build(Scheduler::class, [
+        $scheduler = $sm->build(SchedulerInterface::class, [
             'service_name' => 'test-service',
             'scheduler_name' => 'test-scheduler',
             'logger_adapter' => $logger,
@@ -174,8 +172,7 @@ trait ZeusFactories
         $sm = $events->getSharedManager();
 
         $ipcServer = new IpcServer();
-        $ipcServer->setEventManager(new EventManager($sm));
-        $ipcServer->attach(new EventManager($sm));
+        $ipcServer->setEventManager($events);
 
         if ($mainLoopIterations > 0) {
             $sm->attach('*', SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {

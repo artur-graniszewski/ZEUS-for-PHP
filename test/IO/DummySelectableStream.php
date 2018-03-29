@@ -3,8 +3,9 @@
 namespace ZeusTest\IO;
 
 use Zeus\IO\Stream\AbstractSelectableStream;
+use Zeus\IO\Stream\NetworkStreamInterface;
 
-class DummySelectableStream extends AbstractSelectableStream
+class DummySelectableStream extends AbstractSelectableStream implements NetworkStreamInterface
 {
     private $dataWritten = '';
 
@@ -92,5 +93,25 @@ class DummySelectableStream extends AbstractSelectableStream
     public function setDataToRead(string $data)
     {
         $this->dataToRead = $data;
+    }
+
+    /**
+     * Returns the remote address (client IP) where this connection has been established from
+     *
+     * @return string|null remote address (client IP) or null if unknown
+     */
+    public function getRemoteAddress(): string
+    {
+        // TODO: Implement getRemoteAddress() method.
+    }
+
+    public function shutdown(int $shutdownType)
+    {
+        // TODO: Implement shutdown() method.
+    }
+
+    public function setOption(int $option, $value)
+    {
+        // TODO: Implement setOption() method.
     }
 }

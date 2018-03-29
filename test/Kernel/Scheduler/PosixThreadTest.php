@@ -11,6 +11,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\System\Runtime;
 use ZeusTest\Helpers\PosixThreadBridgeMock;
 use ZeusTest\Helpers\PosixThreadWrapperMock;
@@ -34,10 +35,10 @@ class PosixThreadTest extends TestCase
     }
 
     /**
-     * @param Scheduler $scheduler
+     * @param SchedulerInterface $scheduler
      * @return SchedulerEvent
      */
-    protected function getEvent(Scheduler $scheduler)
+    protected function getEvent(SchedulerInterface $scheduler)
     {
         $rc = new ReflectionClass(Scheduler::class);
         $property = $rc->getProperty('event');

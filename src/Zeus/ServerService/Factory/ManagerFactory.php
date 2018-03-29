@@ -13,7 +13,7 @@ use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\Module;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Logger\LoggerInterface;
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\ServerServiceInterface;
 
 /**
@@ -72,8 +72,8 @@ final class ManagerFactory implements FactoryInterface
                 /** @var LoggerInterface $serviceLogger */
                 $serviceLogger = $container->build($loggerAdapter, ['service_name' => $serviceName]);
 
-                /** @var Scheduler $scheduler */
-                $scheduler = $container->build(Scheduler::class, [
+                /** @var SchedulerInterface $scheduler */
+                $scheduler = $container->build(SchedulerInterface::class, [
                     'scheduler_name' => $serviceConfig['scheduler_name'],
                     'service_name' => $serviceName,
                     'logger_adapter' => $serviceLogger

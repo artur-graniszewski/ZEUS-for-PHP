@@ -3,9 +3,8 @@
 namespace Zeus\Kernel;
 
 use RuntimeException;
+use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
-use Zend\EventManager\EventManagerInterface;
-use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\Kernel\IpcServer\IpcEvent;
@@ -29,7 +28,7 @@ use function array_rand;
 use function array_search;
 use function stream_socket_client;
 
-class IpcServer implements ListenerAggregateInterface
+class IpcServer implements EventManagerAwareInterface
 {
     use EventManagerAwareTrait;
 
@@ -44,7 +43,7 @@ class IpcServer implements ListenerAggregateInterface
     const AUDIENCE_AMOUNT = 'aud_num';
     const AUDIENCE_SELF = 'aud_self';
 
-    private $eventHandles;
+    private $eventHandles = [];
 
     /** @var SocketServer */
     private $ipcServer;
@@ -71,6 +70,15 @@ class IpcServer implements ListenerAggregateInterface
         $this->ipcSelector = new Selector();
     }
 
+    public function __destruct()
+    {
+        $events = $this->getEventManager();
+
+        foreach ($this->eventHandles as $handle) {
+            $events->detach($handle);
+        }
+    }
+
     /**
      * @param mixed $message
      * @param string $audience
@@ -79,6 +87,58 @@ class IpcServer implements ListenerAggregateInterface
     public function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
     {
         $this->ipcClient->send($message, $audience, $number);
+    }
+
+    protected function attachDefaultListeners()
+    {
+        $events = $this->getEventManager();
+
+        $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function(SchedulerEvent $event) {
+            if (!$this->isKernelRegistered) {
+                $this->setSelector($event->getScheduler()->getReactor());
+                $this->isKernelRegistered = true;
+            }
+        }, SchedulerEvent::PRIORITY_REGULAR + 1);
+
+        $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() {
+            $this->startIpc();
+        }, SchedulerEvent::PRIORITY_REGULAR + 1);
+
+
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
+            $this->onWorkerLoop($event);
+        }, -9000);
+
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+            $ipcPort = $event->getParam('ipcPort');
+
+            if (!$ipcPort) {
+                return;
+            }
+
+            $uid = $event->getWorker()->getUid();
+            $this->registerIpc($ipcPort, $uid);
+        }, WorkerEvent::PRIORITY_INITIALIZE);
+
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($events) {
+            $this->startIpc();
+            $uid = $event->getParam('uid', 0);
+            $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
+
+            $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
+                $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
+            });
+
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
+                if (!$this->isSchedulerRegistered) {
+                    $this->setSelector($event->getScheduler()->getReactor());
+                    $this->isSchedulerRegistered = true;
+                }
+
+                $this->removeIpcClients();
+
+            }, SchedulerEvent::PRIORITY_REGULAR + 1);
+        }, 100000);
     }
 
     private function startIpc()
@@ -363,67 +423,6 @@ class IpcServer implements ListenerAggregateInterface
         }
     }
 
-    /**
-     * Attach one or more listeners
-     *
-     * Implementors may add an optional $priority argument; the EventManager
-     * implementation will pass this to the aggregate.
-     *
-     * @param EventManagerInterface $events
-     * @param int $priority
-     * @return void
-     */
-    public function attach(EventManagerInterface $events, $priority = 1)
-    {
-        $sharedManager = $events->getSharedManager();
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function(SchedulerEvent $event) {
-            if (!$this->isKernelRegistered) {
-                $this->setSelector($event->getScheduler()->getReactor());
-                $this->isKernelRegistered = true;
-            }
-        }, SchedulerEvent::PRIORITY_REGULAR + 1);
-
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() {
-            $this->startIpc();
-        }, SchedulerEvent::PRIORITY_REGULAR + 1);
-
-
-        $sharedManager->attach('*', WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
-            $this->onWorkerLoop($event);
-            }, -9000);
-
-        $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $ipcPort = $event->getParam('ipcPort');
-
-            if (!$ipcPort) {
-                return;
-            }
-
-            $uid = $event->getWorker()->getUid();
-            $this->registerIpc($ipcPort, $uid);
-        }, WorkerEvent::PRIORITY_INITIALIZE);
-
-        $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($sharedManager, $priority) {
-            $this->startIpc();
-            $uid = $event->getParam('uid', 0);
-            $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
-            $event->getScheduler()->setIpc($this);
-
-            $this->eventHandles[] = $sharedManager->attach('*', WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
-                $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
-            });
-
-            $this->eventHandles[] = $sharedManager->attach('*', SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
-                if (!$this->isSchedulerRegistered) {
-                    $this->setSelector($event->getScheduler()->getReactor());
-                    $this->isSchedulerRegistered = true;
-                }
-
-                $this->removeIpcClients();
-
-            }, SchedulerEvent::PRIORITY_REGULAR + 1);
-        }, 100000);
-    }
 
     private function setSelector(Reactor $scheduler)
     {
@@ -434,18 +433,5 @@ class IpcServer implements ListenerAggregateInterface
 
             }, 1000);
 
-    }
-
-    /**
-     * Detach all previously attached listeners
-     *
-     * @param EventManagerInterface $events
-     * @return void
-     */
-    public function detach(EventManagerInterface $events)
-    {
-        foreach ($this->eventHandles as $handle) {
-            $events->detach($handle);
-        }
     }
 }

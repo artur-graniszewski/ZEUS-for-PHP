@@ -3,20 +3,18 @@
 namespace Zeus\ServerService\Async;
 
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
 
 class Service extends AbstractSocketServerService
 {
-    /** @var Worker */
-    protected $worker;
     protected $message;
 
-    public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
+    public function __construct(array $config = [], SchedulerInterface $scheduler, LoggerInterface $logger)
     {
         parent::__construct($config, $scheduler, $logger);
 
@@ -35,14 +33,11 @@ class Service extends AbstractSocketServerService
             $this->worker = $event->getTarget();
         });
 
-        $this->config['logger'] = get_class();
+        $config = $this->getConfig();
+        $config['logger'] = get_class();
+        $this->setConfig($config);
 
         parent::start();
-    }
-
-    public function getWorker() : Worker
-    {
-        return $this->worker;
     }
 
     public function setMessageComponent(Message $message)

@@ -4,8 +4,8 @@ namespace Zeus\ServerService\Shared\Networking;
 
 use Throwable;
 use Zeus\IO\Stream\NetworkStreamInterface;
-use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 
 class MessageObserver implements HeartBeatMessageInterface, MessageComponentInterface
@@ -19,7 +19,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
     /** @var WorkerState */
     private $worker;
 
-    /** @var Scheduler */
+    /** @var SchedulerInterface */
     private $scheduler;
 
     public function __construct(BrokerStrategy $broker, MessageComponentInterface $message)
@@ -33,12 +33,12 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $this->worker = $worker;
     }
 
-    public function setScheduler(Scheduler $scheduler)
+    public function setScheduler(SchedulerInterface $scheduler)
     {
         $this->scheduler = $scheduler;
     }
 
-    public function getScheduler() : Scheduler
+    public function getScheduler() : SchedulerInterface
     {
         return $this->scheduler;
     }
@@ -140,7 +140,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         return $this->broker;
     }
 
-    public function getWorker() : Scheduler\Status\WorkerState
+    public function getWorker() : WorkerState
     {
         return $this->worker;
     }

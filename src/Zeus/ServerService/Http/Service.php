@@ -7,7 +7,7 @@ use Zend\Log\LoggerInterface;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zend\Uri\Uri;
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
@@ -18,7 +18,7 @@ use function sprintf;
 
 class Service extends AbstractSocketServerService
 {
-    public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
+    public function __construct(array $config = [], SchedulerInterface $scheduler, LoggerInterface $logger)
     {
         parent::__construct($config, $scheduler, $logger);
 

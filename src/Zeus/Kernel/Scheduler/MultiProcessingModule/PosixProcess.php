@@ -2,15 +2,16 @@
 
 namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 
-use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\SchedulerInterface;
 
 use function basename;
 use function str_replace;
 use function sprintf;
 use function getmypid;
+
 
 final class PosixProcess extends AbstractProcessModule implements SeparateAddressSpaceInterface, ParentMemoryPagesCopiedInterface
 {
@@ -85,11 +86,11 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
                 $pcntl->pcntlSignal(SIGINT, $onTerminate);
                 $pcntl->pcntlSignal(SIGHUP, $onTerminate);
                 $pid = getmypid();
-                $event->setParam(Scheduler::WORKER_INIT, true);
+                $event->setParam(SchedulerInterface::WORKER_INIT, true);
                 break;
             default:
                 // we are the parent
-                $event->setParam(Scheduler::WORKER_INIT, false);
+                $event->setParam(SchedulerInterface::WORKER_INIT, false);
                 break;
         }
 

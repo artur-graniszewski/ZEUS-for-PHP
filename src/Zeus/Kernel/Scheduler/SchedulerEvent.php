@@ -2,7 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler;
 
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\SchedulerInterface;
 
 /**
  * @package Zeus\Kernel\Scheduler
@@ -28,15 +28,15 @@ class SchedulerEvent extends AbstractEvent
     const INTERNAL_EVENT_KERNEL_STOP = 'kernelStop';
     const INTERNAL_EVENT_KERNEL_LOOP = 'kernelLoop';
 
-    /** @var Scheduler */
+    /** @var SchedulerInterface */
     private $scheduler;
 
-    public function getScheduler() : Scheduler
+    public function getScheduler() : SchedulerInterface
     {
         return $this->scheduler;
     }
 
-    public function setScheduler(Scheduler $scheduler)
+    public function setScheduler(SchedulerInterface $scheduler)
     {
         $this->scheduler = $scheduler;
     }

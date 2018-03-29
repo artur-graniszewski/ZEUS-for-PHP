@@ -3,11 +3,12 @@
 namespace Zeus\Kernel;
 
 use Throwable;
+use Zend\EventManager\EventManagerAwareTrait;
 use Zend\Log\Logger;
+use Zend\Log\LoggerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Message;
-use Zeus\Kernel\Scheduler\AbstractService;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
@@ -15,11 +16,12 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\SchedulerLifeCycleFacade;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Kernel\Scheduler\WorkerFlowManager;
+use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
@@ -35,10 +37,23 @@ use function unlink;
  * @package Zeus\Kernel\Scheduler
  * @internal
  */
-final class Scheduler extends AbstractService
+class Scheduler implements SchedulerInterface
 {
     use PluginRegistry;
     use ExceptionLoggerTrait;
+    use EventManagerAwareTrait;
+
+    /** @var IpcServer */
+    private $ipcServer;
+
+    /** @var LoggerInterface */
+    private $logger;
+
+    /** @var ConfigInterface */
+    private $config;
+
+    /** @var bool */
+    private $isTerminating = false;
 
     /** @var WorkerState */
     private $status;
@@ -50,7 +65,7 @@ final class Scheduler extends AbstractService
     private $discipline;
 
     /** @var mixed[] */
-    private $eventHandles;
+    private $eventHandles = [];
 
     /** @var MultiProcessingModuleInterface */
     private $multiProcessingModule;
@@ -58,22 +73,63 @@ final class Scheduler extends AbstractService
     /** @var SchedulerEvent */
     private $schedulerEvent;
 
-    /** @var WorkerFlowManager */
-    private $workerFlowManager;
+    /** @var WorkerLifeCycleFacade */
+    private $workerLifeCycle;
+
+    /** @var SchedulerLifeCycleFacade */
+    private $schedulerLifeCycle;
 
     /** @var Reactor */
     private $reactor;
-
-    const WORKER_SERVER = 'server';
-    const WORKER_INIT = 'initWorker';
 
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
     }
 
+    public function getConfig() : ConfigInterface
+    {
+        return $this->config;
+    }
+
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
+
+    public function getLogger() : LoggerInterface
+    {
+        return $this->logger;
+    }
+
+    public function setIpc(IpcServer $ipcAdapter)
+    {
+        $this->ipcServer = $ipcAdapter;
+    }
+
+    public function getIpc() : IpcServer
+    {
+        return $this->ipcServer;
+    }
+
+    public function setTerminating(bool $isTerminating)
+    {
+        $this->isTerminating = $isTerminating;
+    }
+
+    public function isTerminating() : bool
+    {
+        return $this->isTerminating;
+    }
+
     public function getSchedulerEvent() : SchedulerEvent
     {
+        if (!$this->schedulerEvent) {
+            $event = new SchedulerEvent();
+            $event->setTarget($this);
+            $event->setScheduler($this);
+            $this->setSchedulerEvent($event);
+        }
         return clone $this->schedulerEvent;
     }
 
@@ -87,15 +143,23 @@ final class Scheduler extends AbstractService
         return $this->reactor;
     }
 
-    public function __construct(ConfigInterface $config, DisciplineInterface $discipline)
+    public function __construct(ConfigInterface $config, DisciplineInterface $discipline, Reactor $reactor, IpcServer $ipc, MultiProcessingModuleInterface $driver)
     {
-        $this->setReactor(new Reactor());
-        $this->workerFlowManager = new WorkerFlowManager();
-        $this->workerFlowManager->setScheduler($this);
-
-        $this->setConfig($config);
+        $this->config = $config;
         $this->status = new WorkerState($config->getServiceName());
         $this->workers = new WorkerCollection($config->getMaxProcesses());
+        $this->ipcServer = $ipc;
+
+        $this->reactor = $reactor;
+        $this->workerLifeCycle = new WorkerLifeCycleFacade();
+        $this->workerLifeCycle->setScheduler($this);
+
+        $this->schedulerLifeCycle = new SchedulerLifeCycleFacade();
+        $this->schedulerLifeCycle->setScheduler($this);
+
+        $this->multiProcessingModule = $driver;
+        $driver->getWrapper()->setWorkerEvent($this->workerLifeCycle->getWorkerEvent());
+        $driver->getWrapper()->setSchedulerEvent($this->getSchedulerEvent());
 
         $this->discipline = $discipline;
         $discipline->setConfig($config);
@@ -109,13 +173,14 @@ final class Scheduler extends AbstractService
         }
 
         if ($this->eventHandles) {
+            $events = $this->getEventManager();
             foreach ($this->eventHandles as $handle) {
-                $this->getEventManager()->detach($handle);
+                $events->detach($handle);
             }
         }
     }
 
-    public function attachDefaultListeners()
+    protected function attachDefaultListeners()
     {
         $eventManager = $this->getEventManager();
         $sharedEventManager = $eventManager->getSharedManager();
@@ -141,7 +206,7 @@ final class Scheduler extends AbstractService
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
             // scheduler init
             function (WorkerEvent $event) use ($eventManager) {
-                if (!$event->getParam(static::WORKER_SERVER) || $event->getParam(static::WORKER_INIT)) {
+                if (!$event->getParam(SchedulerInterface::WORKER_SERVER) || $event->getParam(SchedulerInterface::WORKER_INIT)) {
                     return;
                 }
 
@@ -159,11 +224,11 @@ final class Scheduler extends AbstractService
         $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT,
             // scheduler init
             function (WorkerEvent $event) use ($eventManager) {
-                if (!$event->getParam(static::WORKER_SERVER)) {
+                if (!$event->getParam(SchedulerInterface::WORKER_SERVER)) {
                     return;
                 }
                 $event->stopPropagation(true);
-                $this->startLifeCycle();
+                $this->schedulerLifeCycle->start([]);
                 $event->getWorker()->setIsLastTask(true);
 
                 $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
@@ -189,15 +254,99 @@ final class Scheduler extends AbstractService
             }, SchedulerEvent::PRIORITY_FINALIZE + 2);
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
+    }
 
-        $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
-            $this->workerFlowManager->workerLoop($event->getWorker());
-        }, WorkerEvent::PRIORITY_FINALIZE);
+    /**
+     * @return WorkerCollection|WorkerState[]
+     */
+    public function getWorkers() : WorkerCollection
+    {
+        return $this->workers;
+    }
+
+    public function getMultiProcessingModule() : MultiProcessingModuleInterface
+    {
+        return $this->multiProcessingModule;
+    }
+
+    public function observeSelector(AbstractStreamSelector $selector, $onSelectCallback, $onTimeoutCallback, int $timeout)
+    {
+        $this->getReactor()->observe($selector,
+            function(AbstractStreamSelector $selector) use ($onSelectCallback) {
+                $event = $this->getSchedulerEvent();
+                $event->setName(SchedulerEvent::EVENT_SELECT);
+                $event->setParam('selector', $selector);
+                $this->getEventManager()->triggerEvent($event);
+                $onSelectCallback($selector);
+            },
+            function(AbstractStreamSelector $selector) use ($onTimeoutCallback) {
+                $event = $this->getSchedulerEvent();
+                $event->setName(SchedulerEvent::EVENT_SELECT_TIMEOUT);
+                $event->setParam('selector', $selector);
+                $this->getEventManager()->triggerEvent($event);
+                $onTimeoutCallback($selector);
+            },
+            $timeout);
+    }
+
+    public function setReactor(Reactor $reactor)
+    {
+        $this->reactor = $reactor;
     }
 
     public function syncWorker(WorkerState $worker)
     {
-        $this->workerFlowManager->syncWorker($worker);
+        $this->workerLifeCycle->syncWorker($worker);
+    }
+
+    /**
+     * Stops the scheduler.
+     */
+    public function stop()
+    {
+        $this->log(Logger::DEBUG, "Stopping scheduler");
+        $fileName = $this->getUidFile();
+
+        $uid = @file_get_contents($fileName);
+        if (!$uid) {
+            throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
+        }
+
+        $this->setTerminating(true);
+
+        $this->log(Logger::INFO, "Terminating scheduler $uid");
+        $worker = new WorkerState($this->getConfig()->getServiceName(), WorkerState::RUNNING);
+        $worker->setUid($uid);
+        $this->stopWorker($worker, true);
+        $this->log(Logger::INFO, "Workers checked");
+        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP);
+
+        unlink($fileName);
+    }
+
+    /**
+     * Creates the server instance.
+     *
+     * @param bool $launchAsDaemon Run this server as a daemon?
+     */
+    public function start(bool $launchAsDaemon = false)
+    {
+        $plugins = $this->getPluginRegistry()->count();
+        $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+
+        try {
+            if (!$launchAsDaemon) {
+                $this->schedulerLifeCycle->start([]);
+                $this->kernelLoop();
+
+                return;
+            }
+            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
+            $this->workerLifeCycle->start([SchedulerInterface::WORKER_SERVER => true]);
+
+        } catch (Throwable $exception) {
+            $this->handleException($exception);
+        }
     }
 
     /**
@@ -285,31 +434,6 @@ final class Scheduler extends AbstractService
         }
     }
 
-    /**
-     * Stops the scheduler.
-     */
-    public function stop()
-    {
-        $this->log(Logger::DEBUG, "Stopping scheduler");
-        $fileName = $this->getUidFile();
-
-        $uid = @file_get_contents($fileName);
-        if (!$uid) {
-            throw new SchedulerException("Scheduler not running: " . $fileName, SchedulerException::SCHEDULER_NOT_RUNNING);
-        }
-
-        $this->setTerminating(true);
-
-        $this->log(Logger::INFO, "Terminating scheduler $uid");
-        $worker = new WorkerState($this->getConfig()->getServiceName(), WorkerState::RUNNING);
-        $worker->setUid($uid);
-        $this->stopWorker($worker, true);
-        $this->log(Logger::INFO, "Workers checked");
-        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP);
-
-        unlink($fileName);
-    }
-
     private function getUidFile() : string
     {
         // @todo: make it more sophisticated
@@ -332,41 +456,6 @@ final class Scheduler extends AbstractService
         $events->triggerEvent($event);
     }
 
-    /**
-     * Creates the server instance.
-     *
-     * @param bool $launchAsDaemon Run this server as a daemon?
-     */
-    public function start(bool $launchAsDaemon = false)
-    {
-        $plugins = $this->getPluginRegistry()->count();
-        $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
-
-        try {
-            if (!$launchAsDaemon) {
-                $this->startLifeCycle();
-                $this->kernelLoop();
-
-                return;
-            }
-            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
-            $this->workerFlowManager->startWorker([Scheduler::WORKER_SERVER => true]);
-
-        } catch (Throwable $exception) {
-            $this->handleException($exception);
-        }
-    }
-
-    private function startLifeCycle()
-    {
-        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
-        $this->triggerEvent(SchedulerEvent::EVENT_START);
-        $this->mainLoop();
-        // @fixme: kernelLoop() should be merged with mainLoop()
-        $this->triggerEvent(SchedulerEvent::EVENT_STOP);
-        $this->log(Logger::NOTICE, "Scheduler terminated");
-    }
-
     private function handleException(Throwable $exception)
     {
         $this->triggerEvent(SchedulerEvent::EVENT_STOP, ['exception' => $exception]);
@@ -375,8 +464,8 @@ final class Scheduler extends AbstractService
     private function stopWorker(WorkerState $worker, bool $isSoftStop)
     {
         $uid = $worker->getUid();
-        $this->log(Logger::DEBUG, sprintf('Terminating worker %d', $uid));
-        $this->workerFlowManager->stopWorker($worker, $isSoftStop);
+        $this->log(Logger::DEBUG, sprintf('Stopping worker %d', $uid));
+        $this->workerLifeCycle->stopWorker($worker, $isSoftStop);
 
         if (isset($this->workers[$uid])) {
             $workerState = $this->workers[$uid];
@@ -395,7 +484,7 @@ final class Scheduler extends AbstractService
 
         $this->setTerminating(true);
 
-        $this->log(Logger::DEBUG, "Terminating workers");
+        $this->log(Logger::DEBUG, "Stopping all workers");
 
         if ($this->workers) {
             foreach ($this->workers as $worker) {
@@ -411,7 +500,7 @@ final class Scheduler extends AbstractService
         }
 
         for ($i = 0; $i < $amount; ++$i) {
-            $this->workerFlowManager->startWorker([]);
+            $this->workerLifeCycle->start([]);
         }
     }
 
@@ -454,27 +543,6 @@ final class Scheduler extends AbstractService
         }
     }
 
-    /**
-     * Starts main (infinite) loop.
-     */
-    private function mainLoop()
-    {
-        $reactor = $this->getReactor();
-
-        $terminator = function() use ($reactor) {
-            $this->triggerEvent(SchedulerEvent::EVENT_LOOP);
-            if ($this->isTerminating()) {
-                $reactor->setTerminating(true);
-            }
-        };
-
-        do {
-            $reactor->mainLoop(
-                $terminator
-            );
-        } while (!$this->isTerminating());
-    }
-
     private function kernelLoop()
     {
         $reactor = $this->getReactor();
@@ -490,49 +558,5 @@ final class Scheduler extends AbstractService
                 $terminator
             );
         } while (!$this->isTerminating());
-    }
-
-    /**
-     * @return WorkerCollection|WorkerState[]
-     */
-    public function getWorkers() : WorkerCollection
-    {
-        return $this->workers;
-    }
-
-    public function setMultiProcessingModule(MultiProcessingModuleInterface $driver)
-    {
-        $this->multiProcessingModule = $driver;
-        $driver->getWrapper()->setWorkerEvent($this->workerFlowManager->getWorkerEvent());
-    }
-
-    public function getMultiProcessingModule() : MultiProcessingModuleInterface
-    {
-        return $this->multiProcessingModule;
-    }
-
-    public function observeSelector(AbstractStreamSelector $selector, $onSelectCallback, $onTimeoutCallback, int $timeout)
-    {
-        $this->getReactor()->observe($selector,
-            function(AbstractStreamSelector $selector) use ($onSelectCallback) {
-                $event = $this->getSchedulerEvent();
-                $event->setName(SchedulerEvent::EVENT_SELECT);
-                $event->setParam('selector', $selector);
-                $this->getEventManager()->triggerEvent($event);
-                $onSelectCallback($selector);
-            },
-            function(AbstractStreamSelector $selector) use ($onTimeoutCallback) {
-                $event = $this->getSchedulerEvent();
-                $event->setName(SchedulerEvent::EVENT_SELECT_TIMEOUT);
-                $event->setParam('selector', $selector);
-                $this->getEventManager()->triggerEvent($event);
-                $onTimeoutCallback($selector);
-            },
-            $timeout);
-    }
-
-    public function setReactor(Reactor $reactor)
-    {
-        $this->reactor = $reactor;
     }
 }

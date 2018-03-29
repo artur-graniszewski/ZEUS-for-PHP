@@ -12,7 +12,6 @@ use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\Config;
 use Zeus\Kernel\Scheduler\Helper\PluginFactory;
 use Zeus\Kernel\Scheduler;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
 
 class SchedulerFactory implements FactoryInterface
@@ -42,26 +41,18 @@ class SchedulerFactory implements FactoryInterface
         $schedulerDiscipline =
             isset($config['scheduler_discipline']) ? $container->get($config['scheduler_discipline']) : $container->get(LruDiscipline::class);
 
-        $scheduler = new Scheduler($configObject, $schedulerDiscipline);
-        $scheduler->setEventManager($eventManager);
-        $scheduler->setLogger($logger);
-
-        $event = new SchedulerEvent();
-        $event->setTarget($scheduler);
-        $event->setScheduler($scheduler);
-        $scheduler->setSchedulerEvent($event);
-
         $ipcServer = new IpcServer();
-        $ipcServer->setEventManager($container->build('zeus-event-manager'));
-        $ipcServer->attach($eventManager);
+        $ipcServer->setEventManager($eventManager);
 
         $driver = $container->build($config['multiprocessing_module'], [
-            'scheduler_event' => $scheduler->getSchedulerEvent(),
             'logger_adapter' => $logger,
             'event_manager' => $eventManager
         ]);
 
-        $scheduler->setMultiProcessingModule($driver);
+        $scheduler = new Scheduler($configObject, $schedulerDiscipline, new Scheduler\Reactor(), $ipcServer, $driver);
+        $scheduler->setEventManager($eventManager);
+        $scheduler->setLogger($logger);
+
         $this->startPlugins($container, $scheduler, isset($config['plugins']) ? $config['plugins'] : []);
 
         return $scheduler;

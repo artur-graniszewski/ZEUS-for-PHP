@@ -3,17 +3,17 @@
 namespace Zeus\ServerService;
 
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\SchedulerInterface;
 
 interface ServerServiceInterface
 {
     /**
      * ServiceInterface constructor.
      * @param mixed[] $config
-     * @param Scheduler $scheduler
+     * @param SchedulerInterface $scheduler
      * @param LoggerInterface $logger
      */
-    public function __construct(array $config, Scheduler $scheduler, LoggerInterface $logger);
+    public function __construct(array $config, SchedulerInterface $scheduler, LoggerInterface $logger);
 
     public function start();
 
@@ -21,5 +21,5 @@ interface ServerServiceInterface
 
     public function getConfig() : array;
 
-    public function getScheduler() : Scheduler;
+    public function getScheduler() : SchedulerInterface;
 }

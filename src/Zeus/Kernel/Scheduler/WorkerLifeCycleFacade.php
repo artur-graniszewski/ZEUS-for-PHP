@@ -4,47 +4,14 @@ namespace Zeus\Kernel\Scheduler;
 
 use Error;
 use Throwable;
-use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
-use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
+use Zeus\Kernel\SchedulerInterface;
 
 /**
  * @internal
  */
-class WorkerFlowManager
+class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
 {
-    use ExceptionLoggerTrait;
-
-    /** @var Scheduler */
-    private $scheduler;
-
-    public function setScheduler(Scheduler $scheduler)
-    {
-        $this->scheduler = $scheduler;
-    }
-
-    public function getScheduler() : Scheduler
-    {
-        return $this->scheduler;
-    }
-
-    private function triggerWorkerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent
-    {
-        $event = $this->getWorkerEvent();
-        $event->setName($eventName);
-        $event->setParams($params);
-
-        if ($worker) {
-            $event->setTarget($worker);
-            $event->setWorker($worker);
-            $event->setScheduler($this->getScheduler());
-        }
-
-        $this->getScheduler()->getEventManager()->triggerEvent($event);
-
-        return $event;
-    }
-
     public function getWorkerEvent() : WorkerEvent
     {
         $event = new WorkerEvent();
@@ -62,15 +29,15 @@ class WorkerFlowManager
         return $worker;
     }
 
-    public function startWorker(array $eventParameters)
+    public function start(array $startParams)
     {
         $worker = $this->getNewWorker();
         $worker->setIsLastTask(false);
 
         // worker create...
-        $event = $this->triggerWorkerEvent(WorkerEvent::EVENT_CREATE, $eventParameters, $worker);
+        $event = $this->triggerEvent(WorkerEvent::EVENT_CREATE, $startParams, $worker);
 
-        if (!$event->getParam(Scheduler::WORKER_INIT)) {
+        if (!$event->getParam(SchedulerInterface::WORKER_INIT)) {
             return;
         }
 
@@ -78,11 +45,15 @@ class WorkerFlowManager
 
         // worker init...
         $worker = $event->getWorker();
-        $this->triggerWorkerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
+        $event = $this->triggerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
+
+        if (!$event->propagationIsStopped()) {
+            $this->mainLoop($event->getWorker());
+        }
 
         // worker exit...
         $worker = $event->getWorker();
-        $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
+        $this->triggerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
     }
 
     public function stopWorker(WorkerState $worker, bool $isSoftStop)
@@ -94,13 +65,13 @@ class WorkerFlowManager
             'soft' => $isSoftStop
         ];
 
-        $this->triggerWorkerEvent(WorkerEvent::EVENT_TERMINATE, $params);
+        $this->triggerEvent(WorkerEvent::EVENT_TERMINATE, $params);
     }
 
-    public function workerLoop(WorkerState $worker)
+    private function mainLoop(WorkerState $worker)
     {
         $worker->setWaiting();
-        $this->getScheduler()->syncWorker($worker);
+        $this->syncWorker($worker);
 
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
         while (($runsLeft = $this->getScheduler()->getConfig()->getMaxProcessTasks() - $worker->getNumberOfFinishedTasks()) > 0) {
@@ -110,7 +81,7 @@ class WorkerFlowManager
                     'status' => $worker
                 ];
 
-                $this->triggerWorkerEvent(WorkerEvent::EVENT_LOOP, $params, $worker);
+                $this->triggerEvent(WorkerEvent::EVENT_LOOP, $params, $worker);
 
             } catch (Error $exception) {
                 $this->terminate($worker, $exception);
@@ -143,7 +114,7 @@ class WorkerFlowManager
             $params['exception'] = $exception;
         }
 
-        $this->triggerWorkerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
+        $this->triggerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
     }
 
     public function syncWorker(WorkerState $worker)
@@ -152,6 +123,23 @@ class WorkerFlowManager
             'status' => $worker
         ];
 
-        $this->triggerWorkerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params, $worker);
+        $this->triggerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params, $worker);
+    }
+
+    private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent
+    {
+        $event = $this->getWorkerEvent();
+        $event->setName($eventName);
+        $event->setParams($params);
+
+        if ($worker) {
+            $event->setTarget($worker);
+            $event->setWorker($worker);
+            $event->setScheduler($this->getScheduler());
+        }
+
+        $this->getScheduler()->getEventManager()->triggerEvent($event);
+
+        return $event;
     }
 }

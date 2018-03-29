@@ -3,17 +3,18 @@
 namespace Zeus\ServerService\Shared;
 
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\ServerServiceInterface;
 
 abstract class AbstractServerService implements ServerServiceInterface
 {
-    use Scheduler\Helper\PluginRegistry;
+    use PluginRegistry;
 
     /** @var mixed[] */
     private $config;
 
-    /** @var Scheduler */
+    /** @var SchedulerInterface */
     private $scheduler;
 
     /** @var LoggerInterface */
@@ -22,10 +23,10 @@ abstract class AbstractServerService implements ServerServiceInterface
     /**
      * AbstractService constructor.
      * @param mixed[] $config
-     * @param Scheduler $scheduler
+     * @param SchedulerInterface $scheduler
      * @param LoggerInterface $logger
      */
-    public function __construct(array $config = [], Scheduler $scheduler, LoggerInterface $logger)
+    public function __construct(array $config = [], SchedulerInterface $scheduler, LoggerInterface $logger)
     {
         $this->setScheduler($scheduler);
         $this->setConfig($config);
@@ -58,12 +59,12 @@ abstract class AbstractServerService implements ServerServiceInterface
         $this->config = $config;
     }
 
-    public function getScheduler() : Scheduler
+    public function getScheduler() : SchedulerInterface
     {
         return $this->scheduler;
     }
 
-    public function setScheduler(Scheduler $scheduler)
+    public function setScheduler(SchedulerInterface $scheduler)
     {
         $this->scheduler = $scheduler;
     }

@@ -135,7 +135,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $this->isTerminating = $isTerminating;
     }
 
-    public function attachDefaultListeners()
+    protected function attachDefaultListeners()
     {
         $eventManager = $this->getEventManager();
 

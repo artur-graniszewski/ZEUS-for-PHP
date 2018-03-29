@@ -7,14 +7,14 @@ use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
 use Zeus\IO\Exception\IOException;
 use Zeus\IO\SocketServer;
-use Zeus\IO\Stream\AbstractSelectableStream;
 use Zeus\IO\Stream\AbstractStream;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\SchedulerInterface;
 
 use function stream_socket_client;
 use function microtime;
@@ -33,7 +33,7 @@ class SchedulerStatus implements ListenerAggregateInterface
     /** @var mixed[] */
     private $eventHandles = [];
 
-    /** @var Scheduler */
+    /** @var SchedulerInterface */
     private $scheduler;
 
     /** @var float */
@@ -102,10 +102,10 @@ class SchedulerStatus implements ListenerAggregateInterface
     }
 
     /**
-     * @param Scheduler $scheduler
+     * @param SchedulerInterface $scheduler
      * @return mixed[]
      */
-    public static function getStatus(Scheduler $scheduler)
+    public static function getStatus(SchedulerInterface $scheduler)
     {
         try {
             /** @var SchedulerStatus $statusPlugin */
@@ -122,14 +122,14 @@ class SchedulerStatus implements ListenerAggregateInterface
         }
     }
 
-    public function getClientStream() : AbstractSelectableStream
+    public function getClientStream() : NetworkStreamInterface
     {
         $stream = $this->statusServer->accept();
 
         return $stream;
     }
 
-    public function getSchedulerStream() : AbstractSelectableStream
+    public function getSchedulerStream() : NetworkStreamInterface
     {
         $options = $this->getOptions();
         $socketName = sprintf("tcp://%s:%d", $options['listen_address'], $options['listen_port']);

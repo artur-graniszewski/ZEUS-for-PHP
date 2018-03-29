@@ -5,7 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridgeInterface;
@@ -229,7 +229,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
         $applicationPath = $_SERVER['PHP_SELF'];
 
-        $type = $event->getParam(Scheduler::WORKER_SERVER) ? 'scheduler' : 'worker';
+        $type = $event->getParam(SchedulerInterface::WORKER_SERVER) ? 'scheduler' : 'worker';
         $serviceName = escapeshellarg($event->getWorker()->getServiceName());
         $startParams = escapeshellarg(json_encode($event->getParams()));
 

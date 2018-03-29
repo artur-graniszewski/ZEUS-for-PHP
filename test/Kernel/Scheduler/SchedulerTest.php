@@ -13,6 +13,7 @@ use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
@@ -201,7 +202,7 @@ class SchedulerTest extends TestCase
         $this->assertEquals($expectedWorkers, $amountOfScheduledProcesses, "Scheduler should try to create $expectedWorkers processes in total ($startWorkers processes on startup and "  . ($expectedWorkers - $startWorkers) . " additionally if all the other were busy)");
     }
 
-    private function getMpm(Scheduler $scheduler) : DummyMpm
+    private function getMpm(SchedulerInterface $scheduler) : DummyMpm
     {
         $sm = $this->getServiceManager();
         $logger = new Logger();
@@ -224,7 +225,6 @@ class SchedulerTest extends TestCase
     public function testProcessCreationWhenTooManyOfThemIsWaiting()
     {
         $scheduler = $this->getScheduler(4);
-        $scheduler->setMultiProcessingModule($this->getMpm($scheduler));
         $scheduler->getConfig()->setStartProcesses(20);
         $scheduler->getConfig()->setMinSpareProcesses(3);
         $scheduler->getConfig()->setMaxSpareProcesses(4);

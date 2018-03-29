@@ -10,18 +10,16 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFac
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Plugin\SchedulerStatus;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
-use Zeus\Kernel\Scheduler\Factory\WorkerFactory;
 use Zeus\Kernel\Scheduler\Discipline\Factory\LruDisciplineFactory;
 use Zeus\Kernel\Scheduler\Discipline\LruDiscipline;
 use Zeus\Kernel\Scheduler\Plugin\ProcessTitle;
 use Zeus\ServerService\Manager;
-use Zeus\Kernel\Scheduler;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
@@ -55,8 +53,7 @@ return $config = [
         'factories' => [
             'zeus-event-manager' => EventManagerFactory::class,
             LoggerInterface::class => LoggerFactory::class,
-            Scheduler::class => SchedulerFactory::class,
-            Worker::class => WorkerFactory::class,
+            SchedulerInterface::class => SchedulerFactory::class,
             Manager::class => ManagerFactory::class,
             PosixThread::class => MultiProcessingModuleFactory::class,
             PosixProcess::class => MultiProcessingModuleFactory::class,

@@ -14,7 +14,7 @@ class SchedulerPluginsTest extends TestCase
 
     /**
      * @param mixed[] $plugin
-     * @return \Zeus\Kernel\Scheduler
+     * @return \Zeus\Kernel\SchedulerInterface
      */
     private function getSchedulerWithPlugin(array $plugin)
     {

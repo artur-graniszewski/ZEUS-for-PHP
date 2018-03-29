@@ -8,7 +8,7 @@ use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Kernel\Scheduler;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
@@ -67,7 +67,7 @@ class WorkerController extends AbstractController
      */
     private function startWorkerForService(string $serviceName, array $startParams = [])
     {
-        /** @var Scheduler $scheduler */
+        /** @var SchedulerInterface $scheduler */
         $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
         $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function() {
@@ -85,17 +85,17 @@ class WorkerController extends AbstractController
     {
         DynamicPriorityFilter::resetPriority();
 
-        $startParams[Scheduler::WORKER_SERVER] = true;
+        $startParams[SchedulerInterface::WORKER_SERVER] = true;
         $this->triggerWorkerEvent($serviceName, $startParams);
     }
 
     private function triggerWorkerEvent(string $serviceName, array $startParams)
     {
-        /** @var Scheduler $scheduler */
+        /** @var SchedulerInterface $scheduler */
         $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
         $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
-        $event->setParam(Scheduler::WORKER_SERVER, true);
+        $event->setParam(SchedulerInterface::WORKER_SERVER, true);
 
         $worker = $event->getWorker();
         $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());

@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
+use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Plugin\SchedulerStatus;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\SchedulerStatusView;
@@ -23,7 +24,7 @@ class SchedulerStatusTest extends TestCase
      * @param $scheduler
      * @return Service
      */
-    protected function getService($scheduler)
+    protected function getService(SchedulerInterface $scheduler)
     {
         $sm = $this->getServiceManager();
         $logger = $scheduler->getLogger();
@@ -53,7 +54,7 @@ class SchedulerStatusTest extends TestCase
 
     /**
      * @param mixed $plugin
-     * @return \Zeus\Kernel\Scheduler
+     * @return \Zeus\Kernel\SchedulerInterface
      */
     protected function getSchedulerWithPlugin($plugin)
     {
@@ -177,7 +178,7 @@ class SchedulerStatusTest extends TestCase
     }
 
     /**
-     * @expectedExceptionMessage Service with name "Zeus\Kernel\Scheduler" could not be created. Reason: Invalid IPC type selected
+     * @expectedExceptionMessage Service with name "Zeus\Kernel\SchedulerInterface" could not be created. Reason: Invalid IPC type selected
      * @expectedException \Zend\ServiceManager\Exception\ServiceNotCreatedException
      */
     public function testIpcTypeValidation()
@@ -192,7 +193,7 @@ class SchedulerStatusTest extends TestCase
     }
 
     /**
-     * @expectedExceptionMessage Service with name "Zeus\Kernel\Scheduler" could not be created. Reason: Listen port or address is missing
+     * @expectedExceptionMessage Service with name "Zeus\Kernel\SchedulerInterface" could not be created. Reason: Listen port or address is missing
      * @expectedException \Zend\ServiceManager\Exception\ServiceNotCreatedException
      */
     public function testListenAddressValidation()
@@ -206,7 +207,7 @@ class SchedulerStatusTest extends TestCase
     }
 
     /**
-     * @expectedExceptionMessage Service with name "Zeus\Kernel\Scheduler" could not be created. Reason: Listen port or address is missing
+     * @expectedExceptionMessage Service with name "Zeus\Kernel\SchedulerInterface" could not be created. Reason: Listen port or address is missing
      * @expectedException \Zend\ServiceManager\Exception\ServiceNotCreatedException
      */
     public function testListenPortValidation()
