@@ -354,6 +354,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             $lastCheck = $now;
             if ($this->ipc->isClosed() || ($this->parentIpcSelector->select(0) === 1 && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
                 $this->setTerminating(true);
+
                 return;
             }
         } catch (Throwable $exception) {
@@ -371,10 +372,12 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             try {
                 $connection->write('@');
                 $connection->flush();
+
                 $connection->shutdown(STREAM_SHUT_RD);
             } catch (IOException $ex) {
 
             }
+
             $connection->close();
         }
     }

@@ -2,17 +2,16 @@
 
 namespace Zeus\ServerService\Async;
 
+use LogicException;
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
 
 class Service extends AbstractSocketServerService
 {
-    protected $message;
+    private $message;
 
     public function __construct(array $config = [], SchedulerInterface $scheduler, LoggerInterface $logger)
     {
@@ -26,10 +25,10 @@ class Service extends AbstractSocketServerService
     public function start()
     {
         if (!class_exists('Opis\Closure\SerializableClosure')) {
-            throw new \LogicException("Async service failed: serialization module is missing");
+            throw new LogicException("Async service failed: serialization module is missing");
         }
 
-        $this->getScheduler()->getEventManager()->getSharedManager()->attach('*', WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $this->getScheduler()->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $this->worker = $event->getTarget();
         });
 

@@ -31,6 +31,8 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
 
     public function start(array $startParams)
     {
+        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, $startParams);
+
         $worker = $this->getNewWorker();
         $worker->setIsLastTask(false);
 
@@ -56,7 +58,7 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
         $this->triggerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
     }
 
-    public function stopWorker(WorkerState $worker, bool $isSoftStop)
+    public function stop(WorkerState $worker, bool $isSoftStop)
     {
         $uid = $worker->getUid();
 

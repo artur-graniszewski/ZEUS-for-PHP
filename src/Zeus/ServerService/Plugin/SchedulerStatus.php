@@ -175,7 +175,7 @@ class SchedulerStatus implements ListenerAggregateInterface
             $payload['process_status'][] = $workerState->toArray();
         }
 
-        $payload['scheduler_status'] = $scheduler->getStatus()->toArray();
+        $payload['scheduler_status'] = $scheduler->getWorker()->toArray();
 
         $payload['scheduler_status']['total_traffic'] = 0;
         $payload['scheduler_status']['start_timestamp'] = $this->startTime;

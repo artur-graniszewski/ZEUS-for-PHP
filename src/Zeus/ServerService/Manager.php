@@ -268,7 +268,6 @@ final class Manager
     {
         $service = $this->getService($serviceName);
         $service->stop();
-
         $this->onServiceStop($service);
     }
 

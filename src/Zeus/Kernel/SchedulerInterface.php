@@ -27,7 +27,7 @@ interface SchedulerInterface extends EventManagerAwareInterface
 
     public function syncWorker(WorkerState $worker);
 
-    public function getStatus() : WorkerState;
+    public function getWorker() : WorkerState;
 
     public function getSchedulerEvent() : SchedulerEvent;
 
@@ -39,7 +39,10 @@ interface SchedulerInterface extends EventManagerAwareInterface
 
     public function getIpc() : IpcServer;
 
-    public function getLogger() : LoggerInterface;
+    /**
+     * @return LoggerInterface
+     */
+    public function getLogger();
 
     public function getConfig() : ConfigInterface;
 

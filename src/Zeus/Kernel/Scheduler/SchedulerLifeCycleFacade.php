@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Throwable;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 /**
@@ -18,13 +19,42 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
 
     public function start(array $startParams)
     {
-        $logger = $this->getScheduler()->getLogger();
-        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, $startParams);
-        $this->triggerEvent(SchedulerEvent::EVENT_START, $startParams);
-        $this->mainLoop();
-        // @fixme: kernelLoop() should be merged with mainLoop()
-        $this->triggerEvent(SchedulerEvent::EVENT_STOP, []);
-        $logger->notice("Scheduler terminated");
+        $exception = null;
+
+        try {
+            $this->triggerEvent(SchedulerEvent::EVENT_START, $startParams);
+            $this->mainLoop();
+        } catch (Throwable $exception) {
+        }
+        $params = [];
+        if ($exception) {
+            $params['exception'] = $exception;
+        }
+
+        try {
+            $this->triggerEvent(SchedulerEvent::EVENT_STOP, $params);
+        } catch (Throwable $e) {
+            echo $e; die();
+        }
+
+        if ($exception) {
+            throw $exception;
+        }
+    }
+
+    public function stop(WorkerState $schedulerWorker, bool $isSoftStop)
+    {
+        $uid = $schedulerWorker->getUid();
+
+        $this->getScheduler()->getLogger()->debug(sprintf('Stopping worker %d', $uid));
+
+        $schedulerWorker->setTime(microtime(true));
+        $schedulerWorker->setCode(WorkerState::TERMINATED);
+
+        $worker = new WorkerState('unknown', WorkerState::TERMINATED);
+        $worker->setUid($uid);
+
+        $this->triggerEvent(SchedulerEvent::EVENT_TERMINATE, [], $worker);
     }
 
     /**
@@ -58,10 +88,8 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
             $event->setParams($params);
         }
 
-        if ($worker) {
-            $event->setTarget($worker);
-            $event->setScheduler($this->getScheduler());
-        }
+        $event->setTarget($worker ? $worker : $this->getScheduler()->getWorker());
+        $event->setScheduler($this->getScheduler());
 
         $this->getScheduler()->getEventManager()->triggerEvent($event);
 

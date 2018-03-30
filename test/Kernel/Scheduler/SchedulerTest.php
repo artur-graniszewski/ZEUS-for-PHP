@@ -455,9 +455,10 @@ class SchedulerTest extends TestCase
             -5000
         );
 
-        $scheduler->start(true);
+        $scheduler->start(false);
 
         $this->assertTrue($exitDetected, "Scheduler should shutdown when it can't create PID file");
         $this->assertInstanceOf(SchedulerException::class, $exception, "Exception should be returned in SchedulerEvent");
+        $this->assertEquals(SchedulerException::LOCK_FILE_ERROR, $exception->getCode(), "Exception should be returned in SchedulerEvent");
     }
 }

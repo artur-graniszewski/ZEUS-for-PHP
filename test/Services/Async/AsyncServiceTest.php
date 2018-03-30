@@ -2,16 +2,15 @@
 
 namespace ZeusTest\Services\Async;
 
-use \PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
 use Zend\ServiceManager\ServiceManager;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use ZeusTest\Helpers\ZeusFactories;
 
-class AsyncServiceTest extends \PHPUnit\Framework\TestCase
+class AsyncServiceTest extends TestCase
 {
     use ZeusFactories;
 

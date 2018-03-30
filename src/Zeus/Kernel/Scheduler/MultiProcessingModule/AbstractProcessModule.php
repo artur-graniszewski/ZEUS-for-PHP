@@ -25,7 +25,6 @@ abstract class AbstractProcessModule extends AbstractModule
         $uid = $event->getParam('uid');
         $useSoftTermination = $event->getParam('soft', false);
         if ($useSoftTermination || !$this->getPcntlBridge()->isSupported()) {
-
             return;
         } else {
             static::getPcntlBridge()->posixKill($uid, $useSoftTermination ? SIGINT : SIGKILL);
