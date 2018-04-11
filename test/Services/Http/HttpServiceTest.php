@@ -7,6 +7,7 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Helpers\ZeusFactories;
@@ -54,13 +55,20 @@ class HttpServiceTest extends \PHPUnit\Framework\TestCase
         return $service;
     }
 
+    /**
+     * @expectedException \Zeus\Kernel\Scheduler\Exception\SchedulerException
+     * @expectedExceptionMessage Scheduler not running
+     */
     public function testServiceCreation()
     {
         $service = $this->getService();
         $this->assertFalse($service->getScheduler()->isTerminating());
+        $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
+            $event->getScheduler()->setTerminating(true);
+        });
         $service->start();
-        $service->stop();
         $this->assertTrue($service->getScheduler()->isTerminating());
+        $service->stop();
     }
 
     public function testLogger()

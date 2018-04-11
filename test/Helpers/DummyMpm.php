@@ -9,6 +9,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilitie
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\SocketServer;
+use Zeus\Kernel\SchedulerInterface;
 
 class DummyMpm extends AbstractModule
 {
@@ -25,7 +26,13 @@ class DummyMpm extends AbstractModule
             $status->setProcessId($pid);
             $status->setThreadId(1);
             $status->setUid($pid);
-        }, WorkerEvent::PRIORITY_INITIALIZE + 2);
+
+            if ($event->getParam(SchedulerInterface::WORKER_SERVER)) {
+                $event = clone $event;
+                $event->setName(WorkerEvent::EVENT_INIT);
+                $this->getWrapper()->getEventManager()->triggerEvent($event);
+            }
+        }, WorkerEvent::PRIORITY_INITIALIZE + 100);
     }
 
     protected function checkPipe()

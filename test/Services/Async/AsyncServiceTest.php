@@ -5,6 +5,7 @@ namespace ZeusTest\Services\Async;
 use PHPUnit\Framework\TestCase;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
 use Zend\ServiceManager\ServiceManager;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
@@ -51,12 +52,19 @@ class AsyncServiceTest extends TestCase
         return $service;
     }
 
+    /**
+     * @expectedException \Zeus\Kernel\Scheduler\Exception\SchedulerException
+     * @expectedExceptionMessage Scheduler not running
+     */
     public function testServiceCreation()
     {
         $service = $this->getService();
         $this->assertFalse($service->getScheduler()->isTerminating());
+        $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
+            $event->getScheduler()->setTerminating(true);
+        });
         $service->start();
-        $service->stop();
         $this->assertTrue($service->getScheduler()->isTerminating());
+        $service->stop();
     }
 }

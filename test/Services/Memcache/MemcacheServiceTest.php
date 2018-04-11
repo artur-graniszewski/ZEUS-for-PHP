@@ -10,6 +10,7 @@ use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\AdapterPluginManager;
 use Zend\Cache\Storage\PluginManager;
 use Zend\ServiceManager\ServiceManager;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;
@@ -85,10 +86,19 @@ class MemcacheServiceTest extends TestCase
         }
     }
 
+    /**
+     * @expectedException \Zeus\Kernel\Scheduler\Exception\SchedulerException
+     * @expectedExceptionMessage Scheduler not running
+     */
     public function testServiceCreation()
     {
         $service = $this->getService();
+        $this->assertFalse($service->getScheduler()->isTerminating());
+        $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
+            $event->getScheduler()->setTerminating(true);
+        });
         $service->start();
+        $this->assertTrue($service->getScheduler()->isTerminating());
         $service->stop();
     }
 }

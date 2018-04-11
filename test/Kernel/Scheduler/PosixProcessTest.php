@@ -234,7 +234,6 @@ class PosixProcessTest extends TestCase
         $workerEvent = new WorkerEvent();
         $workerEvent->setWorker($worker);
         $posixProcess = $this->getMpm($scheduler);
-        $posixProcess->setSchedulerEvent($schedulerEvent);
         $posixProcess->setWorkerEvent($workerEvent);
         $posixProcess->setEventManager($em);
 
@@ -274,7 +273,6 @@ class PosixProcessTest extends TestCase
         $workerEvent = new WorkerEvent();
         $workerEvent->setWorker($worker);
         $posixProcess = $this->getMpm($scheduler);
-        $posixProcess->setSchedulerEvent($schedulerEvent);
         $posixProcess->setWorkerEvent($workerEvent);
         $posixProcess->setEventManager($em);
 
@@ -312,7 +310,6 @@ class PosixProcessTest extends TestCase
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
         $posixProcess = new ModuleWrapper(new PosixProcess());
-        $posixProcess->setSchedulerEvent($event);
         $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::EVENT_START);

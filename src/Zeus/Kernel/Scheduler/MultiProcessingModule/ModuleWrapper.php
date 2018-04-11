@@ -9,6 +9,7 @@ use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerAwareTrait;
+use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
@@ -31,23 +32,18 @@ use function in_array;
 
 class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterface
 {
-    const LOOPBACK_INTERFACE = 'tcp://127.0.0.1';
-
-    const UPSTREAM_CONNECTION_TIMEOUT = 5;
-
-    const ZEUS_IPC_ADDRESS_PARAM = 'zeusIpcAddress';
-
     use EventManagerAwareTrait;
     use LoggerAwareTrait;
+
+    const LOOPBACK_INTERFACE = 'tcp://127.0.0.1';
+    const UPSTREAM_CONNECTION_TIMEOUT = 5;
+    const ZEUS_IPC_ADDRESS_PARAM = 'zeusIpcAddress';
 
     /** @var int */
     private $ipcAddress;
 
     /** @var MultiProcessingModuleInterface */
     private $driver;
-
-    /** @var SchedulerEvent */
-    private $schedulerEvent;
 
     /** @var WorkerEvent */
     private $workerEvent;
@@ -81,20 +77,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $this->driver->setWrapper($this);
 
         $this->ipcSelector = new Selector();
-    }
-
-    public function setSchedulerEvent(SchedulerEvent $event)
-    {
-        $this->schedulerEvent = $event;
-    }
-
-    public function getSchedulerEvent(): SchedulerEvent
-    {
-        if (!$this->schedulerEvent) {
-            throw new LogicException("Scheduler event not set");
-        }
-
-        return clone $this->schedulerEvent;
     }
 
     public function setWorkerEvent(WorkerEvent $event)
@@ -163,12 +145,14 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP, function (SchedulerEvent $e) {
             try {
                 foreach ($this->ipcServers as $server) {
-                    $server->getSocket()->shutdown(STREAM_SHUT_RD);
-                    $server->getSocket()->close();
+                    $socket = $server->getSocket();
+                    $socket->shutdown(STREAM_SHUT_RD);
+                    $socket->close();
                 }
 
-                if ($this->ipc && !$this->ipc->isClosed()) {
-                    $this->ipc->close();
+                $ipc = $this->ipc;
+                if ($ipc && !$ipc->isClosed()) {
+                    $ipc->close();
                 }
             } catch (Throwable $ex) {
 
@@ -236,7 +220,6 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, function (SchedulerEvent $event) {
             $this->registerWorkers();
             $this->driver->onWorkersCheck($event);
-
             $this->driver->onKernelLoop($event);
         }, -9000);
         $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function (WorkerEvent $e) {
@@ -277,9 +260,11 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
     private function registerWorkers()
     {
+        $ipcSelector = $this->ipcSelector;
+
         // read all keep-alive messages
-        if ($this->ipcSelector->select(0)) {
-            foreach ($this->ipcSelector->getSelectionKeys() as $key) {
+        if ($ipcSelector->select(0)) {
+            foreach ($ipcSelector->getSelectionKeys() as $key) {
                 /** @var SocketStream $stream */
                 $stream = $key->getStream();
                 try {
@@ -299,10 +284,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
         foreach ($this->ipcServers as $uid => $server) {
             try {
-                $connection = $this->ipcServers[$uid]->accept();
+                $connection = $server->accept();
                 $this->setStreamOptions($connection);
                 $this->ipcConnections[$uid] = $connection;
-                $this->ipcSelector->register($connection, SelectionKey::OP_READ);
+                $ipcSelector->register($connection, SelectionKey::OP_READ);
                 $this->ipcServers[$uid]->close();
                 unset($this->ipcServers[$uid]);
             } catch (SocketTimeoutException $exception) {
@@ -318,16 +303,19 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         if (!$stream) {
             $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
             $this->setTerminating(true);
-        } else {
-            $this->ipc = new SocketStream($stream);
-            $this->ipc->setBlocking(false);
-            $this->parentIpcSelector = new Selector();
-            $this->ipc->register($this->parentIpcSelector, SelectionKey::OP_READ);
-            $this->setStreamOptions($this->ipc);
+
+            return;
         }
+
+        $ipc = new SocketStream($stream);
+        $ipc->setBlocking(false);
+        $this->setStreamOptions($ipc);
+        $this->parentIpcSelector = new Selector();
+        $ipc->register($this->parentIpcSelector, SelectionKey::OP_READ);
+        $this->ipc = $ipc;
     }
 
-    private function setStreamOptions(SocketStream $stream)
+    private function setStreamOptions(NetworkStreamInterface $stream)
     {
         try {
             $stream->setOption(SO_KEEPALIVE, 1);
@@ -351,8 +339,10 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
                 return;
             }
 
+            $ipc = $this->ipc;
+
             $lastCheck = $now;
-            if ($this->ipc->isClosed() || ($this->parentIpcSelector->select(0) === 1 && in_array($this->ipc->read(), ['@', ''])) || (!$this->ipc->write("!") && !$this->ipc->flush())) {
+            if ($ipc->isClosed() || ($this->parentIpcSelector->select(0) === 1 && in_array($ipc->read(), ['@', ''])) || (!$ipc->write("!") && !$ipc->flush())) {
                 $this->setTerminating(true);
 
                 return;
@@ -365,21 +355,22 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
 
     private function unregisterWorker(int $uid)
     {
-        if (isset($this->ipcConnections[$uid])) {
-            $connection = $this->ipcConnections[$uid];
-            unset($this->ipcConnections[$uid]);
-            $this->ipcSelector->unregister($connection);
-            try {
-                $connection->write('@');
-                $connection->flush();
-
-                $connection->shutdown(STREAM_SHUT_RD);
-            } catch (IOException $ex) {
-
-            }
-
-            $connection->close();
+        if (!isset($this->ipcConnections[$uid])) {
+            return;
         }
+
+        $connection = $this->ipcConnections[$uid];
+        unset($this->ipcConnections[$uid]);
+        $this->ipcSelector->unregister($connection);
+        try {
+            $connection->write('@');
+            $connection->flush();
+            $connection->shutdown(STREAM_SHUT_RD);
+        } catch (IOException $ex) {
+
+        }
+
+        $connection->close();
     }
 
     private function registerWorker(int $uid, SocketServer $pipe)
