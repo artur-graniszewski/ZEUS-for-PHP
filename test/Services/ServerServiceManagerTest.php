@@ -101,7 +101,7 @@ class ServerServiceManagerTest extends TestCase
         };
 
         $manager = $this->getManager();
-        $manager->getEventManager()->attach('*', $eventHandler, -1000000);
+        $manager->getEventManager()->attach('*', $eventHandler, 1000000);
 
         $service = new DummyServerService(['hang' => false], $this->getScheduler(1), $manager->getLogger());
         $manager->registerService('test-service', $service, true);

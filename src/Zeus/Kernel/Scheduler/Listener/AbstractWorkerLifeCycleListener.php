@@ -22,4 +22,15 @@ abstract class AbstractWorkerLifeCycleListener
 
         return $fileName;
     }
+
+    protected function startWorkers(int $amount)
+    {
+        if ($amount === 0) {
+            return;
+        }
+
+        for ($i = 0; $i < $amount; ++$i) {
+            $this->workerLifeCycle->start([]);
+        }
+    }
 }

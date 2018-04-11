@@ -4,6 +4,7 @@ namespace Zeus\Kernel\Scheduler\Discipline;
 
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 interface DisciplineInterface
 {
@@ -14,7 +15,7 @@ interface DisciplineInterface
     public function getAmountOfWorkersToCreate() : int;
 
     /**
-     * @return int[]
+     * @return WorkerState[]
      */
     public function getWorkersToTerminate() : array;
 }

@@ -423,6 +423,7 @@ class SchedulerTest extends TestCase
         $this->assertGreaterThan(0, $amountOfScheduledProcesses, "Scheduler should try to create some processes on its startup");
 
         $event->setName(SchedulerEvent::EVENT_STOP);
+        $event->setScheduler($scheduler);
         $scheduler->setTerminating(false);
         $scheduler->getEventManager()->triggerEvent($event);
 

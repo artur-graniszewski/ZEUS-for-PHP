@@ -25,17 +25,6 @@ class SchedulerStartListener extends AbstractWorkerLifeCycleListener
         $this->startWorkers($scheduler->getConfig()->getStartProcesses());
     }
 
-    private function startWorkers(int $amount)
-    {
-        if ($amount === 0) {
-            return;
-        }
-
-        for ($i = 0; $i < $amount; ++$i) {
-            $this->workerLifeCycle->start([]);
-        }
-    }
-
     private function registerNewWorker(WorkerEvent $event)
     {
         $status = $event->getWorker();

@@ -11,7 +11,9 @@ use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
+use Zeus\Kernel\Scheduler\Listener\SchedulerExitListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerInitListener;
+use Zeus\Kernel\Scheduler\Listener\SchedulerLoopListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerStartListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerStopListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerExitListener;
@@ -178,16 +180,10 @@ class Scheduler implements SchedulerInterface
         $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
 
         $events[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), SchedulerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {
-            $this->log(Logger::NOTICE, "Scheduler shutting down");
-            $this->onShutdown($e);
-        }, SchedulerEvent::PRIORITY_REGULAR);
-
+        $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, function() {
-            $this->manageWorkers();
-        });
+        $events[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
 
         $events[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
             // scheduler init
@@ -254,27 +250,6 @@ class Scheduler implements SchedulerInterface
     public function syncWorker(WorkerState $worker)
     {
         $this->workerLifeCycle->syncWorker($worker);
-    }
-
-    private function onShutdown(SchedulerEvent $event)
-    {
-        $exception = $event->getParam('exception', null);
-
-        if ($exception) {
-            $this->logException($exception, $this->getLogger());
-        }
-
-        $this->setTerminating(true);
-
-        $this->log(Logger::DEBUG, "Stopping all workers");
-
-        if ($this->workers) {
-            foreach ($this->workers as $worker) {
-                $this->stopWorker($worker, false);
-            }
-        }
-
-        @unlink($this->getUidFile());
     }
 
     /**
@@ -357,59 +332,6 @@ class Scheduler implements SchedulerInterface
         $event->setParams($extraData);
         $event->setName($eventName);
         $events->triggerEvent($event);
-    }
-
-    private function stopWorker(WorkerState $worker, bool $isSoftStop)
-    {
-        $uid = $worker->getUid();
-        $this->log(Logger::DEBUG, sprintf('Stopping worker %d', $uid));
-        $this->workerLifeCycle->stop($worker, $isSoftStop);
-
-        if (isset($this->workers[$uid])) {
-            $workerState = $this->workers[$uid];
-            $workerState->setTime(microtime(true));
-            $workerState->setCode(WorkerState::TERMINATED);
-        }
-    }
-
-    private function startWorkers(int $amount)
-    {
-        if ($amount === 0) {
-            return;
-        }
-
-        for ($i = 0; $i < $amount; ++$i) {
-            $this->workerLifeCycle->start([]);
-        }
-    }
-
-    /**
-     * Manages scheduled workers.
-     */
-    private function manageWorkers()
-    {
-        if ($this->isTerminating()) {
-            return;
-        }
-
-        $discipline = $this->discipline;
-
-        $toTerminate = $discipline->getWorkersToTerminate();
-        $toCreate = $discipline->getAmountOfWorkersToCreate();
-
-        $this->stopWorkers($toTerminate, true);
-        $this->startWorkers($toCreate);
-    }
-
-    /**
-     * @param WorkerState[] $workers
-     * @param bool $isSoftTermination
-     */
-    private function stopWorkers(array $workers, bool $isSoftTermination)
-    {
-        foreach ($workers as $worker) {
-            $this->stopWorker($worker, $isSoftTermination);
-        }
     }
 
     private function kernelLoop()

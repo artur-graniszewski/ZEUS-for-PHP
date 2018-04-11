@@ -18,6 +18,7 @@ class DummyServerService extends AbstractServerService implements ServerServiceI
         $event = new SchedulerEvent();
         $this->getLogger()->info("SERVICE STARTED");
         $event->setName(SchedulerEvent::EVENT_STOP);
+        $event->setScheduler($this->getScheduler());
         $this->getScheduler()->getEventManager()->triggerEvent($event);
     }
 
