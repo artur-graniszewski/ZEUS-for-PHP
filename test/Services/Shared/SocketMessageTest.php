@@ -125,6 +125,7 @@ class SocketMessageTest extends TestCase
         $event->setName(WorkerEvent::EVENT_EXIT);
         $event->setTarget($worker);
         $event->setWorker($worker);
+        $event->setScheduler($scheduler);
         $events->triggerEvent($event);
 
         $this->assertEquals($requestString, $received[0]);

@@ -8,17 +8,21 @@ use Zend\Log\Logger;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
+use Zeus\Kernel\Scheduler\Listener\SchedulerInitListener;
+use Zeus\Kernel\Scheduler\Listener\SchedulerStartListener;
+use Zeus\Kernel\Scheduler\Listener\SchedulerStopListener;
+use Zeus\Kernel\Scheduler\Listener\WorkerExitListener;
+use Zeus\Kernel\Scheduler\Listener\WorkerStatusListener;
+use Zeus\Kernel\Scheduler\Listener\WorkerStatusSender;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\SchedulerLifeCycleFacade;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
-use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
@@ -116,6 +120,7 @@ class Scheduler implements SchedulerInterface
             $event->setTarget($this);
             $event->setScheduler($this);
             $this->setSchedulerEvent($event);
+            $this->schedulerEvent = $event;
         }
         return clone $this->schedulerEvent;
     }
@@ -170,37 +175,16 @@ class Scheduler implements SchedulerInterface
     {
         $eventManager = $this->getEventManager();
         $sharedEventManager = $eventManager->getSharedManager();
-        $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $e) { $this->onIpcMessage($e);});
+        $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
 
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, function(WorkerEvent $e) { $this->onWorkerTerminated($e);}, SchedulerEvent::PRIORITY_FINALIZE);
+        $events[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), SchedulerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {
             $this->log(Logger::NOTICE, "Scheduler shutting down");
             $this->onShutdown($e);
         }, SchedulerEvent::PRIORITY_REGULAR);
 
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_TERMINATE, function(SchedulerEvent $event) use ($eventManager) {
-            $this->workerLifeCycle->stop($event->getTarget(), true);
-
-            $count = 0;
-            while (@file_get_contents($this->getUidFile()) && $count < 5) {
-                sleep(1);
-                $count++;
-            }
-        }, SchedulerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($eventManager) {
-            $this->eventHandles[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $e) { $this->registerNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
-            $this->log(Logger::NOTICE, "Scheduler started");
-
-            $pid = $this->getWorker()->getProcessId();
-
-            $fileName = $this->getUidFile();
-            if (!@file_put_contents($fileName, $pid)) {
-                throw new SchedulerException(sprintf("Could not write to PID file: %s, aborting", $fileName), SchedulerException::LOCK_FILE_ERROR);
-            }
-
-            $this->startWorkers($this->getConfig()->getStartProcesses());
-        }, SchedulerEvent::PRIORITY_FINALIZE);
-
+        $events[] = $eventManager->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $events[] = $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, function() {
             $this->manageWorkers();
         });
@@ -215,36 +199,13 @@ class Scheduler implements SchedulerInterface
             }, WorkerEvent::PRIORITY_FINALIZE
         );
 
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT,
-            // scheduler init
-            function (WorkerEvent $event) use ($eventManager) {
-                if (!$event->getParam(SchedulerInterface::WORKER_SERVER)) {
-                    return;
-                }
-                $event->stopPropagation(true);
-                $this->schedulerLifeCycle->start([]);
-                $event->getWorker()->setIsLastTask(true);
-
-                $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
-                    $event->stopPropagation(true);
-                }, SchedulerEvent::PRIORITY_INITIALIZE + 2);
-
-            }, WorkerEvent::PRIORITY_INITIALIZE
-        );
+        $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE);
 
         $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
-            $events[] = $eventManager->attach(WorkerEvent::EVENT_RUNNING, function(WorkerEvent $event) {
-                $this->sendStatus($event);
-            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
-
-            $events[] = $eventManager->attach(WorkerEvent::EVENT_WAITING, function(WorkerEvent $event) {
-                $this->sendStatus($event);
-            }, SchedulerEvent::PRIORITY_FINALIZE + 1);
-
-            $events[] = $eventManager->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
-                $this->sendStatus($event);
-            }, SchedulerEvent::PRIORITY_FINALIZE + 2);
-
+            $statusSender = new WorkerStatusSender();
+            $events[] = $eventManager->attach(WorkerEvent::EVENT_RUNNING, $statusSender, SchedulerEvent::PRIORITY_FINALIZE + 1);
+            $events[] = $eventManager->attach(WorkerEvent::EVENT_WAITING, $statusSender, SchedulerEvent::PRIORITY_FINALIZE + 1);
+            $events[] = $eventManager->attach(WorkerEvent::EVENT_EXIT, $statusSender, SchedulerEvent::PRIORITY_FINALIZE + 2);
             $this->eventHandles = array_merge($this->eventHandles, $events);
 
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
@@ -363,58 +324,6 @@ class Scheduler implements SchedulerInterface
         }
     }
 
-    /**
-     * @param WorkerEvent $event
-     * @todo: move this to an AbstractProcess or a Plugin?
-     */
-    private function sendStatus(WorkerEvent $event)
-    {
-        $worker = $event->getWorker();
-        $worker->updateStatus();
-
-        $payload = [
-            'type' => Message::IS_STATUS,
-            'extra' => [
-                'logger' => __CLASS__,
-                'status' => $worker->toArray()
-            ]
-        ];
-
-        $message = new StatusMessage($payload);
-
-        try {
-            $this->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);
-        } catch (Throwable $exception) {
-            $this->logException($exception, $this->getLogger());
-            $worker->setCode(WorkerState::EXITING);
-            $event->setParam('exception', $exception);
-        }
-    }
-
-    private function onIpcMessage(IpcEvent $event)
-    {
-        $message = $event->getParams();
-
-        if (!($message instanceof StatusMessage)) {
-            return;
-        }
-
-        $message = $message->getParams();
-
-        /** @var WorkerState $workerState */
-        $workerState = WorkerState::fromArray($message['extra']['status']);
-        $uid = $workerState->getUid();
-
-        // worker status changed, update this information server-side
-        if (isset($this->workers[$uid])) {
-            if ($this->workers[$uid]->getCode() !== $workerState->getCode()) {
-                $workerState->setTime(microtime(true));
-            }
-
-            $this->workers[$uid] = $workerState;
-        }
-    }
-
     private function log(int $priority, string $message, array $extra = [])
     {
         if (!isset($extra['service_name'])) {
@@ -426,23 +335,6 @@ class Scheduler implements SchedulerInterface
         }
 
         $this->getLogger()->log($priority, $message, $extra);
-    }
-
-    private function onWorkerTerminated(WorkerEvent $event)
-    {
-        $uid = $event->getWorker()->getUid();
-
-        $this->log(Logger::DEBUG, "Worker $uid exited");
-
-        if (isset($this->workers[$uid])) {
-            $workerState = $this->workers[$uid];
-
-            if (!$workerState->isExiting() && $workerState->getTime() < microtime(true) - $this->getConfig()->getProcessIdleTimeout()) {
-                $this->log(Logger::ERR, "Worker $uid exited prematurely");
-            }
-
-            unset($this->workers[$uid]);
-        }
     }
 
     private function getUidFile() : string
@@ -489,16 +381,6 @@ class Scheduler implements SchedulerInterface
         for ($i = 0; $i < $amount; ++$i) {
             $this->workerLifeCycle->start([]);
         }
-    }
-
-    private function registerNewWorker(WorkerEvent $event)
-    {
-        $status = $event->getWorker();
-        $uid = $status->getUid();
-        $status->setCode(WorkerState::WAITING);
-
-        $this->workers[$uid] =
-            $status;
     }
 
     /**

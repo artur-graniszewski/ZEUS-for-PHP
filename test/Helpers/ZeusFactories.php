@@ -201,6 +201,7 @@ trait ZeusFactories
         $workerEvent = new Scheduler\WorkerEvent();
         $workerEvent->setWorker($worker);
         $workerEvent->setTarget($worker);
+        $workerEvent->setScheduler($scheduler);
         $scheduler->getMultiProcessingModule()->getWrapper()->setWorkerEvent($workerEvent);
 
         return $scheduler;

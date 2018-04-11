@@ -110,6 +110,7 @@ class PosixThreadTest extends TestCase
         $self = $_SERVER['SCRIPT_NAME'];
         $_SERVER['SCRIPT_NAME'] = __DIR__ . '/PosixThreadExec.php';
         ob_start();
+
         $scheduler->start(false);
         $output = ob_get_clean();
 
