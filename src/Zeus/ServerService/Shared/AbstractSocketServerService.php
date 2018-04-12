@@ -3,7 +3,6 @@
 namespace Zeus\ServerService\Shared;
 
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
-use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use Zeus\ServerService\Shared\Networking\NetworkServer;
 
 class AbstractSocketServerService extends AbstractServerService

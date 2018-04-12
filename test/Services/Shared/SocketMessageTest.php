@@ -97,6 +97,7 @@ class SocketMessageTest extends TestCase
         $event = new WorkerEvent();
         $event->setTarget($worker);
         $event->setWorker($worker);
+        $event->setScheduler($scheduler);
         $event->setName(WorkerEvent::EVENT_INIT);
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
@@ -176,6 +177,7 @@ class SocketMessageTest extends TestCase
         $event->setName(WorkerEvent::EVENT_INIT);
         $event->setTarget($worker);
         $event->setWorker($worker);
+        $event->setScheduler($scheduler);
 
         $events->triggerEvent($event);
 

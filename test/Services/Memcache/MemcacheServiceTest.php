@@ -14,6 +14,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;
+use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
 class MemcacheServiceTest extends TestCase
@@ -92,6 +93,7 @@ class MemcacheServiceTest extends TestCase
      */
     public function testServiceCreation()
     {
+        DummyMpm::getCapabilities()->setSharedInitialAddressSpace(true);
         $service = $this->getService();
         $this->assertFalse($service->getScheduler()->isTerminating());
         $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {

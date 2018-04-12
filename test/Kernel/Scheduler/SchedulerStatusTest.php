@@ -106,7 +106,7 @@ class SchedulerStatusTest extends TestCase
             'observe',
         ]);
 
-        $mockBuilder->disableOriginalConstructor();
+        //$mockBuilder->disableOriginalConstructor();
         $mock = $mockBuilder->getMock();
 
         return $mock;

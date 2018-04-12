@@ -31,8 +31,6 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
 
     public function start(array $startParams)
     {
-        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, $startParams);
-
         $worker = $this->getNewWorker();
         $worker->setIsLastTask(false);
 
@@ -47,6 +45,8 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
 
         // worker init...
         $worker = $event->getWorker();
+        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, $startParams, $worker);
+
         $event = $this->triggerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
 
         if (!$event->propagationIsStopped()) {
@@ -133,11 +133,11 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
         $event = $this->getWorkerEvent();
         $event->setName($eventName);
         $event->setParams($params);
+        $event->setScheduler($this->getScheduler());
 
         if ($worker) {
             $event->setTarget($worker);
             $event->setWorker($worker);
-            $event->setScheduler($this->getScheduler());
         }
 
         $this->getScheduler()->getEventManager()->triggerEvent($event);

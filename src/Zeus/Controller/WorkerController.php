@@ -103,6 +103,7 @@ class WorkerController extends AbstractController
         $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         $event->setWorker($worker);
         $event->setTarget($worker);
+        $event->setScheduler($scheduler);
         $event->setParams($startParams);
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
             $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);

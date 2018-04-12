@@ -5,6 +5,7 @@ namespace ZeusTest\Services\Shared;
 use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Config;
 use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
@@ -43,23 +44,24 @@ class GatewayStrategyTest extends TestCase
         $events->attach(Scheduler\WorkerEvent::EVENT_INIT, function(Scheduler\WorkerEvent $e) use ($broker, &$initPassed) {
             $this->assertEquals($broker->getRegistrator()->getRegistratorAddress(), $e->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM), 'Registrator address should be passed as event param');
             $initPassed = true;
-            $e->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, "testAddress");
+            $e->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, "tcp://127.0.0.1:10");
             $e->getWorker()->setCode(WorkerState::EXITING);
-        }, 100000);
+            $e->stopPropagation(true);
+        }, WorkerEvent::PRIORITY_INITIALIZE + 4);
 
         $events->attach(Scheduler\WorkerEvent::EVENT_EXIT, function(Scheduler\WorkerEvent $e) {
 
             $e->stopPropagation(true);
         }, 100000);
 
-        $events->attach(Scheduler\WorkerEvent::EVENT_LOOP, function(Scheduler\WorkerEvent $e) use ($broker, &$counter) {
+        $events->attach(Scheduler\WorkerEvent::EVENT_INIT, function(Scheduler\WorkerEvent $e) use ($broker, &$counter) {
             $this->assertEquals($broker->getRegistrator()->getRegistratorAddress(), $e->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM), 'Registrator address should be passed as event param');
+            $this->assertEquals("tcp://127.0.0.1:10", $broker->getRegistrator()->getRegistratorAddress(), "Registrator address should have been altered by WorkerEvent::EVENT_CREATE");
             $counter++;
             $e->stopPropagation(true);
-        }, 100000);
+        }, WorkerEvent::PRIORITY_INITIALIZE + 2);
 
         $scheduler->start(false);
         $this->assertTrue($initPassed, 'All callbacks should be executed');
-        $this->assertEquals("testAddress", $broker->getRegistrator()->getRegistratorAddress(), "Registrator address should have been altered by WorkerEvent::EVENT_CREATE");
     }
 }

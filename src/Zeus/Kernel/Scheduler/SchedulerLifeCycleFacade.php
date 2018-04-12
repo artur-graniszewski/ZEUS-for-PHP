@@ -42,19 +42,19 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
         }
     }
 
-    public function stop(WorkerState $schedulerWorker, bool $isSoftStop)
+    public function stop(WorkerState $worker, bool $isSoftStop)
     {
-        $uid = $schedulerWorker->getUid();
+        $uid = $worker->getUid();
 
         $this->getScheduler()->getLogger()->debug(sprintf('Stopping worker %d', $uid));
 
-        $schedulerWorker->setTime(microtime(true));
-        $schedulerWorker->setCode(WorkerState::TERMINATED);
+        $worker->setTime(microtime(true));
+        $worker->setCode(WorkerState::TERMINATED);
 
         $worker = new WorkerState('unknown', WorkerState::TERMINATED);
         $worker->setUid($uid);
 
-        $this->triggerEvent(SchedulerEvent::EVENT_TERMINATE, [], $worker);
+        $this->triggerEvent(SchedulerEvent::EVENT_TERMINATE, ['isSoftStop' => $isSoftStop], $worker);
     }
 
     /**

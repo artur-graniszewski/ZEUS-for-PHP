@@ -69,19 +69,20 @@ class SchedulerPluginsTest extends TestCase
 
     public function testDropPrivilegesPluginWhenSudoer()
     {
-        $worker = new WorkerState("test");
-        $event = new WorkerEvent();
-        $event->setWorker($worker);
-        $event->setTarget($worker);
-        $event->setName(WorkerEvent::EVENT_INIT);
-
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEuid")->will($this->returnValue(true));
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
-        $event->setTarget($scheduler);
+
+        $worker = new WorkerState("test");
+        $event = new WorkerEvent();
+        $event->setWorker($worker);
+        $event->setTarget($worker);
+        $event->setScheduler($scheduler);
+        $event->setName(WorkerEvent::EVENT_INIT);
+
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
         $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
@@ -91,18 +92,20 @@ class SchedulerPluginsTest extends TestCase
 
     public function testSchedulerDestructor()
     {
-        $worker = new WorkerState("test");
-        $event = new WorkerEvent();
-        $event->setWorker($worker);
-        $event->setTarget($worker);
-        $event->setName(WorkerEvent::EVENT_INIT);
-
         $plugin = $this->getDropPrivilegesMock();
         $plugin->expects($this->atLeastOnce())->method("posixSetUid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEuid")->will($this->returnValue(true));
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(true));
         $plugin->expects($this->any())->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
+
+        $worker = new WorkerState("test");
+        $event = new WorkerEvent();
+        $event->setWorker($worker);
+        $event->setTarget($worker);
+        $event->setScheduler($scheduler);
+        $event->setName(WorkerEvent::EVENT_INIT);
+
         $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
         $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
@@ -121,9 +124,6 @@ class SchedulerPluginsTest extends TestCase
      */
     public function testDropPrivilegesPluginWhenEffectiveSudoerButNotRealSudoer()
     {
-        $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_INIT);
-
         $plugin = $this->getDropPrivilegesMock();
 
         $plugin->expects($this->never())->method("posixSetUid")->will($this->returnValue(false));
@@ -131,7 +131,12 @@ class SchedulerPluginsTest extends TestCase
         $plugin->expects($this->atLeastOnce())->method("posixSetGid")->will($this->returnValue(false));
         $plugin->expects($this->exactly(2))->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
+
+        $event = new WorkerEvent();
+        $event->setName(WorkerEvent::EVENT_INIT);
+        $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
+        $event->setWorker(new WorkerState('test'));
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
         $scheduler->getEventManager()->triggerEvent($event);
     }

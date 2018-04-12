@@ -142,8 +142,12 @@ final class GatewayMessageBroker implements BrokerStrategy
             if ($event->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM)) {
                 $registrator->setRegistratorAddress($event->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM));
             }
+        }, WorkerEvent::PRIORITY_INITIALIZE + 3);
+
+        $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
+            $registrator = $this->getRegistrator();
             $registrator->register();
-        }, WorkerEvent::PRIORITY_REGULAR + 1);
+        }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
             $backend = $this->getBackend();

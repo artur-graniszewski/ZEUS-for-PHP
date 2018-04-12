@@ -18,5 +18,6 @@ class BackendServiceTest extends AbstractServiceTest
         $backend->setServer($this->getServerStub($clientStream, $serverSocket));
         $backend->setSelector($selector);
         $backend->checkMessages();
+        $this->assertTrue($backend->isClientConnected());
     }
 }

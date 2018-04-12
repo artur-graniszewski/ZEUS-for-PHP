@@ -4,19 +4,20 @@ namespace Zeus\Kernel;
 
 use Throwable;
 use Zend\EventManager\EventManagerAwareTrait;
-use Zend\Log\Logger;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\ConfigInterface;
-use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
+use Zeus\Kernel\Scheduler\Listener\KernelLoopGenerator;
 use Zeus\Kernel\Scheduler\Listener\SchedulerExitListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerInitListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerLoopListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerStartListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerStopListener;
+use Zeus\Kernel\Scheduler\Listener\SchedulerTerminateListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerExitListener;
+use Zeus\Kernel\Scheduler\Listener\WorkerInitListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerStatusListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerStatusSender;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
@@ -30,12 +31,8 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
-use function microtime;
 use function sprintf;
 use function array_merge;
-use function file_get_contents;
-use function file_put_contents;
-use function unlink;
 
 /**
  * Class Scheduler
@@ -181,31 +178,13 @@ class Scheduler implements SchedulerInterface
 
         $events[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), SchedulerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $events[] = $eventManager->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
-
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_CREATE,
-            // scheduler init
-            function (WorkerEvent $event) use ($eventManager) {
-                if (!$event->getParam(SchedulerInterface::WORKER_SERVER) || $event->getParam(SchedulerInterface::WORKER_INIT)) {
-                    return;
-                }
-                $this->kernelLoop();
-            }, WorkerEvent::PRIORITY_FINALIZE
-        );
-
+        $events[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, new KernelLoopGenerator(), WorkerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE);
-
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($eventManager) {
-            $statusSender = new WorkerStatusSender();
-            $events[] = $eventManager->attach(WorkerEvent::EVENT_RUNNING, $statusSender, SchedulerEvent::PRIORITY_FINALIZE + 1);
-            $events[] = $eventManager->attach(WorkerEvent::EVENT_WAITING, $statusSender, SchedulerEvent::PRIORITY_FINALIZE + 1);
-            $events[] = $eventManager->attach(WorkerEvent::EVENT_EXIT, $statusSender, SchedulerEvent::PRIORITY_FINALIZE + 2);
-            $this->eventHandles = array_merge($this->eventHandles, $events);
-
-        }, WorkerEvent::PRIORITY_FINALIZE + 1);
-
+        $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, new WorkerInitListener(), WorkerEvent::PRIORITY_FINALIZE + 1);
         $this->eventHandles = array_merge($this->eventHandles, $events);
     }
 
@@ -253,42 +232,22 @@ class Scheduler implements SchedulerInterface
     }
 
     /**
-     * Stops the scheduler.
-     */
-    public function stop()
-    {
-        $this->log(Logger::DEBUG, "Stopping scheduler");
-        $fileName = $this->getUidFile();
-
-        $uid = @file_get_contents($fileName);
-        if (!$uid) {
-            throw new SchedulerException("Scheduler not running", SchedulerException::SCHEDULER_NOT_RUNNING);
-        }
-
-        $this->setTerminating(true);
-
-        $this->log(Logger::INFO, "Terminating scheduler $uid");
-        $worker = new WorkerState($this->getConfig()->getServiceName(), WorkerState::RUNNING);
-        $worker->setUid($uid);
-        $this->schedulerLifeCycle->stop($worker, true);
-        $this->log(Logger::INFO, "Workers checked");
-    }
-
-    /**
      * Creates the server instance.
      *
      * @param bool $launchAsDaemon Run this server as a daemon?
+     * @throws Throwable
      */
     public function start(bool $launchAsDaemon = false)
     {
         $plugins = $this->getPluginRegistry()->count();
-        $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
-        $this->log(Logger::INFO, sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
+        $kernelStart = $this->getSchedulerEvent();
+        $kernelStart->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
+        $this->getEventManager()->triggerEvent($kernelStart);
+        $this->getLogger()->info(sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
 
         try {
             if (!$launchAsDaemon) {
                 $this->schedulerLifeCycle->start([]);
-                $this->kernelLoop();
 
                 return;
             }
@@ -296,58 +255,19 @@ class Scheduler implements SchedulerInterface
 
         } catch (Throwable $exception) {
             $this->logException($exception, $this->getLogger());
+            throw $exception;
         }
-    }
-
-    private function log(int $priority, string $message, array $extra = [])
-    {
-        if (!isset($extra['service_name'])) {
-            $extra['service_name'] = $this->getConfig()->getServiceName();
-        }
-
-        if (!isset($extra['logger'])) {
-            $extra['logger'] = __CLASS__;
-        }
-
-        $this->getLogger()->log($priority, $message, $extra);
-    }
-
-    private function getUidFile() : string
-    {
-        // @todo: make it more sophisticated
-        $fileName = sprintf("%s%s.pid", $this->getConfig()->getIpcDirectory(), $this->getConfig()->getServiceName());
-
-        return $fileName;
     }
 
     /**
-     * @param string $eventName
-     * @param mixed[] $extraData
+     * Stops the scheduler.
      */
-    private function triggerEvent(string $eventName, array $extraData = [])
+    public function stop()
     {
-        $extraData = array_merge(['status' => $this->worker], $extraData, ['service_name' => $this->getConfig()->getServiceName()]);
-        $events = $this->getEventManager();
-        $event = $this->getSchedulerEvent();
-        $event->setParams($extraData);
-        $event->setName($eventName);
-        $events->triggerEvent($event);
-    }
+        $this->setTerminating(true);
 
-    private function kernelLoop()
-    {
-        $reactor = $this->getReactor();
-
-        $terminator = function() use ($reactor) {
-            $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
-            if ($this->isTerminating()) {
-                $reactor->setTerminating(true);
-            }
-        };
-        do {
-            $reactor->mainLoop(
-                $terminator
-            );
-        } while (!$this->isTerminating());
+        $worker = new WorkerState($this->getConfig()->getServiceName(), WorkerState::RUNNING);
+        $this->schedulerLifeCycle->stop($worker, false);
+        $this->getLogger()->info("Workers checked");
     }
 }

@@ -143,6 +143,9 @@ class IpcServer implements EventManagerAwareInterface
 
     private function startIpc()
     {
+        if ($this->ipcServer) {
+            return;
+        }
         $server = new SocketServer();
         $server->setTcpNoDelay(true);
         $server->setSoTimeout(0);
@@ -165,7 +168,6 @@ class IpcServer implements EventManagerAwareInterface
                 $selectionKey->attach(new IpcSocketStream($ipcStream));
             }
         } catch (SocketTimeoutException $exception) {
-
         }
     }
 
@@ -233,7 +235,7 @@ class IpcServer implements EventManagerAwareInterface
         ];
 
         $host = $this->ipcHost;
-        $socket = @stream_socket_client("$host:$ipcPort", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, stream_context_create($opts));
+        $socket = @stream_socket_client("$host:$ipcPort", $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
 
         if (!$socket) {
             throw new RuntimeException("IPC connection failed: $errstr [$errno]");
@@ -252,8 +254,11 @@ class IpcServer implements EventManagerAwareInterface
     {
         $messages = [];
 
+        $this->checkInboundConnections();
+
         $keys = $selector->getSelectionKeys();
         $failed = 0; $processed = 0;
+
         foreach ($keys as $key) {
             /** @var SocketStream $stream */;
             $stream = $key->getStream();
@@ -423,15 +428,13 @@ class IpcServer implements EventManagerAwareInterface
         }
     }
 
-
     private function setSelector(Reactor $scheduler)
     {
         $scheduler->observe($this->ipcSelector, function(AbstractStreamSelector $selector) {
                 $this->handleIpcMessages($selector);
             }, function() {
 
-
-            }, 1000);
-
+            }, 1000
+        );
     }
 }

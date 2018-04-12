@@ -36,12 +36,4 @@ class SchedulerExitListener extends AbstractWorkerLifeCycleListener
 
         @unlink($this->getUidFile($scheduler->getConfig()));
     }
-
-    private function stopWorker(WorkerState $worker, bool $isSoftStop)
-    {
-
-
-
-    }
-
 }

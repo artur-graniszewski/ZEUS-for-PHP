@@ -7,7 +7,7 @@ class PcntlBridgeMock implements PcntlBridgeInterface
 {
     protected $executionLog = [];
     protected $pcntlWaitPids = [];
-    protected $forkResult;
+    protected $forkResult = -1;
     protected $posixPppid;
     protected $signalDispatch;
     protected $signalHandlers;

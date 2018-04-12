@@ -82,6 +82,7 @@ class PosixProcessTest extends TestCase
 
         $pcntlMock = new PcntlBridgeMock();
         $pcntlMock->setPpid(123456789);
+        $pcntlMock->setForkResult(123456);
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
         $event->setScheduler($scheduler);

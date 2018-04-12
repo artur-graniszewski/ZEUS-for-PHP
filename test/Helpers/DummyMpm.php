@@ -16,6 +16,9 @@ class DummyMpm extends AbstractModule
     /** @var SocketServer */
     protected $pipe;
 
+    /** @var MultiProcessingModuleCapabilities */
+    protected static $capabilities;
+
     public function attach(EventManagerInterface $eventManager)
     {
         $this->pipe = $this->getWrapper()->createPipe();
@@ -45,7 +48,11 @@ class DummyMpm extends AbstractModule
 
     public static function getCapabilities() : MultiProcessingModuleCapabilities
     {
-        return new MultiProcessingModuleCapabilities();
+        if (!static::$capabilities) {
+            static::$capabilities = new MultiProcessingModuleCapabilities();
+        }
+
+        return static::$capabilities;
     }
 
     public function onWorkerCreate(WorkerEvent $event)

@@ -9,6 +9,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
+use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
 class AsyncServiceTest extends TestCase
@@ -58,6 +59,7 @@ class AsyncServiceTest extends TestCase
      */
     public function testServiceCreation()
     {
+        DummyMpm::getCapabilities()->setSharedInitialAddressSpace(true);
         $service = $this->getService();
         $this->assertFalse($service->getScheduler()->isTerminating());
         $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {

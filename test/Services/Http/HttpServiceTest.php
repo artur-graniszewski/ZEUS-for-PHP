@@ -10,6 +10,7 @@ use Zend\Log\Writer\Mock;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Service;
+use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
 class HttpServiceTest extends \PHPUnit\Framework\TestCase
@@ -61,6 +62,7 @@ class HttpServiceTest extends \PHPUnit\Framework\TestCase
      */
     public function testServiceCreation()
     {
+        DummyMpm::getCapabilities()->setSharedInitialAddressSpace(true);
         $service = $this->getService();
         $this->assertFalse($service->getScheduler()->isTerminating());
         $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
