@@ -54,7 +54,7 @@ class StreamLogFormatter implements FormatterInterface
         $serviceName = $extraData['service_name'] . '-' . $extraData['threadId'];
         $dateTime = $event['timestamp']->format($this->dateTimeFormat) . sprintf("%'.03d", $extraData['microtime']);
         $severity = str_pad($event['priorityName'], 7, " ", STR_PAD_LEFT);
-        $pid = $event['extra']['uid'];
+        $pid = $extraData['uid'];
         $serviceName = sprintf("--- [%s]", str_pad(substr($serviceName,0, 15), 15, " ", STR_PAD_LEFT));
         $loggerName = str_pad(substr($this->getShortLoggerName($extraData['logger']), -40), 40, " ", STR_PAD_RIGHT);
         $message = ": " . $event['message'];

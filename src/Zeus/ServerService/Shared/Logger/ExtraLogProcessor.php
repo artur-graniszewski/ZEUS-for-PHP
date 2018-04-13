@@ -7,6 +7,9 @@ use Zend\Log\Processor\ProcessorInterface;
 use function microtime;
 use function debug_backtrace;
 use function preg_match;
+use function floor;
+use function defined;
+use function getmypid;
 
 class ExtraLogProcessor implements ProcessorInterface
 {
@@ -38,18 +41,18 @@ class ExtraLogProcessor implements ProcessorInterface
      */
     public function process(array $event)
     {
-        if (!isset($event['extra'])) {
-            $event['extra'] = [];
-        }
-
-        $event['extra']['service_name'] = isset($event['extra']['service_name']) ? $event['extra']['service_name'] : $this->config['service_name'];
-        $event['extra']['uid'] = isset($event['extra']['uid']) ? $event['extra']['uid'] : getmypid();
-        $event['extra']['threadId'] = isset($event['extra']['threadId']) ? $event['extra']['threadId'] : (defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
-        $event['extra']['logger'] = isset($event['extra']['logger']) ? $event['extra']['logger'] : $this->detectLogger();
         $microtime = microtime(true);
-
         $microtime = $microtime > 1 ? $microtime - floor($microtime) : $microtime;
-        $event['extra']['microtime'] = isset($event['extra']['microtime']) ? $event['extra']['microtime'] : (int) ($microtime * 1000);
+
+        $extra = isset($event['extra']) ? $event['extra'] : [];
+
+        $extra['service_name'] = isset($extra['service_name']) ?: $this->config['service_name'];
+        $extra['uid'] = isset($extra['uid']) ?: getmypid();
+        $extra['threadId'] = isset($extra['threadId']) ?: (defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
+        $extra['logger'] = isset($extra['logger']) ?: $this->detectLogger();
+        $extra['microtime'] = isset($extra['microtime']) ?: (int) ($microtime * 1000);
+
+        $event['extra'] = $extra;
 
         return $event;
     }
