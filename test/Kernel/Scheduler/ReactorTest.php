@@ -10,6 +10,7 @@ use Zeus\Kernel\Scheduler\Reactor;
 /**
  * Class ReactorTest
  * @package ZeusTest\Kernel\Scheduler
+ * @runTestsInSeparateProcesses
  */
 class ReactorTest extends \PHPUnit\Framework\TestCase
 {
@@ -101,11 +102,28 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
 
         $this->assertTrue($isStdOutWritable1, "stdout should be writable");
         $this->assertTrue($isStdErrWritable, "stderr should be writable");
-        $this->assertFalse($isStdInReadable, "stdin should not be readable");
-        $this->assertEquals([$stdOutKey], $keys1, "Only stdout selection key should be returned in first test iteration");
-        $this->assertEquals([$stdOutKey, $stdErrKey], $keys2, "Both stdout and stderr selection keys should be returned in second test iteration");
-        $this->assertEquals([$stdOutKey, $stdErrKey, $stdInKey], $allKeys1, "All registered selection keys should be returned in second test iteration");
-        $this->assertEquals([$stdErrKey, $stdInKey], $allKeys2, "All registered selection keys should be returned in third test iteration");
+
+        if (!defined("HHVM_VERSION")) {
+            // it seems that @runTestsInSeparateProcesses makes stdin readable in HHVM
+            $this->assertFalse($isStdInReadable, "stdin should not be readable");
+            $this->assertEquals($this->getObjectHashes([$stdOutKey, $stdErrKey]), $this->getObjectHashes($keys2), "Both stdout and stderr selection keys should be returned in second test iteration");
+        } else {
+            $this->assertEquals($this->getObjectHashes([$stdInKey, $stdOutKey, $stdErrKey]), $this->getObjectHashes($keys2), "Stdin, stdout and stderr selection keys should be returned in second test iteration");
+        }
+        $this->assertEquals($this->getObjectHashes([$stdOutKey]), $this->getObjectHashes($keys1), "Only stdout selection key should be returned in first test iteration");
+
+        $this->assertEquals($this->getObjectHashes([$stdOutKey, $stdErrKey, $stdInKey]), $this->getObjectHashes($allKeys1), "All registered selection keys should be returned in second test iteration");
+        $this->assertEquals($this->getObjectHashes([$stdErrKey, $stdInKey]), $this->getObjectHashes($allKeys2), "All registered selection keys should be returned in third test iteration");
+    }
+
+    private function getObjectHashes(array $objects) : array
+    {
+        $hashes = [];
+        foreach ($objects as $object) {
+            $hashes[] = spl_object_hash($object);
+        }
+
+        return $hashes;
     }
 
     public function testSetSelector()
