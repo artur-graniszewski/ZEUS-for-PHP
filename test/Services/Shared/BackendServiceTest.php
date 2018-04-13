@@ -2,7 +2,6 @@
 
 namespace ZeusTest\Services\Shared;
 
-use PHPUnit\Framework\TestCase;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\SocketTestNetworkStream;

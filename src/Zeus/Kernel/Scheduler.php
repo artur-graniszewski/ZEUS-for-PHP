@@ -19,7 +19,6 @@ use Zeus\Kernel\Scheduler\Listener\SchedulerTerminateListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerExitListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerInitListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerStatusListener;
-use Zeus\Kernel\Scheduler\Listener\WorkerStatusSender;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
 use Zeus\Kernel\Scheduler\Reactor;
@@ -173,9 +172,7 @@ class Scheduler implements SchedulerInterface
     protected function attachDefaultListeners()
     {
         $eventManager = $this->getEventManager();
-        $sharedEventManager = $eventManager->getSharedManager();
-        $sharedEventManager->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
-
+        $events[] = $eventManager->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
         $events[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), SchedulerEvent::PRIORITY_FINALIZE);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
         $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);

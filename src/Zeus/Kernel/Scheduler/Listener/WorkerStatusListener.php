@@ -7,6 +7,8 @@ use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 
+use function microtime;
+
 class WorkerStatusListener
 {
     /** @var WorkerCollection|WorkerState[] */

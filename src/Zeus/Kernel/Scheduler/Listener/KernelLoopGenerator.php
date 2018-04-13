@@ -15,6 +15,7 @@ class KernelLoopGenerator
         }
 
         $scheduler = $event->getScheduler();
+
         $reactor = $scheduler->getReactor();
 
         $terminator = function() use ($reactor, $scheduler) {

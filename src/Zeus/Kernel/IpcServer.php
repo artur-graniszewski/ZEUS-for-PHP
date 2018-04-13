@@ -143,9 +143,6 @@ class IpcServer implements EventManagerAwareInterface
 
     private function startIpc()
     {
-        if ($this->ipcServer) {
-            return;
-        }
         $server = new SocketServer();
         $server->setTcpNoDelay(true);
         $server->setSoTimeout(0);
@@ -254,8 +251,6 @@ class IpcServer implements EventManagerAwareInterface
     {
         $messages = [];
 
-        $this->checkInboundConnections();
-
         $keys = $selector->getSelectionKeys();
         $failed = 0; $processed = 0;
 
@@ -306,20 +301,18 @@ class IpcServer implements EventManagerAwareInterface
             }
         }
 
-        try {
-            $this->distributeMessages($messages);
-        } catch (IOException $exception) {
-            // @todo: report such exception!
+        if ($messages) {
+            try {
+                $this->distributeMessages($messages);
+            } catch (IOException $exception) {
+                // @todo: report such exception!
+            }
         }
 
         if (count($this->queuedMessages) > 0) {
             foreach ($this->queuedMessages as $id => $message) {
                 $this->distributeMessages([$message]);
                 unset ($this->queuedMessages[$id]);
-            }
-
-            if (count($this->queuedMessages) === 0) {
-                $this->queuedMessages = [];
             }
         }
     }
@@ -398,6 +391,7 @@ class IpcServer implements EventManagerAwareInterface
 
                 case self::AUDIENCE_SERVER:
                 case self::AUDIENCE_SELF:
+
                     $event = new IpcEvent();
                     $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
                     $event->setParams($message);

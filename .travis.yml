@@ -72,7 +72,7 @@ install:
 
 before_script:
   - mkdir -p build/logs
-  - if [[ $HHVMPHP7 == "yes" ]]; then echo hhvm.php7.all=1 >> /etc/hhvm/php.ini; fi
+  - if [[ $HHVMPHP7 == "yes" ]]; then printf "hhvm.php7.all=1\nhhvm.jit=0\n" >> /etc/hhvm/php.ini; fi
 
 script:
   - if [[ $CS_CHECK == 'true' ]]; then composer cs-check ; fi

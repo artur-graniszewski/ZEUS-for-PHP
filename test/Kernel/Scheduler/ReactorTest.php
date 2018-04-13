@@ -7,6 +7,10 @@ use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\Kernel\Scheduler\Reactor;
 
+/**
+ * Class ReactorTest
+ * @package ZeusTest\Kernel\Scheduler
+ */
 class ReactorTest extends \PHPUnit\Framework\TestCase
 {
     /**
