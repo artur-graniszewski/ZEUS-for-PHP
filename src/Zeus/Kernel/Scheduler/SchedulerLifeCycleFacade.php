@@ -34,7 +34,6 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
         try {
             $this->triggerEvent(SchedulerEvent::EVENT_STOP, $params);
         } catch (Throwable $e) {
-            echo $e; die();
         }
 
         if ($exception) {
