@@ -25,12 +25,15 @@ class DirectMessageBroker implements BrokerStrategy
     /** @var string */
     private $backendHost = '';
 
+    private $backendPort = 0;
+
     public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger)
     {
         $this->setLogger($logger);
 
         $port = $config->getListenPort();
-        $this->backendHost = 'tcp://' . $config->getListenAddress() . ($port ? ":$port" : '');
+        $this->backendHost = 'tcp://' . $config->getListenAddress();
+        $this->backendPort = $port;
 
         $this->config = $config;
         $this->message = new MessageObserver($this, $message);
@@ -59,7 +62,7 @@ class DirectMessageBroker implements BrokerStrategy
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
             $this->message->setScheduler($event->getScheduler());
             $backend = $this->getBackend();
-            $backend->startService($this->backendHost, 1, 0);
+            $backend->startService($this->backendHost, 1, $this->backendPort);
         }, -9000);
 
         $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {

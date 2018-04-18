@@ -16,6 +16,11 @@ use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class SocketMessageTest
+ * @package ZeusTest\Services\Shared
+ * @runTestsInSeparateProcesses true
+ */
 class SocketMessageTest extends TestCase
 {
     use ZeusFactories;
@@ -129,7 +134,7 @@ class SocketMessageTest extends TestCase
 
     public function testSubscriberErrorHandling()
     {
-        $server = stream_socket_server('tcp://127.0.0.1:3333', $errno, $errstr);
+        $server = stream_socket_server('tcp://127.0.0.1:3334', $errno, $errstr);
         $scheduler = $this->getScheduler(0);
         $events = $scheduler->getEventManager();
         $event = $scheduler->getSchedulerEvent();
