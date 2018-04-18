@@ -10,7 +10,9 @@ use Zeus\Kernel\Scheduler\Worker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Async\Config;
+use Zeus\ServerService\Shared\Networking\DirectMessageBroker;
 use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
+use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 
@@ -27,22 +29,11 @@ class SocketMessageTest extends TestCase
 
     public function setUp()
     {
+        DummyMpm::getCapabilities()->setSharedInitialAddressSpace(true);
         $this->port = 7777;
         $this->config = new Config();
         $this->config->setListenAddress('0.0.0.0');
         $this->config->setListenPort($this->port);
-    }
-
-    public function tearDown()
-    {
-        try {
-            $server = $this->service->getGateway()->getServer();
-        } catch (\LogicException $ex) {
-            return;
-        }
-        if ($server && !$server->isClosed()) {
-            $server->close();
-        }
     }
 
     public function testSubscriberRequestHandling()
@@ -74,8 +65,7 @@ class SocketMessageTest extends TestCase
                 $connection->close();
             }
         });
-        $this->service = $eventSubscriber = new GatewayMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1');
+        $this->service = $eventSubscriber = new DirectMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->setLogger($event->getScheduler()->getLogger());
         $eventSubscriber->attach($events);
 
@@ -158,8 +148,7 @@ class SocketMessageTest extends TestCase
         $message->setErrorCallback(function($connection, $exception) use (& $catchedException) {
             $catchedException = $exception;
         });
-        $this->service = $eventSubscriber = new GatewayMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->getRegistrator()->setRegistratorAddress('tcp://127.0.0.1');
+        $this->service = $eventSubscriber = new DirectMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->attach($events);
 
         $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {

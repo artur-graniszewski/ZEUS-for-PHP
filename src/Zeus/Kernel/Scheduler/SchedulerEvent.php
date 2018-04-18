@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler;
 
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\SchedulerInterface;
 
 /**
@@ -32,6 +33,9 @@ class SchedulerEvent extends AbstractEvent
     /** @var SchedulerInterface */
     private $scheduler;
 
+    /** @var WorkerState */
+    private $worker;
+
     public function getScheduler() : SchedulerInterface
     {
         return $this->scheduler;
@@ -40,5 +44,15 @@ class SchedulerEvent extends AbstractEvent
     public function setScheduler(SchedulerInterface $scheduler)
     {
         $this->scheduler = $scheduler;
+    }
+
+    public function getWorker() : WorkerState
+    {
+        return $this->worker;
+    }
+
+    public function setWorker(WorkerState $worker)
+    {
+        $this->worker = $worker;
     }
 }

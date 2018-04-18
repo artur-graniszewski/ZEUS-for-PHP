@@ -33,9 +33,8 @@ class GatewayStrategyTest extends TestCase
         $scheduler = $this->getScheduler(1);
         $this->assertInstanceOf(Scheduler::class, $scheduler);
         $broker = new GatewayMessageBroker($this->config, new Message(function() {}), $scheduler->getLogger());
-        $broker->attach($scheduler->getEventManager());
-
         $events = $scheduler->getEventManager();
+        $broker->attach($events);
 
         $events->attach(Scheduler\WorkerEvent::EVENT_CREATE, function(Scheduler\WorkerEvent $e) {
             $e->setParam('initWorker', true);
@@ -47,7 +46,7 @@ class GatewayStrategyTest extends TestCase
             $e->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, "tcp://127.0.0.1:10");
             $e->getWorker()->setCode(WorkerState::EXITING);
             $e->stopPropagation(true);
-        }, WorkerEvent::PRIORITY_INITIALIZE + 4);
+        }, WorkerEvent::PRIORITY_INITIALIZE - 1);
 
         $events->attach(Scheduler\WorkerEvent::EVENT_EXIT, function(Scheduler\WorkerEvent $e) {
 
@@ -59,7 +58,7 @@ class GatewayStrategyTest extends TestCase
             $this->assertEquals("tcp://127.0.0.1:10", $broker->getRegistrator()->getRegistratorAddress(), "Registrator address should have been altered by WorkerEvent::EVENT_CREATE");
             $counter++;
             $e->stopPropagation(true);
-        }, WorkerEvent::PRIORITY_INITIALIZE + 2);
+        }, WorkerEvent::PRIORITY_INITIALIZE - 1);
 
         $scheduler->start(false);
         $this->assertTrue($initPassed, 'All callbacks should be executed');

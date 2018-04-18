@@ -2,29 +2,18 @@
 
 namespace Zeus\Kernel;
 
-use RuntimeException;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
-use Zeus\IO\Stream\NetworkStreamInterface;
+use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\IpcServer\Listener\KernelMessageBroker;
 use Zeus\Kernel\IpcServer\Listener\SchedulerMessageBroker;
-use Zeus\Kernel\IpcServer\Listener\WorkerMessageReader;
-use Zeus\Kernel\IpcServer\SocketIpc as IpcSocketStream;
+use Zeus\Kernel\IpcServer\Listener\WorkerMessageSender;
+use Zeus\Kernel\IpcServer\Listener\IpcRegistrator;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
-use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
-use Zeus\IO\Stream\SocketStream;
-
-use function count;
-use function in_array;
-use function array_keys;
-use function array_merge;
-use function array_rand;
-use function array_search;
-use function stream_socket_client;
 
 class IpcServer implements EventManagerAwareInterface
 {
@@ -43,9 +32,6 @@ class IpcServer implements EventManagerAwareInterface
 
     /** @var SocketServer */
     private $ipcServer;
-
-    /** @var IpcServer\SocketIpc */
-    private $ipcClient;
 
     /** @var Selector */
     private $ipcSelector;
@@ -71,13 +57,22 @@ class IpcServer implements EventManagerAwareInterface
      */
     public function send($message, string $audience = IpcServer::AUDIENCE_ALL, int $number = 0)
     {
-        $this->ipcClient->send($message, $audience, $number);
+        $event = new IpcEvent();
+        $event->setName(IpcEvent::EVENT_MESSAGE_SEND);
+        $event->setParams([
+            'audience' => $audience,
+            'number' => $number,
+            'message' => $message
+        ]);
+
+        $this->getEventManager()->triggerEvent($event);
     }
 
     protected function attachDefaultListeners()
     {
         $events = $this->getEventManager();
 
+        $ipcRegistrator = new IpcRegistrator($this->getEventManager(), $this->ipcHost);
 
         $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() use ($events) {
             $this->startIpc();
@@ -86,24 +81,13 @@ class IpcServer implements EventManagerAwareInterface
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
 
-        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use ($events) {
-            $ipcPort = $event->getParam('ipcPort');
+        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_INIT, $ipcRegistrator, WorkerEvent::PRIORITY_INITIALIZE);
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, $ipcRegistrator, SchedulerEvent::PRIORITY_INITIALIZE);
+        $this->eventHandles[] = $events->attach(IpcEvent::EVENT_MESSAGE_SEND, new WorkerMessageSender($ipcRegistrator, $this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE);
 
-            if (!$ipcPort) {
-                return;
-            }
-
-            $uid = $event->getWorker()->getUid();
-            $this->registerIpc($ipcPort, $uid);
-
-            $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_LOOP, new WorkerMessageReader($this->ipcClient, $this->getEventManager()), -9000);
-        }, WorkerEvent::PRIORITY_INITIALIZE);
-
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($events) {
+        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($events, $ipcRegistrator) {
             $this->startIpc();
-            $uid = $event->getParam('uid', 0);
-            $this->registerIpc($this->ipcServer->getLocalPort(), $uid);
-
+            $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
@@ -120,39 +104,5 @@ class IpcServer implements EventManagerAwareInterface
         $server->bind($this->ipcHost, 30000, 0);
         $this->ipcServer = $server;
         $server->getSocket()->register($this->ipcSelector, SelectionKey::OP_ACCEPT);
-    }
-
-    private function setStreamOptions(NetworkStreamInterface $stream)
-    {
-        try {
-            $stream->setOption(SO_KEEPALIVE, 1);
-            $stream->setOption(TCP_NODELAY, 1);
-        } catch (UnsupportedOperationException $e) {
-            // this may happen in case of disabled PHP extension, or definitely happen in case of HHVM
-        }
-    }
-
-    private function registerIpc(int $ipcPort, int $uid)
-    {
-        $opts = [
-            'socket' => [
-                'tcp_nodelay' => true,
-            ],
-        ];
-
-        $host = $this->ipcHost;
-        $socket = @stream_socket_client("$host:$ipcPort", $errno, $errstr, 100, STREAM_CLIENT_CONNECT, stream_context_create($opts));
-
-        if (!$socket) {
-            throw new RuntimeException("IPC connection failed: $errstr [$errno]");
-        }
-
-        $ipcStream = new SocketStream($socket);
-        $ipcStream->setBlocking(false);
-        $this->setStreamOptions($ipcStream);
-        $ipcStream->write("$uid!");
-        do {$done = $ipcStream->flush(); } while (!$done);
-        $this->ipcClient = new IpcSocketStream($ipcStream);
-        $this->ipcClient->setId($uid);
     }
 }

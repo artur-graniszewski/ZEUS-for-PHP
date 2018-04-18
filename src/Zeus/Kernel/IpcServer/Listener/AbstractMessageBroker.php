@@ -18,6 +18,13 @@ use Zeus\Kernel\IpcServer\SocketIpc;
 use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 
+use function in_array;
+use function array_keys;
+use function array_merge;
+use function array_search;
+use function array_rand;
+use function count;
+
 abstract class AbstractMessageBroker
 {
     /** @var bool */
@@ -243,7 +250,6 @@ abstract class AbstractMessageBroker
 
                 case IpcServer::AUDIENCE_SERVER:
                 case IpcServer::AUDIENCE_SELF:
-
                     $event = new IpcEvent();
                     $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
                     $event->setParams($message);
@@ -291,7 +297,7 @@ abstract class AbstractMessageBroker
 
         $uid = (int) $data;
         $buffer->setId($uid);
-        $this->ipcStreams[(int) $uid] = $stream;
+        $this->ipcStreams[$uid] = $stream;
         unset ($this->inboundStreams[array_search($stream, $this->inboundStreams)]);
 
         return true;

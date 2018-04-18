@@ -117,6 +117,7 @@ class Scheduler implements SchedulerInterface
             $event = new SchedulerEvent();
             $event->setTarget($this);
             $event->setScheduler($this);
+            $event->setWorker($this->getWorker());
             $this->setSchedulerEvent($event);
             $this->schedulerEvent = $event;
         }
