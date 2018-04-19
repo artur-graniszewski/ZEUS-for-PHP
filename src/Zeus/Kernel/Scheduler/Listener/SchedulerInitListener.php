@@ -19,16 +19,15 @@ class SchedulerInitListener
 
     public function __invoke(WorkerEvent $event)
     {
-        if (!$event->getParam(SchedulerInterface::WORKER_SERVER)) {
-            return;
-        }
-        $event->stopPropagation(true);
-        $this->schedulerLifeCycle->start([]);
-        $event->getWorker()->setIsLastTask(true);
-
-        $event->getScheduler()->getEventManager()->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
-            $event->stopPropagation(true);
-        }, SchedulerEvent::PRIORITY_INITIALIZE + 2);
+//        if (!$event->getParam(SchedulerInterface::WORKER_SERVER) || !$event->getParam(SchedulerInterface::WORKER_INIT)) {
+//            return;
+//        }
+//
+//        $event->getWorker()->setIsLastTask(true);
+//
+//        $event->getScheduler()->getEventManager()->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) {
+//            $event->stopPropagation(true);
+//        }, SchedulerEvent::PRIORITY_INITIALIZE + 2);
 
     }
 }

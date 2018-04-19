@@ -273,8 +273,8 @@ abstract class AbstractMessageBroker
                     $ipcDriver->send($message, $audience, $number);
 
                 } catch (IOException $exception) {
-                    unset($this->ipcStreams[$cid]);
                     $this->ipcSelector->unregister($this->ipcStreams[$cid]);
+                    unset($this->ipcStreams[$cid]);
                 }
             }
         }

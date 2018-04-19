@@ -20,6 +20,6 @@ trait ExceptionLoggerTrait
             $exception->getFile(),
             $exception->getLine()
         ));
-        $logger->debug(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
+        $logger->err(sprintf("Stack Trace:\n%s", $exception->getTraceAsString()));
     }
 }

@@ -301,7 +301,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
         $stream = @stream_socket_client($this->getIpcAddress(), $errno, $errstr, static::UPSTREAM_CONNECTION_TIMEOUT);
 
         if (!$stream) {
-            $this->getLogger()->err("Upstream pipe unavailable on port: " . $this->getIpcAddress());
+            $this->getLogger()->err("Upstream pipe unavailable on: " . $this->getIpcAddress());
             $this->setTerminating(true);
 
             return;
@@ -349,6 +349,7 @@ class ModuleWrapper implements EventsCapableInterface, EventManagerAwareInterfac
             }
         } catch (Throwable $exception) {
             $this->setTerminating(true);
+            throw $exception;
         }
 
     }

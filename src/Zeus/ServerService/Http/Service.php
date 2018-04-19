@@ -74,6 +74,8 @@ class Service extends AbstractSocketServerService
             $this->getHeader($httpRequest, 'Referer'),
             $this->getHeader($httpRequest, 'User-Agent')
             )
+            , ['extra' => ['logger' => 'aaaa']]
+            , ['logger' => 'aaaa']
         );
     }
 

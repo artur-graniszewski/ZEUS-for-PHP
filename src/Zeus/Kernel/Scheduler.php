@@ -12,12 +12,14 @@ use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\Listener\KernelLoopGenerator;
 use Zeus\Kernel\Scheduler\Listener\SchedulerExitListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerInitListener;
+use Zeus\Kernel\Scheduler\Listener\SchedulerLifeCycle;
 use Zeus\Kernel\Scheduler\Listener\SchedulerLoopListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerStartListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerStopListener;
 use Zeus\Kernel\Scheduler\Listener\SchedulerTerminateListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerExitListener;
 use Zeus\Kernel\Scheduler\Listener\WorkerInitListener;
+use Zeus\Kernel\Scheduler\Listener\WorkerLifeCycle;
 use Zeus\Kernel\Scheduler\Listener\WorkerStatusListener;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
@@ -172,18 +174,20 @@ class Scheduler implements SchedulerInterface
 
     protected function attachDefaultListeners()
     {
-        $eventManager = $this->getEventManager();
-        $events[] = $eventManager->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), SchedulerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(SchedulerEvent::EVENT_LOOP, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_CREATE, new KernelLoopGenerator(), WorkerEvent::PRIORITY_FINALIZE);
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE);
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_INIT, new WorkerInitListener(), WorkerEvent::PRIORITY_FINALIZE + 1);
-        $this->eventHandles = array_merge($this->eventHandles, $events);
+        $events = $this->getEventManager();
+        $handles[] = $events->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
+        $handles[] = $events->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
+        $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
+        $handles[] = $events->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(SchedulerEvent::EVENT_LOOP, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
+        $handles[] = $events->attach(WorkerEvent::EVENT_CREATE, new KernelLoopGenerator(), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new WorkerLifeCycle($this), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new SchedulerLifeCycle($this), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE + 1000);
+        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new WorkerInitListener(), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $this->eventHandles = array_merge($this->eventHandles, $handles);
     }
 
     /**
@@ -244,12 +248,7 @@ class Scheduler implements SchedulerInterface
         $this->getLogger()->info(sprintf("Starting Scheduler with %d plugin%s", $plugins, $plugins !== 1 ? 's' : ''));
 
         try {
-            if (!$launchAsDaemon) {
-                $this->schedulerLifeCycle->start([]);
-
-                return;
-            }
-            $this->workerLifeCycle->start([SchedulerInterface::WORKER_SERVER => true]);
+            $this->schedulerLifeCycle->start([]);
 
         } catch (Throwable $exception) {
             $this->logException($exception, $this->getLogger());

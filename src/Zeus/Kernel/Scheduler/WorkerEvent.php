@@ -14,7 +14,7 @@ class WorkerEvent extends SchedulerEvent
     const PRIORITY_REGULAR = 0;
 
     const EVENT_CREATE = 'workerCreate';
-    const EVENT_INIT = 'workerStarted';
+    const EVENT_INIT = 'workerInit';
     const EVENT_EXIT = 'workerExit';
 
     const EVENT_LOOP = 'workerLoop';

@@ -4,6 +4,7 @@ namespace ZeusTest\Helpers;
 
 use ReflectionProperty;
 use Zend\EventManager\EventManager;
+use Zend\EventManager\EventManagerInterface;
 use Zend\Log\Logger;
 use Zend\Log\LoggerInterface;
 use Zend\Log\Writer\Noop;
@@ -18,6 +19,7 @@ use Zeus\Controller\MainController;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Factory\ManagerFactory;
 use Zeus\Kernel\Scheduler\Factory\SchedulerFactory;
@@ -32,6 +34,12 @@ use Zend\Router;
 
 trait ZeusFactories
 {
+    public function simulateWorkerInit(EventManagerInterface $events)
+    {
+        $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
+            $event->setParam(SchedulerInterface::WORKER_INIT, true);
+        }, WorkerEvent::PRIORITY_INITIALIZE + 1);
+    }
     /**
      * @param mixed[] $customConfig
      * @return ServiceManager

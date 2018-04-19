@@ -31,9 +31,9 @@ class DummyMpm extends AbstractModule
             $status->setUid($pid);
 
             if ($event->getParam(SchedulerInterface::WORKER_SERVER)) {
-                $event = clone $event;
-                $event->setName(WorkerEvent::EVENT_INIT);
-                $this->getWrapper()->getEventManager()->triggerEvent($event);
+//                $event = clone $event;
+//                $event->setName(WorkerEvent::EVENT_INIT);
+//                $this->getWrapper()->getEventManager()->triggerEvent($event);
             }
         }, WorkerEvent::PRIORITY_INITIALIZE + 100);
     }

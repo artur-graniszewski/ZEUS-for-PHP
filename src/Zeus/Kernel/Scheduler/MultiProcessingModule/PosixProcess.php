@@ -12,7 +12,6 @@ use function str_replace;
 use function sprintf;
 use function getmypid;
 
-
 final class PosixProcess extends AbstractProcessModule implements SeparateAddressSpaceInterface, ParentMemoryPagesCopiedInterface
 {
     /** @var int Parent PID */

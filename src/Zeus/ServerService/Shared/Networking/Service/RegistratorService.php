@@ -91,6 +91,11 @@ class RegistratorService extends AbstractService implements ServiceInterface
 
     public function register()
     {
+        if (!$this->getRegistratorAddress()) {
+            // this is a scheduler worker...
+            // @todo: make it unnecessary
+            return;
+        }
         $socket = @stream_socket_client($this->getRegistratorAddress(), $errno, $errstr, 1000, STREAM_CLIENT_CONNECT, $this->getStreamContext());
         if (!$socket) {
             throw new IOException("Couldn't connect to registrator: $errstr", $errno);

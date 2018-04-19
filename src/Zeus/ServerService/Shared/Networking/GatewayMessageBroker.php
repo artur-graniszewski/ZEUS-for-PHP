@@ -137,6 +137,7 @@ final class GatewayMessageBroker implements BrokerStrategy
     public function attach(EventManagerInterface $events)
     {
         $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
+            $this->message->setScheduler($event->getScheduler());
             $registrator = $this->getRegistrator();
             $registrator->setWorkerUid($event->getWorker()->getUid());
             if ($event->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM)) {
@@ -171,7 +172,7 @@ final class GatewayMessageBroker implements BrokerStrategy
 
         }, 1000);
 
-        $events->getSharedManager()->attach(IpcServer::class, IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
+        $events->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, function(IpcEvent $event) {
             $message = $event->getParams();
 
             if (!$message instanceof GatewayElectionMessage) {

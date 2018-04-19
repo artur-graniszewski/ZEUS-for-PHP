@@ -89,6 +89,7 @@ class PosixThreadTest extends TestCase
         $event = new SchedulerEvent();
         $event->setScheduler($scheduler);
 
+        $this->simulateWorkerInit($scheduler->getEventManager());
         $eventLaunched = false;
         $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);

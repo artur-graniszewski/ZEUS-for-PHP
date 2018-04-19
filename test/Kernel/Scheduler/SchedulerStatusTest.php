@@ -138,6 +138,8 @@ class SchedulerStatusTest extends TestCase
             }
         );
 
+        $this->simulateWorkerInit($em);
+
         $mockedReactor = $this->getReactorMock();
         $mockedReactor->expects($this->atLeastOnce())->method("observe")->will($this->returnCallback(
             function($selector, $onSelectCallback) use ($mockedReactor) {

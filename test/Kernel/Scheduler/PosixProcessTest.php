@@ -87,30 +87,31 @@ class PosixProcessTest extends TestCase
         $event = new SchedulerEvent();
         $event->setScheduler($scheduler);
         $sm->setFactory(PosixProcess::class, MultiProcessingModuleFactory::class);
-        $service = $this->getMpm($scheduler);
+        $events = $scheduler->getEventManager();
 
         $eventLaunched = false;
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (&$eventLaunched) {
-            $event->stopPropagation(true);
-        }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (&$eventLaunched) {
+        $this->simulateWorkerInit($events);
+
+        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
 
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
+        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (&$eventLaunched) {
+            $event->stopPropagation(true);
+        }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
+
+        $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) use (&$eventLaunched) {
+            //$event->stopPropagation(true);
+
+        }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
+
+        $events->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
             $eventLaunched = true;
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $scheduler->start(false);
-        $em = $scheduler->getEventManager();
-        $event = new SchedulerEvent();
-        $event->setScheduler($scheduler);
-        $event->setTarget($scheduler);
-        $event->setName(SchedulerEvent::EVENT_LOOP);
-        $event->setParam('uid', 123456);
-        $em->triggerEvent($event);
 
         $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixProcess');
     }
