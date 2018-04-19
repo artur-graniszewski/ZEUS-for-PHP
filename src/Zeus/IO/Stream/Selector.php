@@ -46,7 +46,7 @@ class Selector extends AbstractStreamSelector
             throw new IOException("Unable to register: stream is not writable");
         }
 
-        if ($operation & SelectionKey::OP_ACCEPT && $stream->isClosed()) {
+        if ($stream->isClosed()) {
             throw new IOException("Unable to register: stream is closed");
         }
 

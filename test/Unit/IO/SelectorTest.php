@@ -1,7 +1,8 @@
 <?php
 
-namespace ZeusTest\IO;
+namespace ZeusTest\Unit\IO;
 
+use Zeus\IO\Exception\IOException;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
@@ -23,6 +24,7 @@ class SelectorTest extends AbstractIOTest
             [SelectionKey::OP_ACCEPT|SelectionKey::OP_WRITE],
         ];
     }
+
     /**
      * @param int $opBits
      * @dataProvider opsProvider
@@ -33,6 +35,54 @@ class SelectorTest extends AbstractIOTest
         $stream = new DummySelectableStream(null);
         $key = $stream->register($selector, $opBits);
         $this->assertEquals($opBits, $key->getInterestOps());
+    }
+
+    /**
+     * @expectedException \Zeus\IO\Exception\IOException
+     * @expectedExceptionMessage Unable to register: stream is closed
+     * @dataProvider opsProvider
+     * @param int $opBits
+     */
+    public function testRegistrationOfClosedStream(int $opBits)
+    {
+        $selector = new Selector();
+        $stream = new DummySelectableStream(null);
+        $stream->setClosed(true);
+        $stream->register($selector, $opBits);
+    }
+
+    /**
+     * @expectedException \Zeus\IO\Exception\IOException
+     * @expectedExceptionMessage Unable to register: stream is not readable
+     */
+    public function testRegistrationOfUnreadableStream()
+    {
+        $selector = new Selector();
+        $stream = new DummySelectableStream(null);
+        $stream->setReadable(false);
+        $stream->register($selector, SelectionKey::OP_READ);
+    }
+
+    /**
+     * @expectedException \Zeus\IO\Exception\IOException
+     * @expectedExceptionMessage Unable to register: stream is not writable
+     */
+    public function testRegistrationOfNonwritableStream()
+    {
+        $selector = new Selector();
+        $stream = new DummySelectableStream(null);
+        $stream->setWritable(false);
+        $stream->register($selector, SelectionKey::OP_WRITE);
+    }
+
+    public function testUnregistration()
+    {
+        $selector = new Selector();
+        $stream = new DummySelectableStream(null);
+        $key = $stream->register($selector, SelectionKey::OP_READ);
+        $this->assertContains($key, $selector->getKeys());
+        $selector->unregister($stream);
+        $this->assertEmpty($selector->getKeys());
     }
 
     public function testMultiSelectOnAcceptedSockets()

@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest\IO;
+namespace ZeusTest\Unit\IO;
 
 use \PHPUnit\Framework\TestCase;
 use Zeus\IO\SocketServer;

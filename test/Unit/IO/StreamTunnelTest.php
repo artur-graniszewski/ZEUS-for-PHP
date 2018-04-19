@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest\IO;
+namespace ZeusTest\Unit\IO;
 
 use Zeus\IO\Stream\FileStream;
 use Zeus\IO\Stream\SelectionKey;

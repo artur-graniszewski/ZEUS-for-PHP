@@ -14,7 +14,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\DummyServerService;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
-use ZeusTest\IO\DummySelectableStream;
+use ZeusTest\Unit\IO\DummySelectableStream;
 
 class SchedulerStatusTest extends TestCase
 {

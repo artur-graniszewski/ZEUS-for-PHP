@@ -1,6 +1,6 @@
 <?php
 
-namespace ZeusTest\IO;
+namespace ZeusTest\Unit\IO;
 
 use Zeus\IO\Stream\AbstractSelectableStream;
 use Zeus\IO\Stream\NetworkStreamInterface;
