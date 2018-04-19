@@ -198,7 +198,7 @@ class SelectorTest extends AbstractIOTest
 
     /**
      * @expectedException \TypeError
-     * @expectedExceptionMessage Argument 1 passed to Zeus\IO\Stream\Selector::register() must implement interface Zeus\IO\Stream\SelectableStreamInterface
+     * @expectedExceptionMessage Argument 1 passed to Zeus\IO\Stream\Selector::register() must be an instance of Zeus\IO\Stream\SelectableStreamInterface, instance of stdClass given
      */
     public function testStreamArgumentValidation()
     {
