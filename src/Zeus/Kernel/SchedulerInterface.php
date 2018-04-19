@@ -13,6 +13,7 @@ use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\Scheduler\WorkerEvent;
 
 interface SchedulerInterface extends EventManagerAwareInterface
 {
@@ -30,6 +31,8 @@ interface SchedulerInterface extends EventManagerAwareInterface
     public function getWorker() : WorkerState;
 
     public function getSchedulerEvent() : SchedulerEvent;
+
+    public function getWorkerEvent() : WorkerEvent;
 
     public function start(bool $launchAsDaemon = false);
 

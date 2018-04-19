@@ -33,7 +33,6 @@ use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 use function sprintf;
-use function array_merge;
 
 /**
  * Class Scheduler
@@ -83,6 +82,9 @@ class Scheduler implements SchedulerInterface
     /** @var Reactor */
     private $reactor;
 
+    /** @var WorkerEvent */
+    private $workerEvent;
+
     public function setSchedulerEvent(SchedulerEvent $event)
     {
         $this->schedulerEvent = $event;
@@ -124,6 +126,19 @@ class Scheduler implements SchedulerInterface
             $this->schedulerEvent = $event;
         }
         return clone $this->schedulerEvent;
+    }
+
+    public function getWorkerEvent() : WorkerEvent
+    {
+        if (!$this->workerEvent) {
+            $event = new WorkerEvent();
+            $event->setScheduler($this);
+            $event->setTarget($this);
+            $event->setWorker(new WorkerState($this->getConfig()->getServiceName()));
+            $this->workerEvent = $event;
+        }
+
+        return clone $this->workerEvent;
     }
 
     public function getWorker() : WorkerState

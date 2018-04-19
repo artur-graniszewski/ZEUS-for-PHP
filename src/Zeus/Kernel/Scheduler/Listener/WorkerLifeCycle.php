@@ -51,7 +51,7 @@ class WorkerLifeCycle
 
     private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent
     {
-        $event = clone $this->workerEvent;
+        $event = $this->scheduler->getWorkerEvent();
         $event->setName($eventName);
         $event->setParams($params);
         $event->setScheduler($this->scheduler);
@@ -79,7 +79,6 @@ class WorkerLifeCycle
                 $params = [
                     'status' => $worker
                 ];
-
                 $this->triggerEvent(WorkerEvent::EVENT_LOOP, $params, $worker);
 
             } catch (Error $exception) {
@@ -88,7 +87,7 @@ class WorkerLifeCycle
                 $this->logException($exception, $scheduler->getLogger());
             }
 
-            if ($worker->getCode() === WorkerState::EXITING) {
+            if ($worker->getCode() === WorkerState::EXITING || $worker->isLastTask()) {
                 break;
             }
         }
