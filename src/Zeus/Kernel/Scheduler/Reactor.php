@@ -89,6 +89,9 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         $diff = UnitConverter::convertMicrosecondsToMilliseconds(microtime($this->lastTick) - $lastTick);
 
         $wait = (int) max(0, $this->timerResolution - $diff);
+        if ($wait === 0) {
+            $wait = 1;
+        }
 
         return $wait;
     }
@@ -106,6 +109,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             $changed = $this->select($wait);
 
             if (0 === $changed) {
+                $this->checkSelectTimeouts();
                 continue;
             }
 
@@ -159,6 +163,14 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
         return $amount;
     }
 
+    /**
+     * @return Selector[]
+     */
+    public function getObservedSelectors() : array
+    {
+        return $this->observedSelectors;
+    }
+
     public function getSelector() : AbstractStreamSelector
     {
         $reactor = clone $this->reactor;
@@ -209,12 +221,11 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             throw new TypeError("Invalid callback parameter");
         }
 
-        $timeout *= 1000;
+        $timeout /= 1000;
+        $nextTick = microtime(true) + $timeout;
+        $nextTick += $timeout * ($this->getTimerResolutionTolerance() / 100);
         $this->selectorCallbacks[] = ['onSelect' => $onSelectCallback, 'onTimeout' => $onTimeoutCallback];
         $this->observedSelectors[] = $selector;
-        $nextTick = microtime(true) + $timeout;
-        $nextTick += $nextTick * ($this->getTimerResolutionTolerance() / 100);
-
         $this->selectorTimeouts[] = ['nextTick' => $nextTick, 'timeout' => $timeout];
 
         $this->updateTimerResolution();
@@ -233,9 +244,9 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
             throw new TypeError("Invalid callback parameter");
         }
 
-        $timeout *= 1000;
+        $timeout /= 1000;
         $nextTick = microtime(true) + $timeout;
-        $nextTick += $nextTick * ($this->getTimerResolutionTolerance() / 100);
+        $nextTick += $timeout * ($this->getTimerResolutionTolerance() / 100);
         $this->timers[] = ['callback' => $callback, 'nextTick' => $nextTick, 'timeout' => $timeout, 'periodic' => $isPeriodic];
 
         $this->updateTimerResolution();

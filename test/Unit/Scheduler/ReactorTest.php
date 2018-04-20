@@ -1,7 +1,8 @@
 <?php
 
-namespace ZeusTest\Kernel\Scheduler;
+namespace ZeusTest\Unit\Scheduler;
 
+use PHPUnit\Framework\TestCase;
 use Zeus\IO\Stream\PipeStream;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
@@ -10,9 +11,8 @@ use Zeus\Kernel\Scheduler\Reactor;
 /**
  * Class ReactorTest
  * @package ZeusTest\Kernel\Scheduler
- * @runTestsInSeparateProcesses
  */
-class ReactorTest extends \PHPUnit\Framework\TestCase
+class ReactorTest extends TestCase
 {
     /**
      * @expectedException \TypeError
@@ -143,6 +143,44 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
         $this->assertNotEquals(spl_object_hash($selector), $reactorHash, "Reactor should operate on cloned selector");
     }
 
+    public function testUnregisterSelector()
+    {
+        $isSelected = $isLoopExecuted = $isTimedOut = false;
+        $reactor = new Reactor();
+        $reactorSelector = new Selector();
+        $anotherSelector = new Selector();
+        $stdIn = new PipeStream(fopen("php://stdin", "r"));
+        $key = $stdIn->register($anotherSelector, SelectionKey::OP_READ);
+
+        $reactor->setSelector($reactorSelector);
+        $reactor->observe($anotherSelector, function() use (& $isSelected) {
+            $isSelected = true;
+        }, function() use (& $isTimedOut, $reactor) {
+            $isTimedOut = true;
+            $reactor->setTerminating(true);
+        }, 100);
+
+        $reactor->mainLoop(function() use (& $isLoopExecuted) {
+            $isLoopExecuted = true;
+        });
+
+        $selectorsBefore = $reactor->getObservedSelectors();
+        $keysBefore = $reactor->getKeys();
+        $reactor->unregister($anotherSelector);
+        $selectorsAfter = $reactor->getObservedSelectors();
+        $keysAfter = $reactor->getKeys();
+
+        $this->assertTrue($isTimedOut);
+        $this->assertTrue($isLoopExecuted);
+        $this->assertFalse($isSelected);
+
+        $this->assertEquals(1, count($selectorsBefore));
+        $this->assertEquals(1, count($keysBefore));
+        $this->assertEquals($keysBefore[0], $key);
+        $this->assertEquals(0, count($selectorsAfter));
+        $this->assertEquals(0, count($keysAfter));
+    }
+
     /**
      * @expectedException \TypeError
      * @expectedExceptionMessage Invalid callback parameter
@@ -151,5 +189,47 @@ class ReactorTest extends \PHPUnit\Framework\TestCase
     {
         $reactor = new Reactor();
         $reactor->observe(new Selector(), 'zzzzzzzzzzzzzzz', function() {}, 100);
+    }
+
+    public function getInvalidPercentage()
+    {
+        return [
+            [-100],
+            [-1],
+            [-2],
+            [21],
+            [22],
+            [23],
+            [100],
+        ];
+    }
+
+    public function getValidPercentage()
+    {
+        return array_map(function($value) {
+            return [$value];
+        }, range(0, 20));
+    }
+    /**
+     * @expectedException \OutOfRangeException
+     * @expectedExceptionMessage Tolerance should be in range of 0-20%
+     * @dataProvider getInvalidPercentage
+     * @param int $percentage
+     */
+    public function testInvalidTimerResolution(int $percentage)
+    {
+        $reactor = new Reactor();
+        $reactor->setTimerResolutionTolerance($percentage);
+    }
+
+    /**
+     * @param int $percentage
+     * @dataProvider getValidPercentage
+     */
+    public function testValidTimerResolution(int $percentage)
+    {
+        $reactor = new Reactor();
+        $reactor->setTimerResolutionTolerance($percentage);
+        $this->assertEquals($percentage, $reactor->getTimerResolutionTolerance());
     }
 }
