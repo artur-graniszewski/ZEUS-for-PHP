@@ -20,8 +20,6 @@ use ZeusTest\Helpers\ZeusFactories;
 /**
  * Class PosixThreadTest
  * @package ZeusTest\Kernel\Scheduler
- * @runTestsInSeparateProcesses
- * @preserveGlobalState disabled
  */
 class PosixThreadTest extends TestCase
 {
@@ -87,6 +85,7 @@ class PosixThreadTest extends TestCase
         $self = $_SERVER['SCRIPT_NAME'];
         $_SERVER['SCRIPT_NAME'] = __DIR__ . '/PosixThreadExec.php';
         $bridge = new PosixThreadBridgeMock();
+        $bridge->setIsSupported(true);
         PosixThread::setPosixThreadBridge($bridge);
         $sm = $this->getCustomServiceManager();
         $scheduler = $this->getScheduler(1, null, $sm);

@@ -17,6 +17,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\SchedulerInterface;
+use Zeus\Kernel\System\Runtime;
 use ZeusTest\Helpers\PcntlBridgeMock;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
@@ -77,6 +78,9 @@ class PosixProcessTest extends TestCase
 
     public function testPosixProcessFactory()
     {
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
         $sm = $this->getServiceManager();
         $scheduler = $this->getScheduler(1);
 
