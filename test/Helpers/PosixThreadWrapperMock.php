@@ -79,7 +79,7 @@ class PosixThreadWrapperMock implements ThreadWrapperInterface
         return true;
     }
 
-    private function run()
+    public function run()
     {
         $this->runOriginal();
     }

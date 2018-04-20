@@ -81,6 +81,11 @@ class PosixThreadTest extends TestCase
 
     public function testPosixThreadFactory()
     {
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
+        $self = $_SERVER['SCRIPT_NAME'];
+        $_SERVER['SCRIPT_NAME'] = __DIR__ . '/PosixThreadExec.php';
         $bridge = new PosixThreadBridgeMock();
         PosixThread::setPosixThreadBridge($bridge);
         $sm = $this->getCustomServiceManager();
@@ -90,6 +95,7 @@ class PosixThreadTest extends TestCase
         $event->setScheduler($scheduler);
 
         $this->simulateWorkerInit($scheduler->getEventManager());
+
         $eventLaunched = false;
         $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);
@@ -108,19 +114,17 @@ class PosixThreadTest extends TestCase
             PosixThreadWrapperMock::setIsTerminated(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $self = $_SERVER['SCRIPT_NAME'];
-        $_SERVER['SCRIPT_NAME'] = __DIR__ . '/PosixThreadExec.php';
         ob_start();
-
         $scheduler->start(false);
+        echo "\n\n\n\n\n\n";
         $output = ob_get_clean();
-
+        $newScriptName = $_SERVER['SCRIPT_NAME'];
+        $_SERVER['SCRIPT_NAME'] = $self;
         $this->assertNotEmpty($output, "Worker should return serialized data");
         $serverVars = unserialize($output);
         $this->assertNotEmpty($serverVars, "Worker should return unserializable data");
-        $this->assertEquals($_SERVER['SCRIPT_NAME'], $serverVars['SCRIPT_NAME']);
+        $this->assertEquals($newScriptName, $serverVars['SCRIPT_NAME']);
         $this->assertEquals($argv, $serverVars['argv']);
-
         $this->assertTrue($eventLaunched, 'EVENT_SCHEDULER_STOP should have been triggered by PosixThread');
     }
 
