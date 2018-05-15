@@ -86,7 +86,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
     {
         $lastTick = $this->lastTick;
         $this->lastTick = microtime(true);
-        $diff = UnitConverter::convertMicrosecondsToMilliseconds(microtime($this->lastTick) - $lastTick);
+        $diff = UnitConverter::convertMicrosecondsToMilliseconds($this->lastTick - $lastTick);
 
         $wait = (int) max(0, $this->timerResolution - $diff);
         if ($wait === 0) {
