@@ -18,6 +18,7 @@ use Zeus\IO\Stream\Selector;
 use function escapeshellarg;
 use function basename;
 use function strrpos;
+use function str_replace;
 use function sprintf;
 use function substr;
 use function array_search;

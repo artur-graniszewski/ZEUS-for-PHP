@@ -1,6 +1,7 @@
 <?php
 
 namespace ZeusTest\Helpers;
+
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess\PcntlBridgeInterface;
 
 class PcntlBridgeMock implements PcntlBridgeInterface
@@ -8,7 +9,8 @@ class PcntlBridgeMock implements PcntlBridgeInterface
     protected $executionLog = [];
     protected $pcntlWaitPids = [];
     protected $forkResult = -1;
-    protected $posixPppid;
+    protected $posixPpid;
+    protected $posixPid;
     protected $signalDispatch;
     protected $signalHandlers;
     protected $isSupported = true;
@@ -137,7 +139,7 @@ class PcntlBridgeMock implements PcntlBridgeInterface
      */
     public function setPpid($ppid)
     {
-        $this->posixPppid = $ppid;
+        $this->posixPpid = $ppid;
     }
 
     /**
@@ -147,7 +149,25 @@ class PcntlBridgeMock implements PcntlBridgeInterface
     {
         $this->executionLog[] = [__METHOD__, func_get_args()];
 
-        return $this->posixPppid ? $this->posixPppid : getmypid();
+        return $this->posixPpid ? $this->posixPpid : getmypid();
+    }
+
+    /**
+     * @param $pid
+     */
+    public function setPid($pid)
+    {
+        $this->posixPid = $pid;
+    }
+
+    /**
+     * @return int
+     */
+    public function posixGetPid() : int
+    {
+        $this->executionLog[] = [__METHOD__, func_get_args()];
+
+        return $this->posixPid ? $this->posixPid : getmypid();
     }
 
     /**

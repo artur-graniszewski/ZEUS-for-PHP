@@ -19,6 +19,7 @@ use function json_encode;
 use function version_compare;
 use function phpversion;
 use function sleep;
+use function count;
 
 final class PosixThread extends AbstractModule implements SeparateAddressSpaceInterface
 {

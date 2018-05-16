@@ -38,4 +38,6 @@ interface PcntlBridgeInterface
     public function isSupported() : bool;
 
     public function pcntlAsyncSignals(bool $enable = null);
+
+    public function posixGetPid() : int;
 }

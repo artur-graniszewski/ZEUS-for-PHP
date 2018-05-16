@@ -8,7 +8,10 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridgeInt
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
+use function json_encode;
 use function escapeshellarg;
+use function str_replace;
+use function sprintf;
 use function basename;
 use function fclose;
 

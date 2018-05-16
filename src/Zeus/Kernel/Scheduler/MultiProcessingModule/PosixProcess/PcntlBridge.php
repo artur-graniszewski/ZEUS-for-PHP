@@ -13,7 +13,7 @@ use function posix_getppid;
 use function posix_kill;
 use function is_callable;
 use function extension_loaded;
-
+use function getmypid;
 
 /**
  * Class PcntlBridge
@@ -124,5 +124,10 @@ class PcntlBridge implements PcntlBridgeInterface
         }
 
         throw new UnsupportedOperationException();
+    }
+
+    public function posixGetPid() : int
+    {
+        return getmypid();
     }
 }

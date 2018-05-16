@@ -84,7 +84,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
                 $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
                 $pcntl->pcntlSignal(SIGINT, $onTerminate);
                 $pcntl->pcntlSignal(SIGHUP, $onTerminate);
-                $pid = getmypid();
+                $pid = $pcntl->posixGetPid();
                 $event->setParam(SchedulerInterface::WORKER_INIT, true);
                 break;
             default:

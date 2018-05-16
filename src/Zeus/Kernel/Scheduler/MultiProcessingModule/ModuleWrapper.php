@@ -22,6 +22,8 @@ use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\System\Runtime;
 
+use function get_class;
+use function sprintf;
 use function is_callable;
 use function sleep;
 use function time;

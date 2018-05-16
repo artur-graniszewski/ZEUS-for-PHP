@@ -9,8 +9,6 @@ use Zeus\IO\Exception\IOException;
 use Zeus\IO\Stream\SelectableStreamInterface;
 use Zeus\ServerService\Shared\Networking\Service\ReadBuffer;
 
-use function strlen;
-
 /**
  * Class SocketIpc
  * @package Zeus\Kernel\IpcServer
@@ -18,13 +16,13 @@ use function strlen;
  */
 class SocketIpc extends ReadBuffer implements IpcDriver
 {
+    use MessagePackager;
+
     /** @var SelectableStreamInterface */
     public $stream;
 
     /** @var int */
     private $senderId;
-
-    use MessagePackager;
 
     public function __construct($stream)
     {

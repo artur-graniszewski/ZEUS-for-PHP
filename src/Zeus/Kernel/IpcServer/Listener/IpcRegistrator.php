@@ -11,6 +11,9 @@ use Zeus\Kernel\IpcServer\SocketIpc;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 
+use function stream_socket_client;
+use function stream_context_create;
+
 class IpcRegistrator
 {
     /** @var EventManagerInterface */
@@ -47,7 +50,7 @@ class IpcRegistrator
         $this->eventManager->attach(WorkerEvent::EVENT_LOOP, new WorkerMessageReader($this->ipcClient, $this->eventManager), -9000);
     }
 
-    public function registerIpc(int $ipcPort, int $uid)
+    private function registerIpc(int $ipcPort, int $uid)
     {
         $opts = [
             'socket' => [
