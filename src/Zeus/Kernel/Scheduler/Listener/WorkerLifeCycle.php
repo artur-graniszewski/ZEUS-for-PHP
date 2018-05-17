@@ -87,7 +87,7 @@ class WorkerLifeCycle
                 $this->logException($exception, $scheduler->getLogger());
             }
 
-            if ($worker->getCode() === WorkerState::EXITING || $worker->isLastTask()) {
+            if ($worker->isExiting() || $worker->isLastTask()) {
                 break;
             }
         }

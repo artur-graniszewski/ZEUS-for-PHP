@@ -130,7 +130,7 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $broker->setWorkerStatus($status);
     }
 
-    private function getMessageComponent()
+    private function getMessageComponent() : MessageComponentInterface
     {
         return $this->message;
     }

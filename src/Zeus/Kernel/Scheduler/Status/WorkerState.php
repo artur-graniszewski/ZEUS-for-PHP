@@ -9,6 +9,7 @@ use function min;
 use function max;
 use function getmypid;
 use function microtime;
+use function time;
 
 /**
  * Current status of the worker.
@@ -182,6 +183,7 @@ class WorkerState
 
     public function setStatusDescription(string $statusDescription = null)
     {
+        $this->setTime(time());
         $this->statusDescription = $statusDescription;
     }
 
@@ -308,14 +310,12 @@ class WorkerState
 
     public function setRunning(string $statusDescription = '')
     {
-        $this->setTime(time());
         $this->setCode(WorkerState::RUNNING);
         $this->setStatusDescription($statusDescription);
     }
 
     public function setWaiting(string $statusDescription = '')
     {
-        $this->setTime(time());
         $this->setCode(WorkerState::WAITING);
         $this->setStatusDescription($statusDescription);
     }

@@ -119,9 +119,13 @@ abstract class AbstractMessageBroker
                 $this->inboundStreams[] = $ipcStream;
                 $selectionKey = $this->ipcSelector->register($ipcStream, SelectionKey::OP_READ);
                 $selectionKey->attach(new SocketIpc($ipcStream));
-                if (!$this->addNewIpcClients($selectionKey)) {
-                    // request is incomplete
-                    continue;
+                try {
+                    if (!$this->addNewIpcClients($selectionKey)) {
+                        // request is incomplete
+                        continue;
+                    }
+                } catch (IOException $exception) {
+                    throw  $exception;
                 }
             }
         } catch (SocketTimeoutException $exception) {

@@ -58,65 +58,65 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     const MAX_KEEP_ALIVE_REQUESTS = 100;
 
     /** @var NetworkStreamInterface */
-    protected $connection;
+    private $connection;
 
     /** @var int */
-    protected $requestPhase = self::REQUEST_PHASE_IDLE;
+    private $requestPhase = self::REQUEST_PHASE_IDLE;
 
     /** @var int */
-    protected $bufferSize = 8192;
+    private $bufferSize = 8192;
 
     /** @var callable */
-    protected $errorHandler;
+    private $errorHandler;
 
     /** @var Callback */
-    protected $dispatcher;
+    private $dispatcher;
 
     /** @var bool */
-    protected $headersSent = false;
+    private $headersSent = false;
 
     /** @var int */
-    protected $keepAliveCount;
+    private $keepAliveCount;
 
     /** @var int */
-    protected $keepAliveTimer = 5;
+    private $keepAliveTimer = 5;
 
     /** @var TransferEncoding */
-    protected $chunkedHeader;
+    private $chunkedHeader;
 
     /** @var Connection */
-    protected $closeHeader;
+    private $closeHeader;
 
     /** @var Connection */
-    protected $keepAliveHeader;
+    private $keepAliveHeader;
 
     /** @var bool */
-    protected $requestComplete = false;
+    private $requestComplete = false;
 
     /** @var int */
-    protected $requestsFinished = 0;
+    private $requestsFinished = 0;
 
     /** @var bool */
-    protected $headersReceived = false;
+    private $headersReceived = false;
 
     /** @var bool */
-    protected $bodyReceived = false;
+    private $bodyReceived = false;
 
     /** @var Request */
-    protected $request;
+    private $request;
 
     /** @var Response */
-    protected $response;
+    private $response;
 
     /** @var int */
-    protected $posInRequestBody = 0;
+    private $posInRequestBody = 0;
 
-    protected $compressionHandler = null;
+    private $compressionHandler = null;
 
-    protected $remoteAddress = '';
+    private $remoteAddress = '';
 
     /** @var KeepAlive */
-    protected $keepAliveCounterHeader;
+    private $keepAliveCounterHeader;
 
     /**
      * @var callable
@@ -130,7 +130,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      */
     public function __construct($dispatcher, $errorHandler = null, $responseHandler = null)
     {
-        $this->errorHandler = $errorHandler;
+        $this->errorHandler = $errorHandler ? $errorHandler : function ($request, $exception) {
+            $this->dispatchError($request, $exception);
+        };
         $this->chunkedHeader = new TransferEncoding(static::ENCODING_CHUNKED);
         $this->closeHeader = (new Connection())->setValue("close");
         $this->keepAliveHeader = (new Connection())->setValue("keep-alive");
@@ -142,7 +144,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     /**
      * @return callable
      */
-    public function getErrorHandler()
+    private function getErrorHandler()
     {
         return $this->errorHandler;
     }
@@ -150,7 +152,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
     /**
      * @return callable
      */
-    public function getDispatcher()
+    private function getDispatcher()
     {
         return $this->dispatcher;
     }
@@ -184,10 +186,6 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
 
         $callback = function($request) use ($exception) {
             $errorHandler = $this->getErrorHandler();
-
-            if (!is_callable($errorHandler)) {
-                $errorHandler = [$this, 'dispatchError'];
-            }
 
             return $errorHandler($request, $exception);
         };
@@ -275,7 +273,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @param callback $callback
      * @throws Throwable
      */
-    protected function dispatchRequest(NetworkStreamInterface $connection, $callback)
+    private function dispatchRequest(NetworkStreamInterface $connection, $callback)
     {
         $exception = null;
         $this->connection = $connection;
@@ -283,7 +281,9 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         try {
             $this->requestPhase = static::REQUEST_PHASE_PROCESSING;
             $this->mapUploadedFiles($this->request);
-            ob_start([$this, 'sendResponse'], $this->bufferSize);
+            ob_start(function ($buffer) {
+                $this->sendResponse($buffer);
+            }, $this->bufferSize);
             $callback($this->request, $this->response);
 
             $this->requestPhase = static::REQUEST_PHASE_SENDING;
@@ -299,7 +299,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
     }
 
-    protected function initNewRequest()
+    private function initNewRequest()
     {
         $this->headersSent = false;
         $this->request = null;
@@ -312,7 +312,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->deleteTemporaryFiles();
     }
 
-    protected function validateRequestHeaders(NetworkStreamInterface $connection)
+    private function validateRequestHeaders(NetworkStreamInterface $connection)
     {
         $this->setHost($this->request, $connection->getLocalAddress());
         //$this->request->setBasePath(sprintf("%s:%d", $this->request->getUri()->getHost(), $this->request->getUri()->getPort()));
@@ -327,7 +327,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
     }
 
-    protected function decodeRequestBody(string & $message)
+    private function decodeRequestBody(string & $message)
     {
         if ($this->bodyReceived) {
             return;
@@ -354,7 +354,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->decodeRegularRequestBody($this->request, $message);
     }
 
-    protected function sendHeaders(string & $buffer)
+    private function sendHeaders(string & $buffer)
     {
         $connection = $this->connection;
         $response = $this->response;
@@ -394,7 +394,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         $this->headersSent = true;
     }
 
-    protected function enableCompressionIfSupported(string & $buffer) : bool
+    private function enableCompressionIfSupported(string & $buffer) : bool
     {
         $this->compressionHandler = null;
 
@@ -438,7 +438,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return true;
     }
 
-    public function sendResponse(string $buffer) : string
+    private function sendResponse(string $buffer) : string
     {
         $connection = $this->connection;
 
@@ -475,7 +475,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return '';
     }
 
-    protected function sendBody(NetworkStreamInterface $connection, string $buffer = null)
+    private function sendBody(NetworkStreamInterface $connection, string $buffer = null)
     {
         if ($this->isBodyAllowedInResponse($this->request)) {
             $isChunkedResponse = $this->response->getMetadata('isChunkedResponse');
@@ -509,7 +509,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         }
     }
 
-    protected function finalizeRequest()
+    private function finalizeRequest()
     {
         $connection = $this->connection;
 
@@ -543,7 +543,7 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
      * @return Response
      * @internal param Response $response
      */
-    protected function dispatchError(Request $request, Throwable $exception) : Response
+    private function dispatchError(Request $request, Throwable $exception) : Response
     {
         $statusCode = $exception->getCode() >= Response::STATUS_CODE_400 ? $exception->getCode() : Response::STATUS_CODE_500;
 
@@ -556,20 +556,17 @@ class Message implements MessageComponentInterface, HeartBeatMessageInterface
         return $response;
     }
 
-    protected function restartKeepAliveCounter()
+    private function restartKeepAliveCounter()
     {
         $this->keepAliveCount = static::MAX_KEEP_ALIVE_REQUESTS;
         $this->restartKeepAliveTimer();
     }
 
-    protected function restartKeepAliveTimer()
+    private function restartKeepAliveTimer()
     {
         $this->keepAliveTimer = 5;
     }
 
-    /**
-     * @return int
-     */
     public function getNumberOfFinishedRequests() : int
     {
         return $this->requestsFinished;
