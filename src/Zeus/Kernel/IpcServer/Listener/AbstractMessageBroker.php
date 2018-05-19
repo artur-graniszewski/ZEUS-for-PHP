@@ -110,24 +110,14 @@ abstract class AbstractMessageBroker
     private function checkInboundConnections()
     {
         try {
-            while (true) {
-                $ipcStream = $this->ipcServer->accept();
-                // @todo: remove setBlocking(), now its needed in ZeusTest\SchedulerTest unit tests, otherwise they hang
-                $ipcStream->setBlocking(false);
-                $this->setStreamOptions($ipcStream);
+            $ipcStream = $this->ipcServer->accept();
+            // @todo: remove setBlocking(), now its needed in ZeusTest\SchedulerTest unit tests, otherwise they hang
+            $ipcStream->setBlocking(false);
+            $this->setStreamOptions($ipcStream);
 
-                $this->inboundStreams[] = $ipcStream;
-                $selectionKey = $this->ipcSelector->register($ipcStream, SelectionKey::OP_READ);
-                $selectionKey->attach(new SocketIpc($ipcStream));
-                try {
-                    if (!$this->addNewIpcClients($selectionKey)) {
-                        // request is incomplete
-                        continue;
-                    }
-                } catch (IOException $exception) {
-                    throw  $exception;
-                }
-            }
+            $this->inboundStreams[] = $ipcStream;
+            $selectionKey = $this->ipcSelector->register($ipcStream, SelectionKey::OP_READ);
+            $selectionKey->attach(new SocketIpc($ipcStream));
         } catch (SocketTimeoutException $exception) {
         }
     }
