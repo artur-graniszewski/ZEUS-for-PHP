@@ -5,8 +5,8 @@ namespace Zeus\Kernel;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zeus\Kernel\IpcServer\IpcEvent;
-use Zeus\Kernel\IpcServer\Listener\KernelMessageBroker;
-use Zeus\Kernel\IpcServer\Listener\SchedulerMessageBroker;
+use Zeus\Kernel\IpcServer\Listener\KernelMessageListener;
+use Zeus\Kernel\IpcServer\Listener\SchedulerMessageListener;
 use Zeus\Kernel\IpcServer\Listener\WorkerMessageSender;
 use Zeus\Kernel\IpcServer\Listener\IpcRegistrator;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -76,7 +76,7 @@ class IpcServer implements EventManagerAwareInterface
 
         $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function() use ($events) {
             $this->startIpc();
-            $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, new KernelMessageBroker($this->getEventManager(), $this->ipcSelector, $this->ipcServer), SchedulerEvent::PRIORITY_REGULAR + 1);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, new KernelMessageListener($this->getEventManager(), $this->ipcSelector, $this->ipcServer), SchedulerEvent::PRIORITY_REGULAR + 1);
 
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
@@ -92,7 +92,7 @@ class IpcServer implements EventManagerAwareInterface
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
 
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, new SchedulerMessageBroker($this->getEventManager(), $this->ipcSelector, $this->ipcServer), SchedulerEvent::PRIORITY_REGULAR + 1);
+            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, new SchedulerMessageListener($this->getEventManager(), $this->ipcSelector, $this->ipcServer), SchedulerEvent::PRIORITY_REGULAR + 1);
         }, 100000);
     }
 

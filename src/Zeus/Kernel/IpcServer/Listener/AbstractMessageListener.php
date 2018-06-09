@@ -24,7 +24,7 @@ use function array_keys;
 use function array_merge;
 use function array_search;
 
-abstract class AbstractMessageBroker
+abstract class AbstractMessageListener
 {
     /** @var MessageBroker */
     private $messageBroker;
