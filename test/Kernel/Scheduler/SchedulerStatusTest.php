@@ -16,6 +16,12 @@ use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Unit\IO\DummySelectableStream;
 
+/**
+ * Class SchedulerStatusTest
+ * @package ZeusTest\Kernel\Scheduler
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class SchedulerStatusTest extends TestCase
 {
     use ZeusFactories;

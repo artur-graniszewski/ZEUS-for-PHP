@@ -10,6 +10,12 @@ use Zend\ModuleManager\ModuleManager;
 use Zeus\Module;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class ZeusModuleTest
+ * @package ZeusTest
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class ZeusModuleTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;

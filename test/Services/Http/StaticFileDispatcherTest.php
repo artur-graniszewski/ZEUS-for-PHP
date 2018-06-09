@@ -8,6 +8,12 @@ use Zend\Http\Response;
 use Zeus\ServerService\Http\Dispatcher\StaticFileDispatcher;
 use ZeusTest\Helpers\DummyFileDispatcher;
 
+/**
+ * Class StaticFileDispatcherTest
+ * @package ZeusTest\Services\Http
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class StaticFileDispatcherTest extends \PHPUnit\Framework\TestCase
 {
     protected function getTmpDir()

@@ -8,6 +8,12 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class SchedulerPluginsTest
+ * @package ZeusTest\Kernel\Scheduler
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class SchedulerPluginsTest extends TestCase
 {
     use ZeusFactories;

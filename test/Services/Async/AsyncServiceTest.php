@@ -12,6 +12,12 @@ use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class AsyncServiceTest
+ * @package ZeusTest\Services\Async
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class AsyncServiceTest extends TestCase
 {
     use ZeusFactories;

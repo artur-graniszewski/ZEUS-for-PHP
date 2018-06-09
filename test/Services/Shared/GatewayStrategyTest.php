@@ -12,6 +12,12 @@ use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class GatewayStrategyTest
+ * @package ZeusTest\Services\Shared
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class GatewayStrategyTest extends TestCase
 {
     use ZeusFactories;

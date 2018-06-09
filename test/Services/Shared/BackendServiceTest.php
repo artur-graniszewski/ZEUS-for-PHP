@@ -6,6 +6,12 @@ use Zeus\ServerService\Shared\Networking\Service\BackendService;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 
+/**
+ * Class BackendServiceTest
+ * @package ZeusTest\Services\Shared
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class BackendServiceTest extends AbstractServiceTest
 {
     public function testServerAccept()

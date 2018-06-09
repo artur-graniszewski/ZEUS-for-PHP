@@ -8,6 +8,12 @@ use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 use Zeus\ServerService\Shared\Networking\Service\WorkerIPC;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 
+/**
+ * Class GatewayServiceTest
+ * @package ZeusTest\Services\Shared
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class GatewayServiceTest extends AbstractServiceTest
 {
     protected function getRegistratorStub(WorkerIPC $workerIPC = null) : RegistratorService

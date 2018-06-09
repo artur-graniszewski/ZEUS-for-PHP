@@ -10,6 +10,12 @@ use Zeus\Module;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class ZendFrameworkDispatcherTest
+ * @package ZeusTest
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class ZendFrameworkDispatcherTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;

@@ -13,6 +13,12 @@ use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
 use Zeus\ServerService\Shared\Networking\MessageComponentInterface;
 use ZeusTest\Helpers\SocketTestNetworkStream;
 
+/**
+ * Class HttpMessageTest
+ * @package ZeusTest\Services\Http
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class HttpMessageTest extends \PHPUnit\Framework\TestCase
 {
     protected $fileHandle;

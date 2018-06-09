@@ -11,6 +11,12 @@ use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
 use Zeus\ServerService\Async\Service;
 
+/**
+ * Class AsyncPluginTest
+ * @package ZeusTest\Services\Async
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class AsyncPluginTest extends \PHPUnit\Framework\TestCase
 {
     /** @var SocketServer */

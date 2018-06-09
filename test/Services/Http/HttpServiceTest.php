@@ -13,6 +13,12 @@ use Zeus\ServerService\Http\Service;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class HttpServiceTest
+ * @package ZeusTest\Services\Http
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class HttpServiceTest extends \PHPUnit\Framework\TestCase
 {
     use ZeusFactories;

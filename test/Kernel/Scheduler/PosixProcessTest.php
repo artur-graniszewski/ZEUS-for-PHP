@@ -22,6 +22,12 @@ use ZeusTest\Helpers\PcntlBridgeMock;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 
+/**
+ * Class PosixProcessTest
+ * @package ZeusTest\Kernel\Scheduler
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class PosixProcessTest extends TestCase
 {
     use ZeusFactories;

@@ -13,6 +13,12 @@ use Zeus\ServerService\Shared\Logger\LoggerInterface;
 use ZeusTest\Helpers\DummyServerService;
 use ZeusTest\Helpers\ZeusFactories;
 
+/**
+ * Class ServerServiceManagerTest
+ * @package ZeusTest\Services
+ * @runTestsInSeparateProcesses true
+ * @preserveGlobalState disabled
+ */
 class ServerServiceManagerTest extends TestCase
 {
     use ZeusFactories;
