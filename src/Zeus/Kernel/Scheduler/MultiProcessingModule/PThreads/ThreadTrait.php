@@ -86,7 +86,7 @@ trait ThreadTrait
                     }
 
                     unset ($SERVER);
-               
+
                     require_once($_SERVER[\'SCRIPT_NAME\']);
                 ?>';
 

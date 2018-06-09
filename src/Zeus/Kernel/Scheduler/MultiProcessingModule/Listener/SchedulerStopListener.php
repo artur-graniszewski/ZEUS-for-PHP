@@ -8,20 +8,13 @@ class SchedulerStopListener extends AbstractWorkerPoolListener
 {
     public function __invoke(SchedulerEvent $event)
     {
-        $this->driver->onSchedulerStop($event);
         $this->workerPool->setTerminating(true);
+        $this->driver->onSchedulerStop($event);
 
-        while ($this->ipcConnections) {
-            $this->workerPool->checkWorkers();
-            if (!$this->workerPool->isTerminating()) {
-                $this->workerPool->registerWorkers();
-            }
-            $this->driver->onWorkersCheck($event);
-            if ($this->ipcConnections) {
-                sleep(1);
-                $amount = count($this->ipcConnections);
-                //$this->getLogger()->info("Waiting for $amount workers to exit");
-            }
+        while (!$this->workerPool->disconnectWorkers()) {
+            sleep(1);
+            //$amount = count($this->ipcConnections);
+            //$this->getLogger()->info("Waiting for $amount workers to exit");
         }
     }
 }

@@ -14,9 +14,12 @@ use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\Scheduler\Shared\FixedCollection;
 
 use function array_search;
+use function count;
 
 class WorkerPool
 {
+    const IPC_POOL_SIZE = 16384;
+
     /** @var SocketServer[] */
     private $ipcServers;
 
@@ -31,7 +34,8 @@ class WorkerPool
 
     public function __construct(Selector $ipcSelector)
     {
-        $this->ipcServers = new FixedCollection(1024);
+        $this->ipcServers = new FixedCollection(static::IPC_POOL_SIZE);
+        $this->ipcConnections = new FixedCollection(static::IPC_POOL_SIZE);
         $this->ipcSelector = $ipcSelector;
     }
 
@@ -40,17 +44,19 @@ class WorkerPool
         $ipcSelector = $this->ipcSelector;
 
         // read all keep-alive messages
-        if ($ipcSelector->select(0)) {
-            foreach ($ipcSelector->getSelectionKeys() as $key) {
-                /** @var SocketStream $stream */
-                $stream = $key->getStream();
-                try {
-                    $stream->read();
-                } catch (Throwable $ex) {
-                    $uid = array_search($stream, $this->ipcConnections);
-                    if ($uid) {
-                        $this->unregisterWorker($uid);
-                    }
+        if (!$ipcSelector->select(0)) {
+            return;
+        }
+
+        foreach ($ipcSelector->getSelectionKeys() as $key) {
+            /** @var SocketStream $stream */
+            $stream = $key->getStream();
+            try {
+                $stream->read();
+            } catch (Throwable $ex) {
+                $uid = array_search($stream, $this->ipcConnections);
+                if ($uid) {
+                    $this->unregisterWorker($uid);
                 }
             }
         }
@@ -97,7 +103,7 @@ class WorkerPool
         $connection->close();
     }
 
-    public function unregisterWorkers()
+    public function shutdown()
     {
         try {
             foreach ($this->ipcServers as $server) {
@@ -108,6 +114,16 @@ class WorkerPool
         } catch (Throwable $ex) {
 
         }
+    }
+
+    public function disconnectWorkers() : bool
+    {
+        $this->checkWorkers();
+        if (!$this->isTerminating()) {
+            $this->registerWorkers();
+        }
+
+        return count($this->ipcConnections) === 0;
     }
 
     private function setStreamOptions(NetworkStreamInterface $stream)

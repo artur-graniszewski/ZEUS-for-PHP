@@ -8,6 +8,7 @@ use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -20,8 +21,7 @@ use ZeusTest\Helpers\ZeusFactories;
 /**
  * Class PosixThreadTest
  * @package ZeusTest\Kernel\Scheduler
- * @runInSeparateProcess true
- * @runTestsInSeparateProcesses true
+ * @preserveGlobalState true
  */
 class PosixThreadTest extends TestCase
 {
@@ -79,7 +79,7 @@ class PosixThreadTest extends TestCase
         return $sm;
     }
 
-    public function atestPosixThreadFactory()
+    public function testPosixThreadFactory()
     {
         Runtime::setShutdownHook(function() {
             return true;
@@ -109,6 +109,10 @@ class PosixThreadTest extends TestCase
                 $argv = $_SERVER['argv'];
             }
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
+
+        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
+            $event->getWorker()->setCode(WorkerState::EXITING);
+        }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
             $eventLaunched = true;

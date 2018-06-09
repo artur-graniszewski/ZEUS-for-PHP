@@ -8,7 +8,7 @@ class KernelStopListener extends AbstractWorkerPoolListener
 {
     public function __invoke(SchedulerEvent $event)
     {
-        $this->workerPool->unregisterWorkers();
+        $this->workerPool->shutdown();
 
         $this->driver->onKernelStop($event);
         $this->driver->onWorkersCheck($event);

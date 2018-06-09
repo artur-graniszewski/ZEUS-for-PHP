@@ -54,6 +54,7 @@ class SchedulerLifeCycle
         try {
             $this->triggerEvent(SchedulerEvent::EVENT_STOP, $params);
         } catch (Throwable $e) {
+
         }
 
         if ($exception) {
