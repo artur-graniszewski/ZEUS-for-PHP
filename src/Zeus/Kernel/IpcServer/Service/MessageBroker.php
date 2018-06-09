@@ -58,10 +58,12 @@ class MessageBroker
                     break;
 
                 case IpcServer::AUDIENCE_AMOUNT:
-                    if ($number > count($availableAudience)) {
-                        $this->queuedMessages[] = $payload;
-
-                        continue 2;
+                    $diff = count($availableAudience) - $number;
+                    if ($diff < 0) {
+                        $queuedPayload = $payload;
+                        $queuedPayload['num'] = -$diff;
+                        $this->queuedMessages[] = $queuedPayload;
+                        $number += $diff;
                     }
 
                     $cids = array_rand(array_flip($availableAudience), $number);
