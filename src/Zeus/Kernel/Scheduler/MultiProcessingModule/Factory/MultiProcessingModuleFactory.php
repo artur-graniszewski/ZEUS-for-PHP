@@ -8,7 +8,7 @@ use Zend\Log\LoggerInterface;
 use Zend\ServiceManager\Exception\ServiceNotCreatedException;
 use Zend\ServiceManager\Exception\ServiceNotFoundException;
 use Zend\ServiceManager\Factory\FactoryInterface;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleDecorator;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
 
 class MultiProcessingModuleFactory implements FactoryInterface
@@ -36,7 +36,7 @@ class MultiProcessingModuleFactory implements FactoryInterface
         /** @var MultiProcessingModuleInterface $driver */
         $driver = new $requestedName();
 
-        $wrapper = new ModuleWrapper($driver);
+        $wrapper = new ModuleDecorator($driver);
         $wrapper->setLogger($logger);
         $wrapper->setEventManager($eventManager);
 

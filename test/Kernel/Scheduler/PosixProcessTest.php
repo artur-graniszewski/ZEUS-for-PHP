@@ -9,7 +9,7 @@ use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleDecorator;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixProcess;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
@@ -56,7 +56,7 @@ class PosixProcessTest extends TestCase
         return $found;
     }
 
-    private function getMpm(SchedulerInterface $scheduler) : ModuleWrapper
+    private function getMpm(SchedulerInterface $scheduler) : ModuleDecorator
     {
         $sm = $this->getServiceManager();
         $logger = new Logger();
@@ -71,7 +71,7 @@ class PosixProcessTest extends TestCase
 
         $this->assertInstanceOf(PosixProcess::class, $service);
 
-        $service = new ModuleWrapper($service);
+        $service = new ModuleDecorator($service);
         $service->setLogger($scheduler->getLogger());
         return $service;
     }
@@ -168,7 +168,7 @@ class PosixProcessTest extends TestCase
         $config->setServiceName('test');
         $worker = new WorkerState("test");
         $event->setWorker($worker);
-        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setEventManager($em);
 
         $event->setName($initialEventType);
@@ -318,7 +318,7 @@ class PosixProcessTest extends TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::EVENT_START);
@@ -428,7 +428,7 @@ class PosixProcessTest extends TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setLogger($this->getDummyLogger());
         $posixProcess->setEventManager($em);
 
@@ -459,7 +459,7 @@ class PosixProcessTest extends TestCase
 
         PosixProcess::setPcntlBridge($pcntlMock);
         $event = new SchedulerEvent();
-        $posixProcess = new ModuleWrapper(new PosixProcess());
+        $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setEventManager($em);
 
         $event->setName(SchedulerEvent::EVENT_START);

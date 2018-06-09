@@ -11,9 +11,9 @@ interface MultiProcessingModuleInterface
 
     public static function getCapabilities() : MultiProcessingModuleCapabilities;
 
-    public function getWrapper() : ModuleWrapper;
+    public function getDecorator() : ModuleDecorator;
 
-    public function setWrapper(ModuleWrapper $wrapper);
+    public function setDecorator(ModuleDecorator $wrapper);
 
     public function onKernelStart(SchedulerEvent $event);
 

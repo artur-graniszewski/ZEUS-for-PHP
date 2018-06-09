@@ -84,7 +84,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->getWrapper()->setIpcAddress(\ZEUS_THREAD_IPC_ADDRESS);
+        $this->getDecorator()->setIpcAddress(\ZEUS_THREAD_IPC_ADDRESS);
     }
 
     public function onSchedulerStop(SchedulerEvent $event)
@@ -94,7 +94,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
             if ($this->workers) {
                 sleep(1);
                 $amount = count($this->workers);
-                $this->getWrapper()->getLogger()->info("Waiting for $amount workers to exit");
+                $this->getDecorator()->getLogger()->info("Waiting for $amount workers to exit");
             }
         }
     }
@@ -120,7 +120,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
                 $this->workers[$threadId] = null;
                 unset ($this->workers[$threadId]);
 
-                $this->getWrapper()->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
+                $this->getDecorator()->raiseWorkerExitedEvent($threadId, getmypid(), $threadId);
             }
         }
     }
@@ -147,7 +147,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
         $thread->setServerVariables($_SERVER);
         $thread->setApplicationArguments($argv);
         $thread->setWorkerId(static::$id);
-        $thread->setIpcAddress($event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM));
+        $thread->setIpcAddress($event->getParam(ModuleDecorator::ZEUS_IPC_ADDRESS_PARAM));
         $thread->start(static::PTHREADS_INHERIT_NONE);
         $this->workers[static::$id] = $thread;
 
@@ -166,7 +166,7 @@ final class PosixThread extends AbstractModule implements SeparateAddressSpaceIn
     public function onSchedulerInit(SchedulerEvent $event)
     {
         if (version_compare((float) phpversion(), self::MIN_STABLE_PHP_VERSION, "<")) {
-            $this->getWrapper()->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
+            $this->getDecorator()->getLogger()->warn(sprintf("Thread safety in PHP %s is broken: pthreads MPM may be unstable!", phpversion(), self::MIN_STABLE_PHP_VERSION));
         }
     }
 

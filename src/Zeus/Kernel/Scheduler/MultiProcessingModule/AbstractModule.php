@@ -7,16 +7,16 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 
 abstract class AbstractModule implements MultiProcessingModuleInterface
 {
-    private $wrapper;
+    private $decorator;
 
-    public function setWrapper(ModuleWrapper $wrapper)
+    public function setDecorator(ModuleDecorator $decorator)
     {
-        $this->wrapper = $wrapper;
+        $this->decorator = $decorator;
     }
 
-    public function getWrapper() : ModuleWrapper
+    public function getDecorator() : ModuleDecorator
     {
-        return $this->wrapper;
+        return $this->decorator;
     }
 
     public function onKernelStart(SchedulerEvent $event)

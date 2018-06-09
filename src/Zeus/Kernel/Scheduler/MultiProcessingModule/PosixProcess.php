@@ -48,7 +48,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
         static::getPcntlBridge()->pcntlSignalDispatch();
 
         if ($this->ppid !== static::getPcntlBridge()->posixGetPpid()) {
-            $this->getWrapper()->setTerminating(true);
+            $this->getDecorator()->setTerminating(true);
         }
     }
 
@@ -78,7 +78,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
                 // we are the new process
                 $this->ppid = static::getPcntlBridge()->posixGetPpid();
 
-                $onTerminate = function() { $this->getWrapper()->setTerminating(true); };
+                $onTerminate = function() { $this->getDecorator()->setTerminating(true); };
                 $pcntl->pcntlSignal(SIGTERM, $onTerminate);
                 $pcntl->pcntlSignal(SIGQUIT, $onTerminate);
                 $pcntl->pcntlSignal(SIGTSTP, $onTerminate);
@@ -100,7 +100,7 @@ final class PosixProcess extends AbstractProcessModule implements SeparateAddres
     {
         $pcntlStatus = 0;
         while (($pid = static::getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-            $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
+            $this->getDecorator()->raiseWorkerExitedEvent($pid, $pid, 1);
         }
     }
 

@@ -154,7 +154,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
             if (!$status['running']) {
                 $this->cleanProcessPipes($pid);
-                $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
+                $this->getDecorator()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
     }

@@ -210,7 +210,7 @@ trait ZeusFactories
         $workerEvent->setWorker($worker);
         $workerEvent->setTarget($worker);
         $workerEvent->setScheduler($scheduler);
-        $scheduler->getMultiProcessingModule()->getWrapper()->setWorkerEvent($workerEvent);
+        $scheduler->getMultiProcessingModule()->getDecorator()->setWorkerEvent($workerEvent);
 
         return $scheduler;
     }

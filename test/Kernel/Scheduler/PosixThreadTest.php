@@ -20,6 +20,8 @@ use ZeusTest\Helpers\ZeusFactories;
 /**
  * Class PosixThreadTest
  * @package ZeusTest\Kernel\Scheduler
+ * @runInSeparateProcess true
+ * @runTestsInSeparateProcesses true
  */
 class PosixThreadTest extends TestCase
 {
@@ -77,7 +79,7 @@ class PosixThreadTest extends TestCase
         return $sm;
     }
 
-    public function testPosixThreadFactory()
+    public function atestPosixThreadFactory()
     {
         Runtime::setShutdownHook(function() {
             return true;

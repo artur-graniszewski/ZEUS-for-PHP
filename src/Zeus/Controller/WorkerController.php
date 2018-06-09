@@ -6,7 +6,7 @@ use Throwable;
 use Zend\Log\Logger;
 use Zend\Stdlib\RequestInterface;
 use Zend\Stdlib\ResponseInterface;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleDecorator;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\System\Runtime;
@@ -97,7 +97,7 @@ class WorkerController extends AbstractController
         /** @var SchedulerInterface $scheduler */
         $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
-        $event = $scheduler->getMultiProcessingModule()->getWrapper()->getWorkerEvent();
+        $event = $scheduler->getMultiProcessingModule()->getDecorator()->getWorkerEvent();
 
         $worker = $event->getWorker();
         $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
@@ -108,7 +108,7 @@ class WorkerController extends AbstractController
         $event->setScheduler($scheduler);
         $event->setParams($startParams);
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
-            $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
+            $event->setParam(ModuleDecorator::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
         }
         $event->setName(WorkerEvent::EVENT_INIT);
         $scheduler->getEventManager()->triggerEvent($event);

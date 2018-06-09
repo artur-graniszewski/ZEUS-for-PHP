@@ -166,7 +166,7 @@ class Scheduler implements SchedulerInterface
         $this->schedulerLifeCycle->setScheduler($this);
 
         $this->multiProcessingModule = $driver;
-        $driver->getWrapper()->setWorkerEvent($this->workerLifeCycle->getWorkerEvent());
+        $driver->getDecorator()->setWorkerEvent($this->workerLifeCycle->getWorkerEvent());
 
         $this->discipline = $discipline;
         $discipline->setConfig($config);

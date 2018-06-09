@@ -4,7 +4,7 @@ namespace ZeusTest\Helpers;
 
 use Zend\EventManager\EventManagerInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\AbstractModule;
-use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleWrapper;
+use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleDecorator;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -21,7 +21,8 @@ class DummyMpm extends AbstractModule
 
     public function attach(EventManagerInterface $eventManager)
     {
-        $this->pipe = $this->getWrapper()->createPipe();
+        $this->pipe = $socketServer = new SocketServer(0, 500, ModuleDecorator::LOOPBACK_INTERFACE);
+        $socketServer->setSoTimeout(10);
 
         $eventManager->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
             $pid = $event->getParam('uid', getmypid());
@@ -57,15 +58,16 @@ class DummyMpm extends AbstractModule
 
     public function onWorkerCreate(WorkerEvent $event)
     {
-        $pipe = $this->getWrapper()->createPipe();
-        $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
-        $this->getWrapper()->setIpcAddress($pipe->getLocalAddress());
+        $pipe = $socketServer = new SocketServer(0, 500, ModuleDecorator::LOOPBACK_INTERFACE);
+        $socketServer->setSoTimeout(10);
+        $event->setParam(ModuleDecorator::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
+        $this->getDecorator()->setIpcAddress($pipe->getLocalAddress());
     }
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $event->setParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
-        $this->getWrapper()->setIpcAddress($this->pipe->getLocalAddress());
+        $event->setParam(ModuleDecorator::ZEUS_IPC_ADDRESS_PARAM, $this->pipe->getLocalAddress());
+        $this->getDecorator()->setIpcAddress($this->pipe->getLocalAddress());
     }
 
     public static function isSupported(& $errorMessage = ''): bool
@@ -75,7 +77,7 @@ class DummyMpm extends AbstractModule
 
     public function onWorkerTerminate(WorkerEvent $event)
     {
-        $this->getWrapper()->raiseWorkerExitedEvent($event->getParam('uid'), $event->getParam('uid'), 1);
+        $this->getDecorator()->raiseWorkerExitedEvent($event->getParam('uid'), $event->getParam('uid'), 1);
         $event->stopPropagation(true);
     }
 

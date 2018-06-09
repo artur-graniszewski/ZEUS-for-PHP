@@ -17,7 +17,7 @@ abstract class AbstractProcessModule extends AbstractModule
 
     public function onWorkerInit(WorkerEvent $event)
     {
-        $this->getWrapper()->setIpcAddress($event->getParam(ModuleWrapper::ZEUS_IPC_ADDRESS_PARAM));
+        $this->getDecorator()->setIpcAddress($event->getParam(ModuleDecorator::ZEUS_IPC_ADDRESS_PARAM));
     }
 
     public function onWorkerTerminate(WorkerEvent $event)
@@ -31,7 +31,7 @@ abstract class AbstractProcessModule extends AbstractModule
         }
 
         if (!isset($this->workers[$uid])) {
-            $this->getWrapper()->getLogger()->warn("Trying to stop already detached process $uid");
+            $this->getDecorator()->getLogger()->warn("Trying to stop already detached process $uid");
         }
     }
 
@@ -67,7 +67,7 @@ abstract class AbstractProcessModule extends AbstractModule
 
         if (static::getPcntlBridge()->isSupported()) {
             while ($this->workers && ($pid = static::getPcntlBridge()->pcntlWait($pcntlStatus, WNOHANG|WUNTRACED)) > 0) {
-                $this->getWrapper()->raiseWorkerExitedEvent($pid, $pid, 1);
+                $this->getDecorator()->raiseWorkerExitedEvent($pid, $pid, 1);
             }
         }
     }
