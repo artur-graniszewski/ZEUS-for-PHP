@@ -14,6 +14,7 @@ use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\IpcServer\Service\MessageBroker;
 use Zeus\Kernel\IpcServer\SocketIpc;
 use Zeus\Kernel\Scheduler\Reactor;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -22,11 +23,12 @@ use function in_array;
 use function array_keys;
 use function array_merge;
 use function array_search;
-use function array_rand;
-use function count;
 
 abstract class AbstractMessageBroker
 {
+    /** @var MessageBroker */
+    private $messageBroker;
+
     /** @var bool */
     private $isRegistered = false;
 
@@ -39,9 +41,6 @@ abstract class AbstractMessageBroker
     /** @var SocketStream[] */
     private $inboundStreams = [];
 
-    /** @var mixed[] */
-    private $queuedMessages = [];
-
     /** @var SocketStream[] */
     private $ipcStreams = [];
 
@@ -53,6 +52,7 @@ abstract class AbstractMessageBroker
         $this->ipcSelector = $ipcSelector;
         $this->eventManager = $eventManager;
         $this->ipcServer = $ipcServer;
+        $this->messageBroker = new MessageBroker();
     }
 
     public function __invoke(SchedulerEvent $event)
@@ -178,103 +178,41 @@ abstract class AbstractMessageBroker
 
         if ($messages) {
             try {
-                $this->distributeMessages($messages);
+                $this->messageBroker->distributeMessages($messages, array_keys($this->ipcStreams), function($senderId, $targetId, $message) {
+                    $this->sendMessage($senderId, $targetId, $message);
+                });
             } catch (IOException $exception) {
                 // @todo: report such exception!
             }
         }
 
-        if (count($this->queuedMessages) > 0) {
-            foreach ($this->queuedMessages as $id => $message) {
-                $this->distributeMessages([$message]);
-                unset ($this->queuedMessages[$id]);
-            }
+        while (null !== ($message = $this->messageBroker->getQueuedMessage())) {
+            $this->messageBroker->distributeMessages([$message], array_keys($this->ipcStreams), function($senderId, $targetId, $message) {
+                $this->sendMessage($senderId, $targetId, $message);
+            });
         }
     }
 
-    /**
-     * @param mixed[] $messages
-     */
-    private function distributeMessages(array $messages)
+    private function sendMessage(int $senderId, int $targetId, $message)
     {
-        foreach ($messages as $payload) {
-            $cids = [];
-            $audience = $payload['aud'];
-            $message = $payload['msg'];
-            $senderId = $payload['sid'];
-            $number = $payload['num'];
+        if ($targetId === 0) {
+            $event = new IpcEvent();
+            $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
+            $event->setParams($message);
+            $event->setTarget($this);
+            $this->eventManager->triggerEvent($event);
 
-            $availableAudience = $this->ipcStreams;
+            return;
+        }
 
-            unset($availableAudience[0]);
+        $ipcDriver = new SocketIpc($this->ipcStreams[$targetId]);
+        $ipcDriver->setId($senderId);
+        try {
+            $ipcDriver->send($message, IpcServer::AUDIENCE_SELECTED, $targetId);
 
-            // sender is not an audience
-            unset($availableAudience[$senderId]);
-
-            // @todo: implement read confirmation?
-            switch ($audience) {
-                case IpcServer::AUDIENCE_ALL:
-                    $cids = array_keys($availableAudience);
-                    break;
-
-                case IpcServer::AUDIENCE_ANY:
-                    if (1 > count($availableAudience)) {
-                        $this->queuedMessages[] = $payload;
-
-                        continue 2;
-                    }
-
-                    $cids = [array_rand($availableAudience, 1)];
-
-                    break;
-
-                case IpcServer::AUDIENCE_AMOUNT:
-                    if ($number > count($availableAudience)) {
-                        $this->queuedMessages[] = $payload;
-
-                        continue 2;
-                    }
-
-                    $cids = array_rand($availableAudience, $number);
-                    if ($number === 1) {
-                        $cids = [$cids];
-                    }
-
-                    break;
-
-                case IpcServer::AUDIENCE_SELECTED:
-                    $cids = [$this->ipcStreams[$number]];
-                    break;
-
-                case IpcServer::AUDIENCE_SERVER:
-                case IpcServer::AUDIENCE_SELF:
-                    $event = new IpcEvent();
-                    $event->setName(IpcEvent::EVENT_MESSAGE_RECEIVED);
-                    $event->setParams($message);
-                    $event->setTarget($this);
-                    $this->eventManager->triggerEvent($event);
-
-                    break;
-                default:
-                    $cids = [];
-                    break;
-            }
-
-            if (!$cids) {
-                continue;
-            }
-
-            foreach ($cids as $cid) {
-                $ipcDriver = new SocketIpc($this->ipcStreams[$cid]);
-                $ipcDriver->setId($senderId);
-                try {
-                    $ipcDriver->send($message, $audience, $number);
-
-                } catch (IOException $exception) {
-                    $this->ipcSelector->unregister($this->ipcStreams[$cid]);
-                    unset($this->ipcStreams[$cid]);
-                }
-            }
+        } catch (IOException $exception) {
+            $this->ipcSelector->unregister($this->ipcStreams[$targetId]);
+            unset($this->ipcStreams[$targetId]);
         }
     }
 
