@@ -2,6 +2,7 @@
 
 namespace Zeus\ServerService\Async\Message;
 
+use Throwable;
 use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\ServerService\Async\UnserializeException;
 use Zeus\ServerService\Shared\Networking\HeartBeatMessageInterface;
@@ -60,18 +61,20 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
 
     /**
      * @param NetworkStreamInterface $connection
-     * @param \Throwable $exception
-     * @throws \Throwable
+     * @param Throwable $exception
+     * @throws Throwable
      */
-    public function onError(NetworkStreamInterface $connection, \Throwable $exception)
+    public function onError(NetworkStreamInterface $connection, Throwable $exception)
     {
-        $connection->close();
+        if (!$connection->isClosed()) {
+            $connection->close();
+        }
     }
 
     /**
      * @param NetworkStreamInterface $connection
      * @param string $message
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function onMessage(NetworkStreamInterface $connection, string $message)
     {
@@ -126,7 +129,7 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
         try {
             $result = $this->run(substr($this->callback, 0, -1));
 
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
 
         }
 

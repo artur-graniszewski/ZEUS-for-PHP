@@ -136,7 +136,9 @@ final class Message implements MessageComponentInterface, HeartBeatMessageInterf
      */
     public function onError(NetworkStreamInterface $connection, \Throwable $exception)
     {
-        $connection->close();
+        if (!$connection->isClosed()) {
+            $connection->close();
+        }
     }
 
     /**

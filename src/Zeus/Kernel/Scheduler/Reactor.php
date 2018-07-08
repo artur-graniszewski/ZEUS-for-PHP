@@ -258,7 +258,7 @@ class Reactor extends AbstractSelectorAggregate implements EventManagerAwareInte
     {
         $timeouts = [1000];
         foreach (array_merge($this->timers, $this->selectorTimeouts) as $timer) {
-            $timeouts[] = $timer['timeout'];
+            $timeouts[] = $timer['timeout'] * 1000;
         }
 
         if (!isset($timeouts[1])) {
