@@ -6,6 +6,7 @@ use \PHPUnit\Framework\TestCase;
 use Zend\Console\Console;
 use Zend\Http\Request;
 use Zend\Http\Response;
+use Zeus\Kernel\System\Runtime;
 use Zeus\Module;
 use Zeus\ServerService\Http\Dispatcher\ZendFrameworkDispatcher;
 use ZeusTest\Helpers\ZeusFactories;
@@ -23,6 +24,9 @@ class ZendFrameworkDispatcherTest extends \PHPUnit\Framework\TestCase
     public function setUp()
     {
         parent::setUp();
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
         mkdir(__DIR__ . '/tmp');
         mkdir(__DIR__ . '/tmp/config');
         chdir(__DIR__ . '/tmp');
@@ -46,6 +50,9 @@ class ZendFrameworkDispatcherTest extends \PHPUnit\Framework\TestCase
 
     public function tearDown()
     {
+        Runtime::setShutdownHook(function() {
+            return false;
+        });
         chdir(__DIR__);
         unlink(__DIR__ . '/tmp/config/application.config.php');
         rmdir(__DIR__ . '/tmp/config');

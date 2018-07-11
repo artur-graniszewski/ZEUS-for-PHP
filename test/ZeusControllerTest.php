@@ -30,6 +30,9 @@ class ZeusControllerTest extends TestCase
     public function setUp()
     {
         parent::setUp();
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
         $tmpDir = __DIR__ . '/tmp';
 
         if (!file_exists($tmpDir)) {
@@ -43,6 +46,9 @@ class ZeusControllerTest extends TestCase
 
     public function tearDown()
     {
+        Runtime::setShutdownHook(function() {
+            return false;
+        });
         unlink(__DIR__ . '/tmp/test.log');
         rmdir(__DIR__ . '/tmp');
         parent::tearDown();

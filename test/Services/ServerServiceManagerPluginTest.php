@@ -5,6 +5,7 @@ namespace ZeusTest\Services;
 use PHPUnit\Framework\TestCase;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
@@ -53,6 +54,9 @@ class ServerServiceManagerPluginTest extends TestCase
     public function setUp()
     {
         parent::setUp();
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
         $tmpDir = __DIR__ . '/../tmp';
 
         if (!file_exists($tmpDir)) {
@@ -65,6 +69,9 @@ class ServerServiceManagerPluginTest extends TestCase
     {
         unlink(__DIR__ . '/../tmp/test.log');
         rmdir(__DIR__ . '/../tmp');
+        Runtime::setShutdownHook(function() {
+            return false;
+        });
         parent::tearDown();
     }
 

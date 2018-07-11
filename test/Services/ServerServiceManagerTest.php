@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use Zend\EventManager\EventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\ManagerEvent;
 use Zeus\ServerService\Shared\Logger\LoggerFactory;
@@ -41,6 +42,9 @@ class ServerServiceManagerTest extends TestCase
     {
         parent::setUp();
         $tmpDir = (__DIR__ . '/../tmp');
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
 
         if (!file_exists($tmpDir)) {
             mkdir($tmpDir);
@@ -50,6 +54,9 @@ class ServerServiceManagerTest extends TestCase
 
     public function tearDown()
     {
+        Runtime::setShutdownHook(function() {
+            return false;
+        });
         $tmpDir = realpath(__DIR__ . '/../tmp');
         unlink($tmpDir . '/test.log');
         rmdir($tmpDir);
