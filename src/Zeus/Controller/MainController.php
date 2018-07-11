@@ -73,7 +73,11 @@ class MainController extends AbstractController
         } catch (Throwable $exception) {
             $this->logException($exception, $this->getLogger());
             Runtime::exit($exception->getCode() > 0 ? $exception->getCode() : 500);
+            
+            return;
         }
+        
+        Runtime::exit(0);
     }
 
     /**

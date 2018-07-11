@@ -6,6 +6,7 @@ use Exception;
 use \PHPUnit\Framework\TestCase;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\IO\SocketServer;
+use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Async\AsyncPlugin;
 use Zeus\ServerService\Async\Config;
 use Zeus\ServerService\Async\Factory\AsyncPluginFactory;
@@ -26,9 +27,13 @@ class AsyncPluginTest extends \PHPUnit\Framework\TestCase
 
     public function setUp()
     {
-        $this->port = 9999;
-        $this->server = new SocketServer($this->port);
+        Runtime::setShutdownHook(function() {
+            return true;
+        });
+        $this->server = new SocketServer(0);
+        $this->port = $this->server->getLocalPort();
         $this->server->setSoTimeout(1000);
+        $this->server->setReuseAddress(true);
 
         $this->client = stream_socket_client('tcp://localhost:' . $this->port);
         stream_set_blocking($this->client, false);

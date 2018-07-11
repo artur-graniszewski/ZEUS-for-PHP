@@ -11,6 +11,7 @@ use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\System\Runtime;
 
 final class Manager
 {
@@ -178,7 +179,6 @@ final class Manager
         $exception = null;
         try {
             $this->getEventManager()->triggerEvent($event);
-
             $service->start();
         } catch (Throwable $exception) {
             $this->registerBrokenService($serviceName, $exception);
@@ -209,8 +209,11 @@ final class Manager
         $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
         $managerTime = $now - $startTime;
 
+        $schedulers = [];
         foreach ($serviceNames as $serviceName) {
-            $this->eventHandles[] = $this->getService($serviceName)->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_START,
+            $scheduler = $this->getService($serviceName)->getScheduler();
+            $schedulers[] = $scheduler;
+            $this->eventHandles[] = $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START,
                 function () use ($serviceName, $managerTime, $phpTime, $engine, $logger) {
                     $this->servicesRunning++;
                     $logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
@@ -222,7 +225,38 @@ final class Manager
 
         if (count($serviceNames) === count($this->brokenServices)) {
             $logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
+            if ($this->brokenServices) {
+                $logger->err(sprintf("Found %d broken services", count($this->brokenServices)));
+            }
+            
+            return;
         }
+
+        if (!$serviceNames) {
+            return;
+        }
+        
+        $reactor = $scheduler->getReactor();
+        
+        $terminator = function() use ($reactor, $schedulers, $logger) {
+            $terminating = 0;
+            foreach ($schedulers as $scheduler) {
+                $event = $scheduler->getSchedulerEvent();
+                $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
+                $scheduler->getEventManager()->triggerEvent($event);
+                if ($scheduler->isTerminating()) {
+                    $terminating++;
+                }
+            }
+            
+            $reactor->setTerminating($terminating === count($schedulers));
+        };
+        do {
+            $reactor->mainLoop(
+                $terminator
+                );
+            
+        } while (!$reactor->isTerminating());
     }
 
     /**
@@ -273,7 +307,9 @@ final class Manager
 
     private function onServiceStop(ServerServiceInterface $service)
     {
-        $this->servicesRunning--;
+        // @todo: this method is not launched in kernel context, rather in scheduler process
+        // @todo: change it, as its purpose is different than intended
+        $this->servicesRunning++;
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_SERVICE_STOP);
@@ -281,9 +317,11 @@ final class Manager
         $event->setService($service);
         $this->getEventManager()->triggerEvent($event);
 
-        if ($this->servicesRunning === 0) {
+        if (count($this->services) === $this->servicesRunning) {
             $this->getLogger()->info("All services exited");
         }
+        
+        Runtime::exit(0);
     }
 
     /**

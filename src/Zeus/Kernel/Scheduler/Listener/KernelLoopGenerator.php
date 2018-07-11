@@ -14,22 +14,6 @@ class KernelLoopGenerator
             return;
         }
 
-        $scheduler = $event->getScheduler();
-
-        $reactor = $scheduler->getReactor();
-
-        $terminator = function() use ($reactor, $scheduler) {
-            $event = $scheduler->getSchedulerEvent();
-            $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP);
-            $scheduler->getEventManager()->triggerEvent($event);
-            if ($scheduler->isTerminating()) {
-                $reactor->setTerminating(true);
-            }
-        };
-        do {
-            $reactor->mainLoop(
-                $terminator
-            );
-        } while (!$scheduler->isTerminating());
+        return;
     }
 }

@@ -32,6 +32,11 @@ class SchedulerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
+        static $reactor = null;
+        
+        if (!$reactor) {
+            $reactor = new Scheduler\Reactor();
+        }
         $eventManager = $container->build('zeus-event-manager');
         $config = $this->getSchedulerConfig($container, $options['scheduler_name']);
         $config['service_name'] = $options['service_name'];
@@ -49,7 +54,7 @@ class SchedulerFactory implements FactoryInterface
             'event_manager' => $eventManager
         ]);
 
-        $scheduler = new Scheduler($configObject, $schedulerDiscipline, new Scheduler\Reactor(), $ipcServer, $driver);
+        $scheduler = new Scheduler($configObject, $schedulerDiscipline, $reactor, $ipcServer, $driver);
         $scheduler->setEventManager($eventManager);
         $scheduler->setLogger($logger);
 

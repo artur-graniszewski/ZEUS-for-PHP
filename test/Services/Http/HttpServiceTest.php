@@ -71,7 +71,7 @@ class HttpServiceTest extends \PHPUnit\Framework\TestCase
         DummyMpm::getCapabilities()->setSharedInitialAddressSpace(true);
         $service = $this->getService();
         $this->assertFalse($service->getScheduler()->isTerminating());
-        $service->getScheduler()->getEventManager()->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $event) {
+        $service->getScheduler()->getEventManager()->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, function(SchedulerEvent $event) {
             $event->getScheduler()->setTerminating(true);
         });
         $service->start();
