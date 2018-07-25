@@ -16,7 +16,6 @@ use ZeusTest\Helpers\SocketTestNetworkStream;
 /**
  * Class HttpMessageTest
  * @package ZeusTest\Services\Http
- * @runTestsInSeparateProcesses true
  * @preserveGlobalState disabled
  */
 class HttpMessageTest extends \PHPUnit\Framework\TestCase

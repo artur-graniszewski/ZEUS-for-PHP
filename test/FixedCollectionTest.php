@@ -8,7 +8,6 @@ use Zeus\Kernel\Scheduler\Shared\FixedCollection;
 /**
  * Class FixedCollectionTest
  * @package ZeusTest
- * @runTestsInSeparateProcesses true
  * @preserveGlobalState disabled
  */
 class FixedCollectionTest extends \PHPUnit\Framework\TestCase

@@ -58,8 +58,8 @@ class ServerServiceManagerTest extends TestCase
             return false;
         });
         $tmpDir = realpath(__DIR__ . '/../tmp');
-        unlink($tmpDir . '/test.log');
-        rmdir($tmpDir);
+        @unlink($tmpDir . '/test.log');
+        @rmdir($tmpDir);
         parent::tearDown();
     }
 

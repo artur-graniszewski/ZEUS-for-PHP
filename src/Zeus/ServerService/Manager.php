@@ -22,7 +22,7 @@ final class Manager
     /** @var ServerServiceInterface[] */
     private $services = [];
 
-    /** @var \Exception[] */
+    /** @var Throwable[] */
     private $brokenServices = [];
 
     private $eventHandles = [];
@@ -59,7 +59,7 @@ final class Manager
 
             return;
 
-            $service = $this->findServiceByUid($signal['pid']);
+            $service = $this->getServiceByUid($signal['pid']);
 
             if ($service) {
                 $this->onServiceStop($service);
@@ -177,18 +177,14 @@ final class Manager
             }, 10000);
 
         $exception = null;
-        try {
-            $this->getEventManager()->triggerEvent($event);
-            $service->start();
-        } catch (Throwable $exception) {
-            $this->registerBrokenService($serviceName, $exception);
-        }
+        $this->getEventManager()->triggerEvent($event);
+        $service->start();
     }
 
     /**
-     * @param string|string[] $serviceNames
+     * @param string[] $serviceNames
      */
-    public function startServices($serviceNames)
+    public function startServices(array $serviceNames)
     {
         $logger = $this->getLogger();
         $plugins = $this->getPluginRegistry()->count();
@@ -202,29 +198,32 @@ final class Manager
         $event->setName(ManagerEvent::EVENT_MANAGER_INIT);
         $this->getEventManager()->triggerEvent($event);
 
-        $startTime = microtime(true);
-
         $now = microtime(true);
         $engine = defined("HHVM_VERSION") ? 'HHVM' : 'PHP';
         $phpTime = $now - (float) $_SERVER['REQUEST_TIME_FLOAT'];
-        $managerTime = $now - $startTime;
-
+        
         $schedulers = [];
         foreach ($serviceNames as $serviceName) {
-            $scheduler = $this->getService($serviceName)->getScheduler();
-            $schedulers[] = $scheduler;
-            $this->eventHandles[] = $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START,
-                function () use ($serviceName, $managerTime, $phpTime, $engine, $logger) {
-                    $this->servicesRunning++;
-                    $logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
-
-                }, -10000);
-
-            $this->doStartService($serviceName);
+            try {
+                $now = microtime(true);
+                $scheduler = $this->getService($serviceName)->getScheduler();
+                $schedulers[] = $scheduler;
+                $this->eventHandles[] = $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START,
+                    function () use ($serviceName, $now, $phpTime, $engine, $logger) {
+                        $this->servicesRunning++;
+                        $managerTime = $now - microtime(true);
+                        $logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
+    
+                    }, -10000);
+    
+                $this->doStartService($serviceName);
+            } catch (Throwable $exception) {
+                $this->registerBrokenService($serviceName, $exception);
+            }
         }
 
         if (count($serviceNames) === count($this->brokenServices)) {
-            $logger->err(sprintf("No server service started ($engine running for %.2fs)", $managerTime, $phpTime));
+            $logger->err(sprintf("No server service started ($engine running for %.2fs)", $phpTime));
             if ($this->brokenServices) {
                 $logger->err(sprintf("Found %d broken services", count($this->brokenServices)));
             }
@@ -232,7 +231,7 @@ final class Manager
             return;
         }
 
-        if (!$serviceNames) {
+        if (!$schedulers) {
             return;
         }
         
@@ -286,7 +285,6 @@ final class Manager
         if ($servicesAmount !== $servicesStopped) {
             $logger->warn(sprintf("Only %d out of %d services were stopped gracefully", $servicesStopped, $servicesAmount));
         }
-
 
         $event = $this->getEvent();
         $event->setName(ManagerEvent::EVENT_MANAGER_STOP);
@@ -351,12 +349,12 @@ final class Manager
 
     /**
      * @param int $uid
-     * @return null|ServerServiceInterface
+     * @return ServerServiceInterface
      */
-    private function findServiceByUid(int $uid)
+    private function getServiceByUid(int $uid) : ServerServiceInterface
     {
         if (!isset($this->pidToServiceMap[$uid])) {
-            return null;
+            throw new RuntimeException(sprintf("Service with UID:%d not found", $uid));
         }
 
         $service = $this->pidToServiceMap[$uid];

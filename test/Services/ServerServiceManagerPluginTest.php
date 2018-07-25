@@ -67,8 +67,8 @@ class ServerServiceManagerPluginTest extends TestCase
 
     public function tearDown()
     {
-        unlink(__DIR__ . '/../tmp/test.log');
-        rmdir(__DIR__ . '/../tmp');
+        @unlink(__DIR__ . '/../tmp/test.log');
+        @rmdir(__DIR__ . '/../tmp');
         Runtime::setShutdownHook(function() {
             return false;
         });

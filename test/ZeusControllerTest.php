@@ -49,8 +49,8 @@ class ZeusControllerTest extends TestCase
         Runtime::setShutdownHook(function() {
             return false;
         });
-        unlink(__DIR__ . '/tmp/test.log');
-        rmdir(__DIR__ . '/tmp');
+        @unlink(__DIR__ . '/tmp/test.log');
+        @rmdir(__DIR__ . '/tmp');
         parent::tearDown();
     }
 

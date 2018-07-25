@@ -226,8 +226,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
         $pipes = [];
 
-        $phpExecutable = isset($_SERVER['_']) ? $_SERVER['_'] : PHP_BINARY;
-
+        $phpExecutable = PHP_BINARY;
         $applicationPath = $_SERVER['PHP_SELF'];
 
         $type = $event->getParam(SchedulerInterface::WORKER_SERVER) ? 'scheduler' : 'worker';
@@ -235,7 +234,6 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
         $startParams = escapeshellarg(json_encode($event->getParams()));
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
-
         $process = static::getProcessBridge()->procOpen($command, $descriptors, $pipes, getcwd(), $_ENV, []);
         if ($process === false) {
             throw new SchedulerException("Could not create a descendant process", SchedulerException::WORKER_NOT_STARTED);
