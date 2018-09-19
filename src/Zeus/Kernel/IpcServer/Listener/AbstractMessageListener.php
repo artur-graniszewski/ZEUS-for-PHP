@@ -93,7 +93,7 @@ abstract class AbstractMessageListener
             $this->handleIpcMessages($selector);
         }, function() {
 
-        }, 1000
+        }, 10000
         );
     }
 

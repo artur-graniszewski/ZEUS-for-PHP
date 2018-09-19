@@ -9,6 +9,7 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
+use Zeus\Kernel\Scheduler\ConfigInterface;
 
 class WorkerLifeCycle
 {
@@ -71,10 +72,11 @@ class WorkerLifeCycle
         $worker->setWaiting();
         $this->syncWorker($worker);
         $scheduler = $this->scheduler;
-
+        $config = $this->scheduler->getConfig();
+        
         // handle only a finite number of requests and terminate gracefully to avoid potential memory/resource leaks
-        while (($runsLeft = $scheduler->getConfig()->getMaxProcessTasks() - $worker->getNumberOfFinishedTasks()) > 0) {
-            $worker->setIsLastTask($runsLeft === 1);
+        while (!$this->isWorkerExiting($config, $worker)) {
+            $wasLastTask = $worker->isLastTask();
             try {
                 $params = [
                     'status' => $worker
@@ -86,13 +88,25 @@ class WorkerLifeCycle
             } catch (Throwable $exception) {
                 $this->logException($exception, $scheduler->getLogger());
             }
-
-            if ($worker->isExiting() || $worker->isLastTask()) {
+            
+            if ($wasLastTask || $worker->isExiting()) {
                 break;
             }
         }
 
         $this->terminate($worker);
+    }
+    
+    private function isWorkerExiting(ConfigInterface $config, WorkerState $worker) : bool
+    {
+        if ($worker->isExiting()) {
+            true;
+        }
+        
+        $runsLeft = $config->getMaxProcessTasks() - $worker->getNumberOfFinishedTasks();
+        $worker->setIsLastTask($runsLeft < 2);
+        
+        return $runsLeft <= 0;
     }
 
     private function terminate(WorkerState $worker, Throwable $exception = null)

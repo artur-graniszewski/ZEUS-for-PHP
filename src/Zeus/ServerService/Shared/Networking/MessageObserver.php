@@ -48,7 +48,6 @@ class MessageObserver implements HeartBeatMessageInterface, MessageComponentInte
         $this->setConnectionStatus(RegistratorService::STATUS_WORKER_BUSY);
         $function = function() use ($connection) {
             $worker = $this->getWorker();
-            $worker->incrementNumberOfFinishedTasks(1);
             $worker->setRunning();
             $this->getScheduler()->syncWorker($worker);
             $this->getMessageComponent()->onOpen($connection);

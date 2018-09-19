@@ -5,6 +5,7 @@ namespace ZeusTest\Unit\Scheduler\Listener;
 use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 class WorkerLifeCycleTest extends TestCase
 {
@@ -20,6 +21,7 @@ class WorkerLifeCycleTest extends TestCase
         $em->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $e) use (&$loopStarted) {
             $e->stopPropagation(true);
             $e->getWorker()->setIsLastTask(true);
+            $e->getWorker()->setCode(WorkerState::EXITING);
             $loopStarted = true;
         });
 

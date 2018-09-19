@@ -211,7 +211,7 @@ final class Manager
                 $this->eventHandles[] = $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START,
                     function () use ($serviceName, $now, $phpTime, $engine, $logger) {
                         $this->servicesRunning++;
-                        $managerTime = $now - microtime(true);
+                        $managerTime = microtime(true) - $now;
                         $logger->info(sprintf("Started %s service in %.2f seconds ($engine running for %.2fs)", $serviceName, $managerTime, $phpTime));
     
                     }, -10000);

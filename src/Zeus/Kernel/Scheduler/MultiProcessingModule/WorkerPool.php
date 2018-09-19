@@ -28,6 +28,9 @@ class WorkerPool
 
     /** @var Selector */
     private $ipcSelector;
+    
+    /** @var Selector */
+    private $backendSelector;
 
     /** @var bool */
     private $isTerminating = false;
@@ -37,6 +40,7 @@ class WorkerPool
         $this->ipcServers = new FixedCollection(static::IPC_POOL_SIZE);
         $this->ipcConnections = new FixedCollection(static::IPC_POOL_SIZE);
         $this->ipcSelector = $ipcSelector;
+        $this->backendSelector = new Selector();
     }
 
     public function checkWorkers()
@@ -65,18 +69,26 @@ class WorkerPool
     public function registerWorker(int $uid, SocketServer $pipe)
     {
         $this->ipcServers[$uid] = $pipe;
+        $key = $pipe->getSocket()->register($this->backendSelector, SelectionKey::OP_ACCEPT);
+        $key->attach(['uid' => $uid, 'server' => $pipe]);
     }
 
     public function registerWorkers()
     {
-        foreach ($this->ipcServers as $uid => $server) {
+        //foreach ($this->ipcServers as $uid => $server) {
+        $this->backendSelector->select(10);
+        foreach ($this->backendSelector->getSelectionKeys() as $key) {
             try {
+                $attachment = $key->getAttachment();
+                $uid = $attachment['uid'];
+                $server = $attachment['server'];
                 $connection = $server->accept();
                 $this->setStreamOptions($connection);
                 $this->ipcConnections[$uid] = $connection;
                 $this->ipcSelector->register($connection, SelectionKey::OP_READ);
                 $this->ipcServers[$uid]->close();
                 unset($this->ipcServers[$uid]);
+                $this->backendSelector->unregister($server->getSocket());
             } catch (SocketTimeoutException $exception) {
                 // @todo: verify if nothing to do?
             }

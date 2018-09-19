@@ -10,7 +10,6 @@ class SchedulerLoopListener extends AbstractWorkerPoolListener
     {
         $this->driver->onSchedulerLoop($event);
         $wasExiting = $event->getScheduler()->isTerminating();
-
         $this->workerPool->checkWorkers();
         if (!$this->workerPool->isTerminating()) {
             $this->workerPool->registerWorkers();

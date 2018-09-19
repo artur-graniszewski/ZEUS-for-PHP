@@ -29,6 +29,8 @@ interface SchedulerInterface extends EventManagerAwareInterface
     public function syncWorker(WorkerState $worker);
 
     public function getWorker() : WorkerState;
+    
+    public function setWorker(WorkerState $worker);
 
     public function getSchedulerEvent() : SchedulerEvent;
 

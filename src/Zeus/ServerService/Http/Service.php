@@ -31,10 +31,13 @@ class Service extends AbstractSocketServerService
                     $dispatcherConfig
                 )
             );
-
+            
         $messageComponent =
             new Message(
-                [$dispatchers, 'dispatch'],
+                function(RequestInterface $request, ResponseInterface $response) use ($dispatchers, $scheduler) {
+                    $scheduler->getWorker()->incrementNumberOfFinishedTasks(1);
+                    return $dispatchers->dispatch($request, $response);
+                },
                 null,
                 [$this, 'logRequest']
             );
@@ -74,8 +77,6 @@ class Service extends AbstractSocketServerService
             $this->getHeader($httpRequest, 'Referer'),
             $this->getHeader($httpRequest, 'User-Agent')
             )
-            , ['extra' => ['logger' => 'aaaa']]
-            , ['logger' => 'aaaa']
         );
     }
 

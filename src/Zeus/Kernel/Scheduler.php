@@ -145,6 +145,11 @@ class Scheduler implements SchedulerInterface
     {
         return $this->worker;
     }
+    
+    public function setWorker(WorkerState $worker)
+    {
+        $this->worker = $worker;
+    }
 
     public function getReactor() : Reactor
     {

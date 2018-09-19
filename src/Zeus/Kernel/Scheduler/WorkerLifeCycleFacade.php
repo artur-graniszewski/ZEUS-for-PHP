@@ -20,6 +20,7 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
         $event = $this->triggerEvent(WorkerEvent::EVENT_CREATE, $startParams, $worker);
 
         if ($event->getParam(SchedulerInterface::WORKER_INIT)) {
+            $this->getScheduler()->setWorker($worker);
             $params = $event->getParams();
             $params[SchedulerInterface::WORKER_SERVER] = false;
             $this->triggerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
