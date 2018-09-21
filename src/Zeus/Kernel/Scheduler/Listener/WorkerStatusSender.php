@@ -21,15 +21,7 @@ class WorkerStatusSender
         $worker = $event->getWorker();
         $worker->updateStatus();
 
-        $payload = [
-            'type' => Message::IS_STATUS,
-            'extra' => [
-                'logger' => __CLASS__,
-                'status' => $worker->toArray()
-            ]
-        ];
-
-        $message = new StatusMessage($payload);
+        $message = new StatusMessage($worker->toArray());
 
         try {
             $scheduler->getIpc()->send($message, IpcServer::AUDIENCE_SERVER);

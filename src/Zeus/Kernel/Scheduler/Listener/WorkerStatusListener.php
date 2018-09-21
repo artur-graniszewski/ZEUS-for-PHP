@@ -30,7 +30,7 @@ class WorkerStatusListener
         $message = $message->getParams();
 
         /** @var WorkerState $workerState */
-        $workerState = WorkerState::fromArray($message['extra']['status']);
+        $workerState = WorkerState::fromArray($message);
         $uid = $workerState->getUid();
 
         // worker status changed, update this information server-side

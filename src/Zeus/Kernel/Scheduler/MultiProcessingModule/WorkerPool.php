@@ -48,10 +48,6 @@ class WorkerPool
         $ipcSelector = $this->ipcSelector;
 
         // read all keep-alive messages
-        if (!$ipcSelector->select(0)) {
-            return;
-        }
-
         foreach ($ipcSelector->getSelectionKeys() as $key) {
             /** @var SocketStream $stream */
             $stream = $key->getStream();
@@ -68,6 +64,7 @@ class WorkerPool
 
     public function registerWorker(int $uid, SocketServer $pipe)
     {
+        $pipe->setSoTimeout(10);
         $this->ipcServers[$uid] = $pipe;
         $key = $pipe->getSocket()->register($this->backendSelector, SelectionKey::OP_ACCEPT);
         $key->attach(['uid' => $uid, 'server' => $pipe]);
@@ -75,23 +72,26 @@ class WorkerPool
 
     public function registerWorkers()
     {
-        //foreach ($this->ipcServers as $uid => $server) {
-        $this->backendSelector->select(10);
         foreach ($this->backendSelector->getSelectionKeys() as $key) {
+            $attachment = $key->getAttachment();
+            $uid = $attachment['uid'];
+            /** @var SocketServer $server */
+            $server = $attachment['server'];
+            
             try {
-                $attachment = $key->getAttachment();
-                $uid = $attachment['uid'];
-                $server = $attachment['server'];
                 $connection = $server->accept();
-                $this->setStreamOptions($connection);
-                $this->ipcConnections[$uid] = $connection;
-                $this->ipcSelector->register($connection, SelectionKey::OP_READ);
-                $this->ipcServers[$uid]->close();
-                unset($this->ipcServers[$uid]);
-                $this->backendSelector->unregister($server->getSocket());
+                
             } catch (SocketTimeoutException $exception) {
                 // @todo: verify if nothing to do?
+                continue;
             }
+            $this->setStreamOptions($connection);
+            $this->ipcConnections[$uid] = $connection;
+            $this->ipcSelector->register($connection, SelectionKey::OP_READ);
+            $this->ipcServers[$uid]->close();
+            unset($this->ipcServers[$uid]);
+            $this->backendSelector->unregister($server->getSocket());
+        
         }
     }
 
