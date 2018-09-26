@@ -8,6 +8,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Async\Message\Message;
 use Zeus\ServerService\Shared\AbstractSocketServerService;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 class Service extends AbstractSocketServerService
 {
@@ -28,7 +29,7 @@ class Service extends AbstractSocketServerService
             throw new LogicException("Async service failed: serialization module is missing");
         }
 
-        $this->getScheduler()->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $this->getScheduler()->getEventManager()->attach(InitializeWorker::class, function(WorkerEvent $event) {
             $this->worker = $event->getTarget();
         });
 

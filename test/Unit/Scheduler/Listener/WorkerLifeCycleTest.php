@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 class WorkerLifeCycleTest extends TestCase
 {
@@ -18,7 +19,7 @@ class WorkerLifeCycleTest extends TestCase
         $scheduler = $this->getScheduler(1);
 
         $em = $scheduler->getEventManager();
-        $em->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $e) use (&$loopStarted) {
+        $em->attach(WorkerLoopRepeated::class, function (WorkerEvent $e) use (&$loopStarted) {
             $e->stopPropagation(true);
             $e->getWorker()->setIsLastTask(true);
             $e->getWorker()->setCode(WorkerState::EXITING);

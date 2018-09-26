@@ -14,6 +14,9 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\SocketServer;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 
 class IpcServer implements EventManagerAwareInterface
 {
@@ -81,18 +84,18 @@ class IpcServer implements EventManagerAwareInterface
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
 
-        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_INIT, $ipcRegistrator, WorkerEvent::PRIORITY_INITIALIZE);
+        $this->eventHandles[] = $events->attach(InitializeWorker::class, $ipcRegistrator, WorkerEvent::PRIORITY_INITIALIZE);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, $ipcRegistrator, SchedulerEvent::PRIORITY_INITIALIZE);
         $this->eventHandles[] = $events->attach(IpcEvent::EVENT_MESSAGE_SEND, new WorkerMessageSender($ipcRegistrator, $this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE);
 
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($events, $ipcRegistrator) {
             $this->startIpc();
             $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
-            $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
+            $this->eventHandles[] = $events->attach(CreateWorker::class, function(WorkerEvent $event) {
                 $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             });
 
-            $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, new SchedulerMessageListener($this->getEventManager(), $this->ipcSelector, $this->ipcServer), SchedulerEvent::PRIORITY_REGULAR + 1);
+            $this->eventHandles[] = $events->attach(SchedulerLoopRepeated::class, new SchedulerMessageListener($this->getEventManager(), $this->ipcSelector, $this->ipcServer), SchedulerEvent::PRIORITY_REGULAR + 1);
         }, 100000);
     }
 

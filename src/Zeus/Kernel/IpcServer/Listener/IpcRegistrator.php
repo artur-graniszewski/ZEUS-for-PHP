@@ -13,6 +13,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 
 use function stream_socket_client;
 use function stream_context_create;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 class IpcRegistrator
 {
@@ -47,7 +48,7 @@ class IpcRegistrator
         $uid = $event->getWorker()->getUid();
         $this->registerIpc($ipcPort, $uid);
 
-        $this->eventManager->attach(WorkerEvent::EVENT_LOOP, new WorkerMessageReader($this->ipcClient, $this->eventManager), -9000);
+        $this->eventManager->attach(WorkerLoopRepeated::class, new WorkerMessageReader($this->ipcClient, $this->eventManager), -9000);
     }
 
     private function registerIpc(int $ipcPort, int $uid)

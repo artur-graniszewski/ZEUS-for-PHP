@@ -31,12 +31,14 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Manager;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use Zend\Router;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 
 trait ZeusFactories
 {
     public function simulateWorkerInit(EventManagerInterface $events)
     {
-        $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) {
+        $events->attach(CreateWorker::class, function(WorkerEvent $event) {
             $event->setParam(SchedulerInterface::WORKER_INIT, true);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
     }
@@ -140,10 +142,9 @@ trait ZeusFactories
     public function triggerSchedulerLoop(SchedulerInterface $scheduler)
     {
         $em = $scheduler->getEventManager();
-        $event = new SchedulerEvent();
+        $event = new SchedulerLoopRepeated();
         $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
-        $event->setName(SchedulerEvent::EVENT_LOOP);
         // first event may register workers
         $em->triggerEvent($event);
     }
@@ -183,7 +184,7 @@ trait ZeusFactories
         $ipcServer->setEventManager($events);
 
         if ($mainLoopIterations > 0) {
-            $sm->attach('*', SchedulerEvent::EVENT_LOOP, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
+            $sm->attach('*', SchedulerLoopRepeated::class, function (SchedulerEvent $e) use (&$mainLoopIterations, $loopCallback) {
                 $mainLoopIterations--;
 
                 if ($mainLoopIterations === 0) {

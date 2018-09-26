@@ -23,14 +23,13 @@ abstract class AbstractLifeCycleFacade
         return $this->scheduler;
     }
 
-    public function getWorkerEvent() : WorkerEvent
+    public function initWorkerEvent(SchedulerEvent $event)
     {
-        $event = new WorkerEvent();
         $event->setScheduler($this->getScheduler());
         $event->setTarget($this->getScheduler());
-        $event->setWorker(new WorkerState($this->getScheduler()->getConfig()->getServiceName()));
-
-        return $event;
+        if ($event instanceof WorkerEvent) {
+            $event->setWorker(new WorkerState($this->getScheduler()->getConfig()->getServiceName()));
+        }
     }
 
     protected function getNewWorker() : WorkerState

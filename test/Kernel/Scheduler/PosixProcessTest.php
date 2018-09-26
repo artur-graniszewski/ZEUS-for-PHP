@@ -21,6 +21,12 @@ use Zeus\Kernel\System\Runtime;
 use ZeusTest\Helpers\PcntlBridgeMock;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\TerminateWorker;
+use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 /**
  * Class PosixProcessTest
@@ -107,11 +113,11 @@ class PosixProcessTest extends TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (&$eventLaunched) {
+        $events->attach(InitializeWorker::class, function(WorkerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) use (&$eventLaunched) {
+        $events->attach(CreateWorker::class, function(WorkerEvent $event) use (&$eventLaunched) {
             //$event->stopPropagation(true);
 
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
@@ -130,7 +136,7 @@ class PosixProcessTest extends TestCase
     {
         return [
             [
-                WorkerEvent::EVENT_CREATE,
+                CreateWorker::class,
                 123412341234, 123412341234,
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -140,7 +146,7 @@ class PosixProcessTest extends TestCase
             ],
 
             [
-                WorkerEvent::EVENT_CREATE,
+                CreateWorker::class,
                 false, getmypid(),
                 [
                     'pcntlFork' => ['amount' => 1, 'message' => 'Process should be forked'],
@@ -211,9 +217,8 @@ class PosixProcessTest extends TestCase
         $event->setParam('uid', 123456);
         $em->triggerEvent($event);
 
-        $event = new WorkerEvent();
+        $event = new TerminateWorker();
         $event->setTarget($scheduler);
-        $event->setName(WorkerEvent::EVENT_TERMINATE);
         $event->setParam('uid', 123456);
         $event->setParam('soft', false);
         $em->triggerEvent($event);
@@ -222,7 +227,7 @@ class PosixProcessTest extends TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
         $this->assertEquals(123456, $logArray[2][1][0], 'Kill signal should be sent to a certain process');
         $this->assertEquals(SIGKILL, $logArray[2][1][1], 'Correct type of kill signal should be sent to a certain process');
-        $this->assertEquals(WorkerEvent::EVENT_TERMINATE, $event->getName());
+        $this->assertEquals(TerminateScheduler::class, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
 
@@ -244,18 +249,15 @@ class PosixProcessTest extends TestCase
         $pcntlMock->setForkResult(98765);
 
         PosixProcess::setPcntlBridge($pcntlMock);
-        $schedulerEvent = new SchedulerEvent();
+        $schedulerEvent = new SchedulerLoopRepeated();
         $schedulerEvent->setScheduler($scheduler);
-        $workerEvent = new WorkerEvent();
+        $workerEvent = new CreateWorker();
         $workerEvent->setWorker($worker);
         $posixProcess = $this->getMpm($scheduler);
         $posixProcess->setWorkerEvent($workerEvent);
         $posixProcess->setEventManager($em);
-
-        $workerEvent->setName(WorkerEvent::EVENT_CREATE);
         $em->triggerEvent($workerEvent);
 
-        $schedulerEvent->setName(SchedulerEvent::EVENT_LOOP);
         $em->triggerEvent($schedulerEvent);
 
         $this->assertNotNull($triggeredEvent);
@@ -285,13 +287,11 @@ class PosixProcessTest extends TestCase
         PosixProcess::setPcntlBridge($pcntlMock);
         $schedulerEvent = new SchedulerEvent();
         $schedulerEvent->setScheduler($scheduler);
-        $workerEvent = new WorkerEvent();
+        $workerEvent = new CreateWorker();
         $workerEvent->setWorker($worker);
         $posixProcess = $this->getMpm($scheduler);
         $posixProcess->setWorkerEvent($workerEvent);
         $posixProcess->setEventManager($em);
-
-        $workerEvent->setName(WorkerEvent::EVENT_CREATE);
         $em->triggerEvent($workerEvent);
     }
 
@@ -323,7 +323,7 @@ class PosixProcessTest extends TestCase
         $pcntlMock->setPpid(1234);
 
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new SchedulerEvent();
+        $event = new SchedulerLoopRepeated();
         $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setEventManager($em);
 
@@ -331,8 +331,6 @@ class PosixProcessTest extends TestCase
         $em->triggerEvent($event);
 
         $pcntlMock->setPpid(12345);
-
-        $event->setName(SchedulerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
 
         $this->assertNotNull($triggeredEvent);
@@ -356,12 +354,9 @@ class PosixProcessTest extends TestCase
         $pcntlMock->setPpid(1234567890);
 
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new WorkerEvent();
+        $event = new WorkerLoopRepeated();
         $posixProcess = $this->getMpm($scheduler);
 
-        //$scheduler->start(false);
-
-        $event->setName(WorkerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
 
         $this->assertNotNull($triggeredEvent);
@@ -385,12 +380,10 @@ class PosixProcessTest extends TestCase
         $pcntlMock->setPpid(1234567890);
 
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new SchedulerEvent();
+        $event = new SchedulerLoopRepeated();
         $posixProcess = $this->getMpm($scheduler);
 
         //$scheduler->start(false);
-
-        $event->setName(SchedulerEvent::EVENT_LOOP);
         $em->triggerEvent($event);
 
         $this->assertNotNull($triggeredEvent);

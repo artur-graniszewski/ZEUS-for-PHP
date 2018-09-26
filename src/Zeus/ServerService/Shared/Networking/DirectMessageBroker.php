@@ -11,6 +11,8 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 use Zeus\ServerService\Shared\Networking\Service\BackendService;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 class DirectMessageBroker implements BrokerStrategy
 {
@@ -65,11 +67,11 @@ class DirectMessageBroker implements BrokerStrategy
             $backend->startService($this->backendHost, 1, $this->backendPort);
         }, -9000);
 
-        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $events->attach(InitializeWorker::class, function(WorkerEvent $event) {
             $this->message->setWorker($event->getWorker());
         }, WorkerEvent::PRIORITY_REGULAR);
 
-        $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
+        $events->attach(WorkerLoopRepeated::class, function (WorkerEvent $event) {
             $this->message->setWorker($event->getWorker());
             $this->getBackend()->checkMessages();
 

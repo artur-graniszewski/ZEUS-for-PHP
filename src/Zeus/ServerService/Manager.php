@@ -117,7 +117,7 @@ final class Manager
     public function registerBrokenService(string $serviceName, Throwable $exception)
     {
         $this->brokenServices[$serviceName] = $exception;
-        $this->getLogger()->err(sprintf("Unable to start %s, service is broken: %s", $serviceName, $exception->getMessage()));
+        $this->getLogger()->err(sprintf("Unable to start %s, service is broken: %s in %s:%d", $serviceName, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
 
         return $this;
     }
@@ -150,7 +150,6 @@ final class Manager
 
         $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START,
             function (SchedulerEvent $event) use ($service) {
-                $this->getLogger()->debug(sprintf('Scheduler starting in worker #%d', getmypid()));
                 $this->pidToServiceMap[getmypid()] = $service;
                 $this->servicesRunning++;
             }, -10000);

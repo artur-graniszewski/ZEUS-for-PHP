@@ -11,6 +11,7 @@ use Zeus\ServerService\Async\Service;
 use Zeus\ServerService\Shared\Factory\AbstractServerServiceFactory;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 /**
  * Class AsyncServiceTest
@@ -38,7 +39,7 @@ class AsyncServiceTest extends TestCase
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',
-            WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) use ($events) {
+            CreateWorker::class, function (WorkerEvent $event) use ($events) {
             $event->setParam("uid", 123456789);
         }, 100
         );

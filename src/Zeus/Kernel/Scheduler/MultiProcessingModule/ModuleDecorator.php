@@ -24,6 +24,7 @@ use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\WorkerStopListener;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\WorkerTerminateListener;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\Stream\Selector;
 
@@ -36,6 +37,10 @@ use function count;
 use function array_search;
 use function stream_socket_client;
 use function in_array;
+use Zeus\Kernel\Scheduler\Command\TerminateWorker;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterface
 {
@@ -116,26 +121,26 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
             $this->logCapabilities();
         }, SchedulerEvent::PRIORITY_INITIALIZE);
 
-        $eventManager->attach(WorkerEvent::EVENT_LOOP, new PipeListener($this->driver, $this->workerPool, $this->workerIPC), WorkerEvent::PRIORITY_INITIALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_LOOP, new PipeListener($this->driver, $this->workerPool, $this->workerIPC), -9000);
-        $eventManager->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
+        $eventManager->attach(WorkerLoopRepeated::class, new PipeListener($this->driver, $this->workerPool, $this->workerIPC), WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach(SchedulerLoopRepeated::class, new PipeListener($this->driver, $this->workerPool, $this->workerIPC), -9000);
+        $eventManager->attach(CreateWorker::class, function (WorkerEvent $event) {
             $pipe = $this->workerIPC->createPipe();
             $event->setParam(static::ZEUS_IPC_ADDRESS_PARAM, $pipe->getLocalAddress());
             $event->setParam(static::ZEUS_IPC_PIPE_PARAM, $pipe);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $eventManager->attach(WorkerEvent::EVENT_CREATE, new WorkerCreateListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_FINALIZE + 1);
+        $eventManager->attach(CreateWorker::class, new WorkerCreateListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerStopListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, new KernelStartListener($this->driver));
         $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerInitListener($this->driver), -9000);
         $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->driver, $this->workerPool), SchedulerEvent::PRIORITY_FINALIZE);
-        $eventManager->attach(SchedulerEvent::EVENT_LOOP, new SchedulerLoopListener($this->driver, $this->workerPool), -9000);
-        $eventManager->attach(WorkerEvent::EVENT_LOOP, new WorkerLoopListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_INITIALIZE);
-        $eventManager->attach(WorkerEvent::EVENT_TERMINATE, new WorkerTerminateListener($this->driver, $this->workerPool), -9000);
+        $eventManager->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->driver, $this->workerPool), -9000);
+        $eventManager->attach(WorkerLoopRepeated::class, new WorkerLoopListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_INITIALIZE);
+        $eventManager->attach(TerminateWorker::class, new WorkerTerminateListener($this->driver, $this->workerPool), -9000);
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_LOOP, new KernelLoopListener($this->driver, $this->workerPool), -9000);
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP, new KernelStopListener($this->driver, $this->workerPool));
-        $eventManager->attach(WorkerEvent::EVENT_INIT, new WorkerInitListener($this->driver), WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $eventManager->attach(WorkerEvent::EVENT_INIT, function () use ($eventManager) {
+        $eventManager->attach(InitializeWorker::class, new WorkerInitListener($this->driver), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $eventManager->attach(InitializeWorker::class, function () use ($eventManager) {
             if (!$this->workerPool->isTerminating()) {
                 try {
                     $this->workerIPC->connectToPipe($this->getIpcAddress());

@@ -17,6 +17,11 @@ use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ConsoleLogFormatter;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\TerminateWorker;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 /**
  * @runTestsInSeparateProcesses
@@ -64,7 +69,7 @@ class SchedulerTest extends TestCase
             $e->stopPropagation(true);
         }, 100000);
 
-        $events->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $e) use (&$counter) {
+        $events->attach(SchedulerLoopRepeated::class, function(SchedulerEvent $e) use (&$counter) {
             $e->getScheduler()->setTerminating(true);
             $e->stopPropagation(true);
             $counter++;
@@ -165,7 +170,7 @@ class SchedulerTest extends TestCase
             }, 100000);
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
 
-        $sm->attach('*', WorkerEvent::EVENT_CREATE,
+        $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses) {
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
@@ -178,14 +183,14 @@ class SchedulerTest extends TestCase
             }, 1000
         );
 
-        $sm->attach('*', WorkerEvent::EVENT_CREATE,
+        $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use (&$scheduler, $em) {
                 $e->stopPropagation(true);
                 $scheduler->setTerminating(false);
             }, WorkerEvent::PRIORITY_FINALIZE - 1
         );
 
-        $sm->attach('*', WorkerEvent::EVENT_INIT,
+        $sm->attach('*', InitializeWorker::class,
             function(WorkerEvent $e) use (&$processCount, $startWorkers, &$workers) {
                 $worker = $e->getWorker();
                 $uid = $worker->getUid();
@@ -249,13 +254,13 @@ class SchedulerTest extends TestCase
 
         $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(EventInterface $e) {$e->stopPropagation(true);});
-        $sm->attach('*', WorkerEvent::EVENT_TERMINATE,
+        $sm->attach('*', TerminateWorker::class,
             function(WorkerEvent $event) use ($em, & $processesToTerminate, & $amountOfTerminateCommands) {
                 $amountOfTerminateCommands++;
                 $processesToTerminate[] = $event->getParam('uid');
             }
         );
-        $sm->attach('*', WorkerEvent::EVENT_CREATE,
+        $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses) {
                 $amountOfScheduledProcesses++;
 
@@ -265,7 +270,7 @@ class SchedulerTest extends TestCase
             }, WorkerEvent::PRIORITY_INITIALIZE + 1
         );
 
-        $sm->attach('*', WorkerEvent::EVENT_INIT,
+        $sm->attach('*', InitializeWorker::class,
             function(WorkerEvent $e) use (&$processesInitialized) {
                 $e->stopPropagation(true);
             }
@@ -327,14 +332,14 @@ class SchedulerTest extends TestCase
         $em = $scheduler->getEventManager();
         $sm = $em->getSharedManager();
 
-        $sm->attach('*', WorkerEvent::EVENT_INIT,
+        $sm->attach('*', InitializeWorker::class,
             function(WorkerEvent $e) use (&$processCount, &$workers, $mockWriter) {
                 $worker = $e->getWorker();
                 $workers[] = $worker;
             });
         $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, WorkerEvent::PRIORITY_FINALIZE + 1);
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
-        $sm->attach('*', WorkerEvent::EVENT_CREATE,
+        $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
                 $amountOfScheduledProcesses++;
                 $uid = 100000000 + $amountOfScheduledProcesses;
@@ -343,14 +348,14 @@ class SchedulerTest extends TestCase
             }, WorkerEvent::PRIORITY_FINALIZE + 1
         );
 
-        $sm->attach('*', WorkerEvent::EVENT_CREATE,
+        $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use (&$scheduler) {
                 $e->stopPropagation(true);
                 $scheduler->setTerminating(false);
             }, SchedulerEvent::PRIORITY_FINALIZE - 1
         );
 
-        $em->attach(WorkerEvent::EVENT_LOOP,
+        $em->attach(WorkerLoopRepeated::class,
             function(WorkerEvent $e) use (&$processesInitialized) {
                 $id = $e->getParam('uid');
                 $e->getWorker()->incrementNumberOfFinishedTasks(1001);
@@ -388,7 +393,7 @@ class SchedulerTest extends TestCase
         $sm = $em->getSharedManager();
         $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
 
-        $sm->attach('*', WorkerEvent::EVENT_CREATE,
+        $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
                 $amountOfScheduledProcesses++;
 
@@ -402,7 +407,7 @@ class SchedulerTest extends TestCase
 
         $this->simulateWorkerInit($em);
 
-        $sm->attach('*', WorkerEvent::EVENT_INIT,
+        $sm->attach('*', InitializeWorker::class,
             function(WorkerEvent $e) use (&$processesInitialized) {
                 $e->stopPropagation(true);
             }
@@ -416,7 +421,7 @@ class SchedulerTest extends TestCase
             }, -9999);
 
         $unknownProcesses = [];
-        $sm->attach('*', WorkerEvent::EVENT_TERMINATE,
+        $sm->attach('*', TerminateWorker::class,
             function(WorkerEvent $e) use ($em, &$processesCreated, &$unknownProcesses) {
                 $uid = $e->getParam('uid');
                 if (!isset($processesCreated[$uid])) {
@@ -454,7 +459,7 @@ class SchedulerTest extends TestCase
         $exception = null;
 
         $sm->attach('*',
-            WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) use ($em) {
+            CreateWorker::class, function (WorkerEvent $event) use ($em) {
             $event->setParams([
                 "uid" => 123456789,
                 SchedulerInterface::WORKER_INIT => true,

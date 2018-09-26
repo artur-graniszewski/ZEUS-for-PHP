@@ -7,6 +7,7 @@ use Zeus\Kernel\Scheduler\Plugin\DropPrivileges;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 /**
  * Class SchedulerPluginsTest
@@ -83,14 +84,13 @@ class SchedulerPluginsTest extends TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
 
         $worker = new WorkerState("test");
-        $event = new WorkerEvent();
+        $event = new InitializeWorker();
         $event->setWorker($worker);
         $event->setTarget($worker);
         $event->setScheduler($scheduler);
-        $event->setName(WorkerEvent::EVENT_INIT);
 
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $scheduler->getEventManager()->attach(InitializeWorker::class, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
         $scheduler->getEventManager()->triggerEvent($event);
@@ -106,15 +106,14 @@ class SchedulerPluginsTest extends TestCase
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
 
         $worker = new WorkerState("test");
-        $event = new WorkerEvent();
+        $event = new InitializeWorker();
         $event->setWorker($worker);
         $event->setTarget($worker);
         $event->setScheduler($scheduler);
-        $event->setName(WorkerEvent::EVENT_INIT);
 
         $event->setTarget($scheduler);
         $plugin->__construct(['user' => 'root', 'group' => 'root']);
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $scheduler->getEventManager()->attach(InitializeWorker::class, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -138,8 +137,7 @@ class SchedulerPluginsTest extends TestCase
         $plugin->expects($this->exactly(2))->method("posixSetEgid")->will($this->returnValue(true));
         $scheduler = $this->getSchedulerWithPlugin([$plugin]);
 
-        $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_INIT);
+        $event = new InitializeWorker();
         $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
         $event->setWorker(new WorkerState('test'));

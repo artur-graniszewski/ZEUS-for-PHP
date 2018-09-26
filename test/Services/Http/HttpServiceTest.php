@@ -12,6 +12,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 /**
  * Class HttpServiceTest
@@ -34,7 +35,7 @@ class HttpServiceTest extends \PHPUnit\Framework\TestCase
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',
-            WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) use ($events) {
+            CreateWorker::class, function (WorkerEvent $event) use ($events) {
                 $event->setParam("uid", 123456789);
             }, 100
         );

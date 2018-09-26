@@ -15,6 +15,8 @@ use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 /**
  * Class SocketMessageTest
@@ -78,7 +80,7 @@ class SocketMessageTest extends TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         
-        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+        $events->attach(InitializeWorker::class, function(WorkerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -89,11 +91,10 @@ class SocketMessageTest extends TestCase
         $event->setName(SchedulerEvent::EVENT_START);
         $events->triggerEvent($event);
 
-        $event = new WorkerEvent();
+        $event = new InitializeWorker();
         $event->setTarget($worker);
         $event->setWorker($worker);
         $event->setScheduler($scheduler);
-        $event->setName(WorkerEvent::EVENT_INIT);
         $event->setParams(['uid' => getmypid(), 'threadId' => 1, 'processId' => 1]);
         $events->triggerEvent($event);
 
@@ -105,7 +106,7 @@ class SocketMessageTest extends TestCase
         $wrote = stream_socket_sendto($client, $requestString);
         $this->assertEquals($wrote, strlen($requestString));
 
-        $event->setName(WorkerEvent::EVENT_LOOP);
+        $event = new WorkerLoopRepeated();
         $event->setTarget($worker);
         $event->setWorker($worker);
         $events->triggerEvent($event);
@@ -160,15 +161,14 @@ class SocketMessageTest extends TestCase
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+        $events->attach(InitializeWorker::class, function(WorkerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $event->setName(SchedulerEvent::EVENT_START);
         $events->triggerEvent($event);
 
-        $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_INIT);
+        $event = new InitializeWorker();
         $event->setTarget($worker);
         $event->setWorker($worker);
         $event->setScheduler($scheduler);
@@ -182,7 +182,10 @@ class SocketMessageTest extends TestCase
         $requestString = "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
         fwrite($client, $requestString);
 
-        $event->setName(WorkerEvent::EVENT_LOOP);
+        $event = new WorkerLoopRepeated();
+        $event->setTarget($worker);
+        $event->setWorker($worker);
+        $event->setScheduler($scheduler);
         $exception = null;
         $events->triggerEvent($event);
 

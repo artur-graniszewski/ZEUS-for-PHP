@@ -10,6 +10,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 use Zeus\Kernel\Scheduler\ConfigInterface;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 class WorkerLifeCycle
 {
@@ -81,7 +82,7 @@ class WorkerLifeCycle
                 $params = [
                     'status' => $worker
                 ];
-                $this->triggerEvent(WorkerEvent::EVENT_LOOP, $params, $worker);
+                $this->triggerEvent(WorkerLoopRepeated::class, $params, $worker);
 
             } catch (Error $exception) {
                 $this->terminate($worker, $exception);

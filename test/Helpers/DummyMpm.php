@@ -10,6 +10,7 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\SocketServer;
 use Zeus\Kernel\SchedulerInterface;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 class DummyMpm extends AbstractModule
 {
@@ -24,7 +25,7 @@ class DummyMpm extends AbstractModule
         $this->pipe = $socketServer = new SocketServer(0, 500, ModuleDecorator::LOOPBACK_INTERFACE);
         $socketServer->setSoTimeout(10);
 
-        $eventManager->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
+        $eventManager->attach(CreateWorker::class, function (WorkerEvent $event) {
             $pid = $event->getParam('uid', getmypid());
             $status = $event->getWorker();
             $status->setProcessId($pid);

@@ -72,6 +72,8 @@ class WorkerPool
 
     public function registerWorkers()
     {
+        // @todo: remove this select, reactor should perform the select instead
+        $this->backendSelector->select(0);
         foreach ($this->backendSelector->getSelectionKeys() as $key) {
             $attachment = $key->getAttachment();
             $uid = $attachment['uid'];

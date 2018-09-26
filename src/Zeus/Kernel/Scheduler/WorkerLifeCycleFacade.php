@@ -4,6 +4,9 @@ namespace Zeus\Kernel\Scheduler;
 
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\SchedulerInterface;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\TerminateWorker;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 /**
  * @internal
@@ -17,13 +20,13 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
         $startParams[SchedulerInterface::WORKER_SERVER] = false;
 
         // worker create...
-        $event = $this->triggerEvent(WorkerEvent::EVENT_CREATE, $startParams, $worker);
+        $event = $this->triggerEvent(CreateWorker::class, $startParams, $worker);
 
         if ($event->getParam(SchedulerInterface::WORKER_INIT)) {
             $this->getScheduler()->setWorker($worker);
             $params = $event->getParams();
             $params[SchedulerInterface::WORKER_SERVER] = false;
-            $this->triggerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
+            $this->triggerEvent(InitializeWorker::class, $params, $worker);
         }
     }
 
@@ -36,7 +39,7 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
             'soft' => $isSoftStop
         ];
 
-        $this->triggerEvent(WorkerEvent::EVENT_TERMINATE, $params);
+        $this->triggerEvent(TerminateWorker::class, $params, $worker);
     }
 
     public function syncWorker(WorkerState $worker)
@@ -50,8 +53,14 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
 
     private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent
     {
-        $event = $this->getWorkerEvent();
-        $event->setName($eventName);
+        if (class_exists($eventName)) {
+            $event = new $eventName();
+        } else {
+            $event = new WorkerEvent();
+            $event->setName($eventName);
+        }
+        
+        $this->initWorkerEvent($event);
         $event->setParams($params);
         $event->setScheduler($this->getScheduler());
 

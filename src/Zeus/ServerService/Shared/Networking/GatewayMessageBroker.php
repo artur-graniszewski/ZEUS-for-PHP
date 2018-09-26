@@ -18,10 +18,14 @@ use Zeus\ServerService\Shared\Networking\Service\BackendService;
 use Zeus\ServerService\Shared\Networking\Service\GatewayService;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 use Zeus\ServerService\Shared\Networking\Service\WorkerIPC;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 use function max;
 use function microtime;
 use function defined;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+
 
 /**
  * Class GatewayMessageBroker
@@ -136,7 +140,7 @@ final class GatewayMessageBroker implements BrokerStrategy
 
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
+        $events->attach(InitializeWorker::class, function (WorkerEvent $event) {
             $this->message->setScheduler($event->getScheduler());
             $registrator = $this->getRegistrator();
             $registrator->setWorkerUid($event->getWorker()->getUid());
@@ -145,12 +149,12 @@ final class GatewayMessageBroker implements BrokerStrategy
             }
         }, WorkerEvent::PRIORITY_INITIALIZE + 3);
 
-        $events->attach(WorkerEvent::EVENT_INIT, function (WorkerEvent $event) {
+        $events->attach(InitializeWorker::class, function (WorkerEvent $event) {
             $registrator = $this->getRegistrator();
             $registrator->register();
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $events->attach(InitializeWorker::class, function(WorkerEvent $event) {
             $backend = $this->getBackend();
             $backend->startService($this->backendHost, 1, 0);
             $this->workerIPC = new WorkerIPC($event->getWorker()->getUid(), $backend->getServer()->getLocalAddress());
@@ -189,7 +193,7 @@ final class GatewayMessageBroker implements BrokerStrategy
             $this->getGateway()->startService('tcp://' . $config->getListenAddress(), 1000, $config->getListenPort());
         }, WorkerEvent::PRIORITY_FINALIZE);
 
-        $events->attach(WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) {
+        $events->attach(CreateWorker::class, function (WorkerEvent $event) {
             $address = $this->getRegistrator()->getRegistratorAddress();
             if ($address) {
                 $event->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, $address);
@@ -205,7 +209,7 @@ final class GatewayMessageBroker implements BrokerStrategy
             $this->electGatewayWorkers($event->getScheduler()->getIpc());
         }, -9000);
 
-        $events->attach(WorkerEvent::EVENT_LOOP, function (WorkerEvent $event) {
+        $events->attach(WorkerLoopRepeated::class, function (WorkerEvent $event) {
             if ($this->isBackend) {
                 $this->message->setWorker($event->getWorker());
                 $this->getBackend()->checkMessages();

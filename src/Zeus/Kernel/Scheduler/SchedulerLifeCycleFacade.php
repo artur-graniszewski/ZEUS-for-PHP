@@ -5,6 +5,9 @@ namespace Zeus\Kernel\Scheduler;
 use Throwable;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\SchedulerInterface;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 /**
  * Class SchedulerLifeCycleFacade
@@ -26,12 +29,14 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
         $startParams[SchedulerInterface::WORKER_SERVER] = true;
 
         // worker create...
-        $event = $this->triggerEvent(WorkerEvent::EVENT_CREATE, $startParams, $worker);
-        if ($event->getParam(SchedulerInterface::WORKER_INIT, false)) {
-            $params = $event->getParams();
-            $params[SchedulerInterface::WORKER_SERVER] = true;
-            $this->triggerEvent(WorkerEvent::EVENT_INIT, $params, $worker);
+        $event = $this->triggerEvent(CreateWorker::class, $startParams, $worker);
+        if (!$event->getParam(SchedulerInterface::WORKER_INIT, false)) {
+            return;
         }
+        
+        $params = $event->getParams();
+        $params[SchedulerInterface::WORKER_SERVER] = true;
+        $this->triggerEvent(InitializeWorker::class, $params, $worker);        
     }
 
     public function stop(WorkerState $worker, bool $isSoftStop)
@@ -46,18 +51,29 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
         $worker = new WorkerState('unknown', WorkerState::TERMINATED);
         $worker->setUid($uid);
 
-        $this->triggerEvent(SchedulerEvent::EVENT_TERMINATE, ['isSoftStop' => $isSoftStop], $worker);
+        $this->triggerEvent(TerminateScheduler::class, ['isSoftStop' => $isSoftStop], $worker);
     }
 
     private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : SchedulerEvent
     {
-        $event = $this->getWorkerEvent();
-        $event->setName($eventName);
+        if (class_exists($eventName)) {
+            $event = new $eventName();
+        } else {
+            $event = new WorkerEvent();
+            $event->setName($eventName);
+        }
+        
+        $this->initWorkerEvent($event);
 
         if ($params) {
             $event->setParams($params);
         }
-
+        
+        if ($worker) {
+            $event->setWorker($worker);
+            $this->getScheduler()->setWorker($worker);
+        }
+        
         $event->setTarget($worker ? $worker : $this->getScheduler()->getWorker());
         $event->setScheduler($this->getScheduler());
 

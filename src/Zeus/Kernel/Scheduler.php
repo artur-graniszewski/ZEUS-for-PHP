@@ -31,8 +31,14 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 use function sprintf;
+use Zeus\Kernel\Scheduler\Command\TerminateWorker;
+use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+
 
 /**
  * Class Scheduler
@@ -171,7 +177,9 @@ class Scheduler implements SchedulerInterface
         $this->schedulerLifeCycle->setScheduler($this);
 
         $this->multiProcessingModule = $driver;
-        $driver->getDecorator()->setWorkerEvent($this->workerLifeCycle->getWorkerEvent());
+        $workerEvent = new WorkerEvent();
+        $this->workerLifeCycle->initWorkerEvent($workerEvent);
+        $driver->getDecorator()->setWorkerEvent($workerEvent);
 
         $this->discipline = $discipline;
         $discipline->setConfig($config);
@@ -199,14 +207,14 @@ class Scheduler implements SchedulerInterface
         $handles[] = $events->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), WorkerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(SchedulerEvent::EVENT_TERMINATE, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
+        $handles[] = $events->attach(TerminateScheduler::class, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
         $handles[] = $events->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(SchedulerEvent::EVENT_LOOP, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
-        $handles[] = $events->attach(WorkerEvent::EVENT_CREATE, new KernelLoopGenerator(), WorkerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new WorkerLifeCycle($this), WorkerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new SchedulerLifeCycle($this), WorkerEvent::PRIORITY_INITIALIZE + 1);
-        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE + 1000);
-        $handles[] = $events->attach(WorkerEvent::EVENT_INIT, new WorkerInitListener(), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $handles[] = $events->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
+        $handles[] = $events->attach(CreateWorker::class, new KernelLoopGenerator(), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(InitializeWorker::class, new WorkerLifeCycle($this), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(InitializeWorker::class, new SchedulerLifeCycle($this), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $handles[] = $events->attach(InitializeWorker::class, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE + 1000);
+        $handles[] = $events->attach(InitializeWorker::class, new WorkerInitListener(), WorkerEvent::PRIORITY_INITIALIZE + 1);
         $this->eventHandles = array_merge($this->eventHandles, $handles);
     }
 
@@ -282,9 +290,7 @@ class Scheduler implements SchedulerInterface
     public function stop()
     {
         $this->setTerminating(true);
-
-        $worker = new WorkerState($this->getConfig()->getServiceName(), WorkerState::RUNNING);
+        $worker = $this->getWorker();
         $this->schedulerLifeCycle->stop($worker, false);
-        $this->getLogger()->info("Workers checked");
     }
 }

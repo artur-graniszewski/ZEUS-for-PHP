@@ -14,6 +14,6 @@ class KernelLoopGenerator
             return;
         }
 
-        return;
+        $event->getScheduler()->setWorker($event->getWorker());
     }
 }

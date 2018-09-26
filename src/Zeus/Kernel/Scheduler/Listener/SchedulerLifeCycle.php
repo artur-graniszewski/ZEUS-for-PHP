@@ -8,6 +8,7 @@ use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 
 class SchedulerLifeCycle
 {
@@ -38,10 +39,11 @@ class SchedulerLifeCycle
         $event->stopPropagation(true);
 
         $params = $event->getParams();
+        $worker = $event->getWorker();
 
         $exception = null;
         try {
-            $this->triggerEvent(SchedulerEvent::EVENT_START, $params);
+            $this->triggerEvent(SchedulerEvent::EVENT_START, $params, $worker);
             $this->mainLoop();
         } catch (Throwable $exception) {
         }
@@ -52,7 +54,7 @@ class SchedulerLifeCycle
         }
 
         try {
-            $this->triggerEvent(SchedulerEvent::EVENT_STOP, $params);
+            $this->triggerEvent(SchedulerEvent::EVENT_STOP, $params, $worker);
         } catch (Throwable $e) {
 
         }
@@ -71,7 +73,7 @@ class SchedulerLifeCycle
         $reactor = $scheduler->getReactor();
 
         $terminator = function() use ($reactor, $scheduler) {
-            $this->triggerEvent(SchedulerEvent::EVENT_LOOP, []);
+            $this->triggerEvent(SchedulerLoopRepeated::class, []);
 
             if ($scheduler->isTerminating()) {
                 $reactor->setTerminating(true);

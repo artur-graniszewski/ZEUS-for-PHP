@@ -39,6 +39,7 @@ abstract class AbstractProcessModule extends AbstractModule
 
     public function onWorkerCreate(WorkerEvent $event)
     {
+        $uid = getmypid();
         $pid = $this->createProcess($event);
 
         $worker = $event->getWorker();

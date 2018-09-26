@@ -15,6 +15,8 @@ use ZeusTest\Helpers\DummyServerService;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\ServerService\Http\Service;
 use ZeusTest\Unit\IO\DummySelectableStream;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 /**
  * Class SchedulerStatusTest
@@ -131,11 +133,11 @@ class SchedulerStatusTest extends TestCase
         $scheduler = $this->getSchedulerWithPlugin([$mockedPlugin]);
 
         $em = $scheduler->getEventManager();
-        $em->attach(WorkerEvent::EVENT_INIT, function(WorkerEvent $event) {
+        $em->attach(InitializeWorker::class, function(WorkerEvent $event) {
             $event->stopPropagation(true); // block process main loop
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $em->attach(WorkerEvent::EVENT_CREATE,
+        $em->attach(CreateWorker::class,
             function(WorkerEvent $e) use (&$amountOfScheduledProcesses, &$processesCreated, $em) {
                 $amountOfScheduledProcesses++;
 

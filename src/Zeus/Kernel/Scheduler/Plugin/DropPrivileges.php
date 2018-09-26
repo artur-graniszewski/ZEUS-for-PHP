@@ -15,6 +15,7 @@ use function posix_setegid;
 use function posix_setgid;
 use function posix_setuid;
 use function posix_seteuid;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 class DropPrivileges implements ListenerAggregateInterface
 {
@@ -76,7 +77,7 @@ class DropPrivileges implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_INIT, function() {
+        $this->eventHandles[] = $events->attach(InitializeWorker::class, function() {
             $this->onWorkerInit();
         }, $priority);
     }

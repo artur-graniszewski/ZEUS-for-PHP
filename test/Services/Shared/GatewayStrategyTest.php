@@ -11,6 +11,8 @@ use Zeus\ServerService\Http\Message\Message;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 /**
  * Class GatewayStrategyTest
@@ -42,11 +44,11 @@ class GatewayStrategyTest extends TestCase
         $events = $scheduler->getEventManager();
         $broker->attach($events);
 
-        $events->attach(Scheduler\WorkerEvent::EVENT_CREATE, function(Scheduler\WorkerEvent $e) {
+        $events->attach(CreateWorker::class, function(Scheduler\WorkerEvent $e) {
             $e->setParam('initWorker', true);
         }, 100000);
 
-        $events->attach(Scheduler\WorkerEvent::EVENT_INIT, function(Scheduler\WorkerEvent $e) use ($broker, &$initPassed) {
+        $events->attach(InitializeWorker::class, function(Scheduler\WorkerEvent $e) use ($broker, &$initPassed) {
             $this->assertEquals($broker->getRegistrator()->getRegistratorAddress(), $e->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM), 'Registrator address should be passed as event param');
             $initPassed = true;
             $e->setParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM, "tcp://127.0.0.1:10");
@@ -59,9 +61,9 @@ class GatewayStrategyTest extends TestCase
             $e->stopPropagation(true);
         }, 100000);
 
-        $events->attach(Scheduler\WorkerEvent::EVENT_INIT, function(Scheduler\WorkerEvent $e) use ($broker, &$counter) {
+        $events->attach(InitializeWorker::class, function(Scheduler\WorkerEvent $e) use ($broker, &$counter) {
             $this->assertEquals($broker->getRegistrator()->getRegistratorAddress(), $e->getParam(RegistratorService::IPC_ADDRESS_EVENT_PARAM), 'Registrator address should be passed as event param');
-            $this->assertEquals("tcp://127.0.0.1:10", $broker->getRegistrator()->getRegistratorAddress(), "Registrator address should have been altered by WorkerEvent::EVENT_CREATE");
+            $this->assertEquals("tcp://127.0.0.1:10", $broker->getRegistrator()->getRegistratorAddress(), "Registrator address should have been altered by CreateWorker::class");
             $counter++;
             $e->stopPropagation(true);
         }, WorkerEvent::PRIORITY_INITIALIZE - 1);

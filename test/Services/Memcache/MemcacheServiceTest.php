@@ -16,6 +16,7 @@ use Zeus\ServerService\Memcache\Factory\MemcacheFactory;
 use Zeus\ServerService\Memcache\Service;
 use ZeusTest\Helpers\DummyMpm;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 class MemcacheServiceTest extends TestCase
 {
@@ -53,7 +54,7 @@ class MemcacheServiceTest extends TestCase
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',
-            WorkerEvent::EVENT_CREATE, function (WorkerEvent $event) use ($events) {
+            CreateWorker::class, function (WorkerEvent $event) use ($events) {
             $event->setParam("uid", 123456789);
         }, 100
         );

@@ -17,6 +17,8 @@ use Zeus\Kernel\System\Runtime;
 use ZeusTest\Helpers\PosixThreadBridgeMock;
 use ZeusTest\Helpers\PosixThreadWrapperMock;
 use ZeusTest\Helpers\ZeusFactories;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 /**
  * Class PosixThreadTest
@@ -103,14 +105,14 @@ class PosixThreadTest extends TestCase
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
         $amount = 0;
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_CREATE, function(WorkerEvent $event) use (&$eventLaunched, &$amount, &$argv) {
+        $scheduler->getEventManager()->attach(CreateWorker::class, function(WorkerEvent $event) use (&$eventLaunched, &$amount, &$argv) {
             $amount++;
             if ($amount === 1) {
                 $argv = $_SERVER['argv'];
             }
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_LOOP, function(WorkerEvent $event) {
+        $scheduler->getEventManager()->attach(WorkerLoopRepeated::class, function(WorkerEvent $event) {
             $event->getWorker()->setCode(WorkerState::EXITING);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 

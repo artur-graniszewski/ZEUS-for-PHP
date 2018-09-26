@@ -15,6 +15,7 @@ use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 
 use function defined;
 use function getmypid;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 
 class WorkerController extends AbstractController
 {
@@ -72,7 +73,7 @@ class WorkerController extends AbstractController
 
         $startParams[SchedulerInterface::WORKER_INIT] = true;
         $startParams[SchedulerInterface::WORKER_SERVER] = false;
-        $scheduler->getEventManager()->attach(WorkerEvent::EVENT_INIT, function() {
+        $scheduler->getEventManager()->attach(InitializeWorker::class, function() {
             DynamicPriorityFilter::resetPriority();
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -97,7 +98,7 @@ class WorkerController extends AbstractController
         /** @var SchedulerInterface $scheduler */
         $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
-        $event = $scheduler->getMultiProcessingModule()->getDecorator()->getWorkerEvent();
+        $event = new InitializeWorker();
 
         $worker = $event->getWorker();
         $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
@@ -110,7 +111,6 @@ class WorkerController extends AbstractController
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {
             $event->setParam(ModuleDecorator::ZEUS_IPC_ADDRESS_PARAM, ZEUS_THREAD_IPC_ADDRESS);
         }
-        $event->setName(WorkerEvent::EVENT_INIT);
         $scheduler->getEventManager()->triggerEvent($event);
     }
 }

@@ -22,6 +22,7 @@ use function json_encode;
 use function json_decode;
 use function sprintf;
 use function getmypid;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 
 /**
  * Class SchedulerStatus
@@ -94,7 +95,7 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 100)
     {
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_LOOP, function(SchedulerEvent $e) {
+        $this->eventHandles[] = $events->attach(SchedulerLoopRepeated::class, function(SchedulerEvent $e) {
             if (!$this->statusServer) {
                 $this->init($e);
             }
