@@ -227,7 +227,7 @@ class PosixProcessTest extends TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'posixKill'), 'Kill signal should be sent');
         $this->assertEquals(123456, $logArray[2][1][0], 'Kill signal should be sent to a certain process');
         $this->assertEquals(SIGKILL, $logArray[2][1][1], 'Correct type of kill signal should be sent to a certain process');
-        $this->assertEquals(TerminateScheduler::class, $event->getName());
+        $this->assertEquals(TerminateWorker::class, $event->getName());
         $pcntlMock->setExecutionLog([]);
     }
 
