@@ -12,10 +12,12 @@ use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\Logger\DynamicPriorityFilter;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Status\WorkerState;
 
 use function defined;
 use function getmypid;
-use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\SchedulerEvent;
 
 class WorkerController extends AbstractController
 {
@@ -100,12 +102,16 @@ class WorkerController extends AbstractController
 
         $event = new InitializeWorker();
 
-        $worker = $event->getWorker();
-        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : $worker->getProcessId());
+        $worker = new WorkerState($serviceName);   
+        $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : getmypid());
         $worker->setProcessId(getmypid());
         $worker->setThreadId(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : 1);
         $event->setWorker($worker);
-        $event->setTarget($worker);
+        
+        $event->setTarget($event instanceof SchedulerEvent ? $scheduler : $worker);
+        if ($event instanceof SchedulerEvent) {
+            $scheduler->setWorker($worker);
+        }
         $event->setScheduler($scheduler);
         $event->setParams($startParams);
         if (defined("ZEUS_THREAD_IPC_ADDRESS")) {

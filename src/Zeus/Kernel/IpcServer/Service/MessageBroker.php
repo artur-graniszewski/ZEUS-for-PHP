@@ -30,6 +30,7 @@ class MessageBroker
      */
     public function distributeMessages(array $messages, array $availableAudience, callable $senderCallback)
     {
+        $fullAudience = $availableAudience;
         foreach ($messages as $payload) {
             $cids = [];
             $audience = $payload['aud'];
@@ -38,8 +39,17 @@ class MessageBroker
             $number = $payload['num'];
 
             // sender is not an audience
+            $availableAudience = array_flip($fullAudience);
             unset($availableAudience[$senderId]);
 
+            if (!$availableAudience) {
+                $this->queuedMessages[] = $payload;
+                continue;
+            }
+            
+            $availableAudience = array_flip($availableAudience);
+            
+           
             // @todo: implement read confirmation?
             switch ($audience) {
                 case IpcServer::AUDIENCE_ALL:
@@ -90,6 +100,10 @@ class MessageBroker
                     break;
             }
 
+            if (!$cids) {
+                continue;
+            }
+            
             foreach ($cids as $cid) {
                 $senderCallback($senderId, $cid, $message);
             }

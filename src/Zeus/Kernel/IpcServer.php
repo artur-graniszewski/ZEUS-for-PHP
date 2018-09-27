@@ -84,7 +84,7 @@ class IpcServer implements EventManagerAwareInterface
         }, SchedulerEvent::PRIORITY_REGULAR + 1);
 
 
-        $this->eventHandles[] = $events->attach(InitializeWorker::class, $ipcRegistrator, WorkerEvent::PRIORITY_INITIALIZE);
+        $this->eventHandles[] = $events->attach(InitializeWorker::class, $ipcRegistrator, WorkerEvent::PRIORITY_INITIALIZE + 1000);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, $ipcRegistrator, SchedulerEvent::PRIORITY_INITIALIZE);
         $this->eventHandles[] = $events->attach(IpcEvent::EVENT_MESSAGE_SEND, new WorkerMessageSender($ipcRegistrator, $this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE);
 

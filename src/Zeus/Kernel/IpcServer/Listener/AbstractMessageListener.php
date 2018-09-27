@@ -121,6 +121,29 @@ abstract class AbstractMessageListener
         } catch (SocketTimeoutException $exception) {
         }
     }
+    
+    private function addNewIpcClients(SelectionKey $key) : bool
+    {
+        $stream = $key->getStream();
+        
+        /** @var SocketIpc $buffer */
+        $buffer = $key->getAttachment();
+        $buffer->append($stream->read());
+        
+        $pos = $buffer->find('!');
+        if (0 > $pos) {
+            return false;
+        }
+        
+        $data = $buffer->read($pos + 1);
+        
+        $uid = (int) $data;
+        $buffer->setId($uid);
+        $this->ipcStreams[$uid] = $stream;
+        unset ($this->inboundStreams[array_search($stream, $this->inboundStreams)]);
+        
+        return true;
+    }
 
     private function handleIpcMessages(AbstractStreamSelector $selector)
     {
@@ -151,6 +174,7 @@ abstract class AbstractMessageListener
                     if ($ipc->peek(1) === '') {
                         // read was already performed and no more data's left in the buffer
                         // ignore this stream until next select
+                        $this->sendQueuedMessages();
                         continue;
                     }
 
@@ -186,7 +210,12 @@ abstract class AbstractMessageListener
             }
         }
 
-        while (null !== ($message = $this->messageBroker->getQueuedMessage())) {
+        $this->sendQueuedMessages();
+    }
+    
+    private function sendQueuedMessages()
+    {
+        if (null !== ($message = $this->messageBroker->getQueuedMessage())) {
             $this->messageBroker->distributeMessages([$message], array_keys($this->ipcStreams), function($senderId, $targetId, $message) {
                 $this->sendMessage($senderId, $targetId, $message);
             });
@@ -214,28 +243,5 @@ abstract class AbstractMessageListener
             $this->ipcSelector->unregister($this->ipcStreams[$targetId]);
             unset($this->ipcStreams[$targetId]);
         }
-    }
-
-    private function addNewIpcClients(SelectionKey $key) : bool
-    {
-        $stream = $key->getStream();
-
-        /** @var SocketIpc $buffer */
-        $buffer = $key->getAttachment();
-        $buffer->append($stream->read());
-
-        $pos = $buffer->find('!');
-        if (0 > $pos) {
-            return false;
-        }
-
-        $data = $buffer->read($pos + 1);
-
-        $uid = (int) $data;
-        $buffer->setId($uid);
-        $this->ipcStreams[$uid] = $stream;
-        unset ($this->inboundStreams[array_search($stream, $this->inboundStreams)]);
-
-        return true;
     }
 }

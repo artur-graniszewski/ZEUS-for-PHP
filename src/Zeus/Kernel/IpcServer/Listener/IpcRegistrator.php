@@ -69,7 +69,7 @@ class IpcRegistrator
         $ipcStream = new SocketStream($socket);
         $ipcStream->setBlocking(false);
         $this->setStreamOptions($ipcStream);
-        $ipcStream->write("$uid!");
+        $ipcStream->write("$uid!");        
         do {$done = $ipcStream->flush(); } while (!$done);
         $this->ipcClient = new SocketIpc($ipcStream);
         $this->ipcClient->setId($uid);
