@@ -22,6 +22,7 @@ use Zeus\Kernel\Scheduler\Command\TerminateWorker;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
 
 /**
  * @runTestsInSeparateProcesses
@@ -165,7 +166,7 @@ class SchedulerTest extends TestCase
         $em = $scheduler->getEventManager();
         $sm = $em->getSharedManager();
 
-        $sm->attach('*', WorkerEvent::EVENT_EXIT, function(WorkerEvent $e) {
+        $sm->attach('*', WorkerExited::class, function(WorkerEvent $e) {
             $e->stopPropagation(true);
             }, 100000);
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
@@ -252,7 +253,7 @@ class SchedulerTest extends TestCase
 
         $this->simulateWorkerInit($em);
 
-        $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+        $sm->attach('*', WorkerExited::class, function(EventInterface $e) {$e->stopPropagation(true);});
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(EventInterface $e) {$e->stopPropagation(true);});
         $sm->attach('*', TerminateWorker::class,
             function(WorkerEvent $event) use ($em, & $processesToTerminate, & $amountOfTerminateCommands) {
@@ -337,7 +338,7 @@ class SchedulerTest extends TestCase
                 $worker = $e->getWorker();
                 $workers[] = $worker;
             });
-        $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);}, WorkerEvent::PRIORITY_FINALIZE + 1);
+        $sm->attach('*', WorkerExited::class, function(EventInterface $e) {$e->stopPropagation(true);}, WorkerEvent::PRIORITY_FINALIZE + 1);
         $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
         $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
@@ -391,7 +392,7 @@ class SchedulerTest extends TestCase
 
         $em = $scheduler->getEventManager();
         $sm = $em->getSharedManager();
-        $sm->attach('*', WorkerEvent::EVENT_EXIT, function(EventInterface $e) {$e->stopPropagation(true);});
+        $sm->attach('*', WorkerExited::class, function(EventInterface $e) {$e->stopPropagation(true);});
 
         $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
@@ -467,7 +468,7 @@ class SchedulerTest extends TestCase
                 ]);
         }
         );
-        $sm->attach('*', WorkerEvent::EVENT_EXIT, function(SchedulerEvent $e) {$e->stopPropagation(true);});
+        $sm->attach('*', WorkerExited::class, function(SchedulerEvent $e) {$e->stopPropagation(true);});
         $sm->attach('*', SchedulerEvent::EVENT_STOP,
             function(SchedulerEvent $e) use (&$exitDetected, &$exception) {
                 $exitDetected = true;

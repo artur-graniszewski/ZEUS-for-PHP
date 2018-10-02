@@ -7,6 +7,7 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
 
 class WorkerLifeCycleTest extends TestCase
 {
@@ -26,7 +27,7 @@ class WorkerLifeCycleTest extends TestCase
             $loopStarted = true;
         });
 
-        $em->attach(WorkerEvent::EVENT_EXIT, function (WorkerEvent $e) use (&$exitDetected) {
+        $em->attach(WorkerExited::class, function (WorkerEvent $e) use (&$exitDetected) {
             $e->stopPropagation(true);
 
             $exitDetected = true;

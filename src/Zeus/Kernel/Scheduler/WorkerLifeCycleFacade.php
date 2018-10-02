@@ -7,6 +7,8 @@ use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\Scheduler\Command\CreateWorker;
 use Zeus\Kernel\Scheduler\Command\TerminateWorker;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingStarted;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingFinished;
 
 /**
  * @internal
@@ -48,7 +50,7 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
             'status' => $worker
         ];
 
-        $this->triggerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params, $worker);
+        $this->triggerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerProcessingStarted::class : WorkerProcessingFinished::class, $params, $worker);
     }
 
     private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent

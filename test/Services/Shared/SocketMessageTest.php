@@ -17,6 +17,7 @@ use ZeusTest\Helpers\SocketTestMessage;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
 
 /**
  * Class SocketMessageTest
@@ -84,7 +85,7 @@ class SocketMessageTest extends TestCase
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $events->attach(WorkerEvent::EVENT_EXIT, function(WorkerEvent $event) use (& $schedulerStarted) {
+        $events->attach(WorkerExited::class, function(WorkerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
@@ -118,8 +119,7 @@ class SocketMessageTest extends TestCase
 
         fclose($client);
 
-        $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_EXIT);
+        $event = new WorkerExited();
         $event->setTarget($worker);
         $event->setWorker($worker);
         $event->setScheduler($scheduler);

@@ -20,6 +20,8 @@ use function posix_getuid;
 use Zeus\Kernel\Scheduler\Command\TerminateWorker;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingStarted;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingFinished;
 
 class ProcessTitle implements ListenerAggregateInterface
 {
@@ -45,9 +47,9 @@ class ProcessTitle implements ListenerAggregateInterface
 
 
         $this->eventHandles[] = $events->attach(InitializeWorker::class, [$this, 'onWorkerStarting'], WorkerEvent::PRIORITY_INITIALIZE + 200000);
-        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_WAITING, [$this, 'onWorkerWaiting'], $priority);
+        $this->eventHandles[] = $events->attach(WorkerProcessingFinished::class, [$this, 'onWorkerWaiting'], $priority);
         $this->eventHandles[] = $events->attach(TerminateWorker::class, [$this, 'onWorkerTerminate'], $priority);
-        $this->eventHandles[] = $events->attach(WorkerEvent::EVENT_RUNNING, [$this, 'onWorkerRunning'], $priority);
+        $this->eventHandles[] = $events->attach(WorkerProcessingStarted::class, [$this, 'onWorkerRunning'], $priority);
         $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], $priority);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_STOP, [$this, 'onSchedulerStop'], $priority);

@@ -11,6 +11,9 @@ use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingStarted;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingFinished;
 
 class WorkerLifeCycle
 {
@@ -40,6 +43,13 @@ class WorkerLifeCycle
 
         $params = $event->getParams();
         $worker = $event->getWorker();
+        
+        $diff = time() - $_SERVER['REQUEST_TIME'];
+        if ($diff > 2) {
+            $logger = $this->scheduler->getLogger();
+            $logger->warn(sprintf("Worker %d started in %d seconds", $worker->getUid(), $diff));
+        }
+        
         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, $params, $worker);
 
         if (!$event->propagationIsStopped()) {
@@ -48,7 +58,7 @@ class WorkerLifeCycle
 
         // worker exit...
         $worker = $event->getWorker();
-        $this->triggerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
+        $this->triggerEvent(WorkerExited::class, $params, $worker);
     }
 
     private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : WorkerEvent
@@ -127,7 +137,8 @@ class WorkerLifeCycle
             $params['exception'] = $exception;
         }
 
-        $this->triggerEvent(WorkerEvent::EVENT_EXIT, $params, $worker);
+        // @todo: this should be triggered only in one place: __invoke()
+        $this->triggerEvent(WorkerExited::class, $params, $worker);
     }
 
     private function syncWorker(WorkerState $worker)
@@ -136,6 +147,6 @@ class WorkerLifeCycle
             'status' => $worker
         ];
 
-        $this->triggerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerEvent::EVENT_RUNNING : WorkerEvent::EVENT_WAITING, $params, $worker);
+        $this->triggerEvent($worker->getCode() === WorkerState::RUNNING ? WorkerProcessingStarted::class : WorkerProcessingFinished::class, $params, $worker);
     }
 }

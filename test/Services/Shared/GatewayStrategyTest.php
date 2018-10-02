@@ -13,6 +13,7 @@ use Zeus\ServerService\Shared\Networking\GatewayMessageBroker;
 use ZeusTest\Helpers\ZeusFactories;
 use Zeus\Kernel\Scheduler\Command\CreateWorker;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
 
 /**
  * Class GatewayStrategyTest
@@ -56,7 +57,7 @@ class GatewayStrategyTest extends TestCase
             $e->stopPropagation(true);
         }, WorkerEvent::PRIORITY_INITIALIZE - 1);
 
-        $events->attach(Scheduler\WorkerEvent::EVENT_EXIT, function(Scheduler\WorkerEvent $e) {
+        $events->attach(WorkerExited::class, function(Scheduler\WorkerEvent $e) {
 
             $e->stopPropagation(true);
         }, 100000);

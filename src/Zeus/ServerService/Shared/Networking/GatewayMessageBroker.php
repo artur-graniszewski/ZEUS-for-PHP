@@ -25,6 +25,7 @@ use function microtime;
 use function defined;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
 
 
 /**
@@ -161,7 +162,7 @@ final class GatewayMessageBroker implements BrokerStrategy
             $this->setWorkerStatus(RegistratorService::STATUS_WORKER_READY);
         }, WorkerEvent::PRIORITY_REGULAR);
 
-        $events->attach(WorkerEvent::EVENT_EXIT, function() {
+        $events->attach(WorkerExited::class, function() {
             $backend = $this->getBackend();
             $registrator = $this->getRegistrator();
             $this->setWorkerStatus(RegistratorService::STATUS_WORKER_GONE);

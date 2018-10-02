@@ -13,13 +13,6 @@ class WorkerEvent extends SchedulerEvent
     const PRIORITY_INITIALIZE = 50000;
     const PRIORITY_REGULAR = 0;
 
-    const EVENT_EXIT = 'workerExit';
-
-    const EVENT_RUNNING = 'workerRunning';
-    const EVENT_WAITING = 'workerWaiting';
-
-    const EVENT_TERMINATED = 'workerTerminated';
-
     /** @var WorkerState */
     private $worker;
 

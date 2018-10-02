@@ -3,6 +3,9 @@
 namespace Zeus\Kernel\Scheduler\Listener;
 
 use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingStarted;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingFinished;
 
 class WorkerInitListener
 {
@@ -10,8 +13,8 @@ class WorkerInitListener
     {
         $eventManager = $event->getScheduler()->getEventManager();
         $statusSender = new WorkerStatusSender();
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_RUNNING, $statusSender, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_WAITING, $statusSender, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $events[] = $eventManager->attach(WorkerEvent::EVENT_EXIT, $statusSender, WorkerEvent::PRIORITY_FINALIZE + 2);
+        $events[] = $eventManager->attach(WorkerProcessingStarted::class, $statusSender, WorkerEvent::PRIORITY_FINALIZE + 1);
+        $events[] = $eventManager->attach(WorkerProcessingFinished::class, $statusSender, WorkerEvent::PRIORITY_FINALIZE + 1);
+        $events[] = $eventManager->attach(WorkerExited::class, $statusSender, WorkerEvent::PRIORITY_FINALIZE + 2);
     }
 }

@@ -27,6 +27,10 @@ use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingStarted;
+use Zeus\Kernel\Scheduler\Event\WorkerProcessingFinished;
+use Zeus\Kernel\Scheduler\Event\WorkerTerminated;
 
 /**
  * Class PosixProcessTest
@@ -238,7 +242,7 @@ class PosixProcessTest extends TestCase
 
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
-        $em->attach(WorkerEvent::EVENT_TERMINATED, function($event) use (&$triggeredEvent) {
+        $em->attach(WorkerTerminated::class, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -276,7 +280,7 @@ class PosixProcessTest extends TestCase
 
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
-        $em->attach(WorkerEvent::EVENT_TERMINATED, function($event) use (&$triggeredEvent) {
+        $em->attach(WorkerTerminated::class, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -346,7 +350,7 @@ class PosixProcessTest extends TestCase
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
         $triggeredEvent = null;
-        $em->attach(WorkerEvent::EVENT_EXIT, function($event) use (&$triggeredEvent) {
+        $em->attach(WorkerExited::class, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -464,8 +468,7 @@ class PosixProcessTest extends TestCase
         $event->setName(SchedulerEvent::EVENT_START);
         $em->triggerEvent($event);
 
-        $event = new WorkerEvent();
-        $event->setName(WorkerEvent::EVENT_WAITING);
+        $event = new WorkerProcessingFinished();
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
@@ -473,7 +476,7 @@ class PosixProcessTest extends TestCase
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSignalDispatch'), 'Signal dispatching should be performed when process is waiting');
         $pcntlMock->setExecutionLog([]);
 
-        $event->setName(WorkerEvent::EVENT_RUNNING);
+        $event = new WorkerProcessingStarted();
         $em->triggerEvent($event);
         $logArray = $pcntlMock->getExecutionLog();
         $this->assertEquals(1, $this->countMethodInExecutionLog($logArray, 'pcntlSigprocmask'), 'Signal masking should be disabled when process is running');

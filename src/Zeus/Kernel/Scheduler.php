@@ -38,6 +38,7 @@ use Zeus\Kernel\Scheduler\Command\TerminateWorker;
 use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerTerminated;
 
 
 /**
@@ -204,7 +205,7 @@ class Scheduler implements SchedulerInterface
     {
         $events = $this->getEventManager();
         $handles[] = $events->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
-        $handles[] = $events->attach(WorkerEvent::EVENT_TERMINATED, new WorkerExitListener(), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(WorkerTerminated::class, new WorkerExitListener(), WorkerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(TerminateScheduler::class, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);

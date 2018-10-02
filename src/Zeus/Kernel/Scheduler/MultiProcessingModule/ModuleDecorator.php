@@ -41,6 +41,8 @@ use Zeus\Kernel\Scheduler\Command\TerminateWorker;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
+use Zeus\Kernel\Scheduler\Event\WorkerExited;
+use Zeus\Kernel\Scheduler\Event\WorkerTerminated;
 
 class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterface
 {
@@ -130,7 +132,7 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
         $eventManager->attach(CreateWorker::class, new WorkerCreateListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_FINALIZE + 1);
-        $eventManager->attach(WorkerEvent::EVENT_TERMINATED, new WorkerStopListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach(WorkerTerminated::class, new WorkerStopListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, new KernelStartListener($this->driver));
         $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerInitListener($this->driver), -9000);
         $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->driver, $this->workerPool), SchedulerEvent::PRIORITY_FINALIZE);
@@ -149,7 +151,7 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
                     $this->workerPool->setTerminating(true);
                 }
             }
-            $eventManager->attach(WorkerEvent::EVENT_EXIT, new WorkerExitListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
+            $eventManager->attach(WorkerExited::class, new WorkerExitListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
         }, WorkerEvent::PRIORITY_INITIALIZE + 1);
 
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_STOP, function() {
@@ -177,13 +179,18 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
 
     public function raiseWorkerExitedEvent(int $uid, int $processId, int $threadId)
     {
-        $event = $this->getWorkerEvent();
-        $event->setName(WorkerEvent::EVENT_TERMINATED);
-        $worker = $event->getWorker();
+        // @todo: refactor this!
+        $eventCopy = $this->getWorkerEvent();
+        
+        $event = new WorkerTerminated();
+        $worker = $eventCopy->getWorker();
         $worker->setUid($uid);
         $worker->setProcessId($processId);
         $worker->setThreadId($threadId);
         $worker->setCode(WorkerState::TERMINATED);
+        $event->setWorker($worker);
+        $event->setScheduler($eventCopy->getScheduler());
+        $event->setTarget($eventCopy->getScheduler());
         $this->getEventManager()->triggerEvent($event);
         $this->workerPool->unregisterWorker($uid);
     }
