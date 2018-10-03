@@ -9,6 +9,8 @@ use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\ServerService\Shared\Logger\ExceptionLoggerTrait;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zend\EventManager\EventManagerInterface;
 
 class SchedulerLifeCycle
 {
@@ -16,6 +18,9 @@ class SchedulerLifeCycle
 
     /** @var SchedulerInterface */
     private $scheduler;
+    
+    /** @var EventManagerInterface **/
+    private $eventManager;
 
     private $initialized = false;
 
@@ -24,12 +29,13 @@ class SchedulerLifeCycle
         return $this->scheduler;
     }
 
-    public function __construct(SchedulerInterface $scheduler)
+    public function __construct(SchedulerInterface $scheduler, EventManagerInterface $eventManager)
     {
         $this->scheduler = $scheduler;
+        $this->eventManager = $eventManager;
     }
 
-    public function __invoke(WorkerEvent $event)
+    public function __invoke(InitializeWorker $event)
     {
         if (!$event->getParam(SchedulerInterface::WORKER_SERVER) || !$event->getParam(SchedulerInterface::WORKER_INIT)) {
             return;
@@ -44,7 +50,7 @@ class SchedulerLifeCycle
         $exception = null;
         try {
             $this->triggerEvent(SchedulerEvent::EVENT_START, $params, $worker);
-            $this->mainLoop();
+            $this->mainLoop($worker);
         } catch (Throwable $exception) {
         }
 
@@ -67,13 +73,13 @@ class SchedulerLifeCycle
     /**
      * Starts main (infinite) loop.
      */
-    private function mainLoop()
-    {
+    private function mainLoop(WorkerState $worker)
+    {   
         $scheduler = $this->getScheduler();
         $reactor = $scheduler->getReactor();
 
-        $terminator = function() use ($reactor, $scheduler) {
-            $this->triggerEvent(SchedulerLoopRepeated::class, []);
+        $terminator = function() use ($reactor, $scheduler, $worker) {
+            $this->triggerEvent(SchedulerLoopRepeated::class, [], $worker);
 
             if ($scheduler->isTerminating()) {
                 $reactor->setTerminating(true);
@@ -89,17 +95,25 @@ class SchedulerLifeCycle
 
     private function triggerEvent(string $eventName, $params, WorkerState $worker = null) : SchedulerEvent
     {
-        $event = $this->getScheduler()->getSchedulerEvent();
-        $event->setName($eventName);
+        if (class_exists($eventName)) {
+            $event = new $eventName();
+        } else {
+            $event = $this->getScheduler()->getSchedulerEvent();
+            $event->setName($eventName);
+        }
 
         if ($params) {
             $event->setParams($params);
         }
+        
+        if ($worker) {
+            $event->setWorker($worker);
+        }
 
-        $event->setTarget($worker ? $worker : $this->getScheduler()->getWorker());
+        $event->setTarget($this->getScheduler());
         $event->setScheduler($this->getScheduler());
 
-        $this->getScheduler()->getEventManager()->triggerEvent($event);
+        $this->eventManager->triggerEvent($event);
 
         return $event;
     }

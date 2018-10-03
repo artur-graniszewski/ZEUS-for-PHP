@@ -22,12 +22,14 @@ class WorkerLifeCycleFacade extends AbstractLifeCycleFacade
         $startParams[SchedulerInterface::WORKER_SERVER] = false;
 
         // worker create...
+        $time = time();
         $event = $this->triggerEvent(CreateWorker::class, $startParams, $worker);
 
         if ($event->getParam(SchedulerInterface::WORKER_INIT)) {
             $this->getScheduler()->setWorker($worker);
             $params = $event->getParams();
             $params[SchedulerInterface::WORKER_SERVER] = false;
+            $params['WorkerCreateTime'] = $time;
             $this->triggerEvent(InitializeWorker::class, $params, $worker);
         }
     }

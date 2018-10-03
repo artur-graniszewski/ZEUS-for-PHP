@@ -7,4 +7,5 @@ echo json_encode([
 
 echo "\n";
 
-file_put_contents('php://stderr', "ERROR LINE1\nERROR LINE2\n");
+$pid = getmypid();
+file_put_contents('php://stderr', "ERROR LINE1\nERROR LINE2 $pid\n");

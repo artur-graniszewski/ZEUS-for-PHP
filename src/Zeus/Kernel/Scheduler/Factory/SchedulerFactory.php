@@ -54,9 +54,8 @@ class SchedulerFactory implements FactoryInterface
             'event_manager' => $eventManager
         ]);
 
-        $scheduler = new Scheduler($configObject, $schedulerDiscipline, $reactor, $ipcServer, $driver);
+        $scheduler = new Scheduler($logger, $configObject, $schedulerDiscipline, $reactor, $ipcServer, $driver);
         $scheduler->setEventManager($eventManager);
-        $scheduler->setLogger($logger);
 
         $this->startPlugins($container, $scheduler, isset($config['plugins']) ? $config['plugins'] : []);
 

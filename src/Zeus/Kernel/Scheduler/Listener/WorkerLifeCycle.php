@@ -14,6 +14,9 @@ use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 use Zeus\Kernel\Scheduler\Event\WorkerExited;
 use Zeus\Kernel\Scheduler\Event\WorkerProcessingStarted;
 use Zeus\Kernel\Scheduler\Event\WorkerProcessingFinished;
+use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+use Zend\EventManager\EventManagerInterface;
+use Zend\Log\LoggerInterface;
 
 class WorkerLifeCycle
 {
@@ -21,16 +24,24 @@ class WorkerLifeCycle
 
     /** @var SchedulerInterface */
     private $scheduler;
+    
+    /** @var EventManagerInterface **/
+    private $eventManager;
+    
+    /** @var LoggerInterface **/
+    private $logger;
 
     /** @var WorkerEvent */
     private $workerEvent;
 
-    public function __construct(SchedulerInterface $scheduler)
+    public function __construct(LoggerInterface $logger, SchedulerInterface $scheduler, EventManagerInterface $eventManager)
     {
+        $this->eventManager = $eventManager;
         $this->scheduler = $scheduler;
+        $this->logger = $logger;
     }
 
-    public function __invoke(WorkerEvent $event)
+    public function __invoke(InitializeWorker $event)
     {
         if (!$event->getParam(SchedulerInterface::WORKER_INIT) || $event->getParam(SchedulerInterface::WORKER_SERVER)) {
             return;
@@ -44,7 +55,7 @@ class WorkerLifeCycle
         $params = $event->getParams();
         $worker = $event->getWorker();
         
-        $diff = time() - $_SERVER['REQUEST_TIME'];
+        $diff = time() - $event->getParam('WorkerCreateTime', time());
         if ($diff > 2) {
             $logger = $this->scheduler->getLogger();
             $logger->warn(sprintf("Worker %d started in %d seconds", $worker->getUid(), $diff));
@@ -73,7 +84,7 @@ class WorkerLifeCycle
             $event->setWorker($worker);
         }
 
-        $this->scheduler->getEventManager()->triggerEvent($event);
+        $this->eventManager->triggerEvent($event);
 
         return $event;
     }
@@ -122,8 +133,7 @@ class WorkerLifeCycle
 
     private function terminate(WorkerState $worker, Throwable $exception = null)
     {
-        $logger = $this->scheduler->getLogger();
-        $logger->debug(sprintf("Shutting down after finishing %d tasks", $worker->getNumberOfFinishedTasks()));
+        $this->logger->debug(sprintf("Shutting down after finishing %d tasks", $worker->getNumberOfFinishedTasks()));
 
         $worker->setCode(WorkerState::EXITING);
         $worker->setTime(time());
@@ -133,7 +143,7 @@ class WorkerLifeCycle
         ];
 
         if ($exception) {
-            $this->logException($exception, $logger);
+            $this->logException($exception, $this->logger);
             $params['exception'] = $exception;
         }
 

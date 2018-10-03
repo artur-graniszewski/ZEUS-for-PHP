@@ -101,7 +101,6 @@ class WorkerController extends AbstractController
         $scheduler = $this->getServiceManager()->getService($serviceName)->getScheduler();
 
         $event = new InitializeWorker();
-
         $worker = new WorkerState($serviceName);   
         $worker->setUid(defined("ZEUS_THREAD_ID") ? ZEUS_THREAD_ID : getmypid());
         $worker->setProcessId(getmypid());

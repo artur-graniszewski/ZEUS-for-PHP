@@ -39,6 +39,7 @@ use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 use Zeus\Kernel\Scheduler\Event\WorkerTerminated;
+use Zend\Log\LoggerInterface;
 
 
 /**
@@ -163,8 +164,9 @@ class Scheduler implements SchedulerInterface
         return $this->reactor;
     }
 
-    public function __construct(ConfigInterface $config, DisciplineInterface $discipline, Reactor $reactor, IpcServer $ipc, MultiProcessingModuleInterface $driver)
+    public function __construct(LoggerInterface $logger, ConfigInterface $config, DisciplineInterface $discipline, Reactor $reactor, IpcServer $ipc, MultiProcessingModuleInterface $driver)
     {
+        $this->logger = $logger;
         $this->config = $config;
         $this->worker = new WorkerState($config->getServiceName());
         $this->workers = new WorkerCollection($config->getMaxProcesses());
@@ -205,17 +207,24 @@ class Scheduler implements SchedulerInterface
     {
         $events = $this->getEventManager();
         $handles[] = $events->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
-        $handles[] = $events->attach(WorkerTerminated::class, new WorkerExitListener(), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(WorkerTerminated::class, new WorkerExitListener($this->getLogger(), $this), WorkerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(TerminateScheduler::class, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
         $handles[] = $events->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->workerLifeCycle, $this->discipline));
-        $handles[] = $events->attach(CreateWorker::class, new KernelLoopGenerator(), WorkerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(InitializeWorker::class, new WorkerLifeCycle($this), WorkerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(InitializeWorker::class, new SchedulerLifeCycle($this), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $handles[] = $events->attach(TerminateWorker::class, function (TerminateWorker $event) {
+            $uid = $event->getWorker()->getUid();
+            $this->getLogger()->debug(sprintf('Stopping worker %d', $uid));
+        }
+        , SchedulerEvent::PRIORITY_INITIALIZE);
+
+        
+        $handles[] = $events->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->workers, $this->workerLifeCycle, $this->discipline));
+        $handles[] = $events->attach(CreateWorker::class, new KernelLoopGenerator($this), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(InitializeWorker::class, new WorkerLifeCycle($this->logger, $this, $this->getEventManager()), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(InitializeWorker::class, new SchedulerLifeCycle($this, $this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE + 1);
         $handles[] = $events->attach(InitializeWorker::class, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE + 1000);
-        $handles[] = $events->attach(InitializeWorker::class, new WorkerInitListener(), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $handles[] = $events->attach(InitializeWorker::class, new WorkerInitListener($this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE + 1);
         $this->eventHandles = array_merge($this->eventHandles, $handles);
     }
 

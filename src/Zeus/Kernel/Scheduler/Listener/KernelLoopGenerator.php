@@ -3,17 +3,25 @@
 namespace Zeus\Kernel\Scheduler\Listener;
 
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\SchedulerInterface;
+use Zeus\Kernel\Scheduler\Command\CreateWorker;
 
 class KernelLoopGenerator
 {
-    public function __invoke(WorkerEvent $event)
+    /** @var SchedulerInterface **/
+    private $scheduler;
+    
+    public function __construct(SchedulerInterface $scheduler)
+    {
+        $this->scheduler = $scheduler;
+    }
+    
+    public function __invoke(CreateWorker $event)
     {
         if (!$event->getParam(SchedulerInterface::WORKER_SERVER) || $event->getParam(SchedulerInterface::WORKER_INIT)) {
             return;
         }
 
-        $event->getScheduler()->setWorker($event->getWorker());
+        $this->scheduler->setWorker($event->getWorker());
     }
 }

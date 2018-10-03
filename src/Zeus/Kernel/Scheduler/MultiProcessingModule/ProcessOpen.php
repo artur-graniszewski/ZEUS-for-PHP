@@ -231,6 +231,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
         $type = $event->getParam(SchedulerInterface::WORKER_SERVER) ? 'scheduler' : 'worker';
         $serviceName = escapeshellarg($event->getWorker()->getServiceName());
+        $event->setParam('WorkerCreateTime', time());
         $startParams = escapeshellarg(json_encode($event->getParams()));
 
         $command = sprintf("exec %s %s zeus %s %s %s", $phpExecutable, $applicationPath, $type, $serviceName, $startParams);
