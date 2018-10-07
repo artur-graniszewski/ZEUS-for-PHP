@@ -9,11 +9,10 @@ use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\IpcServer\SocketIpc;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
-use Zeus\Kernel\Scheduler\WorkerEvent;
+use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 use function stream_socket_client;
 use function stream_context_create;
-use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 
 class IpcRegistrator
 {
@@ -45,7 +44,7 @@ class IpcRegistrator
             return;
         }
 
-        $uid = $event->getWorker()->getUid();
+        $uid = $event->getScheduler()->getWorker()->getUid();
         $this->registerIpc($ipcPort, $uid);
 
         $this->eventManager->attach(WorkerLoopRepeated::class, new WorkerMessageReader($this->ipcClient, $this->eventManager), -9000);

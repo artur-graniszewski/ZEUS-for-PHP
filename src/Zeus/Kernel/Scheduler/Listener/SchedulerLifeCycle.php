@@ -3,6 +3,7 @@
 namespace Zeus\Kernel\Scheduler\Listener;
 
 use Throwable;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -49,7 +50,7 @@ class SchedulerLifeCycle
 
         $exception = null;
         try {
-            $this->triggerEvent(SchedulerEvent::EVENT_START, $params, $worker);
+            $this->triggerEvent(StartScheduler::class, $params, $worker);
             $this->mainLoop($worker);
         } catch (Throwable $exception) {
         }

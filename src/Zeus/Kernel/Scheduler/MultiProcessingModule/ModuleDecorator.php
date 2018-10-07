@@ -9,6 +9,7 @@ use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerAwareTrait;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\KernelLoopListener;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\KernelStartListener;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\KernelStopListener;
@@ -119,7 +120,7 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
     {
         $eventManager = $this->getEventManager();
 
-        $eventManager->attach(SchedulerEvent::EVENT_START, function (SchedulerEvent $e) {
+        $eventManager->attach(StartScheduler::class, function (SchedulerEvent $e) {
             $this->logCapabilities();
         }, SchedulerEvent::PRIORITY_INITIALIZE);
 
@@ -134,7 +135,7 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
         $eventManager->attach(CreateWorker::class, new WorkerCreateListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_FINALIZE + 1);
         $eventManager->attach(WorkerTerminated::class, new WorkerStopListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, new KernelStartListener($this->driver));
-        $eventManager->attach(SchedulerEvent::EVENT_START, new SchedulerInitListener($this->driver), -9000);
+        $eventManager->attach(StartScheduler::class, new SchedulerInitListener($this->driver), -9000);
         $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->driver, $this->workerPool), SchedulerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->driver, $this->workerPool), -9000);
         $eventManager->attach(WorkerLoopRepeated::class, new WorkerLoopListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_INITIALIZE);

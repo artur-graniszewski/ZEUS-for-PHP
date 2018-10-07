@@ -5,6 +5,7 @@ namespace Zeus\ServerService\Shared\Networking;
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
@@ -42,7 +43,7 @@ class NetworkServer
 
     public function attach(EventManagerInterface $eventManager)
     {
-        $eventManager->attach(SchedulerEvent::EVENT_START, function () {
+        $eventManager->attach(StartScheduler::class, function () {
             $config = $this->getConfig();
             $port = $config->getListenPort();
             $backendHost = 'tcp://' . $config->getListenAddress() . ($port ? ":$port" : '');

@@ -47,7 +47,7 @@ class WorkerLifeCycle
             return;
         }
 
-        $event->getScheduler()->setTerminating(true);
+        $this->scheduler->setTerminating(true);
 
         $this->workerEvent = clone $event;
         $this->workerEvent->stopPropagation(false);

@@ -9,6 +9,7 @@ use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
 use Zend\Log\Writer\Noop;
 use Zend\ServiceManager\ServiceManager;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
@@ -66,7 +67,7 @@ class SchedulerTest extends TestCase
         $events = $scheduler->getEventManager();
         $counter = 0;
 
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $e) {
+        $events->attach(StartScheduler::class, function(SchedulerEvent $e) {
             $e->stopPropagation(true);
         }, 100000);
 
@@ -308,7 +309,7 @@ class SchedulerTest extends TestCase
             $serverStarted = true;
         });
 
-        $sm->attach('*', SchedulerEvent::EVENT_START, function() use (& $schedulerStarted) {
+        $sm->attach('*', StartScheduler::class, function() use (& $schedulerStarted) {
             $schedulerStarted = true;
         });
 

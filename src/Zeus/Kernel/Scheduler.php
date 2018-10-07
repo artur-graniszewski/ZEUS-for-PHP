@@ -7,6 +7,7 @@ use Zend\EventManager\EventManagerAwareTrait;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\Listener\KernelLoopGenerator;
@@ -211,7 +212,7 @@ class Scheduler implements SchedulerInterface
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
         $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(TerminateScheduler::class, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
-        $handles[] = $events->attach(SchedulerEvent::EVENT_START, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(StartScheduler::class, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(TerminateWorker::class, function (TerminateWorker $event) {
             $uid = $event->getWorker()->getUid();
             $this->getLogger()->debug(sprintf('Stopping worker %d', $uid));

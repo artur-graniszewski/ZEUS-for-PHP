@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\MultiProcessingModule;
 use Zend\EventManager\EventManagerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\IO\Stream\SelectionKey;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ProcessOpen\ProcessOpenBridge;
@@ -111,7 +112,7 @@ final class ProcessOpen extends AbstractProcessModule implements SeparateAddress
 
     public function attach(EventManagerInterface $eventManager)
     {
-        $eventManager->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+        $eventManager->attach(StartScheduler::class, function(SchedulerEvent $event) {
             $event->getScheduler()->observeSelector($this->workerSelector, function() {$this->checkWorkerOutput($this->workerSelector);}, function() {}, 1000);
         }, -9000);
 

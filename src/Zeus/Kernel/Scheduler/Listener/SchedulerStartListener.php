@@ -13,8 +13,7 @@ class SchedulerStartListener extends AbstractWorkerLifeCycleListener
     public function __invoke(SchedulerEvent $event)
     {
         $scheduler = $event->getScheduler();
-        $scheduler->getEventManager()->attach(CreateWorker::class, function(WorkerEvent $e) { $this->registerNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
-        $scheduler->getLogger()->notice("Scheduler started with uid: " . $scheduler->getWorker()->getUid());
+        $scheduler->getEventManager()->attach(CreateWorker::class, function(CreateWorker $e) { $this->registerNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
 
         $pid = $scheduler->getWorker()->getProcessId();
 

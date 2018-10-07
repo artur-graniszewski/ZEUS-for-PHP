@@ -6,9 +6,8 @@ use RuntimeException;
 use Throwable;
 use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerAwareTrait;
-use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
-use Zend\Log\LoggerInterface;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\System\Runtime;
@@ -148,8 +147,8 @@ final class Manager
         $event->setError(null);
         $event->setService($service);
 
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_START,
-            function (SchedulerEvent $event) use ($service) {
+        $this->eventHandles[] = $eventManager->attach(StartScheduler::class,
+            function (StartScheduler $event) use ($service) {
                 $this->pidToServiceMap[getmypid()] = $service;
                 $this->servicesRunning++;
             }, -10000);
@@ -207,7 +206,7 @@ final class Manager
                 $now = microtime(true);
                 $scheduler = $this->getService($serviceName)->getScheduler();
                 $schedulers[] = $scheduler;
-                $this->eventHandles[] = $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_START,
+                $this->eventHandles[] = $scheduler->getEventManager()->attach(StartScheduler::class,
                     function () use ($serviceName, $now, $phpTime, $engine, $logger) {
                         $this->servicesRunning++;
                         $managerTime = microtime(true) - $now;

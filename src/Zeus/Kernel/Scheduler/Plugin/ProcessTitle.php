@@ -5,6 +5,7 @@ namespace Zeus\Kernel\Scheduler\Plugin;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\Helper\AddUnitsToNumbers;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
@@ -51,7 +52,7 @@ class ProcessTitle implements ListenerAggregateInterface
         $this->eventHandles[] = $events->attach(TerminateWorker::class, [$this, 'onWorkerTerminate'], $priority);
         $this->eventHandles[] = $events->attach(WorkerProcessingStarted::class, [$this, 'onWorkerRunning'], $priority);
         $this->eventHandles[] = $events->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, [$this, 'onKernelStart'], $priority);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, [$this, 'onSchedulerStart'], $priority);
+        $this->eventHandles[] = $events->attach(StartScheduler::class, [$this, 'onSchedulerStart'], $priority);
         $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_STOP, [$this, 'onSchedulerStop'], $priority);
         $this->eventHandles[] = $events->attach(SchedulerLoopRepeated::class, [$this, 'onSchedulerLoop'], $priority);
     }

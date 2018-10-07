@@ -4,7 +4,6 @@ namespace Zeus\Kernel\Scheduler\Listener;
 
 use Throwable;
 use Zeus\Kernel\IpcServer;
-use Zeus\Kernel\IpcServer\Message;
 use Zeus\Kernel\Scheduler\Status\StatusMessage;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;

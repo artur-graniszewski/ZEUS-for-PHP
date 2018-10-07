@@ -15,6 +15,7 @@ use Zeus\IO\Stream\SocketStream;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\SchedulerInterface;
+use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 
 use function stream_socket_client;
 use function microtime;
@@ -22,7 +23,6 @@ use function json_encode;
 use function json_decode;
 use function sprintf;
 use function getmypid;
-use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
 
 /**
  * Class SchedulerStatus

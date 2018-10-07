@@ -9,6 +9,7 @@ use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\System\Runtime;
@@ -201,7 +202,7 @@ final class GatewayMessageBroker implements BrokerStrategy
             }
         }, 1000);
 
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+        $events->attach(StartScheduler::class, function(StartScheduler $event) {
             $this->message->setScheduler($event->getScheduler());
             $registrator = $this->getRegistrator();
             $registrator->startService($this->registratorHost, 1000, 0);

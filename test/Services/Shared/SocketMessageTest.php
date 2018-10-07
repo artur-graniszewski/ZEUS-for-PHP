@@ -4,6 +4,7 @@ namespace ZeusTest\Services\Shared;
 
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\Worker;
@@ -74,10 +75,10 @@ class SocketMessageTest extends TestCase
             }
         });
         $this->service = $eventSubscriber = new DirectMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->setLogger($event->getScheduler()->getLogger());
+        $eventSubscriber->setLogger($scheduler->getLogger());
         $eventSubscriber->attach($events);
 
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
+        $events->attach(StartScheduler::class, function(SchedulerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
         
@@ -89,7 +90,9 @@ class SocketMessageTest extends TestCase
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $event->setName(SchedulerEvent::EVENT_START);
+        $event = new StartScheduler();
+        $event->setScheduler($scheduler);
+        $event->setTarget($scheduler);
         $events->triggerEvent($event);
 
         $event = new InitializeWorker();
@@ -138,7 +141,6 @@ class SocketMessageTest extends TestCase
         $server = stream_socket_server('tcp://127.0.0.1:3334', $errno, $errstr);
         $scheduler = $this->getScheduler(0);
         $events = $scheduler->getEventManager();
-        $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
         $worker = new WorkerState("test");
@@ -157,7 +159,7 @@ class SocketMessageTest extends TestCase
         $this->service = $eventSubscriber = new DirectMessageBroker($this->config, $message, $scheduler->getLogger());
         $eventSubscriber->attach($events);
 
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (& $schedulerStarted) {
+        $events->attach(StartScheduler::class, function(SchedulerEvent $event) use (& $schedulerStarted) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
 
@@ -165,7 +167,9 @@ class SocketMessageTest extends TestCase
             $event->stopPropagation(true);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $event->setName(SchedulerEvent::EVENT_START);
+        $event = new StartScheduler();
+        $event->setTarget($scheduler);
+        $event->setScheduler($scheduler);
         $events->triggerEvent($event);
 
         $event = new InitializeWorker();

@@ -9,6 +9,7 @@ use Zeus\Kernel\IpcServer\Listener\KernelMessageListener;
 use Zeus\Kernel\IpcServer\Listener\SchedulerMessageListener;
 use Zeus\Kernel\IpcServer\Listener\WorkerMessageSender;
 use Zeus\Kernel\IpcServer\Listener\IpcRegistrator;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\IO\SocketServer;
@@ -85,10 +86,9 @@ class IpcServer implements EventManagerAwareInterface
 
 
         $this->eventHandles[] = $events->attach(InitializeWorker::class, $ipcRegistrator, WorkerEvent::PRIORITY_INITIALIZE + 1000);
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, $ipcRegistrator, SchedulerEvent::PRIORITY_INITIALIZE);
+        $this->eventHandles[] = $events->attach(StartScheduler::class, $ipcRegistrator, SchedulerEvent::PRIORITY_INITIALIZE);
         $this->eventHandles[] = $events->attach(IpcEvent::EVENT_MESSAGE_SEND, new WorkerMessageSender($ipcRegistrator, $this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE);
-
-        $this->eventHandles[] = $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use ($events, $ipcRegistrator) {
+        $this->eventHandles[] = $events->attach(StartScheduler::class, function(StartScheduler $event) use ($events, $ipcRegistrator) {
             $this->startIpc();
             $event->setParam('ipcPort', $this->ipcServer->getLocalPort());
             $this->eventHandles[] = $events->attach(CreateWorker::class, function(WorkerEvent $event) {

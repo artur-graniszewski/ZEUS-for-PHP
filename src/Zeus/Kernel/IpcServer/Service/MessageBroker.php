@@ -6,7 +6,10 @@ use OutOfBoundsException;
 use Zeus\Kernel\IpcServer;
 
 use function array_rand;
+use function array_flip;
 use function array_shift;
+use function array_keys;
+use function in_array;
 use function count;
 
 class MessageBroker
@@ -32,7 +35,6 @@ class MessageBroker
     {
         $fullAudience = $availableAudience;
         foreach ($messages as $payload) {
-            $cids = [];
             $audience = $payload['aud'];
             $message = $payload['msg'];
             $senderId = $payload['sid'];
@@ -42,14 +44,20 @@ class MessageBroker
             $availableAudience = array_flip($fullAudience);
             unset($availableAudience[$senderId]);
 
+            if (isset($payload['snt'])) {
+                foreach ($payload['snt'] as $sentToUid) {
+                    unset($availableAudience[$sentToUid]);
+                }
+            }
+
             if (!$availableAudience) {
                 $this->queuedMessages[] = $payload;
                 continue;
             }
-            
+
             $availableAudience = array_flip($availableAudience);
-            
-           
+
+
             // @todo: implement read confirmation?
             switch ($audience) {
                 case IpcServer::AUDIENCE_ALL:
@@ -72,13 +80,21 @@ class MessageBroker
                     if ($diff < 0) {
                         $queuedPayload = $payload;
                         $queuedPayload['num'] = -$diff;
-                        $this->queuedMessages[] = $queuedPayload;
                         $number += $diff;
                     }
 
                     $cids = array_rand(array_flip($availableAudience), $number);
                     if ($number === 1) {
                         $cids = [$cids];
+                    }
+
+                    if ($diff < 0) {
+                        if (isset($queuedPayload['snt'])) {
+                            $queuedPayload['snt'] = array_merge($queuedPayload['snt'], $cids);
+                        } else {
+                            $queuedPayload['snt'] = $cids;
+                        }
+                        $this->queuedMessages[] = $queuedPayload;
                     }
 
                     break;
@@ -103,7 +119,7 @@ class MessageBroker
             if (!$cids) {
                 continue;
             }
-            
+
             foreach ($cids as $cid) {
                 $senderCallback($senderId, $cid, $message);
             }

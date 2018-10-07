@@ -8,6 +8,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleDecorator;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
@@ -113,7 +114,7 @@ class PosixProcessTest extends TestCase
 
         $this->simulateWorkerInit($events);
 
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) use (&$eventLaunched) {
+        $events->attach(StartScheduler::class, function(SchedulerEvent $event) use (&$eventLaunched) {
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
 
@@ -214,10 +215,9 @@ class PosixProcessTest extends TestCase
 
         $pcntlMock = new PcntlBridgeMock();
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new SchedulerEvent();
+        $event = new StartScheduler();
         $event->setScheduler($scheduler);
         $event->setTarget($scheduler);
-        $event->setName(SchedulerEvent::EVENT_START);
         $event->setParam('uid', 123456);
         $em->triggerEvent($event);
 
@@ -327,12 +327,14 @@ class PosixProcessTest extends TestCase
         $pcntlMock->setPpid(1234);
 
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new SchedulerLoopRepeated();
+
         $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setEventManager($em);
 
-        $event->setName(SchedulerEvent::EVENT_START);
+        $event = new StartScheduler();
         $em->triggerEvent($event);
+
+        $event = new SchedulerLoopRepeated();
 
         $pcntlMock->setPpid(12345);
         $em->triggerEvent($event);
@@ -438,7 +440,7 @@ class PosixProcessTest extends TestCase
         $event->setName(SchedulerEvent::INTERNAL_EVENT_KERNEL_START);
         $em->triggerEvent($event);
 
-        $event->setName(SchedulerEvent::EVENT_START);
+        $event = new StartScheduler();
         $em->triggerEvent($event);
 
         $logArray = $pcntlMock->getExecutionLog();
@@ -461,11 +463,10 @@ class PosixProcessTest extends TestCase
         $pcntlMock = new PcntlBridgeMock();
 
         PosixProcess::setPcntlBridge($pcntlMock);
-        $event = new SchedulerEvent();
         $posixProcess = new ModuleDecorator(new PosixProcess());
         $posixProcess->setEventManager($em);
 
-        $event->setName(SchedulerEvent::EVENT_START);
+        $event = new StartScheduler();
         $em->triggerEvent($event);
 
         $event = new WorkerProcessingFinished();

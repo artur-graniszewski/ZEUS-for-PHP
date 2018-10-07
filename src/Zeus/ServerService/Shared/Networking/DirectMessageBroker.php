@@ -7,6 +7,7 @@ use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
 use Zeus\Exception\UnsupportedOperationException;
 use Zeus\IO\SocketServer;
+use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
@@ -61,7 +62,7 @@ class DirectMessageBroker implements BrokerStrategy
 
     public function attach(EventManagerInterface $events)
     {
-        $events->attach(SchedulerEvent::EVENT_START, function(SchedulerEvent $event) {
+        $events->attach(StartScheduler::class, function(StartScheduler $event) {
             $this->message->setScheduler($event->getScheduler());
             $backend = $this->getBackend();
             $backend->startService($this->backendHost, 1, $this->backendPort);
