@@ -71,7 +71,7 @@ class ServerServiceManagerTest extends TestCase
         $manager->startServices(['test-service']);
 
         $logEntries = file_get_contents(__DIR__ . '/../tmp/test.log');
-        $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STARTED'));
+        $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STOPPED'));
     }
 
     public function testServiceStart()
@@ -82,7 +82,7 @@ class ServerServiceManagerTest extends TestCase
         $manager->startService('test-service');
 
         $logEntries = file_get_contents(__DIR__ . '/../tmp/test.log');
-        $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STARTED'));
+        $this->assertGreaterThan(0, strpos($logEntries, 'SERVICE STOPPED'));
     }
 
     public function testManagerEvents()

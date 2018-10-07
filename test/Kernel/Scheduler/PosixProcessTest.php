@@ -9,6 +9,7 @@ use Zend\EventManager\SharedEventManager;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\ModuleDecorator;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
@@ -89,7 +90,7 @@ class PosixProcessTest extends TestCase
         $this->assertInstanceOf(PosixProcess::class, $service);
 
         $service = new ModuleDecorator($service);
-        $service->setLogger($scheduler->getLogger());
+        $service->setLogger($logger);
         return $service;
     }
 
@@ -127,7 +128,7 @@ class PosixProcessTest extends TestCase
 
         }, SchedulerEvent::PRIORITY_INITIALIZE + 1);
 
-        $events->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
+        $events->attach(SchedulerStopped::class, function(SchedulerStopped $event) use (&$eventLaunched) {
             $eventLaunched = true;
             $event->stopPropagation(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);
@@ -318,7 +319,7 @@ class PosixProcessTest extends TestCase
     {
         $this->markTestSkipped("Signal handling is currently disabled in PosixProcess MPM");
         $em = new EventManager(new SharedEventManager());
-        $em->attach(SchedulerEvent::EVENT_STOP, function($event) use (&$triggeredEvent) {
+        $em->attach(SchedulerStopped::class, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 
@@ -378,7 +379,7 @@ class PosixProcessTest extends TestCase
         $scheduler = $this->getScheduler(1);
         $em = new EventManager(new SharedEventManager());
         $triggeredEvent = null;
-        $em->attach(SchedulerEvent::EVENT_STOP, function($event) use (&$triggeredEvent) {
+        $em->attach(SchedulerStopped::class, function($event) use (&$triggeredEvent) {
             $triggeredEvent = $event;
         });
 

@@ -8,6 +8,7 @@ use Zend\EventManager\EventManager;
 use Zend\EventManager\EventManagerAwareTrait;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\System\Runtime;
@@ -153,7 +154,7 @@ final class Manager
                 $this->servicesRunning++;
             }, -10000);
 
-        $this->eventHandles[] = $eventManager->attach(SchedulerEvent::EVENT_STOP,
+        $this->eventHandles[] = $eventManager->attach(SchedulerStopped::class,
             function () use ($service) {
                 $this->onServiceStop($service);
             }, -10000);

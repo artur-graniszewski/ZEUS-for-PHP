@@ -30,7 +30,7 @@ class DirectMessageBroker implements BrokerStrategy
 
     private $backendPort = 0;
 
-    public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger)
+    public function __construct(LoggerInterface $logger, AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
         $this->setLogger($logger);
 

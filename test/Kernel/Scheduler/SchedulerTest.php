@@ -10,6 +10,7 @@ use Zend\Log\Writer\Mock;
 use Zend\Log\Writer\Noop;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\Kernel\Scheduler\Exception\SchedulerException;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler;
@@ -89,7 +90,8 @@ class SchedulerTest extends TestCase
     {
         $this->markTestIncomplete("IPC logger should be tested elsewhere");
         $scheduler = $this->getScheduler(1);
-        $logger = $scheduler->getLogger();
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
         $ipc = $scheduler->getIpc();
 
         $messages = [];
@@ -170,7 +172,7 @@ class SchedulerTest extends TestCase
         $sm->attach('*', WorkerExited::class, function(WorkerEvent $e) {
             $e->stopPropagation(true);
             }, 100000);
-        $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
+        $sm->attach('*', SchedulerStopped::class, function(SchedulerStopped $e) {$e->stopPropagation(true);}, 0);
 
         $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses) {
@@ -255,7 +257,7 @@ class SchedulerTest extends TestCase
         $this->simulateWorkerInit($em);
 
         $sm->attach('*', WorkerExited::class, function(EventInterface $e) {$e->stopPropagation(true);});
-        $sm->attach('*', SchedulerEvent::EVENT_STOP, function(EventInterface $e) {$e->stopPropagation(true);});
+        $sm->attach('*', SchedulerStopped::class, function(SchedulerStopped $e) {$e->stopPropagation(true);});
         $sm->attach('*', TerminateWorker::class,
             function(WorkerEvent $event) use ($em, & $processesToTerminate, & $amountOfTerminateCommands) {
                 $amountOfTerminateCommands++;
@@ -340,7 +342,7 @@ class SchedulerTest extends TestCase
                 $workers[] = $worker;
             });
         $sm->attach('*', WorkerExited::class, function(EventInterface $e) {$e->stopPropagation(true);}, WorkerEvent::PRIORITY_FINALIZE + 1);
-        $sm->attach('*', SchedulerEvent::EVENT_STOP, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
+        $sm->attach('*', SchedulerStopped::class, function(SchedulerEvent $e) {$e->stopPropagation(true);}, 0);
         $sm->attach('*', CreateWorker::class,
             function(WorkerEvent $e) use ($em, &$amountOfScheduledProcesses, &$processesCreated) {
                 $amountOfScheduledProcesses++;
@@ -367,7 +369,7 @@ class SchedulerTest extends TestCase
             }
         );
 
-        $scheduler->getLogger()->addWriter($mockWriter);
+        $logger->addWriter($mockWriter);
         $mockWriter->setFormatter(new ConsoleLogFormatter(Console::getInstance()));
         $scheduler->start(false);
 
@@ -416,7 +418,7 @@ class SchedulerTest extends TestCase
         );
 
         $schedulerStopped = false;
-        $sm->attach('*', SchedulerEvent::EVENT_STOP,
+        $sm->attach('*', SchedulerStopped::class,
             function(SchedulerEvent $e) use (&$schedulerStopped) {
                 $schedulerStopped = true;
                 $e->stopPropagation(true);
@@ -441,7 +443,7 @@ class SchedulerTest extends TestCase
 
         $this->assertGreaterThan(0, $amountOfScheduledProcesses, "Scheduler should try to create some processes on its startup");
 
-        $event->setName(SchedulerEvent::EVENT_STOP);
+        $event->setName(SchedulerStopped::class);
         $event->setScheduler($scheduler);
         $scheduler->setTerminating(false);
         $scheduler->getEventManager()->triggerEvent($event);
@@ -470,7 +472,7 @@ class SchedulerTest extends TestCase
         }
         );
         $sm->attach('*', WorkerExited::class, function(SchedulerEvent $e) {$e->stopPropagation(true);});
-        $sm->attach('*', SchedulerEvent::EVENT_STOP,
+        $sm->attach('*', SchedulerStopped::class,
             function(SchedulerEvent $e) use (&$exitDetected, &$exception) {
                 $exitDetected = true;
                 $e->stopPropagation(true);

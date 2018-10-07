@@ -35,7 +35,8 @@ class SchedulerStatusTest extends TestCase
     protected function getService(SchedulerInterface $scheduler)
     {
         $sm = $this->getServiceManager();
-        $logger = $scheduler->getLogger();
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
 
         $service = $sm->build(Service::class,
             [
@@ -165,7 +166,7 @@ class SchedulerStatusTest extends TestCase
 
         $console = Console::getInstance();
         $view = new SchedulerStatusView($console);
-        $dummyService = new DummyServerService(['hang' => false], $scheduler, $scheduler->getLogger());
+        $dummyService = new DummyServerService(['hang' => false], $scheduler, $logger);
         $dummyService->setScheduler($scheduler);
         $output = $view->getStatus($dummyService);
 

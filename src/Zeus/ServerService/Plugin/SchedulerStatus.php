@@ -2,6 +2,13 @@
 
 namespace Zeus\ServerService\Plugin;
 
+use function stream_socket_client;
+use function microtime;
+use function json_encode;
+use function json_decode;
+use function sprintf;
+use function getmypid;
+
 use RuntimeException;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\ListenerAggregateInterface;
@@ -12,17 +19,9 @@ use Zeus\IO\Stream\NetworkStreamInterface;
 use Zeus\IO\Stream\SelectionKey;
 use Zeus\IO\Stream\Selector;
 use Zeus\IO\Stream\SocketStream;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
-
-use function stream_socket_client;
-use function microtime;
-use function json_encode;
-use function json_decode;
-use function sprintf;
-use function getmypid;
 
 /**
  * Class SchedulerStatus
@@ -69,9 +68,8 @@ class SchedulerStatus implements ListenerAggregateInterface
         return $this->options;
     }
 
-    private function init(SchedulerEvent $event)
+    private function init(SchedulerInterface $scheduler)
     {
-        $scheduler = $event->getScheduler();
         $server = new SocketServer();
         $server->bind('tcp://' . $this->options['listen_address'], null, $this->options['listen_port']);
         $this->statusServer = $server;
@@ -95,9 +93,9 @@ class SchedulerStatus implements ListenerAggregateInterface
      */
     public function attach(EventManagerInterface $events, $priority = 100)
     {
-        $this->eventHandles[] = $events->attach(SchedulerLoopRepeated::class, function(SchedulerEvent $e) {
+        $this->eventHandles[] = $events->attach(SchedulerLoopRepeated::class, function(SchedulerLoopRepeated $e) {
             if (!$this->statusServer) {
-                $this->init($e);
+                $this->init($e->getScheduler());
             }
         }, $priority);
     }

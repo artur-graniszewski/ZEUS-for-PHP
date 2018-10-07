@@ -3,6 +3,8 @@
 namespace ZeusTest\Services\Shared;
 
 use PHPUnit\Framework\TestCase;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -40,8 +42,10 @@ class GatewayStrategyTest extends TestCase
     {
         $initPassed = false;
         $scheduler = $this->getScheduler(1);
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
         $this->assertInstanceOf(Scheduler::class, $scheduler);
-        $broker = new GatewayMessageBroker($this->config, new Message(function() {}), $scheduler->getLogger());
+        $broker = new GatewayMessageBroker($logger, $this->config, new Message(function() {}));
         $events = $scheduler->getEventManager();
         $broker->attach($events);
 

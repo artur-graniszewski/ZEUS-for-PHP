@@ -3,7 +3,6 @@
 namespace Zeus\Kernel\Scheduler\Listener;
 
 use Zeus\Kernel\Scheduler\Discipline\DisciplineInterface;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
 use Zeus\Kernel\Scheduler\Event\SchedulerLoopRepeated;
@@ -18,9 +17,9 @@ class SchedulerLoopListener extends AbstractWorkerLifeCycleListener
     /** @var WorkerCollection **/
     private $workers;
     
-    public function __construct(WorkerCollection $workers, WorkerLifeCycleFacade $workerLifeCycle, DisciplineInterface $discipline)
+    public function __construct(LoggerInterface $logger, WorkerCollection $workers, WorkerLifeCycleFacade $workerLifeCycle, DisciplineInterface $discipline)
     {
-        parent::__construct($workerLifeCycle);
+        parent::__construct($logger, $workerLifeCycle);
         $this->workers = $workers;
         $this->discipline = $discipline;
     }

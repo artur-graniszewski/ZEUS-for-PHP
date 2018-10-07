@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Factory\MultiProcessingModuleFactory;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleCapabilities;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\PosixThread;
@@ -117,7 +118,7 @@ class PosixThreadTest extends TestCase
             $event->getWorker()->setCode(WorkerState::EXITING);
         }, WorkerEvent::PRIORITY_FINALIZE + 1);
 
-        $scheduler->getEventManager()->attach(SchedulerEvent::EVENT_STOP, function(SchedulerEvent $event) use (&$eventLaunched) {
+        $scheduler->getEventManager()->attach(SchedulerStopped::class, function(SchedulerStopped $event) use (&$eventLaunched) {
             $eventLaunched = true;
             PosixThreadWrapperMock::setIsTerminated(true);
         }, SchedulerEvent::PRIORITY_FINALIZE + 1);

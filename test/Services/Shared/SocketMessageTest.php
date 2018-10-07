@@ -4,6 +4,8 @@ namespace ZeusTest\Services\Shared;
 
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\Config as TestConfig;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
@@ -51,12 +53,13 @@ class SocketMessageTest extends TestCase
         stream_set_blocking($server, false);
         $scheduler = $this->getScheduler(0);
         $events = $scheduler->getEventManager();
-        $event = $scheduler->getSchedulerEvent();
         $config = new TestConfig([]);
         $config->setServiceName('test');
         $worker = new WorkerState("test");
         $worker->setProcessId(getmypid());
         $worker->setUid(getmypid());
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
 
         $received = [];
         $steps = 0;
@@ -74,8 +77,8 @@ class SocketMessageTest extends TestCase
                 $connection->close();
             }
         });
-        $this->service = $eventSubscriber = new DirectMessageBroker($this->config, $message, $scheduler->getLogger());
-        $eventSubscriber->setLogger($scheduler->getLogger());
+        $this->service = $eventSubscriber = new DirectMessageBroker($logger, $this->config, $message);
+        $eventSubscriber->setLogger($logger);
         $eventSubscriber->attach($events);
 
         $events->attach(StartScheduler::class, function(SchedulerEvent $event) use (& $schedulerStarted) {
@@ -146,6 +149,8 @@ class SocketMessageTest extends TestCase
         $worker = new WorkerState("test");
         $worker->setProcessId(getmypid());
         $worker->setUid(getmypid());
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
 
         $received = null;
         $message = new SocketTestMessage();
@@ -156,7 +161,7 @@ class SocketMessageTest extends TestCase
         $message->setErrorCallback(function($connection, $exception) use (& $catchedException) {
             $catchedException = $exception;
         });
-        $this->service = $eventSubscriber = new DirectMessageBroker($this->config, $message, $scheduler->getLogger());
+        $this->service = $eventSubscriber = new DirectMessageBroker($logger, $this->config, $message);
         $eventSubscriber->attach($events);
 
         $events->attach(StartScheduler::class, function(SchedulerEvent $event) use (& $schedulerStarted) {

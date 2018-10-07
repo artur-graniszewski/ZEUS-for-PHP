@@ -2,12 +2,13 @@
 
 namespace Zeus\Kernel\Scheduler;
 
-use Throwable;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\SchedulerInterface;
 use Zeus\Kernel\Scheduler\Command\CreateWorker;
 use Zeus\Kernel\Scheduler\Command\TerminateScheduler;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
+
+use function class_exists;
 
 /**
  * Class SchedulerLifeCycleFacade
@@ -16,11 +17,6 @@ use Zeus\Kernel\Scheduler\Command\InitializeWorker;
  */
 class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
 {
-    public function getSchedulerEvent() : SchedulerEvent
-    {
-        return $this->getScheduler()->getSchedulerEvent();
-    }
-
     public function start(array $startParams)
     {
         $worker = $this->getNewWorker();
@@ -28,7 +24,6 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
 
         $startParams[SchedulerInterface::WORKER_SERVER] = true;
 
-        // worker create...
         $event = $this->triggerEvent(CreateWorker::class, $startParams, $worker);
         if (!$event->getParam(SchedulerInterface::WORKER_INIT, false)) {
             return;
@@ -42,8 +37,6 @@ class SchedulerLifeCycleFacade extends AbstractLifeCycleFacade
     public function stop(WorkerState $worker, bool $isSoftStop)
     {
         $uid = $worker->getUid();
-
-        $this->getScheduler()->getLogger()->debug(sprintf('Stopping worker %d', $uid));
 
         $worker->setTime(microtime(true));
         $worker->setCode(WorkerState::TERMINATED);

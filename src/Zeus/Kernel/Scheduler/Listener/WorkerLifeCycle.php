@@ -57,8 +57,7 @@ class WorkerLifeCycle
         
         $diff = time() - $event->getParam('WorkerCreateTime', time());
         if ($diff > 2) {
-            $logger = $this->scheduler->getLogger();
-            $logger->warn(sprintf("Worker %d started in %d seconds", $worker->getUid(), $diff));
+            $this->logger->warn(sprintf("Worker %d started in %d seconds", $worker->getUid(), $diff));
         }
         
         $this->triggerEvent(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, $params, $worker);
@@ -108,7 +107,7 @@ class WorkerLifeCycle
             } catch (Error $exception) {
                 $this->terminate($worker, $exception);
             } catch (Throwable $exception) {
-                $this->logException($exception, $scheduler->getLogger());
+                $this->logException($exception, $this->logger);
             }
             
             if ($wasLastTask || $worker->isExiting()) {

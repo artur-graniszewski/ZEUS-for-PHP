@@ -9,6 +9,8 @@ use Zend\Cache\Service\StoragePluginManagerFactory;
 use Zend\Cache\Storage\Adapter\Apcu;
 use Zend\Cache\Storage\AdapterPluginManager;
 use Zend\Cache\Storage\PluginManager;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -58,7 +60,8 @@ class MemcacheServiceTest extends TestCase
             $event->setParam("uid", 123456789);
         }, 100
         );
-        $logger = $scheduler->getLogger();
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
 
         $service = $sm->build(Service::class,
             [

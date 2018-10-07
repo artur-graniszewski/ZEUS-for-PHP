@@ -10,6 +10,7 @@ use Zend\EventManager\EventManagerAwareTrait;
 use Zend\EventManager\EventsCapableInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\KernelLoopListener;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\KernelStartListener;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\Listener\KernelStopListener;
@@ -136,7 +137,7 @@ class ModuleDecorator implements EventsCapableInterface, EventManagerAwareInterf
         $eventManager->attach(WorkerTerminated::class, new WorkerStopListener($this->driver), WorkerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerEvent::INTERNAL_EVENT_KERNEL_START, new KernelStartListener($this->driver));
         $eventManager->attach(StartScheduler::class, new SchedulerInitListener($this->driver), -9000);
-        $eventManager->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->driver, $this->workerPool), SchedulerEvent::PRIORITY_FINALIZE);
+        $eventManager->attach(SchedulerStopped::class, new SchedulerStopListener($this->driver, $this->workerPool), SchedulerEvent::PRIORITY_FINALIZE);
         $eventManager->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->driver, $this->workerPool), -9000);
         $eventManager->attach(WorkerLoopRepeated::class, new WorkerLoopListener($this->driver, $this->workerPool), WorkerEvent::PRIORITY_INITIALIZE);
         $eventManager->attach(TerminateWorker::class, new WorkerTerminateListener($this->driver, $this->workerPool), -9000);

@@ -5,7 +5,6 @@ namespace Zeus\Kernel;
 use SplObjectStorage;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\ListenerAggregateInterface;
-use Zend\Log\LoggerInterface;
 use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\MultiProcessingModule\MultiProcessingModuleInterface;
@@ -43,11 +42,6 @@ interface SchedulerInterface extends EventManagerAwareInterface
     public function isTerminating() : bool;
 
     public function getIpc() : IpcServer;
-
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger();
 
     public function getConfig() : ConfigInterface;
 

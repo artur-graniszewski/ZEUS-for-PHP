@@ -15,7 +15,6 @@ class SchedulerEvent extends AbstractEvent
     const PRIORITY_INITIALIZE = 50000;
     const PRIORITY_REGULAR = 0;
 
-    const EVENT_START = 'schedulerStart';
     const EVENT_STOP = 'schedulerStop';
     const EVENT_SELECT = 'schedulerSelect';
     const EVENT_SELECT_TIMEOUT = 'schedulerSelectTimeout';

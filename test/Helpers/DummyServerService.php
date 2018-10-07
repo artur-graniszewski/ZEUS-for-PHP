@@ -2,7 +2,7 @@
 
 namespace ZeusTest\Helpers;
 
-use Zeus\Kernel\Scheduler\SchedulerEvent;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\ServerService\ServerServiceInterface;
 use Zeus\ServerService\Shared\AbstractServerService;
 
@@ -15,10 +15,10 @@ class DummyServerService extends AbstractServerService implements ServerServiceI
             return;
         }
 
-        $event = new SchedulerEvent();
-        $this->getLogger()->info("SERVICE STARTED");
-        $event->setName(SchedulerEvent::EVENT_STOP);
+        $event = new SchedulerStopped();
+        $this->getLogger()->info("SERVICE STOPPED");
         $event->setScheduler($this->getScheduler());
+        $event->setTarget($this->getScheduler());
         $this->getScheduler()->getEventManager()->triggerEvent($event);
     }
 

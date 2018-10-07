@@ -2,6 +2,7 @@
 
 namespace Zeus\Kernel\Scheduler\Listener;
 
+use Zend\Log\LoggerInterface;
 use Zeus\Kernel\Scheduler\ConfigInterface;
 use Zeus\Kernel\Scheduler\WorkerLifeCycleFacade;
 
@@ -10,8 +11,14 @@ abstract class AbstractWorkerLifeCycleListener
     /** @var WorkerLifeCycleFacade */
     protected $workerLifeCycle;
 
-    public function __construct(WorkerLifeCycleFacade $workerLifeCycle)
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
+
+    public function __construct(LoggerInterface $logger, WorkerLifeCycleFacade $workerLifeCycle)
     {
+        $this->logger = $logger;
         $this->workerLifeCycle = $workerLifeCycle;
     }
 

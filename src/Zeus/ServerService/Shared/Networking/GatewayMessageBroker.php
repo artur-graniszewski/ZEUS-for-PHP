@@ -2,6 +2,10 @@
 
 namespace Zeus\ServerService\Shared\Networking;
 
+use function max;
+use function microtime;
+use function defined;
+
 use Zend\EventManager\EventManagerInterface;
 use Zend\Log\LoggerAwareTrait;
 use Zend\Log\LoggerInterface;
@@ -10,7 +14,6 @@ use Zeus\IO\SocketServer;
 use Zeus\Kernel\IpcServer;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
-use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\System\Runtime;
 use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
@@ -20,10 +23,6 @@ use Zeus\ServerService\Shared\Networking\Service\GatewayService;
 use Zeus\ServerService\Shared\Networking\Service\RegistratorService;
 use Zeus\ServerService\Shared\Networking\Service\WorkerIPC;
 use Zeus\Kernel\Scheduler\Command\CreateWorker;
-
-use function max;
-use function microtime;
-use function defined;
 use Zeus\Kernel\Scheduler\Command\InitializeWorker;
 use Zeus\Kernel\Scheduler\Event\WorkerLoopRepeated;
 use Zeus\Kernel\Scheduler\Event\WorkerExited;
@@ -70,7 +69,7 @@ final class GatewayMessageBroker implements BrokerStrategy
     /** @var WorkerIPC */
     private $workerIPC;
 
-    public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger)
+    public function __construct(LoggerInterface $logger, AbstractNetworkServiceConfig $config, MessageComponentInterface $message)
     {
         $this->setLogger($logger);
         

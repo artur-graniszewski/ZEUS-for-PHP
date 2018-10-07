@@ -7,6 +7,7 @@ use Zend\Http\Request;
 use Zend\Http\Response;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Mock;
+use Zend\Log\Writer\Noop;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\ServerService\Http\Service;
@@ -31,7 +32,8 @@ class HttpServiceTest extends \PHPUnit\Framework\TestCase
     {
         $sm = $this->getServiceManager();
         $scheduler = $this->getScheduler();
-        $logger = $scheduler->getLogger();
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',

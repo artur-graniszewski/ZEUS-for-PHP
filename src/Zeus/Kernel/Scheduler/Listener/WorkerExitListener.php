@@ -2,23 +2,22 @@
 
 namespace Zeus\Kernel\Scheduler\Listener;
 
-use Zend\Log\Logger;
+use Zeus\Kernel\Scheduler\Shared\WorkerCollection;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zend\Log\LoggerInterface;
-use Zeus\Kernel\SchedulerInterface;
 
 class WorkerExitListener
 {
     /** @var LoggerInterface **/
     private $logger;
     
-    /** @var SchedulerInterface **/
-    private $scheduler;
+    /** @var WorkerCollection **/
+    private $workers;
     
-    public function __construct(LoggerInterface $logger, SchedulerInterface $scheduler)
+    public function __construct(LoggerInterface $logger, WorkerCollection $workers)
     {
         $this->logger = $logger;
-        $this->scheduler = $scheduler;
+        $this->workers = $workers;
     }
     
     public function __invoke(WorkerEvent $event)
@@ -26,16 +25,15 @@ class WorkerExitListener
         $uid = $event->getWorker()->getUid();
 
         $this->logger->debug("Worker $uid exited");
-        $workers = $this->scheduler->getWorkers();
 
-        if (isset($workers[$uid])) {
-            $workerState = $workers[$uid];
+        if (isset($this->workers[$uid])) {
+            $workerState = $this->workers[$uid];
 
             if (!$workerState->isExiting()/* && $workerState->getTime() < microtime(true) - $scheduler->getConfig()->getProcessIdleTimeout()*/) {
                 $this->logger->err("Worker $uid exited prematurely");
             }
 
-            unset($workers[$uid]);
+            unset($this->workers[$uid]);
         }
     }
 }

@@ -8,7 +8,7 @@ use Zeus\ServerService\Shared\AbstractNetworkServiceConfig;
 
 interface BrokerStrategy
 {
-    public function __construct(AbstractNetworkServiceConfig $config, MessageComponentInterface $message, LoggerInterface $logger);
+    public function __construct(LoggerInterface $logger, AbstractNetworkServiceConfig $config, MessageComponentInterface $message);
 
     public function attach(EventManagerInterface $events);
 

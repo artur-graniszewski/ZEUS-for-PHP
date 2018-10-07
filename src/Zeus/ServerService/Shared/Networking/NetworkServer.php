@@ -30,9 +30,9 @@ class NetworkServer
         $this->setLogger($logger);
 
         if ($mpmCapabilities->isCopyingParentMemoryPages()) {
-            $this->strategy = new DirectMessageBroker($config, $message, $logger);
+            $this->strategy = new DirectMessageBroker($logger, $config, $message);
         } else {
-            $this->strategy = new GatewayMessageBroker($config, $message, $logger);
+            $this->strategy = new GatewayMessageBroker($logger, $config, $message);
         }
     }
 

@@ -9,6 +9,7 @@ use Zeus\IO\Stream\AbstractStreamSelector;
 use Zeus\Kernel\IpcServer\IpcEvent;
 use Zeus\Kernel\Scheduler\Command\StartScheduler;
 use Zeus\Kernel\Scheduler\ConfigInterface;
+use Zeus\Kernel\Scheduler\Event\SchedulerStopped;
 use Zeus\Kernel\Scheduler\Helper\PluginRegistry;
 use Zeus\Kernel\Scheduler\Listener\KernelLoopGenerator;
 use Zeus\Kernel\Scheduler\Listener\SchedulerExitListener;
@@ -208,24 +209,27 @@ class Scheduler implements SchedulerInterface
     {
         $events = $this->getEventManager();
         $handles[] = $events->attach(IpcEvent::EVENT_MESSAGE_RECEIVED, new WorkerStatusListener($this->getWorkers()));
-        $handles[] = $events->attach(WorkerTerminated::class, new WorkerExitListener($this->getLogger(), $this), WorkerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerExitListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
-        $handles[] = $events->attach(SchedulerEvent::EVENT_STOP, new SchedulerStopListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
-        $handles[] = $events->attach(TerminateScheduler::class, new SchedulerTerminateListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
-        $handles[] = $events->attach(StartScheduler::class, new SchedulerStartListener($this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(WorkerTerminated::class, new WorkerExitListener($this->logger, $this->workers), WorkerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(SchedulerStopped::class, new SchedulerExitListener($this->logger, $this->workerLifeCycle), SchedulerEvent::PRIORITY_REGULAR);
+        $handles[] = $events->attach(SchedulerStopped::class, new SchedulerStopListener($this->logger, $this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(TerminateScheduler::class, new SchedulerTerminateListener($this->logger, $this->workerLifeCycle), SchedulerEvent::PRIORITY_INITIALIZE);
+        $handles[] = $events->attach(StartScheduler::class, new SchedulerStartListener($this->logger, $this->workerLifeCycle), SchedulerEvent::PRIORITY_FINALIZE);
+        $handles[] = $events->attach(TerminateScheduler::class, function (TerminateScheduler $event) {
+            $this->getLogger()->debug('Stopping scheduler');
+        }, SchedulerEvent::PRIORITY_INITIALIZE);
+
         $handles[] = $events->attach(TerminateWorker::class, function (TerminateWorker $event) {
             $uid = $event->getWorker()->getUid();
             $this->getLogger()->debug(sprintf('Stopping worker %d', $uid));
-        }
-        , SchedulerEvent::PRIORITY_INITIALIZE);
+        }, SchedulerEvent::PRIORITY_INITIALIZE);
 
         
-        $handles[] = $events->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->workers, $this->workerLifeCycle, $this->discipline));
+        $handles[] = $events->attach(SchedulerLoopRepeated::class, new SchedulerLoopListener($this->logger, $this->workers, $this->workerLifeCycle, $this->discipline));
         $handles[] = $events->attach(CreateWorker::class, new KernelLoopGenerator($this), WorkerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(InitializeWorker::class, new WorkerLifeCycle($this->logger, $this, $this->getEventManager()), WorkerEvent::PRIORITY_FINALIZE);
         $handles[] = $events->attach(InitializeWorker::class, new SchedulerLifeCycle($this, $this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE + 1);
         $handles[] = $events->attach(InitializeWorker::class, new SchedulerInitListener($this->schedulerLifeCycle), WorkerEvent::PRIORITY_INITIALIZE + 1000);
-        $handles[] = $events->attach(InitializeWorker::class, new WorkerInitListener($this->getEventManager()), WorkerEvent::PRIORITY_INITIALIZE + 1);
+        $handles[] = $events->attach(InitializeWorker::class, new WorkerInitListener($this->logger, $this->getEventManager(), $this->getIpc()), WorkerEvent::PRIORITY_INITIALIZE + 1);
         $this->eventHandles = array_merge($this->eventHandles, $handles);
     }
 

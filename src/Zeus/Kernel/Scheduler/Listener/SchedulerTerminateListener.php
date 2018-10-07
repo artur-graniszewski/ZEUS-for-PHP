@@ -10,8 +10,7 @@ class SchedulerTerminateListener extends AbstractWorkerLifeCycleListener
 {
     public function __invoke(SchedulerEvent $event)
     {
-        $scheduler = $event->getScheduler();
-        $scheduler->getLogger()->debug("Stopping scheduler");
+        $this->logger->debug("Stopping scheduler");
         $fileName = $this->getUidFile($event->getScheduler()->getConfig());
 
         $uid = @file_get_contents($fileName);
@@ -21,7 +20,7 @@ class SchedulerTerminateListener extends AbstractWorkerLifeCycleListener
 
         $uid = intval($uid);
 
-        $scheduler->getLogger()->info("Terminating scheduler process #$uid");
+        $this->logger->info("Terminating scheduler $uid");
         /** @var WorkerState $worker */
         $worker = $event->getTarget();
         $worker->setUid($uid);
@@ -34,7 +33,7 @@ class SchedulerTerminateListener extends AbstractWorkerLifeCycleListener
             $count = 0;
             while (($uid = @file_get_contents($fileName)) && $count < 5) {
                 if ($globalCount > 3 && $globalCount % 2) {
-                    $scheduler->getLogger()->debug("Waiting for scheduler to shutdown");
+                    $this->logger->debug("Waiting for scheduler to shutdown");
                 }
                 sleep(1);
                 $count++;

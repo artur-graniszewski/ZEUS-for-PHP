@@ -7,15 +7,20 @@ use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\Status\WorkerState;
 use Zeus\Kernel\Scheduler\WorkerEvent;
 use Zeus\Kernel\Scheduler\Command\CreateWorker;
+use Zeus\Kernel\SchedulerInterface;
 
 class SchedulerStartListener extends AbstractWorkerLifeCycleListener
 {
+    /** @var SchedulerInterface */
+    private $scheduler;
+
     public function __invoke(SchedulerEvent $event)
     {
         $scheduler = $event->getScheduler();
         $scheduler->getEventManager()->attach(CreateWorker::class, function(CreateWorker $e) { $this->registerNewWorker($e);}, WorkerEvent::PRIORITY_FINALIZE);
+        $this->scheduler = $scheduler;
 
-        $pid = $scheduler->getWorker()->getProcessId();
+        $pid = $scheduler->getWorker()->getUid();
 
         $fileName = $this->getUidFile($scheduler->getConfig());
         if (!@file_put_contents($fileName, $pid)) {
@@ -31,7 +36,7 @@ class SchedulerStartListener extends AbstractWorkerLifeCycleListener
         $uid = $status->getUid();
         $status->setCode(WorkerState::WAITING);
 
-        $workers = $event->getScheduler()->getWorkers();
+        $workers = $this->scheduler->getWorkers();
         $workers[$uid] = $status;
     }
 }

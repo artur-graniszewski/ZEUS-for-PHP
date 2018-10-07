@@ -4,6 +4,8 @@ namespace ZeusTest\Services\Async;
 
 use PHPUnit\Framework\TestCase;
 use Zend\Cache\Service\StorageCacheAbstractServiceFactory;
+use Zend\Log\Logger;
+use Zend\Log\Writer\Noop;
 use Zend\ServiceManager\ServiceManager;
 use Zeus\Kernel\Scheduler\SchedulerEvent;
 use Zeus\Kernel\Scheduler\WorkerEvent;
@@ -35,7 +37,8 @@ class AsyncServiceTest extends TestCase
         $sm->addAbstractFactory(StorageCacheAbstractServiceFactory::class);
         $sm->setFactory(Service::class, AbstractServerServiceFactory::class);
         $scheduler = $this->getScheduler();
-        $logger = $scheduler->getLogger();
+        $logger = new Logger();
+        $logger->addWriter(new Noop());
         $events = $scheduler->getEventManager();
         $events->getSharedManager()->attach(
             '*',
